@@ -1,7 +1,7 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
-const SETTINGS_VERSION = '0.1.3';
+const SETTINGS_VERSION = '0.1.4';
 
 const I18N = {
   es: {
@@ -943,6 +943,24 @@ function migrateSettings() {
   localStorage.setItem('tribeca-settings-version', SETTINGS_VERSION);
 }
 
+
+function renderCalendarGrid(monthDate, contextKey) {
+  const baseMonday = new Date(2026, 0, 5);
+  const weekdays = Array.from({length:7}, (_, i) => new Intl.DateTimeFormat(localeForCurrentLang(), { weekday:'short' }).format(addDays(baseMonday, i)).replace('.', ''));
+  const first = startOfMonth(monthDate);
+  const start = addDays(first, -((first.getDay() + 6) % 7));
+  const todayIso = toIsoDate(new Date());
+  const contextEvents = eventsForContext(contextKey);
+  let html = weekdays.map(day => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join('');
+  for (let i = 0; i < 42; i += 1) {
+    const date = addDays(start, i);
+    const iso = toIsoDate(date);
+    const dayEvents = contextEvents.filter(event => event.date === iso);
+    html += `<button type="button" class="calendar-day ${date.getMonth() !== monthDate.getMonth() ? 'is-other' : ''} ${iso === todayIso ? 'is-today' : ''} ${iso === selectedCalendarDate ? 'is-selected' : ''} ${dayEvents.length ? 'has-events' : ''}" data-date="${iso}" title="${dayEvents.map(e => escapeHtml(e.title)).join(' | ')}"><span class="day-number">${date.getDate()}</span>${dayEvents.slice(0, 3).map(e => `<span class="day-event-label"><i class="day-event-dot event-${eventVisualType(e)}"></i>${escapeHtml(e.title)}</span>`).join('')}</button>`;
+  }
+  return html;
+}
+
 function init() {
   migrateSettings();
   const savedZoom = localStorage.getItem('tribeca-zoom') || '60';
@@ -1003,4 +1021,431 @@ function formatMonth(date) { return new Intl.DateTimeFormat(localeForCurrentLang
 function localeForCurrentLang() { return ({ es:'es-ES', gl:'gl-ES', en:'en-GB', fr:'fr-FR', pl:'pl-PL', de:'de-DE', pt:'pt-PT' })[$('#languageSelect')?.value || 'es']; }
 function escapeHtml(text) { return String(text).replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#039;', '"':'&quot;' }[char])); }
 
+
+
+/* Revisión 4: asignaturas por curso, perfil ampliado, materia, panel docente y políticas */
+const avatarIcons = ['💡','📚','🧠','⭐','🌟','✨','🔥','🌈','☀️','🌙','⚡','🎯','🏆','🥇','🎓','🖊️','✏️','📝','📐','🔬','🧪','🧬','🌍','🗺️','🏛️','🎨','🎭','🎵','🎧','🎮','🧩','♟️','🦉','🐝','🦋','🐢','🐬','🦊','🐱','🐶','🐼','🐧','🐸','🦁','🐯','🐴','🐳','🦄','🍀','🌻','🌸','🌿','🍄','🍎','🍓','🍉','🍍','🍕','🥐','⚽','🏀','🏐','🎾','🚀','🛸','✈️','🚲','🏖️','🏔️','🏰','💎','🔔','🧭','🪄','🛡️','📣','🪐','☕','🧋','🎁'];
+
+const subjectCatalog = {
+  'Primaria-1.º Primaria': ['Ciencias de la Naturaleza','Ciencias Sociales','Educación Física','Educación Plástica y Visual','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música y Danza'],
+  'Primaria-2.º Primaria': ['Ciencias de la Naturaleza','Ciencias Sociales','Educación Física','Educación Plástica y Visual','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música y Danza'],
+  'Primaria-3.º Primaria': ['Ciencias de la Naturaleza','Ciencias Sociales','Educación Física','Educación Plástica y Visual','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música y Danza'],
+  'Primaria-4.º Primaria': ['Ciencias de la Naturaleza','Ciencias Sociales','Educación Física','Educación Plástica y Visual','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música y Danza'],
+  'Primaria-5.º Primaria': ['Ciencias de la Naturaleza','Ciencias Sociales','Educación Física','Educación Plástica y Visual','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música y Danza'],
+  'Primaria-6.º Primaria': ['Ciencias de la Naturaleza','Ciencias Sociales','Educación Física','Educación Plástica y Visual','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música y Danza','Educación en Valores Cívicos y Éticos'],
+  'ESO-1.º ESO': ['Apoyo personalizado','Biología y Geología','Educación Física','Educación Plástica, Visual y Audiovisual','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Segunda Lengua Extranjera','Tecnología y Digitalización','Geografía e Historia'],
+  'ESO-2.º ESO': ['Apoyo personalizado','Educación Física','Física y Química','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música','Segunda Lengua Extranjera','Tecnología y Digitalización','Geografía e Historia'],
+  'ESO-3.º ESO': ['Apoyo personalizado','Biología y Geología','Educación en Valores Cívicos y Éticos','Educación Física','Educación Plástica, Visual y Audiovisual','Física y Química','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música','Geografía e Historia','Cultura Clásica','Educación Digital','Oratoria','Segunda Lengua Extranjera'],
+  'ESO-4.º ESO': ['Apoyo personalizado','Educación Física','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas A','Matemáticas B','Geografía e Historia','Biología y Geología','Digitalización','Economía y Emprendimiento','Expresión Artística','Física y Química','Formación y Orientación Personal y Profesional','Latín','Música','Segunda Lengua Extranjera','Tecnología','Cultura Clásica','Filosofía','Oratoria'],
+  'Bachillerato-1.º Bachillerato Sociales': ['Educación Física','Filosofía','Lengua Castellana y Literatura I','Lengua Extranjera I','Lengua Gallega y Literatura I','Latín I','Matemáticas Aplicadas a las Ciencias Sociales I','Economía','Griego I','Historia del Mundo Contemporáneo','Literatura Universal','Anatomía Aplicada','Antropología','Cultura Científica','Segunda Lengua Extranjera I','Literatura Gallega del Siglo XX y de la Actualidad','TIC I'],
+  'Bachillerato-1.º Bachillerato Humanidades': ['Educación Física','Filosofía','Lengua Castellana y Literatura I','Lengua Extranjera I','Lengua Gallega y Literatura I','Latín I','Matemáticas Aplicadas a las Ciencias Sociales I','Economía','Griego I','Historia del Mundo Contemporáneo','Literatura Universal','Anatomía Aplicada','Antropología','Cultura Científica','Segunda Lengua Extranjera I','Literatura Gallega del Siglo XX y de la Actualidad','TIC I'],
+  'Bachillerato-2.º Bachillerato Sociales': ['Lengua Castellana y Literatura II','Lengua Extranjera II','Lengua Gallega y Literatura II','Historia de España','Historia de la Filosofía','Latín II','Matemáticas Aplicadas a las Ciencias Sociales II','Empresa y Diseño de Modelos de Negocio','Geografía','Griego II','Historia del Arte','Métodos Estadísticos y Numéricos','Psicología','Segunda Lengua Extranjera II','TIC II','Geografía, Historia, Arte y Patrimonio de Galicia'],
+  'Bachillerato-2.º Bachillerato Humanidades': ['Lengua Castellana y Literatura II','Lengua Extranjera II','Lengua Gallega y Literatura II','Historia de España','Historia de la Filosofía','Latín II','Matemáticas Aplicadas a las Ciencias Sociales II','Empresa y Diseño de Modelos de Negocio','Geografía','Griego II','Historia del Arte','Métodos Estadísticos y Numéricos','Psicología','Segunda Lengua Extranjera II','TIC II','Geografía, Historia, Arte y Patrimonio de Galicia']
+};
+
+const publicStudentImportPlan = [
+  { alias:'Alumno/a 01', stage:'Primaria', course:'5.º Primaria', center:'CEIP Praia de Quenxe' },
+  { alias:'Alumno/a 02', stage:'Primaria', course:'5.º Primaria', center:'CEIP Praia de Quenxe' },
+  { alias:'Alumno/a 03', stage:'ESO', course:'4.º ESO', center:'IES Agra de Raíces' },
+  { alias:'Alumno/a 04', stage:'ESO', course:'4.º ESO', center:'IES Agra de Raíces' },
+  { alias:'Alumno/a 05', stage:'ESO', course:'3.º ESO', center:'CPR Plurilingüe Manuela Rial Mouzo' },
+  { alias:'Alumno/a 06', stage:'ESO', course:'1.º ESO', center:'IES Fernando Blanco' },
+  { alias:'Alumno/a 07', stage:'ESO', course:'1.º ESO', center:'IES Fernando Blanco' },
+  { alias:'Alumno/a 08', stage:'ESO', course:'1.º ESO', center:'CPR Plurilingüe Manuela Rial Mouzo' },
+  { alias:'Alumno/a 09', stage:'ESO', course:'2.º ESO', center:'CPR Plurilingüe Manuela Rial Mouzo' },
+  { alias:'Alumno/a 10', stage:'ESO', course:'2.º ESO', center:'CPR Plurilingüe Manuela Rial Mouzo' },
+  { alias:'Alumno/a 11', stage:'ESO', course:'2.º ESO', center:'CPR Plurilingüe Manuela Rial Mouzo' },
+  { alias:'Alumno/a 12', stage:'ESO', course:'4.º ESO', center:'CPR Plurilingüe Manuela Rial Mouzo' },
+  { alias:'Alumno/a 13', stage:'ESO', course:'4.º ESO', center:'IES Fernando Blanco' },
+  { alias:'Alumno/a 14', stage:'Bachillerato', course:'1.º Bachillerato Sociales', center:'IES Agra de Raíces' },
+  { alias:'Alumno/a 15', stage:'ESO', course:'3.º ESO PDC', center:'Centro pendiente' },
+  { alias:'Alumno/a 16', stage:'ESO', course:'2.º ESO', center:'CPR Ntra. Sra. del Carmen' },
+  { alias:'Alumno/a 17', stage:'Primaria', course:'6.º Primaria', center:'CPR Ntra. Sra. del Carmen' },
+  { alias:'Alumno/a 18', stage:'Bachillerato', course:'1.º Bachillerato Sociales', center:'IES Fernando Blanco' },
+  { alias:'Alumno/a 19', stage:'Bachillerato', course:'1.º Bachillerato Humanidades', center:'IES Agra de Raíces' }
+];
+
+Object.assign(I18N.es, {
+  teacherPanel:'Panel profesora', profilePreferences:'Preferencias personales', preferredName:'Nombre por el que quieres que te llamen', profileIcon:'Icono de perfil', notificationPrefs:'Preferencias de email', personalEmail:'Email personal para avisos', notifyMessages:'Mensajes nuevos', notifyCalendar:'Eventos próximos', notifyAnnouncements:'Anuncios', notifyMaterials:'Materiales nuevos', saveProfile:'Guardar perfil', subjectWindow:'Materia', unitsAndMaterials:'Unidades y materiales', materialTeacherNote:'La profesora podrá ver, subir, modificar, ocultar o eliminar estos materiales desde su panel.', unit:'Unidad', notesMaterial:'Apuntes', testMaterial:'Test', worksheetMaterial:'Boletín', mockExamMaterial:'Simulacro de examen', gameMaterial:'Juego', challengeMaterial:'Desafío', hiddenMaterial:'Oculto', teacherOnly:'Gestión de profesora', teacherPanelIntro:'Panel preparado para administrar alumnado, materias, insignias, materiales, mensajes, anuncios, calendario y alertas.', privacyWarning:'Por seguridad, los nombres reales del alumnado no se insertan en archivos públicos de GitHub. La alta real se hará en Supabase, en privado.', usersPrepared:'Usuarios preparados para alta privada', teacherAlerts:'Alertas de seguimiento', failedGradesAlert:'Suspensos pendientes de revisión', difficultyAlert:'Cambios en materias con dificultades', noAlerts:'No hay alertas pendientes.', approved:'Aprobado', good:'Bien', notable:'Notable', outstanding:'Sobresaliente', privacyPolicy:'Política de privacidad', cookiesPolicy:'Política de cookies', termsOfUse:'Condiciones de uso', dataProtection:'Protección de datos', legalIntro:'Información provisional para fase de desarrollo. Antes de la apertura real se revisará jurídicamente y se adaptará al tratamiento efectivo de datos.', profileSaved:'Perfil actualizado.', demoLoginNotice:'Inicio de sesión real pendiente de Supabase. Esta maqueta no debe contener contraseñas ni datos personales reales en el código público.'
+});
+Object.assign(I18N.gl, { teacherPanel:'Panel profesora', profilePreferences:'Preferencias persoais', preferredName:'Nome polo que queres que te chamen', profileIcon:'Icona de perfil', notificationPrefs:'Preferencias de email', personalEmail:'Email persoal para avisos', notifyMessages:'Mensaxes novas', notifyCalendar:'Eventos próximos', notifyAnnouncements:'Anuncios', notifyMaterials:'Materiais novos', saveProfile:'Gardar perfil', subjectWindow:'Materia', unitsAndMaterials:'Unidades e materiais', materialTeacherNote:'A profesora poderá ver, subir, modificar, ocultar ou eliminar estes materiais desde o seu panel.', unit:'Unidade', notesMaterial:'Apuntamentos', testMaterial:'Test', worksheetMaterial:'Boletín', mockExamMaterial:'Simulacro de exame', gameMaterial:'Xogo', challengeMaterial:'Desafío', hiddenMaterial:'Oculto', teacherOnly:'Xestión da profesora', teacherPanelIntro:'Panel preparado para administrar alumnado, materias, insignias, materiais, mensaxes, anuncios, calendario e alertas.', privacyWarning:'Por seguridade, os nomes reais do alumnado non se insertan en arquivos públicos de GitHub. A alta real farase en Supabase, en privado.', usersPrepared:'Usuarios preparados para alta privada', teacherAlerts:'Alertas de seguimento', failedGradesAlert:'Suspensos pendentes de revisión', difficultyAlert:'Cambios en materias con dificultade', noAlerts:'Non hai alertas pendentes.', approved:'Aprobado', good:'Ben', notable:'Notable', outstanding:'Sobresaliente', privacyPolicy:'Política de privacidade', cookiesPolicy:'Política de cookies', termsOfUse:'Condicións de uso', dataProtection:'Protección de datos', legalIntro:'Información provisional para fase de desenvolvemento. Antes da apertura real revisarase xuridicamente e adaptarase ao tratamento efectivo de datos.', profileSaved:'Perfil actualizado.', demoLoginNotice:'Inicio de sesión real pendente de Supabase. Esta maqueta non debe conter contrasinais nin datos persoais reais no código público.' });
+Object.assign(I18N.en, { teacherPanel:'Teacher panel', profilePreferences:'Personal preferences', preferredName:'Name you want to be called', profileIcon:'Profile icon', notificationPrefs:'Email preferences', personalEmail:'Personal email for alerts', notifyMessages:'New messages', notifyCalendar:'Upcoming events', notifyAnnouncements:'Announcements', notifyMaterials:'New materials', saveProfile:'Save profile', subjectWindow:'Subject', unitsAndMaterials:'Units and materials', materialTeacherNote:'The teacher will be able to view, upload, edit, hide or delete these materials from her panel.', unit:'Unit', notesMaterial:'Notes', testMaterial:'Test', worksheetMaterial:'Worksheet', mockExamMaterial:'Mock exam', gameMaterial:'Game', challengeMaterial:'Challenge', hiddenMaterial:'Hidden', teacherOnly:'Teacher management', teacherPanelIntro:'Panel prepared to manage students, subjects, badges, materials, messages, announcements, calendar and alerts.', privacyWarning:'For safety, real student names are not inserted in public GitHub files. Real account creation will be done privately in Supabase.', usersPrepared:'Users prepared for private creation', teacherAlerts:'Tracking alerts', failedGradesAlert:'Failed marks pending review', difficultyAlert:'Changes in difficult subjects', noAlerts:'No pending alerts.', approved:'Pass', good:'Good', notable:'Very good', outstanding:'Excellent', privacyPolicy:'Privacy policy', cookiesPolicy:'Cookies policy', termsOfUse:'Terms of use', dataProtection:'Data protection', legalIntro:'Provisional information for development stage. Before real launch it must be legally reviewed and adapted to actual data processing.', profileSaved:'Profile updated.', demoLoginNotice:'Real login is pending Supabase. This mock-up must not contain passwords or real personal data in public code.' });
+Object.assign(I18N.fr, { teacherPanel:'Panneau professeure', profilePreferences:'Préférences personnelles', preferredName:'Nom par lequel tu veux être appelé(e)', profileIcon:'Icône de profil', notificationPrefs:'Préférences email', personalEmail:'Email personnel pour les avis', notifyMessages:'Nouveaux messages', notifyCalendar:'Événements proches', notifyAnnouncements:'Annonces', notifyMaterials:'Nouveaux matériels', saveProfile:'Enregistrer le profil', subjectWindow:'Matière', unitsAndMaterials:'Unités et matériels', materialTeacherNote:'La professeure pourra voir, téléverser, modifier, masquer ou supprimer ces matériels depuis son panneau.', unit:'Unité', notesMaterial:'Notes', testMaterial:'Test', worksheetMaterial:'Fiche', mockExamMaterial:'Examen blanc', gameMaterial:'Jeu', challengeMaterial:'Défi', hiddenMaterial:'Masqué', teacherOnly:'Gestion professeure', teacherPanelIntro:'Panneau prêt pour gérer élèves, matières, badges, matériels, messages, annonces, calendrier et alertes.', privacyWarning:'Par sécurité, les vrais noms des élèves ne sont pas insérés dans les fichiers publics GitHub. La création réelle se fera dans Supabase, en privé.', usersPrepared:'Utilisateurs préparés pour création privée', teacherAlerts:'Alertes de suivi', failedGradesAlert:'Notes insuffisantes à réviser', difficultyAlert:'Changements dans les matières difficiles', noAlerts:'Aucune alerte.', approved:'Admis', good:'Bien', notable:'Très bien', outstanding:'Excellent', privacyPolicy:'Politique de confidentialité', cookiesPolicy:'Politique de cookies', termsOfUse:'Conditions d’utilisation', dataProtection:'Protection des données', legalIntro:'Information provisoire pour la phase de développement. Avant l’ouverture réelle, elle devra être vérifiée juridiquement.', profileSaved:'Profil mis à jour.', demoLoginNotice:'Connexion réelle en attente de Supabase. Cette maquette ne doit pas contenir de mots de passe ni de données personnelles réelles dans le code public.' });
+Object.assign(I18N.pl, { teacherPanel:'Panel nauczycielki', profilePreferences:'Preferencje osobiste', preferredName:'Imię, którym chcesz być nazywany/a', profileIcon:'Ikona profilu', notificationPrefs:'Preferencje email', personalEmail:'Prywatny email do powiadomień', notifyMessages:'Nowe wiadomości', notifyCalendar:'Nadchodzące wydarzenia', notifyAnnouncements:'Ogłoszenia', notifyMaterials:'Nowe materiały', saveProfile:'Zapisz profil', subjectWindow:'Przedmiot', unitsAndMaterials:'Jednostki i materiały', materialTeacherNote:'Nauczycielka będzie mogła przeglądać, dodawać, edytować, ukrywać lub usuwać te materiały ze swojego panelu.', unit:'Jednostka', notesMaterial:'Notatki', testMaterial:'Test', worksheetMaterial:'Zestaw ćwiczeń', mockExamMaterial:'Egzamin próbny', gameMaterial:'Gra', challengeMaterial:'Wyzwanie', hiddenMaterial:'Ukryte', teacherOnly:'Zarządzanie nauczycielki', teacherPanelIntro:'Panel przygotowany do zarządzania uczniami, przedmiotami, odznakami, materiałami, wiadomościami, ogłoszeniami, kalendarzem i alertami.', privacyWarning:'Ze względów bezpieczeństwa prawdziwe nazwiska uczniów nie są umieszczane w publicznych plikach GitHub. Rzeczywiste konta zostaną utworzone prywatnie w Supabase.', usersPrepared:'Użytkownicy przygotowani do prywatnego utworzenia', teacherAlerts:'Alerty', failedGradesAlert:'Oceny niedostateczne do sprawdzenia', difficultyAlert:'Zmiany w trudnych przedmiotach', noAlerts:'Brak alertów.', approved:'Zaliczony', good:'Dobry', notable:'Bardzo dobry', outstanding:'Celujący', privacyPolicy:'Polityka prywatności', cookiesPolicy:'Polityka cookies', termsOfUse:'Warunki użytkowania', dataProtection:'Ochrona danych', legalIntro:'Informacja tymczasowa na etap rozwoju. Przed uruchomieniem wymaga przeglądu prawnego.', profileSaved:'Profil zaktualizowany.', demoLoginNotice:'Prawdziwe logowanie czeka na Supabase. Ta makieta nie może zawierać haseł ani prawdziwych danych osobowych w publicznym kodzie.' });
+Object.assign(I18N.de, { teacherPanel:'Lehrerinnen-Panel', profilePreferences:'Persönliche Einstellungen', preferredName:'Name, mit dem du angesprochen werden möchtest', profileIcon:'Profil-Symbol', notificationPrefs:'E-Mail-Einstellungen', personalEmail:'Private E-Mail für Hinweise', notifyMessages:'Neue Nachrichten', notifyCalendar:'Bevorstehende Termine', notifyAnnouncements:'Ankündigungen', notifyMaterials:'Neue Materialien', saveProfile:'Profil speichern', subjectWindow:'Fach', unitsAndMaterials:'Einheiten und Materialien', materialTeacherNote:'Die Lehrerin kann diese Materialien in ihrem Panel ansehen, hochladen, ändern, ausblenden oder löschen.', unit:'Einheit', notesMaterial:'Notizen', testMaterial:'Test', worksheetMaterial:'Arbeitsblatt', mockExamMaterial:'Probeprüfung', gameMaterial:'Spiel', challengeMaterial:'Herausforderung', hiddenMaterial:'Ausgeblendet', teacherOnly:'Verwaltung der Lehrerin', teacherPanelIntro:'Panel zur Verwaltung von Schülerinnen und Schülern, Fächern, Abzeichen, Materialien, Nachrichten, Ankündigungen, Kalender und Warnungen.', privacyWarning:'Aus Sicherheitsgründen werden echte Schülernamen nicht in öffentliche GitHub-Dateien eingefügt. Die reale Anlage erfolgt privat in Supabase.', usersPrepared:'Benutzer für private Anlage vorbereitet', teacherAlerts:'Warnungen', failedGradesAlert:'Nicht bestandene Noten zur Prüfung', difficultyAlert:'Änderungen bei schwierigen Fächern', noAlerts:'Keine Warnungen.', approved:'Bestanden', good:'Gut', notable:'Sehr gut', outstanding:'Ausgezeichnet', privacyPolicy:'Datenschutzerklärung', cookiesPolicy:'Cookie-Richtlinie', termsOfUse:'Nutzungsbedingungen', dataProtection:'Datenschutz', legalIntro:'Vorläufige Information für die Entwicklungsphase. Vor dem echten Start rechtlich prüfen und anpassen.', profileSaved:'Profil aktualisiert.', demoLoginNotice:'Echte Anmeldung wartet auf Supabase. Diese Demo darf keine Passwörter oder echten personenbezogenen Daten im öffentlichen Code enthalten.' });
+Object.assign(I18N.pt, { teacherPanel:'Painel da professora', profilePreferences:'Preferências pessoais', preferredName:'Nome pelo qual queres ser chamado/a', profileIcon:'Ícone de perfil', notificationPrefs:'Preferências de email', personalEmail:'Email pessoal para avisos', notifyMessages:'Novas mensagens', notifyCalendar:'Eventos próximos', notifyAnnouncements:'Anúncios', notifyMaterials:'Novos materiais', saveProfile:'Guardar perfil', subjectWindow:'Disciplina', unitsAndMaterials:'Unidades e materiais', materialTeacherNote:'A professora poderá ver, carregar, modificar, ocultar ou eliminar estes materiais no seu painel.', unit:'Unidade', notesMaterial:'Apontamentos', testMaterial:'Teste', worksheetMaterial:'Ficha', mockExamMaterial:'Simulacro de exame', gameMaterial:'Jogo', challengeMaterial:'Desafio', hiddenMaterial:'Oculto', teacherOnly:'Gestão da professora', teacherPanelIntro:'Painel preparado para gerir alunos, disciplinas, insígnias, materiais, mensagens, anúncios, calendário e alertas.', privacyWarning:'Por segurança, os nomes reais dos alunos não são inseridos em ficheiros públicos do GitHub. A criação real será feita no Supabase, em privado.', usersPrepared:'Utilizadores preparados para criação privada', teacherAlerts:'Alertas de acompanhamento', failedGradesAlert:'Notas negativas para revisão', difficultyAlert:'Alterações em disciplinas difíceis', noAlerts:'Não há alertas pendentes.', approved:'Aprovado', good:'Bom', notable:'Muito bom', outstanding:'Excelente', privacyPolicy:'Política de privacidade', cookiesPolicy:'Política de cookies', termsOfUse:'Condições de uso', dataProtection:'Proteção de dados', legalIntro:'Informação provisória para fase de desenvolvimento. Antes da abertura real deverá ser revista juridicamente.', profileSaved:'Perfil atualizado.', demoLoginNotice:'Início de sessão real pendente do Supabase. Esta maqueta não deve conter palavras-passe nem dados pessoais reais no código público.' });
+
+
+Object.assign(I18N.es, { alias:'Alias', privacyText:'Tribeca Academia tratará únicamente los datos necesarios para gestionar el aula virtual, la comunicación educativa, el seguimiento académico y la atención de consultas. La base jurídica, los plazos de conservación, los derechos de acceso, rectificación, supresión, oposición, limitación y portabilidad, así como los posibles encargados del tratamiento, deberán concretarse antes de la apertura real.', cookiesText:'En esta fase la maqueta solo usa almacenamiento local del navegador para preferencias visuales y pruebas funcionales. Antes de activar servicios externos, analítica o cookies no técnicas, se incorporará un panel de consentimiento específico.', termsText:'La plataforma deberá usarse con respeto, diligencia, veracidad y finalidad educativa. No se permitirá publicar contenidos ofensivos, suplantar identidades, compartir credenciales ni difundir materiales sin autorización.', dataProtectionText:'No deben introducirse datos personales reales, contraseñas reales ni información académica sensible mientras el proyecto continúe alojado como maqueta pública. La versión operativa deberá funcionar con autenticación, permisos y reglas de seguridad en Supabase.' });
+Object.assign(I18N.gl, { alias:'Alias', privacyText:'Tribeca Academia tratará só os datos necesarios para xestionar a aula virtual, a comunicación educativa, o seguimento académico e a atención de consultas. A base xurídica, os prazos de conservación, os dereitos e os posibles encargados do tratamento deberán concretarse antes da apertura real.', cookiesText:'Nesta fase a maqueta só usa almacenamento local do navegador para preferencias visuais e probas funcionais. Antes de activar servizos externos, analítica ou cookies non técnicas, incorporarase un panel de consentimento específico.', termsText:'A plataforma deberá empregarse con respecto, dilixencia, veracidade e finalidade educativa. Non se permitirá publicar contidos ofensivos, suplantar identidades, compartir credenciais nin difundir materiais sen autorización.', dataProtectionText:'Non deben introducirse datos persoais reais, contrasinais reais nin información académica sensible mentres o proxecto continúe aloxado como maqueta pública. A versión operativa deberá funcionar con autenticación, permisos e regras de seguridade en Supabase.' });
+Object.assign(I18N.en, { alias:'Alias', privacyText:'Tribeca Academia will process only the data needed to manage the virtual classroom, educational communication, academic monitoring and enquiries. The legal basis, retention periods, user rights and possible data processors must be specified before the real launch.', cookiesText:'At this stage the mock-up only uses browser local storage for visual preferences and functional tests. Before enabling external services, analytics or non-technical cookies, a specific consent panel will be added.', termsText:'The platform must be used respectfully, diligently, truthfully and for educational purposes. Offensive content, impersonation, credential sharing and unauthorised distribution of materials will not be allowed.', dataProtectionText:'Real personal data, real passwords or sensitive academic information must not be entered while the project remains hosted as a public mock-up. The operational version must use authentication, permissions and security rules in Supabase.' });
+Object.assign(I18N.fr, { alias:'Alias', privacyText:'Tribeca Academia traitera uniquement les données nécessaires à la gestion de la classe virtuelle, de la communication éducative, du suivi scolaire et des demandes. La base juridique, les durées de conservation, les droits des personnes et les éventuels sous-traitants devront être précisés avant l’ouverture réelle.', cookiesText:'À ce stade, la maquette utilise seulement le stockage local du navigateur pour les préférences visuelles et les essais fonctionnels. Avant d’activer des services externes, de l’analytique ou des cookies non techniques, un panneau de consentement sera ajouté.', termsText:'La plateforme devra être utilisée avec respect, diligence, véracité et finalité éducative. Les contenus offensants, l’usurpation d’identité, le partage d’identifiants et la diffusion non autorisée de matériels ne seront pas autorisés.', dataProtectionText:'Aucune donnée personnelle réelle, aucun mot de passe réel ni aucune information scolaire sensible ne doivent être saisis tant que le projet reste une maquette publique. La version opérationnelle devra utiliser l’authentification, les autorisations et les règles de sécurité dans Supabase.' });
+Object.assign(I18N.pl, { alias:'Alias', privacyText:'Tribeca Academia będzie przetwarzać wyłącznie dane potrzebne do zarządzania wirtualną klasą, komunikacją edukacyjną, monitorowaniem nauki i obsługą zapytań. Podstawa prawna, okresy przechowywania, prawa użytkowników i ewentualni podwykonawcy muszą zostać określeni przed rzeczywistym uruchomieniem.', cookiesText:'Na tym etapie makieta używa tylko lokalnej pamięci przeglądarki do preferencji wizualnych i testów funkcjonalnych. Przed włączeniem usług zewnętrznych, analityki lub nietechnicznych cookies zostanie dodany panel zgody.', termsText:'Platforma musi być używana z szacunkiem, starannością, prawdziwością i w celu edukacyjnym. Treści obraźliwe, podszywanie się, udostępnianie danych logowania i nieautoryzowana dystrybucja materiałów nie będą dozwolone.', dataProtectionText:'Nie należy wprowadzać prawdziwych danych osobowych, prawdziwych haseł ani wrażliwych informacji szkolnych, dopóki projekt pozostaje publiczną makietą. Wersja operacyjna musi działać z uwierzytelnianiem, uprawnieniami i regułami bezpieczeństwa w Supabase.' });
+Object.assign(I18N.de, { alias:'Alias', privacyText:'Tribeca Academia verarbeitet nur die Daten, die für die Verwaltung des virtuellen Klassenraums, die pädagogische Kommunikation, die schulische Begleitung und Anfragen erforderlich sind. Rechtsgrundlage, Aufbewahrungsfristen, Rechte der Betroffenen und mögliche Auftragsverarbeiter müssen vor dem echten Start festgelegt werden.', cookiesText:'In dieser Phase verwendet die Demo nur lokalen Browserspeicher für Anzeigeeinstellungen und Funktionstests. Vor der Aktivierung externer Dienste, Analytik oder nicht technischer Cookies wird ein eigenes Einwilligungsfeld ergänzt.', termsText:'Die Plattform ist respektvoll, sorgfältig, wahrheitsgemäß und zu Bildungszwecken zu nutzen. Beleidigende Inhalte, Identitätsmissbrauch, Weitergabe von Zugangsdaten und unbefugte Verbreitung von Materialien sind nicht erlaubt.', dataProtectionText:'Solange das Projekt als öffentliche Demo gehostet wird, dürfen keine echten personenbezogenen Daten, echten Passwörter oder sensiblen schulischen Informationen eingegeben werden. Die operative Version muss mit Authentifizierung, Berechtigungen und Sicherheitsregeln in Supabase arbeiten.' });
+Object.assign(I18N.pt, { alias:'Alias', privacyText:'A Tribeca Academia tratará apenas os dados necessários para gerir a aula virtual, a comunicação educativa, o acompanhamento académico e as consultas. A base jurídica, os prazos de conservação, os direitos dos utilizadores e eventuais subcontratantes deverão ser definidos antes da abertura real.', cookiesText:'Nesta fase, a maqueta usa apenas armazenamento local do navegador para preferências visuais e testes funcionais. Antes de ativar serviços externos, analítica ou cookies não técnicos, será incorporado um painel específico de consentimento.', termsText:'A plataforma deverá ser usada com respeito, diligência, veracidade e finalidade educativa. Não serão permitidos conteúdos ofensivos, usurpação de identidade, partilha de credenciais nem difusão não autorizada de materiais.', dataProtectionText:'Não devem ser introduzidos dados pessoais reais, palavras-passe reais nem informação académica sensível enquanto o projeto continuar alojado como maqueta pública. A versão operacional deverá funcionar com autenticação, permissões e regras de segurança no Supabase.' });
+
+let currentSubjectName = '';
+function getProfileSettings() { return JSON.parse(localStorage.getItem('tribeca-profile-settings') || '{"icon":"💡","preferredName":"","email":"","notify":{}}'); }
+function setProfileSettings(settings) { localStorage.setItem('tribeca-profile-settings', JSON.stringify(settings)); }
+function userDisplayName() { return getProfileSettings().preferredName || demoUser.name; }
+function getUserSubjects() {
+  const key = `${demoUser.stage}-${demoUser.course}`;
+  return subjectCatalog[key] || subjectCatalog['ESO-1.º ESO'];
+}
+function subjectVisual(subject, index) {
+  const marks = ['◎','✦','GB','FR','✧','▰','π','GH','FQ','EV','TD','MU'];
+  const classes = ['subject-support','subject-bio','subject-english','subject-french','subject-castilian','subject-galician'];
+  return { mark: marks[index % marks.length], cls: classes[index % classes.length] };
+}
+function renderSubjectsGrid() {
+  const grid = $('#subjectsGrid');
+  if (!grid) return;
+  const list = getUserSubjects();
+  grid.innerHTML = list.map((subject, index) => {
+    const visual = subjectVisual(subject, index);
+    return `<article class="subject-card ${visual.cls}" tabindex="0" role="button" data-subject="${escapeHtml(subject)}">
+      <div class="subject-top"><span>${escapeHtml(demoUser.course)}</span><button type="button" aria-label="Opciones">•••</button></div>
+      <div class="subject-mark">${visual.mark}</div>
+      <h3>${escapeHtml(subject)}</h3>
+      <p><span>${tr('zeroPosts')}</span> · <span>${index === 2 ? tr('oneUnit') : tr('zeroUnits')}</span></p>
+      <div class="progress-row"><span>${tr('progress')}</span><strong>0%</strong></div>
+      <div class="progress"><span style="width:0%"></span></div>
+      <small>${tr('noActivities')}</small>
+    </article>`;
+  }).join('');
+  $$('.subject-card', grid).forEach(card => {
+    const open = () => { currentSubjectName = card.dataset.subject; openTool('subjectDetail'); };
+    card.addEventListener('click', event => { if (!event.target.closest('button')) open(); });
+    card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } });
+  });
+}
+
+function renderStaticUserTexts() {
+  $('#studentHeroName').textContent = userDisplayName();
+  const settings = getProfileSettings();
+  const avatar = $('#profileAvatar');
+  if (avatar) avatar.textContent = settings.icon || '💡';
+  const centerName = demoUser.center === 'Centro sin asignar' ? tr('assignedCenter') : demoUser.center;
+  const academicLine = `${centerName} · ${demoUser.stage} · ${demoUser.course}`;
+  $('#studentCenterLine').textContent = academicLine;
+  $('#quickCenterText').textContent = academicLine;
+  $('#todayLine').textContent = formatLongDate(new Date());
+}
+
+function applyTranslations() {
+  const lang = $('#languageSelect').value;
+  document.documentElement.lang = lang;
+  $$('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+  $('#themeText').textContent = document.body.classList.contains('is-dark') ? tr('themeDark') : tr('themeLight');
+  renderStaticUserTexts();
+  renderQuickCards();
+  renderSubjectsGrid();
+  rerenderOpenWindows();
+}
+
+function toolTitle(id) {
+  if (id === 'subjectDetail') return currentSubjectName || tr('subjectWindow');
+  if (id === 'teacherPanel') return tr('teacherPanel');
+  return tr(`tool${id.charAt(0).toUpperCase()}${id.slice(1)}`) || tr(id) || id;
+}
+
+function toolContent(id) {
+  if (id === 'calendar') return calendarContent();
+  if (id === 'messages') return messagesContent();
+  if (id === 'chat') return chatContent();
+  if (id === 'announcements') return announcementsContent();
+  if (id === 'contact') return contactContent();
+  if (id === 'support') return supportContent();
+  if (id === 'legal') return legalContent();
+  if (id === 'profile') return profileContent();
+  if (id === 'badges') return badgesContent();
+  if (id === 'difficulties') return difficultiesContent();
+  if (id === 'grades') return gradesContent();
+  if (id === 'subjectDetail') return subjectContent(currentSubjectName);
+  if (id === 'teacherPanel') return teacherPanelContent();
+  return `<p>${tr('preparedSupabase')}</p>`;
+}
+
+function gradeStatusClass(value) {
+  if (value < 5) return 'grade-fail';
+  if (value < 6) return 'grade-approved';
+  if (value < 7) return 'grade-good';
+  if (value < 9) return 'grade-notable';
+  return 'grade-outstanding';
+}
+function gradeStatusLabel(value) {
+  if (value < 5) return tr('insufficient');
+  if (value < 6) return tr('approved');
+  if (value < 7) return tr('good');
+  if (value < 9) return tr('notable');
+  return tr('outstanding');
+}
+
+function difficultiesContent() {
+  const items = getDifficulties();
+  const list = getUserSubjects();
+  return `<div class="window-grid"><section class="window-panel"><h3>${tr('difficultyFormTitle')}</h3><form class="form-grid" id="difficultyForm"><input type="hidden" name="id" /><div class="form-row"><label>${tr('subject')} *</label><select name="subject" required><option value="">${tr('selectOption')}</option>${list.map(s => `<option>${escapeHtml(s)}</option>`).join('')}</select></div><div class="form-row"><label>${tr('level')} *</label><select name="level" required><option>${tr('low')}</option><option>${tr('medium')}</option><option>${tr('high')}</option></select></div><div class="form-row"><label>${tr('notes')}</label><textarea name="notes" maxlength="500"></textarea></div><button class="primary-btn" type="submit">${tr('saveDifficulty')}</button></form><p class="meta">${tr('teacherNotice')}</p></section><section class="window-panel"><h3>${tr('currentDifficulties')}</h3><div class="item-list" id="difficultyList">${renderDifficultyList(items)}</div></section></div>`;
+}
+function gradesContent() {
+  const grades = getGrades();
+  const list = getUserSubjects();
+  return `<div class="window-grid"><section class="window-panel"><h3>${tr('addGrade')}</h3><p>${tr('gradesIntro')}</p><form class="form-grid" id="gradeForm"><input type="hidden" name="id" /><div class="window-grid"><div class="form-row"><label>${tr('subject')} *</label><select name="subject" required><option value="">${tr('selectOption')}</option>${list.map(s => `<option>${escapeHtml(s)}</option>`).join('')}</select></div><div class="form-row"><label>${tr('didacticUnit')} *</label><input name="unit" required maxlength="80" placeholder="${tr('unitPlaceholder')}" /></div></div><div class="window-grid"><div class="form-row"><label>${tr('evaluation')} *</label><select name="evaluation" required><option>${tr('firstEval')}</option><option>${tr('secondEval')}</option><option>${tr('thirdEval')}</option></select></div><div class="form-row"><label>${tr('testType')} *</label><select name="type" required><option>${tr('exam')}</option><option>${tr('project')}</option><option>${tr('presentation')}</option><option>${tr('oralExam')}</option></select></div></div><div class="window-grid"><div class="form-row"><label>${tr('grade')} *</label><input name="grade" type="number" min="0" max="10" step="0.01" required /></div><div class="form-row"><label>${tr('weight')}</label><input name="weight" type="number" min="0.1" max="100" step="0.1" placeholder="${tr('ordinaryWeight')}" /></div></div><button class="primary-btn" type="submit">${tr('saveGrade')}</button></form></section><section class="window-panel"><h3>${tr('averages')}</h3><div class="summary-grid" id="averagesList">${renderAverages(grades)}</div></section></div><section class="window-panel" style="margin-top:1rem;"><h3>${tr('gradeRecords')}</h3><div class="table-wrap" id="gradesTable">${renderGradesTable(grades)}</div></section>`;
+}
+
+function subjectContent(subject) {
+  const materials = [
+    { unit:'1', type:tr('notesMaterial'), title:`${tr('notesMaterial')} · ${subject}` },
+    { unit:'1', type:tr('testMaterial'), title:`${tr('testMaterial')} · ${subject}` },
+    { unit:'2', type:tr('worksheetMaterial'), title:`${tr('worksheetMaterial')} · ${subject}` },
+    { unit:'2', type:tr('mockExamMaterial'), title:`${tr('mockExamMaterial')} · ${subject}` },
+    { unit:'3', type:tr('gameMaterial'), title:`${tr('gameMaterial')} · ${subject}` },
+    { unit:'3', type:tr('challengeMaterial'), title:`${tr('challengeMaterial')} · ${subject}`, hidden:true }
+  ];
+  return `<div class="window-grid"><section class="window-panel"><h3>${tr('unitsAndMaterials')}</h3><p>${tr('materialTeacherNote')}</p><div class="subject-material-grid">${materials.map(m => `<article class="material-card"><span class="material-type">${escapeHtml(m.type)}</span><strong>${escapeHtml(m.title)}</strong><p class="meta">${tr('unit')} ${m.unit}${m.hidden ? ` · ${tr('hiddenMaterial')}` : ''}</p><div class="inline-actions"><button class="secondary-btn" type="button">${tr('edit')}</button><button class="secondary-btn" type="button">${tr('hiddenMaterial')}</button><button class="danger-btn" type="button">${tr('remove')}</button></div></article>`).join('')}</div></section><section class="window-panel"><h3>${tr('teacherOnly')}</h3><form class="form-grid" id="materialForm"><div class="form-row"><label>${tr('calendarTitle')}</label><input maxlength="90" /></div><div class="form-row"><label>${tr('testType')}</label><select><option>${tr('notesMaterial')}</option><option>${tr('testMaterial')}</option><option>${tr('worksheetMaterial')}</option><option>${tr('mockExamMaterial')}</option><option>${tr('gameMaterial')}</option><option>${tr('challengeMaterial')}</option></select></div><div class="form-row"><label>${tr('unit')}</label><input maxlength="40" /></div><button class="primary-btn" type="submit">${tr('preparedSupabase')}</button></form></section></div>`;
+}
+
+function profileContent() {
+  const settings = getProfileSettings();
+  const notify = settings.notify || {};
+  return `<div class="window-grid"><section class="window-panel"><h3>${tr('profilePreferences')}</h3><form class="form-grid" id="profileForm"><div class="form-row"><label>${tr('preferredName')}</label><input name="preferredName" maxlength="50" value="${escapeHtml(settings.preferredName || '')}" /></div><div class="form-row"><label>${tr('profileIcon')}</label><div class="icon-grid">${avatarIcons.map(icon => `<button type="button" class="icon-choice ${settings.icon === icon ? 'is-selected' : ''}" data-avatar="${icon}">${icon}</button>`).join('')}</div><input type="hidden" name="icon" value="${escapeHtml(settings.icon || '💡')}" /></div><div class="form-row"><label>${tr('personalEmail')}</label><input name="email" type="email" maxlength="120" value="${escapeHtml(settings.email || '')}" /></div><h3>${tr('notificationPrefs')}</h3><div class="notification-options"><label><input type="checkbox" name="notifyMessages" ${notify.messages ? 'checked' : ''}> ${tr('notifyMessages')}</label><label><input type="checkbox" name="notifyCalendar" ${notify.calendar ? 'checked' : ''}> ${tr('notifyCalendar')}</label><label><input type="checkbox" name="notifyAnnouncements" ${notify.announcements ? 'checked' : ''}> ${tr('notifyAnnouncements')}</label><label><input type="checkbox" name="notifyMaterials" ${notify.materials ? 'checked' : ''}> ${tr('notifyMaterials')}</label></div><button class="primary-btn" type="submit">${tr('saveProfile')}</button></form></section><section class="window-panel"><h3>${tr('academicData')}</h3><div class="form-grid"><div class="form-row"><label>${tr('assignedByTeacher')}</label><input value="${escapeHtml(demoUser.center)}" disabled /></div><div class="window-grid"><div class="form-row"><label>${tr('stage')}</label><input value="${escapeHtml(demoUser.stage)}" disabled /></div><div class="form-row"><label>${tr('course')}</label><input value="${escapeHtml(demoUser.course)}" disabled /></div></div><p class="meta">${tr('academicLocked')}</p><p class="login-note">${tr('demoLoginNotice')}</p></div><hr /><h3>${tr('promotionRules')}</h3><p>${tr('promotionText')}</p></section></div>`;
+}
+
+function teacherPanelContent() {
+  const failed = getGrades().some(g => Number(g.grade) < 5);
+  const diffNotice = localStorage.getItem('tribeca-difficulty-teacher-notice') === '1';
+  return `<div class="window-grid"><section class="window-panel"><h3>${tr('teacherPanel')}</h3><p>${tr('teacherPanelIntro')}</p><p class="login-note">${tr('privacyWarning')}</p><h3>${tr('teacherAlerts')}</h3><div class="item-list">${failed ? `<article class="list-item teacher-alert"><strong>${tr('failedGradesAlert')}</strong><p>${tr('failNotice')}</p></article>` : ''}${diffNotice ? `<article class="list-item teacher-alert"><strong>${tr('difficultyAlert')}</strong><p>${tr('teacherNotice')}</p></article>` : ''}${(!failed && !diffNotice) ? `<div class="empty-state">${tr('noAlerts')}</div>` : ''}</div></section><section class="window-panel"><h3>${tr('usersPrepared')}</h3><div class="table-wrap"><table><thead><tr><th>${tr('alias')}</th><th>${tr('stage')}</th><th>${tr('course')}</th><th>${tr('centerTitle')}</th></tr></thead><tbody>${publicStudentImportPlan.map(s => `<tr><td>${s.alias}</td><td>${escapeHtml(s.stage)}</td><td>${escapeHtml(s.course)}</td><td>${escapeHtml(s.center)}</td></tr>`).join('')}</tbody></table></div></section></div>`;
+}
+
+function legalContent() {
+  return `<section class="window-panel privacy-section"><h3>${tr('legalTitle')}</h3><p>${tr('legalIntro')}</p><h4>${tr('legalNotice')}</h4><p>${tr('legalText1')}</p><p>${tr('legalText2')}</p><p>${tr('legalText3')}</p><h4>${tr('privacyPolicy')}</h4><p>${tr('privacyText')}</p><h4>${tr('cookiesPolicy')}</h4><p>${tr('cookiesText')}</p><h4>${tr('termsOfUse')}</h4><p>${tr('termsText')}</p><h4>${tr('dataProtection')}</h4><p>${tr('dataProtectionText')}</p><p>${tr('legalText5')}</p></section>`;
+}
+
+function bindWindowForms(win, id) {
+  const contact = $('#contactForm', win);
+  if (contact) contact.addEventListener('submit', handleContactSubmit);
+  const eventForm = $('#eventForm', win);
+  if (eventForm) eventForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(eventForm).entries()); const items = getUserEvents(); items.push({ id: uid(), date: data.date, title: data.title, type: data.scope || 'personal', scope: data.scope || 'personal' }); setUserEvents(items); showToast(tr('saved')); updateCalendarBadge(); rerenderOpenWindows(); });
+  const contextSelect = $('#calendarContextSelect', win);
+  if (contextSelect) contextSelect.addEventListener('change', event => { localStorage.setItem('tribeca-calendar-context', event.target.value); rerenderOpenWindows(); });
+  const prev = $('[data-calendar-prev]', win); const next = $('[data-calendar-next]', win);
+  if (prev) prev.addEventListener('click', () => { calendarMonth = addMonths(calendarMonth, -1); rerenderOpenWindows(); });
+  if (next) next.addEventListener('click', () => { calendarMonth = addMonths(calendarMonth, 1); rerenderOpenWindows(); });
+  $$('.calendar-day[data-date]', win).forEach(day => day.addEventListener('click', () => { selectedCalendarDate = day.dataset.date; calendarMonth = startOfMonth(parseIso(selectedCalendarDate)); rerenderOpenWindows(); }));
+  const difficultyForm = $('#difficultyForm', win);
+  if (difficultyForm) difficultyForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(difficultyForm).entries()); const items = getDifficulties(); if (data.id) { const index = items.findIndex(item => item.id === data.id); if (index >= 0) items[index] = { id: data.id, subject: data.subject, level: data.level, notes: data.notes }; } else { items.push({ id: uid(), subject: data.subject, level: data.level, notes: data.notes }); } setDifficulties(items); localStorage.setItem('tribeca-difficulty-teacher-notice', '1'); showToast(tr('saved')); renderQuickCards(); rerenderOpenWindows(); });
+  $$('[data-edit-difficulty]', win).forEach(button => button.addEventListener('click', () => { const item = getDifficulties().find(d => d.id === button.dataset.editDifficulty); const form = $('#difficultyForm', win); if (!item || !form) return; form.elements.id.value = item.id; form.elements.subject.value = item.subject; form.elements.level.value = item.level; form.elements.notes.value = item.notes || ''; }));
+  $$('[data-delete-difficulty]', win).forEach(button => button.addEventListener('click', () => { setDifficulties(getDifficulties().filter(item => item.id !== button.dataset.deleteDifficulty)); localStorage.setItem('tribeca-difficulty-teacher-notice', '1'); showToast(tr('deleted')); renderQuickCards(); rerenderOpenWindows(); }));
+  const gradeForm = $('#gradeForm', win);
+  if (gradeForm) gradeForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(gradeForm).entries()); const items = getGrades(); const record = { id: data.id || uid(), subject: data.subject, unit: data.unit, evaluation: data.evaluation, type: data.type, grade: Number(data.grade), weight: data.weight ? Number(data.weight) : '' }; if (data.id) { const index = items.findIndex(item => item.id === data.id); if (index >= 0) items[index] = record; } else items.push(record); setGrades(items); updateGradeTeacherNotice(items); showToast(tr('saved')); renderQuickCards(); rerenderOpenWindows(); });
+  $$('[data-edit-grade]', win).forEach(button => button.addEventListener('click', () => { const item = getGrades().find(g => g.id === button.dataset.editGrade); const form = $('#gradeForm', win); if (!item || !form) return; form.elements.id.value = item.id; form.elements.subject.value = item.subject; form.elements.unit.value = item.unit; form.elements.evaluation.value = item.evaluation; form.elements.type.value = item.type; form.elements.grade.value = item.grade; form.elements.weight.value = item.weight || ''; }));
+  $$('[data-delete-grade]', win).forEach(button => button.addEventListener('click', () => { const updated = getGrades().filter(item => item.id !== button.dataset.deleteGrade); setGrades(updated); updateGradeTeacherNotice(updated); showToast(tr('deleted')); renderQuickCards(); rerenderOpenWindows(); }));
+  const profileForm = $('#profileForm', win);
+  if (profileForm) profileForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(profileForm).entries()); setProfileSettings({ preferredName:data.preferredName || '', icon:data.icon || '💡', email:data.email || '', notify:{ messages:!!data.notifyMessages, calendar:!!data.notifyCalendar, announcements:!!data.notifyAnnouncements, materials:!!data.notifyMaterials } }); showToast(tr('profileSaved')); renderStaticUserTexts(); rerenderOpenWindows(); });
+  $$('.icon-choice', win).forEach(button => button.addEventListener('click', () => { const form = $('#profileForm', win); if (!form) return; form.elements.icon.value = button.dataset.avatar; $$('.icon-choice', win).forEach(b => b.classList.remove('is-selected')); button.classList.add('is-selected'); }));
+  const chatForm = $('#chatForm', win);
+  if (chatForm) chatForm.addEventListener('submit', event => { event.preventDefault(); const input = $('input', chatForm); const value = input.value.trim(); if (!value) return; $('#chatThread', win).insertAdjacentHTML('beforeend', `<div class="chat-bubble me is-new"><strong>${escapeHtml(userDisplayName())}</strong><br />${escapeHtml(value)}</div>`); animateChatEffect(win, value.slice(-2)); input.value = ''; });
+  $$('[data-emoji]', win).forEach(button => button.addEventListener('click', () => { const input = $('#chatForm input', win); input.value = `${input.value}${button.dataset.emoji}`; input.focus(); }));
+  const touchButton = $('[data-touch]', win);
+  if (touchButton) touchButton.addEventListener('click', () => { $('#chatThread', win).insertAdjacentHTML('beforeend', `<div class="chat-bubble me is-new"><strong>${escapeHtml(userDisplayName())}</strong><br />👋 ${tr('waveTouch')}</div>`); animateChatEffect(win, '👋', 1500, true); });
+  $$('form', win).forEach(form => { if (['contactForm','eventForm','chatForm','difficultyForm','gradeForm','profileForm'].includes(form.id)) return; form.addEventListener('submit', event => { event.preventDefault(); showToast(tr('preparedSupabase')); }); });
+  const contactButton = $('[data-open-contact]', win); if (contactButton) contactButton.addEventListener('click', () => openTool('contact'));
+}
+
+
+function renderCalendarGrid(monthDate, contextKey) {
+  const baseMonday = new Date(2026, 0, 5);
+  const weekdays = Array.from({length:7}, (_, i) => new Intl.DateTimeFormat(localeForCurrentLang(), { weekday:'short' }).format(addDays(baseMonday, i)).replace('.', ''));
+  const first = startOfMonth(monthDate);
+  const start = addDays(first, -((first.getDay() + 6) % 7));
+  const todayIso = toIsoDate(new Date());
+  const contextEvents = eventsForContext(contextKey);
+  let html = weekdays.map(day => `<div class="calendar-weekday">${escapeHtml(day)}</div>`).join('');
+  for (let i = 0; i < 42; i += 1) {
+    const date = addDays(start, i);
+    const iso = toIsoDate(date);
+    const dayEvents = contextEvents.filter(event => event.date === iso);
+    html += `<button type="button" class="calendar-day ${date.getMonth() !== monthDate.getMonth() ? 'is-other' : ''} ${iso === todayIso ? 'is-today' : ''} ${iso === selectedCalendarDate ? 'is-selected' : ''} ${dayEvents.length ? 'has-events' : ''}" data-date="${iso}" title="${dayEvents.map(e => escapeHtml(e.title)).join(' | ')}"><span class="day-number">${date.getDate()}</span>${dayEvents.slice(0, 3).map(e => `<span class="day-event-label"><i class="day-event-dot event-${eventVisualType(e)}"></i>${escapeHtml(e.title)}</span>`).join('')}</button>`;
+  }
+  return html;
+}
+
+function init() {
+  migrateSettings();
+  const savedZoom = localStorage.getItem('tribeca-zoom') || '60';
+  const savedFont = localStorage.getItem('tribeca-font') || 'default';
+  const savedTheme = localStorage.getItem('tribeca-theme') || 'light';
+  $('#zoomSelect').value = savedZoom; $('#fontSelect').value = savedFont;
+  applyZoom(savedZoom); applyFont(savedFont); if (savedTheme === 'dark') document.body.classList.add('is-dark');
+  applyTranslations(); updateCalendarBadge(); setHeaderHeight();
+  $('#zoomSelect').addEventListener('change', event => applyZoom(event.target.value));
+  $('#fontSelect').addEventListener('change', event => applyFont(event.target.value));
+  $('#languageSelect').addEventListener('change', () => { applyTranslations(); updateCalendarBadge(); });
+  $('#themeToggle').addEventListener('click', toggleTheme);
+  $$('.nav-btn[data-route="subjects"]').forEach(button => button.addEventListener('click', () => { $$('.nav-btn').forEach(b => b.classList.remove('is-active')); button.classList.add('is-active'); $('#subjects').scrollIntoView({ block: 'start' }); }));
+  $$('[data-tool]').forEach(button => button.addEventListener('click', () => openTool(button.dataset.tool)));
+  $('#profileButton').addEventListener('click', () => { const menu = $('#profileMenu'); menu.hidden = !menu.hidden; $('#profileButton').setAttribute('aria-expanded', String(!menu.hidden)); });
+  document.addEventListener('click', event => { if (!event.target.closest('.profile-area')) $('#profileMenu').hidden = true; });
+  $$('[data-action="logout"]').forEach(btn => btn.addEventListener('click', () => showToast(tr('logoutReady'))));
+  window.addEventListener('resize', setHeaderHeight);
+}
+
 document.addEventListener('DOMContentLoaded', init);
+
+/* =========================================================
+   Tribeca Aula · revisión 7: calendario editable, publicaciones
+   reales y reclamación de insignias
+   ========================================================= */
+Object.assign(I18N.es, {
+  toolPublicationsManager:'Publicaciones y materiales', toolNewPublication:'Nueva publicación', toolNewDate:'Nueva fecha', toolStudentGroups:'Grupos de alumnado', toolActivityLog:'Actividad reciente', toolClassChats:'Chats del aula', toolTeacherAlertsTool:'Alertas docentes', toolClassOverview:'Vista general del aula', toolSubjectImage:'Imagen de asignatura', toolAssignBadge:'Asignar insignia', toolPasswordRequests:'Recuperación de contraseña', toolManageStudents:'Gestionar alumnado', toolStudentProfiles:'Perfiles del alumnado',
+  publicationManagerTitle:'Publicaciones y materiales', publicationManagerIntro:'Desde aquí puedes crear, editar, ocultar o eliminar publicaciones y materiales. También puedes actuar en bloque por materia, unidad o tipo.', noPublicationsYet:'Todavía no hay publicaciones reales creadas por la profesora.', newPublicationTitle:'Nueva publicación', title:'Título', bodyText:'Cuerpo de la publicación', imageUrl:'URL de imagen visible', linkUrl:'Enlace externo', fontSize:'Tamaño de fuente', earnableBadges:'Insignias que se podrán ganar', materialType:'Tipo de material', visible:'Visible', hidden:'Oculto', hide:'Ocultar', show:'Mostrar', quickDelete:'Eliminar rápido', editEvent:'Editar fecha', hideEvent:'Ocultar fecha', teacherCalendarActions:'Acciones docentes', claimBadge:'Reclamar mi insignia', claimBadgeIntro:'Podrás reclamar esta insignia cuando hayas superado la actividad. La profesora revisará la solicitud antes de asignarla.', badgeClaimSent:'Solicitud de insignia enviada a la profesora.', publicationSaved:'Publicación guardada correctamente.', publicationDeleted:'Publicación eliminada.', publicationHidden:'Publicación ocultada.', publicationVisible:'Publicación visible de nuevo.', confirmDelete:'¿Seguro que quieres eliminarlo?', quickEdit:'Edición rápida', eventSaved:'Fecha guardada correctamente.', eventHidden:'Fecha ocultada.', eventDeleted:'Fecha eliminada.', officialEventLocked:'Las fechas oficiales no se eliminan; solo sirven como referencia.'
+});
+Object.assign(I18N.gl, { publicationManagerTitle:'Publicacións e materiais', noPublicationsYet:'Aínda non hai publicacións reais creadas pola profesora.', newPublicationTitle:'Nova publicación', title:'Título', bodyText:'Corpo da publicación', imageUrl:'URL da imaxe visible', linkUrl:'Ligazón externa', fontSize:'Tamaño da fonte', earnableBadges:'Insignias que se poderán gañar', materialType:'Tipo de material', visible:'Visible', hidden:'Oculto', hide:'Ocultar', show:'Mostrar', quickDelete:'Eliminar rápido', editEvent:'Editar data', hideEvent:'Ocultar data', teacherCalendarActions:'Accións docentes', claimBadge:'Reclamar a miña insignia', claimBadgeIntro:'Poderás reclamar esta insignia cando superes a actividade. A profesora revisará a solicitude antes de asignala.', badgeClaimSent:'Solicitude de insignia enviada á profesora.' });
+Object.assign(I18N.en, { publicationManagerTitle:'Publications and materials', noPublicationsYet:'There are no real teacher publications yet.', newPublicationTitle:'New publication', title:'Title', bodyText:'Publication body', imageUrl:'Visible image URL', linkUrl:'External link', fontSize:'Font size', earnableBadges:'Badges that can be earned', materialType:'Material type', visible:'Visible', hidden:'Hidden', hide:'Hide', show:'Show', quickDelete:'Quick delete', editEvent:'Edit date', hideEvent:'Hide date', teacherCalendarActions:'Teacher actions', claimBadge:'Claim my badge', claimBadgeIntro:'You can claim this badge once you have completed the activity. The teacher will review the request before awarding it.', badgeClaimSent:'Badge request sent to the teacher.' });
+Object.assign(I18N.fr, I18N.en); Object.assign(I18N.pl, I18N.en); Object.assign(I18N.de, I18N.en); Object.assign(I18N.pt, I18N.en);
+
+function isTeacherRole() {
+  return window.TribecaAuth?.profile?.role === 'teacher' || document.body.classList.contains('is-teacher');
+}
+
+function publicationStorageKey() { return 'tribeca-publications'; }
+function getPublicationRecords() {
+  try { return JSON.parse(localStorage.getItem(publicationStorageKey()) || '[]').filter(Boolean); } catch (_) { return []; }
+}
+function setPublicationRecords(items) {
+  localStorage.setItem(publicationStorageKey(), JSON.stringify(items || []));
+  if (typeof window.syncPublicationRecords === 'function') window.syncPublicationRecords(items || []);
+}
+function materialTypeOptions() {
+  return [
+    ['apuntes','Apuntes'], ['test','Test'], ['boletin','Boletín'], ['simulacro','Simulacro de examen'],
+    ['juego','Juego'], ['desafio','Desafío'], ['tarea','Tarea'], ['aviso','Aviso'], ['noticia','Noticia']
+  ];
+}
+function badgeOptionsForForms() {
+  return (typeof availableBadges !== 'undefined' ? availableBadges : [])
+    .map((badge, index) => ({ code: badge.code || badge.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || `badge_${index}`, icon: badge.icon, name: badge.name }));
+}
+function normalizePublicationRecord(data, current = {}) {
+  return {
+    id: current.id || data.id || uid(),
+    subject: data.subject || current.subject || '',
+    unit: data.unit || current.unit || 'Unidad 1',
+    type: data.type || current.type || 'apuntes',
+    title: data.title || current.title || '',
+    body: data.body || current.body || '',
+    imageUrl: data.imageUrl || current.imageUrl || '',
+    linkUrl: data.linkUrl || current.linkUrl || '',
+    fontSize: Number(data.fontSize || current.fontSize || 16),
+    badgeCodes: Array.isArray(data.badgeCodes) ? data.badgeCodes : (typeof data.badgeCodes === 'string' && data.badgeCodes ? data.badgeCodes.split(',') : (current.badgeCodes || [])),
+    hidden: data.hidden === 'on' || data.hidden === true || current.hidden === true,
+    createdAt: current.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+function publicationsForSubject(subject) {
+  return getPublicationRecords().filter(p => p.subject === subject && (isTeacherRole() || !p.hidden));
+}
+function renderPublicationBadgeList(pub) {
+  const badges = badgeOptionsForForms().filter(b => (pub.badgeCodes || []).includes(b.code));
+  if (!badges.length) return '';
+  return `<div class="publication-badges">${badges.map(b => `<span class="publication-badge">${escapeHtml(b.icon)} ${escapeHtml(b.name)}</span>`).join('')}</div>`;
+}
+function renderPublicationMedia(pub) {
+  const image = pub.imageUrl ? `<figure class="publication-image"><img src="${escapeHtml(pub.imageUrl)}" alt="${escapeHtml(pub.title)}" loading="lazy" /></figure>` : '';
+  const link = pub.linkUrl ? `<p><a class="publication-link" href="${escapeHtml(pub.linkUrl)}" target="_blank" rel="noopener">${escapeHtml(pub.linkUrl)}</a></p>` : '';
+  return image + link;
+}
+function renderPublicationCard(pub, compact = false) {
+  const teacherActions = isTeacherRole()
+    ? `<div class="inline-actions publication-actions"><button class="secondary-btn" type="button" data-edit-publication="${escapeHtml(pub.id)}">${tr('edit')}</button><button class="secondary-btn" type="button" data-toggle-publication="${escapeHtml(pub.id)}">${pub.hidden ? tr('show') : tr('hide')}</button><button class="danger-btn" type="button" data-delete-publication="${escapeHtml(pub.id)}">${tr('quickDelete')}</button></div>`
+    : '';
+  const claim = !isTeacherRole() && (pub.badgeCodes || []).length
+    ? `<div class="badge-claim-box"><p>${tr('claimBadgeIntro')}</p><button type="button" class="secondary-btn" data-claim-badge="${escapeHtml(pub.id)}">${tr('claimBadge')}</button></div>`
+    : '';
+  return `<article class="publication-card ${pub.hidden ? 'is-hidden-publication' : ''}" data-publication-card="${escapeHtml(pub.id)}"><div class="publication-meta"><span class="material-type">${escapeHtml(materialTypeOptions().find(t => t[0] === pub.type)?.[1] || pub.type)}</span><span>${escapeHtml(pub.unit)}</span><span>${pub.hidden ? tr('hidden') : tr('visible')}</span></div><h3 class="publication-title-display">${escapeHtml(pub.title)}</h3>${renderPublicationMedia(pub)}<div class="publication-body" style="font-size:${Math.max(12, Math.min(28, Number(pub.fontSize) || 16))}px">${escapeHtml(pub.body || '').replace(/\n/g, '<br>')}</div>${renderPublicationBadgeList(pub)}${claim}${teacherActions}</article>`;
+}
+
+function subjectContent(subject) {
+  const materials = publicationsForSubject(subject);
+  const grouped = new Map();
+  materials.forEach(item => { const key = item.unit || 'Unidad 1'; if (!grouped.has(key)) grouped.set(key, []); grouped.get(key).push(item); });
+  const unitsHtml = materials.length ? [...grouped.entries()].map(([unit, items]) => `<section class="subject-unit-block"><h3>${escapeHtml(unit)}</h3><div class="subject-material-grid publications-in-subject">${items.map(p => renderPublicationCard(p, true)).join('')}</div></section>`).join('') : `<div class="empty-state">${tr('noPublicationsYet')}</div>`;
+  const teacherCreate = isTeacherRole() ? `<section class="window-panel"><h3>${tr('newPublicationTitle')}</h3>${publicationFormMarkup(subject)}</section>` : '';
+  return `<div class="subject-window-layout"><section class="window-panel"><h3>${escapeHtml(subject)}</h3><p class="meta">${tr('unitsAndMaterials')}</p>${unitsHtml}</section>${teacherCreate}</div>`;
+}
+
+function publicationFormMarkup(defaultSubject = '') {
+  const subjectsList = typeof getUserSubjects === 'function' ? getUserSubjects() : subjects;
+  const badges = badgeOptionsForForms();
+  return `<form class="form-grid publication-editor-form" id="publicationForm"><input type="hidden" name="id" /><div class="window-grid"><div class="form-row"><label>${tr('subject')} *</label><select name="subject" required><option value="">${tr('selectOption')}</option>${subjectsList.map(s => `<option ${s === defaultSubject ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select></div><div class="form-row"><label>${tr('didacticUnit')} *</label><input name="unit" required maxlength="80" value="Unidad 1" /></div></div><div class="window-grid"><div class="form-row"><label>${tr('materialType')} *</label><select name="type" required>${materialTypeOptions().map(([value,label]) => `<option value="${value}">${label}</option>`).join('')}</select></div><div class="form-row"><label>${tr('fontSize')}</label><select name="fontSize"><option value="14">14</option><option value="16" selected>16</option><option value="18">18</option><option value="20">20</option><option value="22">22</option><option value="24">24</option></select></div></div><div class="form-row"><label>${tr('title')} *</label><input class="publication-title-input" name="title" required maxlength="120" /></div><div class="emoji-row publication-emoji-row">${['😊','👏','📚','⭐','💪','🎯','✅','🧠','✍️','🏆','⚠️','📌'].map(e => `<button type="button" data-publication-emoji="${e}">${e}</button>`).join('')}</div><div class="form-row"><label>${tr('bodyText')} *</label><textarea name="body" required maxlength="2500"></textarea></div><div class="window-grid"><div class="form-row"><label>${tr('imageUrl')}</label><input name="imageUrl" type="url" placeholder="https://..." /></div><div class="form-row"><label>${tr('linkUrl')}</label><input name="linkUrl" type="url" placeholder="https://..." /></div></div><div class="form-row"><label>${tr('earnableBadges')}</label><div class="badge-checkbox-grid">${badges.map(b => `<label><input type="checkbox" name="badgeCodes" value="${escapeHtml(b.code)}"> ${escapeHtml(b.icon)} ${escapeHtml(b.name)}</label>`).join('')}</div></div><label class="checkbox-line"><input type="checkbox" name="hidden"> ${tr('hidden')}</label><button class="primary-btn" type="submit">${tr('publishAnnouncement')}</button></form>`;
+}
+
+function calendarContent() {
+  const selectedContext = localStorage.getItem('tribeca-calendar-context') || 'demo';
+  return `<div class="calendar-shell"><section class="window-panel"><div class="calendar-toolbar"><button type="button" data-calendar-prev aria-label="Anterior">‹</button><h3 id="calendarMonthLabel">${formatMonth(calendarMonth)}</h3><button type="button" data-calendar-next aria-label="Siguiente">›</button></div><p class="calendar-hint">${tr('clickDateHint')}</p><div class="calendar-grid" id="largeCalendar">${renderCalendarGrid(calendarMonth, selectedContext)}</div><div class="calendar-legend">${legendPill('today', tr('today'))}${legendPill('national', tr('national'))}${legendPill('galicia', tr('galicia'))}${legendPill('local', tr('local'))}${legendPill('school', tr('school'))}${legendPill('personal', tr('personal'))}${legendPill('class', tr('classEvent'))}${legendPill('teacher', tr('teacherEvent'))}</div></section><section class="window-panel"><h3>${tr('calendarUsefulDates')}</h3><div class="form-row"><label>${tr('calendarContext')}</label><select id="calendarContextSelect">${Object.entries(calendarContexts).map(([value, ctx]) => `<option value="${value}" ${value === selectedContext ? 'selected' : ''}>${tr(ctx.labelKey)}</option>`).join('')}</select></div><section class="selected-day-panel"><h3>${tr('selectedDay')}</h3><p class="selected-date"><strong>${formatShortDate(selectedCalendarDate)}</strong></p><div class="item-list">${renderDayEvents(selectedContext, selectedCalendarDate)}</div></section><h3 style="margin-top:1rem;">${tr('nextUsefulDates')}</h3><div class="item-list" id="calendarEventList">${renderCalendarEventList(selectedContext)}</div><hr /><h3>${tr('calendarAddEvent')}</h3><form class="form-grid" id="eventForm"><input type="hidden" name="id" /><div class="form-row"><label>${tr('calendarTitle')} *</label><input name="title" required maxlength="90" placeholder="${tr('eventPlaceholder')}" /></div><div class="form-row"><label>${tr('date')} *</label><input type="date" name="date" required value="${selectedCalendarDate}" /></div><div class="window-grid"><div class="form-row"><label>${tr('visibility')}</label><select name="scope"><option value="personal">${tr('onlyMe')}</option><option value="class">${tr('wholeClass')}</option>${isTeacherRole() ? `<option value="teacher">${tr('allStudentsTeacher')}</option>` : ''}</select></div><div class="form-row"><label>${tr('eventType')}</label><select name="eventType"><option value="personal">${tr('personal')}</option><option value="class">${tr('classEvent')}</option><option value="teacher">${tr('teacherEvent')}</option></select></div></div><button class="primary-btn" type="submit">${tr('saveEvent')}</button></form></section></div>`;
+}
+function allCalendarEvents() {
+  const expanded = [...baseCalendarEvents];
+  ranges.forEach(range => eachDate(range.start, range.end).forEach(date => expanded.push({ date, title: range.title, type: range.type, range: true, official: true })));
+  return [...expanded.map(e => ({...e, official: true})), ...getUserEvents().filter(e => !e.hidden)];
+}
+function renderCalendarEventList(contextKey) {
+  const today = stripTime(new Date());
+  const upcoming = eventsForContext(contextKey).filter(event => parseIso(event.date) >= today).sort((a,b) => parseIso(a.date) - parseIso(b.date)).slice(0, 12);
+  if (!upcoming.length) return `<div class="empty-state">${tr('noUpcomingEvents')}</div>`;
+  return upcoming.map(renderEventItem).join('');
+}
+function renderDayEvents(contextKey, isoDate) {
+  const events = eventsForContext(contextKey).filter(event => event.date === isoDate).sort((a,b) => eventVisualType(a).localeCompare(eventVisualType(b)));
+  if (!events.length) return `<div class="empty-state">${tr('noEventsDay')}</div>`;
+  return events.map(renderEventItem).join('');
+}
+function renderEventItem(event) {
+  const canEdit = isTeacherRole() && event.id && !event.official;
+  const actions = canEdit ? `<div class="inline-actions calendar-actions"><button class="secondary-btn" type="button" data-edit-event="${escapeHtml(event.id)}">${tr('editEvent')}</button><button class="secondary-btn" type="button" data-hide-event="${escapeHtml(event.id)}">${tr('hideEvent')}</button><button class="danger-btn" type="button" data-delete-event="${escapeHtml(event.id)}">${tr('quickDelete')}</button></div>` : '';
+  return `<article class="list-item event-item event-${eventVisualType(event)}" data-event-item="${escapeHtml(event.id || '')}"><strong>${escapeHtml(event.title)}</strong><p class="meta"><i class="day-event-dot event-${eventVisualType(event)}"></i>${formatShortDate(event.date)} · ${translateEventType(event.type)}</p>${isTribecaClosed(event) ? `<p class="closure-note">${tr('tribecaClosed')}</p>` : ''}${actions}</article>`;
+}
+
+function bindWindowForms(win, id) {
+  const contact = $('#contactForm', win);
+  if (contact) contact.addEventListener('submit', handleContactSubmit);
+  const eventForm = $('#eventForm', win);
+  if (eventForm) eventForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(eventForm).entries()); const items = getUserEvents(); const record = { id: data.id || uid(), date:data.date, title:data.title, type:data.eventType || data.scope || 'personal', scope:data.scope || 'personal', hidden:false, createdAt:new Date().toISOString() }; if (data.id) { const idx = items.findIndex(i => i.id === data.id); if (idx >= 0) items[idx] = { ...items[idx], ...record, updatedAt:new Date().toISOString() }; else items.push(record); } else items.push(record); setUserEvents(items); showToast(tr('eventSaved')); updateCalendarBadge(); rerenderOpenWindows(); });
+  const contextSelect = $('#calendarContextSelect', win);
+  if (contextSelect) contextSelect.addEventListener('change', event => { localStorage.setItem('tribeca-calendar-context', event.target.value); rerenderOpenWindows(); });
+  const prev = $('[data-calendar-prev]', win); const next = $('[data-calendar-next]', win);
+  if (prev) prev.addEventListener('click', () => { calendarMonth = addMonths(calendarMonth, -1); rerenderOpenWindows(); });
+  if (next) next.addEventListener('click', () => { calendarMonth = addMonths(calendarMonth, 1); rerenderOpenWindows(); });
+  $$('.calendar-day[data-date]', win).forEach(day => day.addEventListener('click', () => { selectedCalendarDate = day.dataset.date; calendarMonth = startOfMonth(parseIso(selectedCalendarDate)); rerenderOpenWindows(); }));
+  $$('[data-edit-event]', win).forEach(button => button.addEventListener('click', () => { const item = getUserEvents().find(e => e.id === button.dataset.editEvent); const form = $('#eventForm', win); if (!item || !form) return; selectedCalendarDate = item.date; form.elements.id.value = item.id; form.elements.title.value = item.title || ''; form.elements.date.value = item.date; if (form.elements.scope) form.elements.scope.value = item.scope || 'personal'; if (form.elements.eventType) form.elements.eventType.value = item.type || 'personal'; form.scrollIntoView({ block:'center', behavior:'smooth' }); }));
+  $$('[data-delete-event]', win).forEach(button => button.addEventListener('click', () => { if (!confirm(tr('confirmDelete'))) return; setUserEvents(getUserEvents().filter(item => item.id !== button.dataset.deleteEvent)); showToast(tr('eventDeleted')); updateCalendarBadge(); rerenderOpenWindows(); }));
+  $$('[data-hide-event]', win).forEach(button => button.addEventListener('click', () => { const items = getUserEvents().map(item => item.id === button.dataset.hideEvent ? { ...item, hidden:true, updatedAt:new Date().toISOString() } : item); setUserEvents(items); showToast(tr('eventHidden')); updateCalendarBadge(); rerenderOpenWindows(); }));
+
+  const publicationForm = $('#publicationForm', win);
+  if (publicationForm) publicationForm.addEventListener('submit', event => { event.preventDefault(); const fd = new FormData(publicationForm); const data = Object.fromEntries(fd.entries()); data.badgeCodes = fd.getAll('badgeCodes'); const items = getPublicationRecords(); const current = data.id ? items.find(p => p.id === data.id) : null; const record = normalizePublicationRecord(data, current || {}); if (data.id && current) { const index = items.findIndex(p => p.id === data.id); items[index] = record; } else items.unshift(record); setPublicationRecords(items); showToast(tr('publicationSaved')); renderSubjectsGrid?.(); rerenderOpenWindows(); });
+  $$('[data-publication-emoji]', win).forEach(button => button.addEventListener('click', () => { const textarea = $('#publicationForm textarea[name="body"]', win); if (!textarea) return; const start = textarea.selectionStart || textarea.value.length; textarea.value = textarea.value.slice(0,start) + button.dataset.publicationEmoji + textarea.value.slice(start); textarea.focus(); }));
+  $$('[data-edit-publication]', win).forEach(button => button.addEventListener('click', () => { const item = getPublicationRecords().find(p => p.id === button.dataset.editPublication); const form = $('#publicationForm', win) || (openTool('publicationsManager'), null); if (!item || !form) return; form.elements.id.value = item.id; form.elements.subject.value = item.subject; form.elements.unit.value = item.unit; form.elements.type.value = item.type; form.elements.title.value = item.title; form.elements.body.value = item.body || ''; form.elements.imageUrl.value = item.imageUrl || ''; form.elements.linkUrl.value = item.linkUrl || ''; form.elements.fontSize.value = String(item.fontSize || 16); form.elements.hidden.checked = !!item.hidden; $$('input[name="badgeCodes"]', form).forEach(cb => cb.checked = (item.badgeCodes || []).includes(cb.value)); form.scrollIntoView({ block:'center', behavior:'smooth' }); }));
+  $$('[data-delete-publication]', win).forEach(button => button.addEventListener('click', () => { if (!confirm(tr('confirmDelete'))) return; setPublicationRecords(getPublicationRecords().filter(p => p.id !== button.dataset.deletePublication)); showToast(tr('publicationDeleted')); renderSubjectsGrid?.(); rerenderOpenWindows(); }));
+  $$('[data-toggle-publication]', win).forEach(button => button.addEventListener('click', () => { const items = getPublicationRecords().map(p => p.id === button.dataset.togglePublication ? { ...p, hidden: !p.hidden, updatedAt:new Date().toISOString() } : p); const hidden = items.find(p => p.id === button.dataset.togglePublication)?.hidden; setPublicationRecords(items); showToast(hidden ? tr('publicationHidden') : tr('publicationVisible')); renderSubjectsGrid?.(); rerenderOpenWindows(); }));
+  $$('[data-bulk-hide]', win).forEach(button => button.addEventListener('click', () => { const kind = button.dataset.bulkHide; const value = button.dataset.bulkValue; setPublicationRecords(getPublicationRecords().map(p => p[kind] === value ? { ...p, hidden:true } : p)); showToast(tr('publicationHidden')); rerenderOpenWindows(); }));
+  $$('[data-claim-badge]', win).forEach(button => button.addEventListener('click', () => { const pub = getPublicationRecords().find(p => p.id === button.dataset.claimBadge); if (typeof window.requestPublicationBadge === 'function') window.requestPublicationBadge(pub); else { const claims = JSON.parse(localStorage.getItem('tribeca-badge-claims') || '[]'); claims.push({ id:uid(), publicationId:pub?.id, title:pub?.title, badgeCodes:pub?.badgeCodes || [], createdAt:new Date().toISOString() }); localStorage.setItem('tribeca-badge-claims', JSON.stringify(claims)); showToast(tr('badgeClaimSent')); } }));
+
+  const difficultyForm = $('#difficultyForm', win);
+  if (difficultyForm) difficultyForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(difficultyForm).entries()); const items = getDifficulties(); if (data.id) { const index = items.findIndex(item => item.id === data.id); if (index >= 0) items[index] = { id: data.id, subject: data.subject, level: data.level, notes: data.notes }; } else { items.push({ id: uid(), subject: data.subject, level: data.level, notes: data.notes }); } setDifficulties(items); localStorage.setItem('tribeca-difficulty-teacher-notice', '1'); showToast(tr('saved')); renderQuickCards(); rerenderOpenWindows(); });
+  $$('[data-edit-difficulty]', win).forEach(button => button.addEventListener('click', () => { const item = getDifficulties().find(d => d.id === button.dataset.editDifficulty); const form = $('#difficultyForm', win); if (!item || !form) return; form.elements.id.value = item.id; form.elements.subject.value = item.subject; form.elements.level.value = item.level; form.elements.notes.value = item.notes || ''; }));
+  $$('[data-delete-difficulty]', win).forEach(button => button.addEventListener('click', () => { setDifficulties(getDifficulties().filter(item => item.id !== button.dataset.deleteDifficulty)); localStorage.setItem('tribeca-difficulty-teacher-notice', '1'); showToast(tr('deleted')); renderQuickCards(); rerenderOpenWindows(); }));
+  const gradeForm = $('#gradeForm', win);
+  if (gradeForm) gradeForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(gradeForm).entries()); const items = getGrades(); const record = { id: data.id || uid(), subject: data.subject, unit: data.unit, evaluation: data.evaluation, type: data.type, grade: Number(data.grade), weight: data.weight ? Number(data.weight) : '' }; if (data.id) { const index = items.findIndex(item => item.id === data.id); if (index >= 0) items[index] = record; } else items.push(record); setGrades(items); updateGradeTeacherNotice(items); showToast(tr('saved')); renderQuickCards(); rerenderOpenWindows(); });
+  $$('[data-edit-grade]', win).forEach(button => button.addEventListener('click', () => { const item = getGrades().find(g => g.id === button.dataset.editGrade); const form = $('#gradeForm', win); if (!item || !form) return; form.elements.id.value = item.id; form.elements.subject.value = item.subject; form.elements.unit.value = item.unit; form.elements.evaluation.value = item.evaluation; form.elements.type.value = item.type; form.elements.grade.value = item.grade; form.elements.weight.value = item.weight || ''; }));
+  $$('[data-delete-grade]', win).forEach(button => button.addEventListener('click', () => { const updated = getGrades().filter(item => item.id !== button.dataset.deleteGrade); setGrades(updated); updateGradeTeacherNotice(updated); showToast(tr('deleted')); renderQuickCards(); rerenderOpenWindows(); }));
+  const profileForm = $('#profileForm', win);
+  if (profileForm) profileForm.addEventListener('submit', event => { event.preventDefault(); const data = Object.fromEntries(new FormData(profileForm).entries()); setProfileSettings({ preferredName:data.preferredName || '', icon:data.icon || '💡', email:data.email || '', notify:{ messages:!!data.notifyMessages, calendar:!!data.notifyCalendar, announcements:!!data.notifyAnnouncements, materials:!!data.notifyMaterials } }); showToast(tr('profileSaved')); renderStaticUserTexts(); rerenderOpenWindows(); });
+  $$('.icon-choice', win).forEach(button => button.addEventListener('click', () => { const form = $('#profileForm', win); if (!form) return; form.elements.icon.value = button.dataset.avatar; $$('.icon-choice', win).forEach(b => b.classList.remove('is-selected')); button.classList.add('is-selected'); }));
+  const chatForm = $('#chatForm', win);
+  if (chatForm) chatForm.addEventListener('submit', event => { event.preventDefault(); const input = $('input', chatForm); const value = input.value.trim(); if (!value) return; $('#chatThread', win).insertAdjacentHTML('beforeend', `<div class="chat-bubble me is-new"><strong>${escapeHtml(userDisplayName())}</strong><br />${escapeHtml(value)}</div>`); animateChatEffect(win, value.slice(-2)); input.value = ''; });
+  $$('[data-emoji]', win).forEach(button => button.addEventListener('click', () => { const input = $('#chatForm input', win); input.value = `${input.value}${button.dataset.emoji}`; input.focus(); }));
+  const touchButton = $('[data-touch]', win);
+  if (touchButton) touchButton.addEventListener('click', () => { $('#chatThread', win).insertAdjacentHTML('beforeend', `<div class="chat-bubble me is-new"><strong>${escapeHtml(userDisplayName())}</strong><br />👋 ${tr('waveTouch')}</div>`); animateChatEffect(win, '👋', 1500, true); });
+  $$('form', win).forEach(form => { if (['contactForm','eventForm','chatForm','difficultyForm','gradeForm','profileForm','publicationForm'].includes(form.id)) return; form.addEventListener('submit', event => { event.preventDefault(); showToast(tr('preparedSupabase')); }); });
+  const contactButton = $('[data-open-contact]', win); if (contactButton) contactButton.addEventListener('click', () => openTool('contact'));
+}

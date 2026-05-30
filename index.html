@@ -28,15 +28,11 @@
         </button>
         <button class="nav-btn has-badge" data-tool="messages" type="button">
           <span data-i18n="navMessages">Mensajes</span>
-          <em class="badge" id="messagesBadge">1</em>
-        </button>
-        <button class="nav-btn" data-tool="chat" type="button">
-          <span data-i18n="navChat">Chat</span>
-          <em class="badge" id="chatBadge" hidden>0</em>
+          <em class="badge" id="messagesBadge" hidden>0</em>
         </button>
         <button class="nav-btn has-badge" data-tool="announcements" type="button">
           <span data-i18n="navAnnouncements">Anuncios</span>
-          <em class="badge" id="announcementsBadge">2</em>
+          <em class="badge" id="announcementsBadge" hidden>0</em>
         </button>
       </nav>
 
@@ -89,17 +85,17 @@
         </button>
 
         <div class="profile-area">
-          <button class="profile-button" id="profileButton" type="button" aria-haspopup="true" aria-expanded="false">
-            <span class="avatar">D</span>
+          <button class="profile-button" id="profileButton" type="button" aria-label="Abrir mi perfil">
+            <span class="avatar" id="profileAvatar">💡</span>
             <span class="profile-name" data-i18n="profile">Mi perfil</span>
-            <span aria-hidden="true">⌄</span>
+            
           </button>
-          <div class="profile-menu" id="profileMenu" hidden>
-            <button type="button" data-tool="profile" data-i18n="profileData">Datos académicos</button>
-            <button type="button" data-tool="support" data-i18n="support">Soporte</button>
-            <button type="button" data-action="logout" data-i18n="logout">Cerrar sesión</button>
-          </div>
+          <div class="profile-menu" id="profileMenu" hidden aria-hidden="true"></div>
         </div>
+
+        <button class="logout-button" id="logoutButton" type="button" data-action="logout">
+          <span data-i18n="logout">Cerrar sesión</span>
+        </button>
       </section>
     </div>
   </header>
@@ -158,67 +154,8 @@
       <span></span>
     </section>
 
-    <section class="subjects-grid" aria-label="Materias">
-      <article class="subject-card subject-support">
-        <div class="subject-top"><span>1.º ESO</span><button aria-label="Opciones">•••</button></div>
-        <div class="subject-mark">◎</div>
-        <h3 data-i18n="subjectSupport">Apoyo personalizado</h3>
-        <p><span data-i18n="zeroPosts">0 publicación(es) asignada(s)</span> · <span data-i18n="zeroUnits">0 unidad(es)</span></p>
-        <div class="progress-row"><span data-i18n="progress">Progreso</span><strong>0%</strong></div>
-        <div class="progress"><span style="width:0%"></span></div>
-        <small data-i18n="noActivities">Sin actividades completadas todavía</small>
-      </article>
+    <section class="subjects-grid" id="subjectsGrid" aria-label="Materias"></section>
 
-      <article class="subject-card subject-bio">
-        <div class="subject-top"><span>1.º ESO</span><button aria-label="Opciones">•••</button></div>
-        <div class="subject-mark">✦</div>
-        <h3 data-i18n="subjectBio">Biología y Geología</h3>
-        <p><span data-i18n="zeroPosts">0 publicación(es) asignada(s)</span> · <span data-i18n="zeroUnits">0 unidad(es)</span></p>
-        <div class="progress-row"><span data-i18n="progress">Progreso</span><strong>0%</strong></div>
-        <div class="progress"><span style="width:0%"></span></div>
-        <small data-i18n="noActivities">Sin actividades completadas todavía</small>
-      </article>
-
-      <article class="subject-card subject-english">
-        <div class="subject-top"><span>1.º ESO</span><button aria-label="Opciones">•••</button></div>
-        <div class="subject-mark">GB</div>
-        <h3>English</h3>
-        <p><span data-i18n="zeroPosts">0 publicación(es) asignada(s)</span> · <span data-i18n="oneUnit">1 unidad</span></p>
-        <div class="progress-row"><span data-i18n="progress">Progreso</span><strong>0%</strong></div>
-        <div class="progress"><span style="width:0%"></span></div>
-        <small data-i18n="noActivities">Sin actividades completadas todavía</small>
-      </article>
-
-      <article class="subject-card subject-french">
-        <div class="subject-top"><span>1.º ESO</span><button aria-label="Opciones">•••</button></div>
-        <div class="subject-mark">FR</div>
-        <h3 data-i18n="subjectFrench">Francés</h3>
-        <p><span data-i18n="zeroPosts">0 publicación(es) asignada(s)</span> · <span data-i18n="zeroUnits">0 unidad(es)</span></p>
-        <div class="progress-row"><span data-i18n="progress">Progreso</span><strong>0%</strong></div>
-        <div class="progress"><span style="width:0%"></span></div>
-        <small data-i18n="noActivities">Sin actividades completadas todavía</small>
-      </article>
-
-      <article class="subject-card subject-castilian">
-        <div class="subject-top"><span>1.º ESO</span><button aria-label="Opciones">•••</button></div>
-        <div class="subject-mark">✧</div>
-        <h3 data-i18n="subjectSpanish">Lengua Castellana</h3>
-        <p><span data-i18n="zeroPosts">0 publicación(es) asignada(s)</span> · <span data-i18n="zeroUnits">0 unidad(es)</span></p>
-        <div class="progress-row"><span data-i18n="progress">Progreso</span><strong>0%</strong></div>
-        <div class="progress"><span style="width:0%"></span></div>
-        <small data-i18n="noActivities">Sin actividades completadas todavía</small>
-      </article>
-
-      <article class="subject-card subject-galician">
-        <div class="subject-top"><span>1.º ESO</span><button aria-label="Opciones">•••</button></div>
-        <div class="subject-mark">▰</div>
-        <h3 data-i18n="subjectGalician">Lingua Galega</h3>
-        <p><span data-i18n="zeroPosts">0 publicación(es) asignada(s)</span> · <span data-i18n="zeroUnits">0 unidad(es)</span></p>
-        <div class="progress-row"><span data-i18n="progress">Progreso</span><strong>0%</strong></div>
-        <div class="progress"><span style="width:0%"></span></div>
-        <small data-i18n="noActivities">Sin actividades completadas todavía</small>
-      </article>
-    </section>
   </main>
 
   <footer class="site-footer">
@@ -241,6 +178,9 @@
   <div class="window-dock" id="windowDock" aria-label="Ventanas minimizadas"></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="app.js"></script>
+  <script src="supabase-auth.js"></script>
 </body>
 </html>
