@@ -1330,6 +1330,7 @@
   function guidanceCustomIconAsset(g){
     const text = `${g?.title||''} ${g?.body||''} ${g?.link_url||''}`.toLowerCase();
     if(text.includes('lumen-v') || text.includes('lumen v')) return 'assets/lumen-v-icon.webp';
+    if(text.includes('itinera')) return 'assets/itinera-icon.webp';
     return '';
   }
   function guidanceTypeIcon(g){
