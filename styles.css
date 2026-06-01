@@ -4098,6 +4098,17 @@ input, select, textarea, button,
 .guidance-card-premium { grid-template-columns: 4.8rem minmax(0, 1fr) !important; border-radius: 1.05rem !important; background: linear-gradient(135deg, rgba(255,253,248,.98), rgba(247,242,230,.95)) !important; }
 .guidance-card-premium:hover { transform: translateY(-1px); box-shadow: 0 18px 44px rgba(42,34,18,.075); }
 .guidance-card-icon { border-radius: .9rem !important; color: #6d551d; }
+.guidance-card-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.guidance-card-icon.has-custom-icon {
+  padding: .18rem;
+  background: transparent;
+  border-color: rgba(117,96,45,.16);
+}
 .guidance-actions button,
 .guidance-actions a { font-weight: 850; }
 .publication-files-panel { align-self: start; }
@@ -4111,4 +4122,1931 @@ input, select, textarea, button,
   .overview-group-grid,
   .t35-badge-student-grid { grid-template-columns: 1fr; }
   .t35-counter { justify-self: start; }
+}
+
+/* =========================================================
+   Tribeca Aula · Versión 32
+   Insignias ordenadas, etiquetas de publicaciones y contraste docente
+   ========================================================= */
+.assignBadge-window .tool-window,
+.tool-window.assignBadge-window {
+  width: min(132rem, calc(100vw - 3.2rem));
+}
+.assignBadge-window .window-body { overflow-x: hidden; }
+.t32-assign-badge { gap: 1rem; }
+.t32-badge-form {
+  display: grid !important;
+  grid-template-columns: minmax(24rem, .42fr) minmax(38rem, 1fr);
+  grid-template-areas:
+    "side main"
+    "footer footer";
+  gap: 1.1rem !important;
+  align-items: start;
+  padding: 1.15rem !important;
+}
+.t32-assign-sidebar {
+  grid-area: side;
+  position: sticky;
+  top: .5rem;
+  display: grid;
+  gap: .85rem;
+  padding: 1rem;
+  border: 1px solid rgba(74, 62, 38, .12);
+  border-radius: 1.15rem;
+  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(244,237,218,.74));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+}
+.t32-assign-main { grid-area: main; min-width: 0; display: grid; gap: .85rem; }
+.t32-assign-footer {
+  grid-area: footer;
+  position: sticky;
+  bottom: .2rem;
+  z-index: 6;
+  display: flex;
+  justify-content: flex-end;
+  gap: .7rem;
+  padding: .85rem;
+  border: 1px solid rgba(16,63,36,.12);
+  border-radius: 1rem;
+  background: rgba(255,253,248,.94);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -10px 22px rgba(42,34,18,.06);
+}
+.t32-step {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--text);
+  font-weight: 950;
+}
+.t32-step span {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fffdf6;
+  font-size: .86rem;
+}
+.t32-badge-preview {
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0,1fr);
+  gap: .7rem;
+  align-items: center;
+  padding: .8rem;
+  border: 1px solid rgba(168,135,45,.18);
+  border-radius: 1rem;
+  background: rgba(168,135,45,.08);
+}
+.t32-badge-preview > span {
+  width: 3.2rem;
+  height: 3.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: .9rem;
+  background: #fffaf0;
+  border: 1px solid rgba(168,135,45,.25);
+  font-size: 1.45rem;
+}
+.t32-badge-preview strong,
+.t32-badge-preview small { display: block; }
+.t32-badge-preview small { color: var(--muted); line-height: 1.3; margin-top: .18rem; }
+.t32-badge-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+}
+.t32-badge-toolbar .secondary-btn { padding: .62rem .85rem; }
+.t32-badge-groups {
+  max-height: none !important;
+  overflow: visible !important;
+  display: grid;
+  gap: .9rem !important;
+  padding-right: 0 !important;
+}
+.t32-badge-group {
+  border-radius: 1.2rem !important;
+  border: 1px solid rgba(74,62,38,.12) !important;
+  background: rgba(255,253,248,.88) !important;
+  box-shadow: 0 8px 20px rgba(42,34,18,.035);
+}
+.t32-badge-group summary {
+  min-height: 3.7rem;
+  background: linear-gradient(135deg, rgba(239,232,211,.72), rgba(255,253,248,.95)) !important;
+  color: var(--text) !important;
+}
+.t32-group-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+  padding: .75rem .9rem 0;
+}
+.t32-group-tools button {
+  border: 1px solid rgba(168,135,45,.22);
+  border-radius: 999px;
+  background: rgba(168,135,45,.10);
+  color: var(--text);
+  font-weight: 850;
+  padding: .45rem .7rem;
+}
+.t32-badge-student-grid {
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)) !important;
+  gap: .75rem !important;
+  padding: .9rem !important;
+}
+.t32-badge-student {
+  min-height: 5.8rem !important;
+  grid-template-columns: 2rem 3.1rem minmax(0,1fr) !important;
+  background: #fffefa !important;
+  border: 1px solid rgba(74,62,38,.12) !important;
+  box-shadow: 0 5px 14px rgba(42,34,18,.035);
+}
+.t32-badge-student:has(input:checked) {
+  border-color: rgba(16,63,36,.35) !important;
+  background: rgba(16,63,36,.075) !important;
+  box-shadow: inset 0 0 0 1px rgba(16,63,36,.12), 0 6px 16px rgba(16,63,36,.05);
+}
+.t32-student-avatar {
+  width: 3.1rem;
+  height: 3.1rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  color: #fffaf0;
+  font-weight: 950;
+}
+.t32-student-copy { min-width: 0; }
+.t32-student-copy strong,
+.t32-student-copy small {
+  overflow-wrap: anywhere;
+}
+.publication-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-bottom: .55rem;
+}
+.publication-type-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .38rem;
+  width: max-content;
+  border-radius: 999px;
+  padding: .34rem .72rem;
+  border: 1px solid transparent;
+  font-size: .82rem;
+  font-weight: 950;
+  letter-spacing: .01em;
+}
+.publication-type-material { background: #eaf2ff; color: #123f73; border-color: #bfd6f6; }
+.publication-type-task { background: #eaf7ef; color: #0b5b31; border-color: #b9dfc7; }
+.publication-type-test { background: #f1eafb; color: #4c2a7a; border-color: #d9c3f1; }
+.publication-type-game { background: #fff1df; color: #8a4300; border-color: #f2c995; }
+.publication-type-announcement { background: #fff6d8; color: #715600; border-color: #e6cc72; }
+.publication-type-card { border-left-width: .55rem !important; }
+.publication-type-card-material { border-left-color: #2d6fb7 !important; }
+.publication-type-card-task { border-left-color: #21834a !important; }
+.publication-type-card-test { border-left-color: #6f42b5 !important; }
+.publication-type-card-game { border-left-color: #d06a00 !important; }
+.publication-type-card-announcement { border-left-color: #b7950b !important; }
+.teacher-subject-preview .subject-card,
+body.is-teacher .teacher-subject-preview .subject-card {
+  color: #fffdf8 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.28);
+}
+.teacher-subject-preview .subject-card::before,
+body.is-teacher .teacher-subject-preview .subject-card::before {
+  background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.52)) !important;
+}
+.teacher-subject-preview .subject-card h3,
+.teacher-subject-preview .subject-card p,
+.teacher-subject-preview .subject-card small,
+.teacher-subject-preview .subject-card .progress-row,
+.teacher-subject-preview .subject-card .progress-row span,
+.teacher-subject-preview .subject-card .progress-row strong {
+  color: #fffdf8 !important;
+}
+.teacher-subject-preview .subject-card p,
+.teacher-subject-preview .subject-card small {
+  opacity: .98 !important;
+}
+.teacher-subject-preview .subject-top span {
+  background: rgba(0,0,0,.46) !important;
+  color: #fffdf8 !important;
+  border: 1px solid rgba(255,255,255,.22);
+}
+.teacher-subject-preview .subject-card .subject-mark {
+  color: rgba(255,255,255,.88) !important;
+  background: rgba(255,255,255,.18) !important;
+  border-color: rgba(255,255,255,.34) !important;
+}
+.teacher-subject-preview .subject-inline-actions {
+  opacity: 1 !important;
+  transform: none !important;
+}
+.teacher-subject-preview .subject-inline-actions button {
+  background: rgba(255,255,255,.94) !important;
+  color: #102416 !important;
+  border-color: rgba(255,255,255,.75) !important;
+  text-shadow: none !important;
+}
+@media (max-width: 980px) {
+  .t32-badge-form {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "side"
+      "main"
+      "footer";
+  }
+  .t32-assign-sidebar { position: static; }
+  .t32-badge-student-grid { grid-template-columns: 1fr !important; }
+  .t32-assign-footer { justify-content: stretch; }
+  .t32-assign-footer .primary-btn { width: 100%; }
+}
+
+/* =========================================================
+   Tribeca Aula · Versión 33
+   Progreso del alumnado, publicaciones ampliadas y visibilidad docente
+   ========================================================= */
+
+/* Publicaciones dentro de materias */
+.material-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.material-card-actions .inline-actions {
+  margin-top: 0;
+}
+.material-open-btn {
+  border: 1px solid rgba(16,63,36,.18) !important;
+  background: rgba(16,63,36,.08) !important;
+  color: #0b3d22 !important;
+}
+.material-done-btn {
+  margin-left: auto;
+  border: 0;
+  border-radius: 999px;
+  padding: .78rem 1.05rem;
+  background: linear-gradient(135deg, #0b5d34, #073d22);
+  color: #fffdf6;
+  font-weight: 950;
+  box-shadow: 0 .75rem 1.6rem rgba(11, 93, 52, .18);
+}
+.material-done-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+.material-done-btn.is-done {
+  background: linear-gradient(135deg, #b98218, #7b4b0f);
+  color: #fff7e6;
+}
+.publication-type-card.is-completed-material {
+  background: linear-gradient(180deg, rgba(239, 248, 239, .94), var(--panel-solid));
+  box-shadow: inset 0 0 0 1px rgba(46,139,87,.13), var(--shadow-soft);
+}
+.completed-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: .32rem .68rem;
+  background: #eaf7ef;
+  color: #0b5b31;
+  border: 1px solid #b9dfc7;
+  font-weight: 950;
+}
+
+/* Visor docente de materias: sin progreso, con estado de visibilidad */
+.teacher-subject-preview .subject-card .progress,
+.teacher-subject-preview .subject-card .progress-row {
+  display: none !important;
+}
+.teacher-subject-preview .subject-card.is-hidden-subject,
+body.is-teacher .teacher-subject-preview .subject-card.is-hidden-subject {
+  filter: grayscale(.34) saturate(.7);
+  opacity: .74;
+  outline: 3px dashed rgba(157, 56, 47, .52);
+  outline-offset: -7px;
+}
+.teacher-subject-preview .subject-card.is-hidden-subject::before,
+body.is-teacher .teacher-subject-preview .subject-card.is-hidden-subject::before {
+  background: linear-gradient(180deg, rgba(0,0,0,.30), rgba(0,0,0,.68)) !important;
+}
+.subject-hidden-label {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  background: rgba(157,56,47,.94);
+  color: #fffdf8;
+  border: 1px solid rgba(255,255,255,.24);
+  font-style: normal;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: .76rem;
+}
+.teacher-subject-preview .subject-inline-actions button[data-t33-toggle-subject] {
+  background: #fff2df !important;
+  color: #673500 !important;
+  border-color: #edc58c !important;
+}
+.teacher-subject-preview .subject-card.is-hidden-subject .subject-inline-actions button[data-t33-toggle-subject] {
+  background: #eaf7ef !important;
+  color: #0b5b31 !important;
+  border-color: #b9dfc7 !important;
+}
+
+/* Insignias: organización más clara y menos apiñada */
+.tool-window.assignBadge-window {
+  width: min(138rem, calc(100vw - 2.2rem)) !important;
+}
+.assignBadge-window .window-body {
+  padding: 1.35rem !important;
+}
+.t32-badge-form {
+  grid-template-columns: minmax(26rem, 32rem) minmax(0, 1fr) !important;
+}
+.t32-badge-groups {
+  gap: 1.05rem !important;
+}
+.t32-badge-student-grid {
+  grid-template-columns: repeat(auto-fill, minmax(27rem, 1fr)) !important;
+  gap: .9rem !important;
+}
+.t32-badge-student {
+  align-items: center !important;
+  padding: .85rem !important;
+  border-radius: 1rem !important;
+}
+.t32-badge-student input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: #0b3d22;
+}
+.t32-badge-group summary span,
+.recipient-group summary span,
+.t24-profile-group summary span {
+  float: none !important;
+  display: inline-flex;
+  min-width: 2rem;
+  justify-content: center;
+  margin-left: .45rem;
+  border-radius: 999px;
+  background: rgba(16,63,36,.12);
+  color: #0b3d22;
+  padding: .12rem .45rem;
+}
+
+/* Campos de filtro: que se entienda que filtran realmente */
+.t16-search {
+  border-color: rgba(16,63,36,.20) !important;
+  background: #fffef9 !important;
+}
+.t16-search::placeholder {
+  color: #70695d;
+}
+.t16-search:focus {
+  box-shadow: 0 0 0 3px rgba(16,63,36,.10);
+}
+
+/* Calificaciones: explicación de la ponderación */
+.grade-weight-field small {
+  display: block;
+  margin-top: .45rem;
+  color: var(--muted);
+  font-size: .84rem;
+  line-height: 1.42;
+  font-weight: 750;
+}
+
+/* Perfil del alumnado: un único botón de guardado */
+.t24-editor-head {
+  align-items: flex-start;
+}
+.sticky-form-actions {
+  position: sticky;
+  bottom: .35rem;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .8rem;
+  padding: .9rem;
+  border: 1px solid rgba(16,63,36,.12);
+  border-radius: 1rem;
+  background: rgba(255,253,248,.95);
+  box-shadow: 0 -10px 22px rgba(42,34,18,.06);
+}
+
+@media (max-width: 980px) {
+  .t32-badge-form {
+    grid-template-columns: 1fr !important;
+  }
+  .material-card-actions {
+    align-items: stretch;
+  }
+  .material-done-btn,
+  .material-open-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* =========================================================
+   Tribeca Aula · Versión 34
+   Materias docentes ordenadas, visor externo legible y visibilidad real
+   ========================================================= */
+.v34-teacher-subjects.teacher-subjects-layout,
+.teacher-subjects-layout.v34-teacher-subjects {
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, .72fr) !important;
+  align-items: start;
+  gap: 1rem;
+}
+.teacher-subjects-main {
+  min-width: 0;
+}
+.teacher-subject-filters.window-grid {
+  grid-template-columns: repeat(2, minmax(12rem, 1fr));
+  margin-bottom: 1rem;
+}
+.teacher-subject-preview.v34-subject-preview,
+.v34-subject-preview {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(18.5rem, 1fr)) !important;
+  gap: .95rem !important;
+  align-items: stretch;
+}
+.v34-subject-preview .subject-card,
+.teacher-subject-preview.v34-subject-preview .subject-card,
+body.is-teacher .v34-subject-preview .subject-card {
+  min-height: 17.2rem !important;
+  padding: 1rem 1rem 5.2rem !important;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+.v34-subject-preview .subject-card h3 {
+  font-size: clamp(1.1rem, 1.35vw, 1.45rem) !important;
+  line-height: 1.18 !important;
+  margin-bottom: .45rem !important;
+  max-width: calc(100% - 3.6rem);
+}
+.v34-subject-preview .subject-card p,
+.v34-subject-preview .subject-card small {
+  line-height: 1.25 !important;
+  margin: .12rem 0 !important;
+}
+.v34-subject-preview .subject-mark {
+  right: 1rem !important;
+  top: 3rem !important;
+  font-size: 2rem !important;
+  width: 3.2rem !important;
+  height: 3.2rem !important;
+  display: grid;
+  place-items: center;
+  border-radius: .8rem;
+}
+.v34-subject-preview .subject-inline-actions,
+.teacher-subject-preview.v34-subject-preview .subject-inline-actions {
+  position: absolute !important;
+  left: .85rem !important;
+  right: .85rem !important;
+  bottom: .85rem !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .45rem !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+.v34-subject-preview .subject-inline-actions button {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: .45rem .5rem !important;
+  font-size: .72rem !important;
+  line-height: 1.1 !important;
+  white-space: normal;
+}
+.v34-subject-preview .subject-hidden-label {
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  z-index: 5;
+}
+.v34-subject-preview .subject-card.is-hidden-subject {
+  opacity: .72 !important;
+  filter: grayscale(.45) saturate(.72) !important;
+}
+.v34-subject-preview .subject-card.is-hidden-subject h3::after {
+  content: " · oculta";
+  font-family: Inter, system-ui, sans-serif;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #ffe5e0;
+}
+.v34-subject-editor {
+  position: sticky;
+  top: .6rem;
+  max-height: calc(100vh - var(--header-h) - 6rem);
+  overflow: auto;
+}
+@media (max-width: 1180px) {
+  .v34-teacher-subjects.teacher-subjects-layout,
+  .teacher-subjects-layout.v34-teacher-subjects {
+    grid-template-columns: 1fr !important;
+  }
+  .v34-subject-editor { position: static; max-height: none; }
+}
+@media (max-width: 760px) {
+  .teacher-subject-filters.window-grid { grid-template-columns: 1fr; }
+  .v34-subject-preview { grid-template-columns: 1fr !important; }
+  .v34-subject-preview .subject-inline-actions { grid-template-columns: 1fr !important; position: static !important; margin-top: .85rem; }
+  .v34-subject-preview .subject-card { padding-bottom: 1rem !important; min-height: auto !important; }
+}
+
+/* =========================================================
+   Tribeca Aula · Versión 35
+   Navegación del alumnado en pestaña nueva, visor externo sobrio
+   y materias docentes más ordenadas
+   ========================================================= */
+.t35-opened-tab-back {
+  position: fixed;
+  z-index: 9000;
+  top: .85rem;
+  left: .85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  color: var(--green);
+  padding: .7rem 1rem;
+  font-weight: 950;
+  box-shadow: var(--shadow-soft);
+}
+.t35-opened-tab-back:hover {
+  background: rgba(168, 135, 45, .12);
+}
+body:has(#t35OpenedTabBack) .brand {
+  margin-left: 6.5rem;
+}
+
+.teacher-subjects-layout.v34-teacher-subjects,
+.v34-teacher-subjects.teacher-subjects-layout {
+  grid-template-columns: minmax(0, 1.55fr) minmax(310px, .8fr) !important;
+  gap: 1.2rem !important;
+}
+.teacher-subject-preview.v34-subject-preview,
+.v34-subject-preview {
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)) !important;
+  gap: 1rem !important;
+  align-items: stretch !important;
+}
+.v34-subject-preview .subject-card,
+.teacher-subject-preview.v34-subject-preview .subject-card,
+body.is-teacher .v34-subject-preview .subject-card {
+  min-height: 14.8rem !important;
+  padding: 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: .45rem !important;
+}
+.v34-subject-preview .subject-card h3 {
+  margin-top: auto !important;
+  margin-bottom: .25rem !important;
+  max-width: calc(100% - 3.4rem) !important;
+}
+.v34-subject-preview .subject-card p,
+.v34-subject-preview .subject-card small {
+  color: rgba(255,255,255,.95) !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.22);
+}
+.v34-subject-preview .subject-card p {
+  font-weight: 900 !important;
+}
+.v34-subject-preview .subject-card small {
+  font-size: .82rem !important;
+  min-height: 1.15rem;
+}
+.v34-subject-preview .subject-inline-actions,
+.teacher-subject-preview.v34-subject-preview .subject-inline-actions {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  opacity: 1 !important;
+  transform: none !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: .45rem !important;
+  margin-top: .7rem !important;
+  width: 100% !important;
+  z-index: 5 !important;
+}
+.v34-subject-preview .subject-inline-actions button {
+  min-height: 2.35rem !important;
+  padding: .48rem .55rem !important;
+  border-radius: .65rem !important;
+  background: rgba(255,253,247,.94) !important;
+  border: 1px solid rgba(255,255,255,.65) !important;
+  color: #172018 !important;
+  font-size: .74rem !important;
+  line-height: 1.08 !important;
+  font-weight: 950 !important;
+}
+.v34-subject-preview .subject-inline-actions button:hover {
+  background: #fff8e8 !important;
+}
+.v34-subject-preview .subject-inline-actions button[data-t33-toggle-subject] {
+  background: #fff3da !important;
+  border-color: rgba(184,126,24,.42) !important;
+}
+.v34-subject-preview .subject-card.is-hidden-subject {
+  opacity: .62 !important;
+  filter: grayscale(.65) saturate(.55) !important;
+  outline: 3px dashed rgba(255,255,255,.55);
+  outline-offset: -8px;
+}
+.v34-subject-preview .subject-card.is-hidden-subject .subject-hidden-label,
+.v34-subject-preview .subject-hidden-label {
+  background: rgba(157,56,47,.96) !important;
+  color: white !important;
+  border-radius: 999px;
+  padding: .3rem .55rem;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: .72rem;
+  font-style: normal;
+  font-weight: 950;
+}
+.v34-subject-editor {
+  align-self: start !important;
+}
+@media (max-width: 1180px) {
+  .teacher-subjects-layout.v34-teacher-subjects,
+  .v34-teacher-subjects.teacher-subjects-layout {
+    grid-template-columns: 1fr !important;
+  }
+  body:has(#t35OpenedTabBack) .brand { margin-left: 0; }
+  .t35-opened-tab-back { top: .55rem; left: .55rem; }
+}
+@media (max-width: 760px) {
+  .v34-subject-preview { grid-template-columns: 1fr !important; }
+  .v34-subject-preview .subject-inline-actions,
+  .teacher-subject-preview.v34-subject-preview .subject-inline-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   Tribeca Aula · Versión 36
+   Pestañas nuevas reales para alumnado y visor externo más sobrio
+   ========================================================= */
+body.is-standalone-page .window-layer {
+  pointer-events: none;
+}
+body.is-standalone-page .page-shell {
+  width: min(calc(100% - 4rem), 1180px);
+}
+body:has(#t36OpenedPageBack) .brand {
+  margin-left: 6.5rem;
+}
+.t36-standalone-head {
+  margin-bottom: 1.2rem;
+  padding: 1.35rem 1.55rem;
+}
+.t36-standalone-head h1 {
+  margin: .25rem 0 .35rem;
+  font-size: clamp(1.9rem, 2.6vw, 3rem);
+  line-height: 1.08;
+}
+.t36-standalone-head p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+.t36-standalone-tool {
+  display: grid;
+  gap: 1rem;
+}
+.t36-standalone-tool > .window-panel,
+.t36-standalone-tool .window-panel {
+  background: var(--panel-solid);
+}
+.t36-standalone-tool .t16-calendar-layout,
+.t36-standalone-tool .mail-layout,
+.t36-standalone-tool .announcements-layout,
+.t36-standalone-tool .window-grid {
+  max-width: 100%;
+}
+.t36-standalone-subjects {
+  padding-bottom: 3rem;
+}
+.t36-standalone-subjects .subject-card {
+  min-height: 15rem;
+}
+@media (max-width: 1180px) {
+  body:has(#t36OpenedPageBack) .brand { margin-left: 0; }
+  body.is-standalone-page .page-shell { width: min(calc(100% - 1.4rem), 960px); }
+}
+@media (max-width: 760px) {
+  .t36-standalone-head { padding: 1rem; }
+  .t36-standalone-head h1 { font-size: 1.8rem; }
+}
+
+/* =========================================================
+   Tribeca Aula · versión 37
+   Navegación principal, calendario más ancho y contraste
+   ========================================================= */
+.main-nav .nav-btn[data-route="home"] {
+  order: -1;
+}
+
+body.is-standalone-page .page-shell {
+  width: min(calc(100% - 2rem), 1500px) !important;
+}
+
+body.is-standalone-page .t36-standalone-head {
+  max-width: 116rem;
+  margin-inline: auto;
+}
+
+body.is-standalone-page .t36-standalone-tool {
+  width: 100%;
+}
+
+.premium-calendar,
+.t16-calendar-layout.premium-calendar {
+  grid-template-columns: minmax(68rem, 1.75fr) minmax(31rem, .78fr) minmax(25rem, .55fr) !important;
+  gap: 1.25rem !important;
+}
+
+.calendar-main-panel {
+  min-width: 0;
+}
+
+.calendar-main-panel .calendar-grid {
+  width: 100%;
+}
+
+.calendar-main-panel .calendar-day {
+  min-height: 11.2rem !important;
+  padding: .65rem !important;
+}
+
+.calendar-main-panel .day-event-label {
+  display: block !important;
+  max-width: 100%;
+  margin-top: .18rem;
+  padding: .22rem .38rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .78rem;
+  line-height: 1.25;
+  color: #1c2119 !important;
+  background: rgba(255, 253, 247, .9) !important;
+  border: 1px solid rgba(48, 42, 26, .12);
+}
+
+.upcoming-panel .item-list {
+  gap: .65rem;
+}
+
+.upcoming-panel .list-item,
+.t36-standalone-tool .upcoming-panel .list-item {
+  color: #172018 !important;
+  background: #fffdf7 !important;
+  border: 1px solid rgba(48, 42, 26, .14) !important;
+  border-left-width: .55rem !important;
+  box-shadow: 0 .65rem 1.35rem rgba(39, 31, 14, .06);
+}
+
+.upcoming-panel .list-item strong,
+.upcoming-panel .list-item p,
+.upcoming-panel .list-item small {
+  color: #172018 !important;
+}
+
+.upcoming-panel .list-item p {
+  opacity: .86;
+}
+
+.upcoming-panel .list-item small {
+  color: #4f5b4b !important;
+  font-weight: 900;
+}
+
+.upcoming-panel .list-item.event-national,
+.upcoming-panel .list-item.event-galicia { border-left-color: #b94040 !important; }
+.upcoming-panel .list-item.event-local,
+.upcoming-panel .list-item.event-local-cee,
+.upcoming-panel .list-item.event-local-fisterra { border-left-color: #a87b25 !important; }
+.upcoming-panel .list-item.event-school,
+.upcoming-panel .list-item.event-school-proposal { border-left-color: #6d5fd0 !important; }
+.upcoming-panel .list-item.event-exam { border-left-color: #1d5fae !important; }
+.upcoming-panel .list-item.event-delivery { border-left-color: #0d7a55 !important; }
+.upcoming-panel .list-item.event-personal { border-left-color: #6f7b83 !important; }
+.upcoming-panel .list-item.event-closed { border-left-color: #7b1f1f !important; }
+.upcoming-panel .list-item.event-teacher,
+.upcoming-panel .list-item.event-class { border-left-color: #0f3d24 !important; }
+
+body.is-dark .upcoming-panel .list-item,
+body.is-dark .t36-standalone-tool .upcoming-panel .list-item {
+  background: #111 !important;
+  color: #fff7df !important;
+  border-color: rgba(212, 175, 55, .28) !important;
+}
+
+body.is-dark .upcoming-panel .list-item strong,
+body.is-dark .upcoming-panel .list-item p,
+body.is-dark .upcoming-panel .list-item small {
+  color: #fff7df !important;
+}
+
+@media (max-width: 1320px) {
+  .premium-calendar,
+  .t16-calendar-layout.premium-calendar {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   Tribeca Aula · versión 38
+   Perfil personal: utilidades separadas e iconos depurados
+   ========================================================= */
+.profile-window .window-body {
+  background: linear-gradient(135deg, rgba(168,135,45,.055), rgba(255,255,255,.48));
+}
+
+.profile-hub {
+  display: grid;
+  grid-template-columns: minmax(34rem, .95fr) minmax(34rem, 1.05fr);
+  gap: 1.15rem;
+  align-items: start;
+}
+
+.profile-summary-card {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 1.35rem;
+  padding: 1.2rem 1.35rem;
+  background: linear-gradient(135deg, rgba(16,63,36,.11), rgba(168,135,45,.10));
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-summary-avatar {
+  width: 5.6rem;
+  height: 5.6rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--gold);
+  background: var(--panel-solid);
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 2.4rem;
+  overflow: hidden;
+}
+
+.profile-summary-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-summary-card h2 {
+  margin: .15rem 0 .2rem;
+  font-size: clamp(1.6rem, 2vw, 2.25rem);
+}
+
+.profile-summary-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.profile-tool-card {
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--panel-solid);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-tool-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .8rem;
+  align-items: start;
+  margin-bottom: 1rem;
+  padding-bottom: .85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-tool-icon {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  background: rgba(168,135,45,.14);
+  border: 1px solid rgba(168,135,45,.24);
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 1.35rem;
+}
+
+.profile-tool-head h3 {
+  margin: 0 0 .2rem;
+  font-size: 1.2rem;
+}
+
+.profile-tool-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-weight: 750;
+}
+
+.profile-avatar-card {
+  grid-row: span 2;
+}
+
+.profile-icon-grid.t16-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.2rem, 1fr));
+  gap: .42rem;
+  max-height: 31rem;
+  overflow: auto;
+  padding: .7rem;
+  border-radius: 1.1rem;
+  background: rgba(168,135,45,.045);
+}
+
+.profile-icon-grid .icon-choice {
+  min-height: 3.1rem;
+  border-radius: .85rem;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+  font-size: 1.45rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition: transform .15s ease, border-color .15s ease, background .15s ease;
+}
+
+.profile-icon-grid .icon-choice:hover,
+.profile-icon-grid .icon-choice:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  background: rgba(168,135,45,.15);
+}
+
+.profile-icon-grid .icon-choice.is-selected {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+  background: rgba(16,63,36,.12);
+}
+
+.profile-notification-options {
+  grid-template-columns: repeat(2, minmax(14rem, 1fr));
+}
+
+.profile-notification-options label {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--text);
+}
+
+.profile-reset-form {
+  margin-top: .9rem;
+  padding-top: .9rem;
+  border-top: 1px solid var(--line);
+}
+
+.profile-academic-card {
+  grid-column: 2;
+}
+
+.teacher-profile-image-box {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: .85rem;
+  background: rgba(168,135,45,.055);
+}
+
+@media (max-width: 1100px) {
+  .profile-hub {
+    grid-template-columns: 1fr;
+  }
+  .profile-avatar-card,
+  .profile-academic-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .profile-summary-card {
+    align-items: flex-start;
+  }
+  .profile-icon-grid.t16-icon-grid {
+    grid-template-columns: repeat(auto-fill, minmax(2.9rem, 1fr));
+    max-height: 24rem;
+  }
+  .profile-notification-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   Tribeca Aula · versión 39
+   Navegación en pestaña abierta y calendario proporcionado
+   ========================================================= */
+body.is-standalone-page .page-shell {
+  width: min(calc(100% - 2.8rem), 1360px) !important;
+}
+
+body.is-standalone-page .t36-standalone-head {
+  max-width: 104rem !important;
+  padding: 1.25rem 1.55rem !important;
+  margin: 0 auto 1.15rem !important;
+}
+
+body.is-standalone-page .t36-standalone-head h1 {
+  font-size: clamp(2.05rem, 2.45vw, 3.05rem) !important;
+  line-height: 1.05 !important;
+  margin: .18rem 0 0 !important;
+}
+
+body.is-standalone-page .t36-standalone-head p:last-child:not(.eyebrow) {
+  display: none !important;
+}
+
+body.is-standalone-page .t36-standalone-tool {
+  max-width: 1360px !important;
+  margin-inline: auto !important;
+}
+
+body.is-standalone-page .premium-calendar,
+body.is-standalone-page .t16-calendar-layout.premium-calendar {
+  grid-template-columns: minmax(52rem, 1.42fr) minmax(27rem, .74fr) minmax(21rem, .48fr) !important;
+  gap: 1rem !important;
+  align-items: start !important;
+}
+
+body.is-standalone-page .calendar-main-panel,
+body.is-standalone-page .calendar-side-panel,
+body.is-standalone-page .upcoming-panel {
+  padding: 1rem !important;
+}
+
+body.is-standalone-page .calendar-toolbar,
+body.is-standalone-page .t16-calendar-head {
+  margin-bottom: .65rem !important;
+}
+
+body.is-standalone-page .calendar-toolbar h3,
+body.is-standalone-page .t16-calendar-head h3 {
+  font-size: 1.05rem !important;
+}
+
+body.is-standalone-page .calendar-main-panel .calendar-day,
+body.is-standalone-page .t16-calendar-grid .calendar-day {
+  min-height: 7.4rem !important;
+  padding: .48rem !important;
+  font-size: .88rem !important;
+}
+
+body.is-standalone-page .calendar-weekday,
+body.is-standalone-page .t16-calendar-grid .calendar-weekday {
+  padding: .42rem !important;
+  font-size: .82rem !important;
+}
+
+body.is-standalone-page .calendar-main-panel .day-event-label {
+  font-size: .68rem !important;
+  line-height: 1.16 !important;
+  padding: .16rem .28rem !important;
+  margin-top: .12rem !important;
+}
+
+body.is-standalone-page .event-legend,
+body.is-standalone-page .calendar-legend {
+  gap: .42rem !important;
+  margin-bottom: .65rem !important;
+}
+
+body.is-standalone-page .event-legend span,
+body.is-standalone-page .legend-pill {
+  font-size: .78rem !important;
+}
+
+body.is-standalone-page .calendar-side-panel h3,
+body.is-standalone-page .upcoming-panel h3 {
+  font-size: 1.02rem !important;
+  margin-bottom: .45rem !important;
+}
+
+body.is-standalone-page .premium-event-form input,
+body.is-standalone-page .premium-event-form select,
+body.is-standalone-page .premium-event-form textarea {
+  padding: .58rem .68rem !important;
+  font-size: .86rem !important;
+}
+
+body.is-standalone-page .premium-event-form textarea {
+  min-height: 4.6rem !important;
+}
+
+body.is-standalone-page .upcoming-panel .item-list {
+  gap: .48rem !important;
+}
+
+body.is-standalone-page .upcoming-panel .list-item {
+  padding: .65rem .75rem !important;
+  font-size: .86rem !important;
+  line-height: 1.28 !important;
+}
+
+body.is-standalone-page .upcoming-panel .list-item p {
+  margin-top: .18rem !important;
+}
+
+@media (max-width: 1320px) {
+  body.is-standalone-page .premium-calendar,
+  body.is-standalone-page .t16-calendar-layout.premium-calendar {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.is-standalone-page .calendar-main-panel .calendar-day,
+  body.is-standalone-page .t16-calendar-grid .calendar-day {
+    min-height: 6.3rem !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body.is-standalone-page .page-shell {
+    width: calc(100% - 1rem) !important;
+  }
+
+  body.is-standalone-page .calendar-main-panel .calendar-day,
+  body.is-standalone-page .t16-calendar-grid .calendar-day {
+    min-height: 4.6rem !important;
+    font-size: .78rem !important;
+  }
+}
+
+/* =========================================================
+   Tribeca Aula · versión 40
+   Navegación mensual del calendario y selector directo de fecha
+   ========================================================= */
+.t40-calendar-month-button {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  font-weight: 950 !important;
+  font-size: 1.08rem !important;
+  letter-spacing: .01em !important;
+  padding: .45rem .8rem !important;
+  border-radius: 999px !important;
+  min-width: 13rem !important;
+  text-transform: none !important;
+}
+
+.t40-calendar-month-button:hover,
+.t40-calendar-month-button:focus-visible {
+  background: rgba(168, 135, 45, .13) !important;
+  outline: 2px solid var(--gold) !important;
+  outline-offset: 2px !important;
+}
+
+body.is-standalone-page .t40-calendar-month-button {
+  font-size: 1rem !important;
+  padding: .38rem .7rem !important;
+}
+
+.t16-calendar-head [data-t16-cal-prev],
+.t16-calendar-head [data-t16-cal-next] {
+  display: inline-grid !important;
+  place-items: center !important;
+}
+
+/* =========================================================
+   Tribeca Aula · versión 41
+   Sección de liderazgo pedagógico y retrato profesional docente
+   ========================================================= */
+.tribeca-footer-v41 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.35rem;
+  align-items: stretch;
+  padding-top: 2rem;
+}
+
+.footer-about {
+  display: grid;
+  grid-template-columns: minmax(10rem, 16rem) minmax(22rem, 1fr);
+  gap: clamp(1.2rem, 2.5vw, 2.4rem);
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 10% 12%, rgba(168,135,45,.13), transparent 18rem),
+    linear-gradient(135deg, rgba(255,253,247,.92), rgba(246,244,238,.72));
+  box-shadow: var(--shadow-soft);
+  padding: clamp(1.2rem, 2.4vw, 2rem);
+}
+
+.is-dark .footer-about {
+  background:
+    radial-gradient(circle at 10% 12%, rgba(212,175,55,.18), transparent 18rem),
+    linear-gradient(135deg, rgba(14,14,14,.96), rgba(22,19,12,.88));
+}
+
+.footer-about-portrait {
+  margin: 0;
+  justify-self: center;
+  width: min(15rem, 32vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  border: .28rem solid rgba(168,135,45,.42);
+  box-shadow: 0 1rem 2.6rem rgba(20, 28, 20, .16);
+  background: var(--panel-solid);
+}
+
+.footer-about-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.footer-about-copy {
+  display: grid;
+  gap: .65rem;
+}
+
+.footer-about-kicker {
+  margin: 0;
+  color: var(--gold);
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .76rem;
+}
+
+.footer-about-copy h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.55rem, 2.15vw, 2.35rem);
+  line-height: 1.08;
+}
+
+.footer-about-copy p:not(.footer-about-kicker) {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.62;
+  font-weight: 760;
+}
+
+.footer-main-row {
+  display: grid;
+  grid-template-columns: minmax(20rem, 0.85fr) minmax(22rem, 1fr) auto;
+  gap: 1.4rem;
+  align-items: center;
+}
+
+.profile-summary-avatar img,
+.profile-preview-avatar img,
+.profile-image-avatar {
+  object-position: center 38%;
+}
+
+body.is-teacher .profile-summary-card {
+  background:
+    radial-gradient(circle at 8% 20%, rgba(168,135,45,.16), transparent 16rem),
+    linear-gradient(135deg, rgba(16,63,36,.14), rgba(255,253,247,.88));
+}
+
+body.is-teacher .profile-summary-avatar {
+  width: 6.4rem;
+  height: 6.4rem;
+  box-shadow: 0 .9rem 2.1rem rgba(20,28,20,.15);
+}
+
+@media (max-width: 980px) {
+  .footer-about {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+  .footer-about-portrait {
+    justify-self: start;
+    width: min(12rem, 46vw);
+  }
+  .footer-main-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .footer-links {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-about {
+    padding: 1rem;
+  }
+  .footer-about-copy h2 {
+    font-size: 1.45rem;
+  }
+  .footer-about-copy p:not(.footer-about-kicker) {
+    font-size: .96rem;
+  }
+}
+
+
+/* =========================================================
+   Tribeca Aula · versión 42
+   Presentación de la fundadora solo bajo demanda desde el pie
+   ========================================================= */
+.footer-links button[data-tool="aboutTribeca"] {
+  color: var(--green);
+  font-weight: 950;
+}
+
+.tool-window.aboutTribeca-window {
+  width: min(96rem, calc(100vw - 3.2rem));
+}
+
+.about-tribeca-panel.footer-about {
+  margin: 0;
+  grid-template-columns: minmax(11rem, 18rem) minmax(24rem, 1fr);
+}
+
+.aboutTribeca-window .window-body {
+  padding: clamp(1.1rem, 2vw, 1.7rem);
+}
+
+@media (max-width: 760px) {
+  .about-tribeca-panel.footer-about {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   Tribeca Aula · versión 44
+   Ventanas móviles en pantalla completa con botón de atrás
+   ========================================================= */
+.mobile-window-back {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .window-layer {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 5200 !important;
+    pointer-events: none !important;
+  }
+
+  .tool-window,
+  .tool-window.payments-window,
+  .tool-window.newPublication-window,
+  .tool-window.studentProfiles-window,
+  .tool-window.calendar-window,
+  .tool-window.newDate-window,
+  .tool-window.teacherSubjects-window,
+  .tool-window.guidance-window,
+  .tool-window.teacherPanel-window,
+  .tool-window.publicationsManager-window,
+  .tool-window.manageStudents-window,
+  .tool-window.assignBadge-window,
+  .tool-window.profile-window,
+  .tool-window.subjectDetail-window {
+    position: fixed !important;
+    inset: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    transform: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    pointer-events: auto !important;
+  }
+
+  .tool-window.is-hidden {
+    display: none !important;
+  }
+
+  .tool-window.is-maximized {
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+
+  .window-titlebar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    min-height: 4.1rem !important;
+    padding: .65rem .8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: .7rem !important;
+    cursor: default !important;
+    border-radius: 0 !important;
+    background: rgba(255, 253, 247, .98) !important;
+    backdrop-filter: blur(14px) saturate(1.08) !important;
+  }
+
+  body.is-dark .window-titlebar {
+    background: rgba(5, 5, 5, .98) !important;
+  }
+
+  .window-titlebar strong {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 1.05rem !important;
+  }
+
+  .mobile-window-back {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: max-content !important;
+    border: 1px solid rgba(16, 63, 36, .18) !important;
+    border-radius: 999px !important;
+    background: rgba(16, 63, 36, .08) !important;
+    color: var(--green) !important;
+    padding: .6rem .85rem !important;
+    font-weight: 950 !important;
+    line-height: 1 !important;
+  }
+
+  body.is-dark .mobile-window-back {
+    border-color: rgba(212, 175, 55, .28) !important;
+    background: rgba(212, 175, 55, .12) !important;
+    color: var(--gold) !important;
+  }
+
+  .window-actions button[data-t16-min],
+  .window-actions button[data-t16-max],
+  .window-actions button[data-t16-close] {
+    display: none !important;
+  }
+
+  .window-body {
+    flex: 1 1 auto !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: auto !important;
+    padding: 1rem .9rem 1.6rem !important;
+    scrollbar-gutter: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .tool-window.is-maximized .window-body {
+    max-height: none !important;
+  }
+
+  .window-grid,
+  .t16-calendar-layout,
+  .premium-calendar,
+  .payments-layout,
+  .t16-student-profiles,
+  .profile-hub,
+  .t18-publication-wizard,
+  .teacher-subjects-layout,
+  .publication-manager-layout,
+  .subject-window-layout,
+  .guidance-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .window-panel {
+    border-radius: 1rem !important;
+    padding: 1rem !important;
+  }
+}
+
+
+/* =========================================================
+   Tribeca Aula · versión 47
+   Escudo de Tribeca Academia sin fondo en el pie
+   ========================================================= */
+.footer-brand-academia {
+  align-items: center;
+  gap: 1.15rem;
+}
+
+.footer-brand .footer-academia-logo {
+  width: 5.6rem;
+  height: 5.6rem;
+  max-height: none;
+  object-fit: contain;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.footer-brand-subtitle {
+  display: block;
+  margin: .22rem 0 .1rem;
+  color: var(--gold);
+  font-weight: 950;
+  letter-spacing: .035em;
+}
+
+@media (max-width: 980px) {
+  .footer-brand .footer-academia-logo {
+    width: 5.2rem;
+    height: 5.2rem;
+    max-height: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-brand-academia {
+    align-items: flex-start;
+  }
+  .footer-brand .footer-academia-logo {
+    width: 4.8rem;
+    height: 4.8rem;
+  }
+}
+
+/* =========================================================
+   Tribeca Aula · Versión 50
+   Pausas de asistencia/acceso y recibí informal en PDF
+   ========================================================= */
+.student-pause-panel {
+  border: 1px solid rgba(168,135,45,.28);
+  border-left: .45rem solid var(--gold);
+  border-radius: 1.1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(255,253,248,.98), rgba(245,239,224,.88));
+  margin-bottom: 1rem;
+}
+.student-pause-panel h4 {
+  margin: 0 0 .55rem;
+  font-size: 1.1rem;
+}
+.pause-active-card {
+  border: 1px solid rgba(11,61,34,.22);
+  background: rgba(11,61,34,.08);
+  border-radius: .95rem;
+  padding: .8rem .9rem;
+  margin-bottom: .8rem;
+}
+.pause-active-card strong {
+  display: block;
+  color: var(--green);
+  font-size: 1.02rem;
+  margin-bottom: .2rem;
+}
+.pause-active-card p { margin: 0; color: var(--muted); font-weight: 750; }
+.pause-history { margin-top: .75rem; }
+.pause-history summary {
+  cursor: pointer;
+  color: var(--green);
+  font-weight: 900;
+}
+.attendance-day.is-paused {
+  border-color: rgba(113,128,150,.35) !important;
+  background: repeating-linear-gradient(135deg, rgba(113,128,150,.13) 0 8px, rgba(113,128,150,.06) 8px 16px) !important;
+  color: var(--muted) !important;
+  cursor: not-allowed !important;
+  filter: grayscale(.15);
+}
+.attendance-day.is-paused em {
+  color: #516070 !important;
+  font-weight: 950;
+}
+.attendance-day.is-paused small {
+  display: inline-flex;
+  width: max-content;
+  margin-top: .35rem;
+  border-radius: 999px;
+  padding: .25rem .55rem;
+  background: rgba(113,128,150,.16);
+  font-weight: 900;
+}
+.t16-student-row.is-paused-row,
+tr.is-paused-row td {
+  background: rgba(113,128,150,.08) !important;
+}
+.pause-lock {
+  width: min(760px, calc(100% - 2rem));
+  margin: 4rem auto;
+  padding: 2.4rem;
+  text-align: center;
+}
+.pause-lock-icon {
+  width: 4.8rem;
+  height: 4.8rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1rem;
+  background: rgba(168,135,45,.16);
+  color: var(--green);
+  font-size: 2.2rem;
+  font-weight: 950;
+}
+.pause-lock h1 {
+  margin: .2rem 0 1rem;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+}
+.pause-lock p {
+  max-width: 58rem;
+  margin: .6rem auto;
+  color: var(--muted);
+  font-weight: 750;
+  line-height: 1.55;
+}
+.pause-lock .pause-reason {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(168,135,45,.08);
+  padding: .85rem 1rem;
+}
+.t50-payments-layout .payment-total-card p {
+  line-height: 1.45;
+}
+@media (max-width: 760px) {
+  .student-pause-panel { padding: .85rem; }
+  .pause-lock { margin: 1.5rem auto; padding: 1.4rem; }
+}
+
+/* =========================================================
+   Tribeca Aula · Versión 51
+   Pausas, recibís compactos, pantalla completa docente y avisos visibles
+   ========================================================= */
+body.is-teacher .window-layer {
+  inset: 0 !important;
+  z-index: 3500;
+}
+body.is-teacher .tool-window {
+  position: fixed !important;
+  inset: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: none !important;
+  min-height: 100vh !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+}
+body.is-teacher .tool-window .window-body {
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 4rem;
+}
+body.is-teacher .window-titlebar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.is-paused-row,
+.t24-student-row.is-paused-row,
+.overview-student-row.is-paused-row,
+.payments-students .is-paused-row {
+  background: linear-gradient(135deg, rgba(157,56,47,.13), rgba(168,135,45,.09)) !important;
+  border-color: rgba(157,56,47,.34) !important;
+  box-shadow: inset .35rem 0 0 rgba(157,56,47,.65) !important;
+}
+.is-paused-row strong,
+.overview-student-row.is-paused-row strong {
+  color: #6f1f19;
+}
+.pause-mini-badge,
+.tag-pause {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  border-radius: 999px;
+  padding: .22rem .5rem;
+  margin-left: .35rem;
+  background: rgba(157,56,47,.14);
+  color: #7a211b;
+  border: 1px solid rgba(157,56,47,.25);
+  font-style: normal;
+  font-weight: 950;
+  font-size: .72rem;
+}
+.pause-profile-banner {
+  margin-top: .55rem;
+  border: 1px solid rgba(157,56,47,.28);
+  border-left: .45rem solid var(--danger, #9d382f);
+  border-radius: .9rem;
+  background: rgba(157,56,47,.08);
+  color: #711d18;
+  padding: .7rem .85rem;
+  font-weight: 900;
+}
+.student-pause-panel {
+  border: 1px solid rgba(157,56,47,.2);
+  border-left: .45rem solid var(--danger, #9d382f);
+  background: linear-gradient(135deg, rgba(157,56,47,.06), rgba(168,135,45,.04));
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.pause-active-card {
+  border: 1px solid rgba(157,56,47,.28);
+  background: rgba(157,56,47,.08);
+  border-radius: .9rem;
+  padding: .8rem;
+  margin-bottom: .8rem;
+}
+.pause-active-card.is-upcoming {
+  border-color: rgba(168,135,45,.38);
+  background: rgba(168,135,45,.1);
+}
+.payment-month-nav {
+  align-items: center;
+  gap: .8rem;
+}
+.payment-month-nav .inline-actions {
+  align-items: center;
+}
+.compact-btn {
+  padding: .35rem .6rem !important;
+  font-size: .82rem !important;
+}
+.payment-history-panel .premium-table td:last-child {
+  white-space: nowrap;
+}
+.t50-payments-layout {
+  align-items: start;
+}
+body.is-teacher .payments-window .window-body {
+  background: linear-gradient(135deg, rgba(250,248,242,.98), rgba(246,242,231,.96));
+}
+
+
+/* =========================================================
+   Tribeca Aula · Versión 52
+   Navegación por secciones en la misma pantalla, con encabezado visible
+   ========================================================= */
+body.is-inline-section .page-shell {
+  width: min(calc(100% - clamp(2rem, 6vw, 8rem)), 1480px);
+  margin: 0 auto;
+}
+
+.t52-inline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.35rem 1.55rem;
+  margin-bottom: 1.2rem;
+}
+
+.t52-inline-head h1 {
+  margin: .15rem 0 0;
+  font-size: clamp(1.85rem, 2.6vw, 3rem);
+  line-height: 1.08;
+}
+
+.t52-inline-tool {
+  display: block;
+  width: 100%;
+}
+
+.t52-inline-tool > .window-panel,
+.t52-inline-tool > .window-grid,
+.t52-inline-tool > .guidance-layout,
+.t52-inline-tool > .t16-calendar-layout,
+.t52-inline-tool > .payments-layout,
+.t52-inline-tool > .teacher-subjects-layout,
+.t52-inline-tool > .t16-student-profiles {
+  width: 100%;
+}
+
+body.is-inline-section .window-layer,
+body.is-inline-section .window-dock {
+  display: none !important;
+}
+
+body.is-inline-section .tool-window {
+  position: static !important;
+  width: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  transform: none !important;
+}
+
+body.is-inline-section .window-body {
+  overflow: visible !important;
+}
+
+body.is-inline-section .main-nav .nav-btn.is-active {
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  color: #fffaf0;
+}
+
+@media (max-width: 760px) {
+  body.is-inline-section .page-shell {
+    width: calc(100% - 1rem);
+  }
+  .t52-inline-head {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 1rem;
+  }
+  .t52-inline-head .secondary-btn {
+    width: 100%;
+  }
+}
+
+
+/* =========================================================
+   Tribeca Aula · Versión 54
+   Pagos y asistencia en secciones separadas; pausas visibles
+   ========================================================= */
+.t54-section-intro {
+  grid-column: 1 / -1;
+  padding: 1rem 1.2rem;
+  background: linear-gradient(135deg, rgba(168,135,45,.12), rgba(255,253,248,.95));
+}
+.t54-section-intro h3 { margin: 0 0 .25rem; }
+.t54-section-intro p { margin: 0; }
+.t54-student-picker .t16-student-row { position: relative; }
+.pause-mini-label {
+  position: absolute;
+  right: .75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  padding: .22rem .52rem;
+  background: rgba(157,56,47,.12);
+  color: var(--danger);
+  border: 1px solid rgba(157,56,47,.28);
+  font-style: normal;
+  font-weight: 900;
+  font-size: .74rem;
+}
+.attendance-layout .attendance-main,
+.t54-payments-layout .payments-main {
+  min-width: 0;
+}
+.student-pause-panel .field-help {
+  display: block;
+  margin-top: .35rem;
+  color: var(--danger);
+  font-weight: 850;
+  line-height: 1.35;
+}
+.attendance-summary table th,
+.attendance-summary table td,
+.payments-summary table th,
+.payments-summary table td { white-space: normal; }
+@media (max-width: 980px) {
+  .t54-payments-layout,
+  .t54-attendance-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .pause-mini-label {
+    position: static;
+    transform: none;
+    width: max-content;
+    margin-top: .35rem;
+  }
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="gl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -70,7 +70,7 @@
           <span data-i18n="languageLabel">Idioma</span>
           <select id="languageSelect" aria-label="Idioma">
             <option value="es">Castellano</option>
-            <option value="gl">Galego</option>
+            <option value="gl" selected>Galego</option>
             <option value="en">English</option>
             <option value="fr">Français</option>
             <option value="pl">Polski</option>
@@ -158,19 +158,23 @@
 
   </main>
 
-  <footer class="site-footer">
-    <div class="footer-brand">
-      <img src="assets/logo-tribeca.png" alt="Logotipo de Tribeca Academia" />
-      <div>
-        <strong>Tribeca Academia</strong>
-        <p>Calle Rafael Juan, 33, 15130, Corcubión, A Coruña</p>
+  <footer class="site-footer tribeca-footer-v41">
+    <div class="footer-main-row">
+      <div class="footer-brand footer-brand-academia">
+        <img class="footer-academia-logo" src="assets/tribeca-academia-logo.webp" alt="Escudo de Tribeca Academia" />
+        <div>
+          <strong>Tribeca Academia</strong>
+          <small class="footer-brand-subtitle">Una marca de Tribeca Academia</small>
+          <p>Calle Rafael Juan, 33, 15130, Corcubión, A Coruña</p>
+        </div>
       </div>
-    </div>
-    <p class="footer-description" data-i18n="footerDescription">Tribeca Academia es un centro de pedagogía y refuerzo educativo que adapta la enseñanza a cada persona, aprovecha sus oportunidades de mejora y ofrece clases desde Primaria hasta adultos.</p>
-    <div class="footer-links">
-      <button type="button" data-tool="legal" data-i18n="legalNotice">Aviso legal</button>
-      <button type="button" data-tool="support" data-i18n="support">Soporte</button>
-      <button type="button" data-tool="contact" data-i18n="contact">Contacto</button>
+      <p class="footer-description" data-i18n="footerDescription">Tribeca Academia es un centro de pedagogía y refuerzo educativo que adapta la enseñanza a cada persona, aprovecha sus oportunidades de mejora y ofrece clases desde Primaria hasta adultos.</p>
+      <div class="footer-links">
+        <button type="button" data-tool="aboutTribeca">Detrás de Tribeca</button>
+        <button type="button" data-tool="legal" data-i18n="legalNotice">Aviso legal</button>
+        <button type="button" data-tool="support" data-i18n="support">Soporte</button>
+        <button type="button" data-tool="contact" data-i18n="contact">Contacto</button>
+      </div>
     </div>
   </footer>
 

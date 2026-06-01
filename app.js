@@ -278,6 +278,9 @@ function createDockItem(id) {
 }
 
 function openTool(id) {
+  if (typeof window.openTool === 'function' && window.openTool !== openTool) {
+    return window.openTool(id);
+  }
   $('#profileMenu').hidden = true;
   if (!openWindows.has(id)) {
     const win = buildWindow(id);
