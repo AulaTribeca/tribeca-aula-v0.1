@@ -1011,6 +1011,38 @@
     const currentScope = e?.scope || e?.target_scope || 'user';
     return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Crear fecha'}</button></form>`;
   }
+  async function queueCalendarEmailNotification(rec, isUpdate=false){
+    if(roleTeacher() || isUpdate) return;
+    try {
+      const payload = {
+        event_date: rec.event_date,
+        title: rec.title,
+        body: rec.body || '',
+        event_type: rec.event_type || '',
+        scope: rec.scope || '',
+        center: rec.center || State.profile?.center || '',
+        stage: rec.stage || State.profile?.stage || '',
+        course: rec.course || State.profile?.course || '',
+        actor_id: State.profile?.id || null,
+        actor_name: displayName(State.profile),
+        actor_username: State.profile?.username || '',
+        created_at: new Date().toISOString()
+      };
+      const rpc = await State.client.rpc('tribeca_queue_teacher_calendar_email_v58', { p_payload: payload });
+      if(rpc?.error) throw rpc.error;
+      const queued = Number(rpc?.data || 0);
+      if(queued > 0) toast(`Fecha creada. Aviso por email preparado para ${queued} destinatario${queued===1?'':'s'}.`);
+    } catch(error) {
+      console.warn('[Tribeca Aula] No se pudo preparar el aviso por email del calendario:', error);
+      await maybe(table('notifications').insert({
+        target_role:'teacher',
+        tool:'calendar',
+        title:'Aviso pendiente de calendario',
+        body:`${displayName(State.profile)} ha añadido una fecha al calendario, pero no se pudo preparar el email automático. Revisa la configuración de notificaciones.`
+      }));
+      toast('Fecha creada. No se pudo preparar el email automático; revisa la configuración de notificaciones.');
+    }
+  }
   async function saveEvent(form){
     const fd=new FormData(form); const id=String(fd.get('id')||'').trim(); const type=fd.get('eventType')||'personal';
     const rawScope = fd.get('scope') || (roleTeacher() ? 'all' : 'user');
@@ -1019,7 +1051,9 @@
     if(!rec.event_date || !rec.title) throw new Error('Completa la fecha y el título.');
     const rpc=await State.client.rpc('tribeca_save_calendar_event_v27',{p_payload:rec});
     if(rpc.error) throw rpc.error;
-    await log('calendar', id?'Fecha actualizada':'Fecha creada', {title:rec.title,date:rec.event_date}); await loadData(true); toast(id?'Fecha actualizada.':'Fecha creada.'); rerender();
+    await log('calendar', id?'Fecha actualizada':'Fecha creada', {title:rec.title,date:rec.event_date});
+    await queueCalendarEmailNotification(rec, !!id);
+    await loadData(true); toast(id?'Fecha actualizada.':'Fecha creada.'); rerender();
   }
 
   function activityTypeClass(type=''){ const t=String(type||'').toLowerCase(); if(t.includes('login')) return 'activity-login'; if(t.includes('message')) return 'activity-message'; if(t.includes('publication')||t.includes('guidance')) return 'activity-publication'; if(t.includes('calendar')) return 'activity-calendar'; if(t.includes('badge')) return 'activity-badge'; if(t.includes('grade')) return 'activity-grade'; if(t.includes('difficulty')) return 'activity-difficulty'; if(t.includes('profile')) return 'activity-profile'; return 'activity-generic'; }
@@ -1407,7 +1441,7 @@
           <span class="profile-tool-icon">✉️</span>
           <div>
             <h3>Notificaciones por email</h3>
-            <p>Indica un correo personal y marca qué avisos quieres recibir.</p>
+            <p>Indica un correo personal y marca qué avisos quieres recibir. Para que los emails salgan de verdad, debe estar activo el servicio de envío de Supabase.</p>
           </div>
         </header>
         <form id="t16ProfileNotificationsForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid">
