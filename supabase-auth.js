@@ -373,7 +373,7 @@
     return [];
   }
   function visibleForProfile(item={}, p=State.profile) {
-    if(!p) return false;
+    if(!p || !item || typeof item !== 'object') return false;
     if(roleTeacher()) return true;
     if(item.hidden) return false;
     const scope = item.target_scope || item.scope || 'all';
@@ -388,19 +388,20 @@
   function visibleMaterials(subject='') { return (State.data.materials||[]).filter(x=>visibleForProfile(x) && (!subject || x.subject===subject)); }
   function relevantEvents() {
     const p=State.profile;
-    const db = (State.data.events||[]).filter(e=>{
+    const db = (State.data.events||[]).filter(Boolean).filter(e=>{
       if(roleTeacher()) return true;
       if(e.hidden && e.created_by !== p.id) return false;
       const scope=e.scope||e.target_scope||'all';
+      const ids=parseArrayField(e.target_user_ids);
       if(e.created_by === p.id || e.user_id === p.id) return true;
       if(scope==='all') return true;
       if(scope==='center') return e.center===p.center;
       if(scope==='class') return e.center===p.center && e.stage===p.stage && e.course===p.course;
-      if(['selected','user'].includes(scope)) return Array.isArray(e.target_user_ids) && e.target_user_ids.includes(p.id);
+      if(['selected','user'].includes(scope)) return ids.includes(String(p.id));
       return true;
     }).map(e=>({...e, date:e.event_date || e.date, type:e.event_type || e.type || 'personal'}));
-    const official = officialEvents.filter(e=> roleTeacher() || ['national','galicia','local','school','school-proposal'].includes(e.type) || ((p?.center||'').includes('Cee') && e.type==='local-cee') || ((p?.center||'').includes('Fisterra') && e.type==='local-fisterra'));
-    return [...official, ...db].filter(e=>!e.hidden || e.official || roleTeacher() || e.created_by===p?.id);
+    const official = officialEvents.filter(Boolean).filter(e=> roleTeacher() || ['national','galicia','local','school','school-proposal'].includes(e.type) || ((p?.center||'').includes('Cee') && e.type==='local-cee') || ((p?.center||'').includes('Fisterra') && e.type==='local-fisterra'));
+    return [...official, ...db].filter(e=>e && (!e.hidden || e.official || roleTeacher() || e.created_by===p?.id));
   }
   function canEditEvent(e) { const p=State.profile; if(!p || e.official) return false; if(roleTeacher()) return true; if(e.created_by === p.id) return true; if((e.scope||e.target_scope)==='class' && e.center===p.center && e.stage===p.stage && e.course===p.course) return true; return false; }
 
@@ -485,6 +486,7 @@
   function ensureMainNavHomeButton() {
     const nav = document.querySelector('.main-nav');
     if(!nav) return;
+    if(roleTeacher()) nav.querySelector('[data-route="subjects"]')?.remove();
     if(!nav.querySelector('[data-route="home"]')) {
       const btn = document.createElement('button');
       btn.className = 'nav-btn';
@@ -1009,7 +1011,7 @@
       : [['user','Solo para mí'],['class','Mi grupo-clase']];
     const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'personal');
     const currentScope = e?.scope || e?.target_scope || 'user';
-    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Crear fecha'}</button></form>`;
+    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
   async function queueCalendarEmailNotification(rec, isUpdate=false){
     if(roleTeacher() || isUpdate) return;

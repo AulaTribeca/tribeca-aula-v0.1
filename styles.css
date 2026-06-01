@@ -6301,3 +6301,11 @@ body[data-theme="dark"] .t16-calendar-layout .calendar-side-panel .list-item p,
 body[data-theme="dark"] .t16-calendar-layout .calendar-side-panel .list-item small {
   color: #fff3da !important;
 }
+
+
+/* Tribeca Aula · versión 62
+   Recupera dos ajustes concretos tras la reversión: sin Mis materias en panel docente
+   y mantiene la navegación docente limpia. */
+body.is-teacher .main-nav [data-route="subjects"] {
+  display: none !important;
+}
