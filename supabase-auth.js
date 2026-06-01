@@ -396,7 +396,7 @@
       if(scope==='all') return true;
       if(scope==='center') return e.center===p.center;
       if(scope==='class') return e.center===p.center && e.stage===p.stage && e.course===p.course;
-      if(['selected','user'].includes(scope)) return Array.isArray(e.target_user_ids) && e.target_user_ids.includes(p.id);
+      if(['selected','user'].includes(scope)) return parseArrayField(e.target_user_ids).includes(String(p.id));
       return true;
     }).map(e=>({...e, date:e.event_date || e.date, type:e.event_type || e.type || 'personal'}));
     const official = officialEvents.filter(e=> roleTeacher() || ['national','galicia','local','school','school-proposal'].includes(e.type) || ((p?.center||'').includes('Cee') && e.type==='local-cee') || ((p?.center||'').includes('Fisterra') && e.type==='local-fisterra'));
@@ -785,8 +785,7 @@
       main.innerHTML = `<section class="t36-standalone-head panel"><p class="eyebrow">Tribeca Aula</p><h1>${safe(titleMap[id]||id)}</h1></section><section class="t36-standalone-tool">${bodyHtml}</section>`;
       wireManagedForms(main);
       $$('.subject-card[data-subject]', main).forEach(card=>card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail',{subject:card.dataset.subject});}));
-      if(id==='announcements') visibleAnnouncements().forEach(a=>localStorage.setItem(`tribeca-ann-seen-${a.id}`,'1'));
-    }
+      }
     updateBadges();
     applyTranslations();
   }
@@ -994,10 +993,53 @@
     const upcomingLimit=addDays(todayStart,7);
     const upcoming=events.filter(e=>{ const d=parseIso(e.date); return d>=todayStart && d<=upcomingLimit; }).sort((a,b)=>parseIso(a.date)-parseIso(b.date));
     const edit=State.selectedEventId ? events.find(e=>e.id===State.selectedEventId) : null; const closed=selected.filter(isClosedEvent);
-    return `<div class="t16-calendar-layout premium-calendar"><section class="window-panel calendar-main-panel">${calendarGrid()}</section><section class="window-panel calendar-side-panel">${closed.length?`<div class="closed-alert"><strong>Tribeca Academia no abre este día</strong><p>${closed.map(e=>safe(e.title)).join(' · ')}</p></div>`:''}<h3>${forceCreate?'Nueva fecha':'Eventos del día'} · ${fmtDate(State.selectedDate)}</h3><div class="item-list">${selected.length?selected.map(e=>eventCard(e)).join(''):'<div class="empty-state">No hay eventos este día. Puedes crear uno nuevo.</div>'}</div><hr>${eventForm(edit)}</section><section class="window-panel upcoming-panel"><h3>Próximas fechas <span class="meta">7 días</span></h3><div class="item-list">${upcoming.map(e=>`<article class="list-item event-${safe(eventColorType(e))}" data-t16-event="${safe(e.id)}"><strong>${fmtDate(e.date)} · ${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))}</small></article>`).join('')||'<div class="empty-state">Sin próximas fechas en los próximos 7 días.</div>'}</div></section></div>`;
+    return `<div class="t16-calendar-layout premium-calendar"><section class="window-panel calendar-main-panel">${calendarGrid()}</section><section class="window-panel calendar-side-panel">${closed.length?`<div class="closed-alert"><strong>Tribeca Academia no abre este día</strong><p>${closed.map(e=>safe(e.title)).join(' · ')}</p></div>`:''}<h3>${forceCreate?'Añadir evento':'Eventos del día'} · ${fmtDate(State.selectedDate)}</h3><div class="item-list">${selected.length?selected.map(e=>eventCard(e)).join(''):'<div class="empty-state">No hay eventos este día. Puedes crear uno nuevo.</div>'}</div><hr>${eventForm(edit)}</section><section class="window-panel upcoming-panel"><h3>Próximas fechas <span class="meta">7 días</span></h3><div class="item-list">${upcoming.map(e=>`<article class="list-item event-${safe(eventColorType(e))}" data-t16-event="${safe(e.id)}"><strong>${fmtDate(e.date)} · ${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))}</small></article>`).join('')||'<div class="empty-state">Sin próximas fechas en los próximos 7 días.</div>'}</div></section></div>`;
   }
   function eventLabel(e){ const t=eventColorType(e); return ({national:'Nacional',galicia:'Galicia',corcubion:'Corcubión',school:'Escolar',exam:'Examen',delivery:'Entrega',personal:'Personal',teacher:'Profesora',closed:'Tribeca cerrado',class:'Grupo-clase',student_absence:'No asistiré a clases','school-proposal':'Escolar'}[t] || t || 'Evento'); }
-  function eventCard(e){ const actions=canEditEvent(e)?`<div class="inline-actions"><button type="button" data-t16-event="${safe(e.id)}">Editar</button><button type="button" data-t16-hide-event="${safe(e.id)}">${e.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-event="${safe(e.id)}">Eliminar</button></div>`:''; return `<article class="list-item event-${safe(eventColorType(e))}"><strong>${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))} · Añadido por ${safe(e.author_name||e.created_by_name||studentName(e.created_by)||'Tribeca Aula')}</small>${actions}</article>`; }
+  function eventTargetIds(e={}){ return parseArrayField(e.target_user_ids); }
+  function eventScopeLabel(e={}){
+    const scope=e.scope||e.target_scope||'all';
+    if(scope==='all') return 'Visible para todo el alumnado';
+    if(scope==='class') return [e.center,e.stage,e.course].filter(Boolean).join(' · ') || 'Visible para un grupo-clase';
+    if(['selected','user'].includes(scope)){
+      const ids=eventTargetIds(e);
+      if(ids.length===1) return `Visible para ${safe(studentName(ids[0])||'1 alumno')}`;
+      return ids.length ? `Visible para ${ids.length} alumnos seleccionados` : 'Visible para alumnado seleccionado';
+    }
+    if(scope==='center') return e.center ? `Visible para ${safe(e.center)}` : 'Visible por centro';
+    return 'Visibilidad personalizada';
+  }
+  function eventCard(e){
+    const actions=canEditEvent(e)?`<div class="inline-actions"><button type="button" data-t16-event="${safe(e.id)}">Editar</button><button type="button" data-t16-hide-event="${safe(e.id)}">${e.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-event="${safe(e.id)}">Eliminar</button></div>`:'';
+    return `<article class="list-item event-${safe(eventColorType(e))}"><strong>${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))} · ${safe(eventScopeLabel(e))} · Añadido por ${safe(e.author_name||e.created_by_name||studentName(e.created_by)||'Tribeca Aula')}</small>${actions}</article>`;
+  }
+  function eventRecipientSelector(e=null){
+    if(!roleTeacher()) return '';
+    const currentScope = e?.scope || e?.target_scope || 'all';
+    const selectedIds = new Set(eventTargetIds(e));
+    const currentCenter = e?.center || State.profile?.center || '';
+    const currentStage = e?.stage || State.profile?.stage || '';
+    const currentCourse = e?.course || State.profile?.course || '';
+    const studentGroups = groups(State.data.students||[]);
+    return `<section class="calendar-recipient-panel t60-calendar-recipients">
+      <h4>Destinatarios del evento</h4>
+      <p class="meta">Elige si este evento será visible para todo el alumnado, para un grupo-clase o solo para uno o varios alumnos concretos.</p>
+      <div class="t16-scope-grid premium-scope">
+        <label><input type="radio" name="scope" value="all" ${currentScope==='all'?'checked':''}> Todo el alumnado</label>
+        <label><input type="radio" name="scope" value="class" ${currentScope==='class'?'checked':''}> Grupo-clase</label>
+        <label><input type="radio" name="scope" value="selected" ${['selected','user'].includes(currentScope)?'checked':''}> Alumno/s concretos</label>
+      </div>
+      <div class="window-grid calendar-group-target">
+        <label>Centro<select name="center"><option value="">Seleccionar centro</option>${options(centers,currentCenter)}</select></label>
+        <label>Etapa<select name="stage"><option value="">Seleccionar etapa</option>${options(stages,currentStage)}</select></label>
+        <label>Curso<select name="course"><option value="">Seleccionar curso</option>${options(courses,currentCourse)}</select></label>
+      </div>
+      <input class="t16-search" type="search" placeholder="Filtrar alumnado concreto..." data-t16-student-search>
+      <div class="calendar-student-targets recipient-scroll">
+        ${studentGroups.map(g=>`<details class="recipient-group" open><summary>${safe(g.label)} <span>${g.items.length}</span></summary><div class="recipient-pills">${g.items.map(s=>`<label data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}"><input type="checkbox" name="targetUserIds" value="${safe(s.id)}" ${selectedIds.has(String(s.id))?'checked':''}> <span>${safe(displayName(s))}</span><small>${safe(s.username||'')}</small></label>`).join('')}</div></details>`).join('')}
+      </div>
+    </section>`;
+  }
   function eventForm(e=null){
     const can=!e||canEditEvent(e);
     const teacher = roleTeacher();
@@ -1005,12 +1047,14 @@
       ? [['teacher','Profesora'],['closed','Tribeca cerrado'],['personal','Personal'],['class','Clase'],['exam','Examen'],['delivery','Entrega'],['school','Escolar']]
       : [['student_absence','No asistiré a clases'],['personal','Personal'],['class','Grupo-clase']];
     const scopeOptions = teacher
-      ? [['all','Todo el alumnado'],['class','Grupo-clase'],['user','Personal']]
+      ? [['all','Todo el alumnado'],['class','Grupo-clase'],['selected','Alumno/s concretos']]
       : [['user','Solo para mí'],['class','Mi grupo-clase']];
     const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'personal');
     const currentScope = e?.scope || e?.target_scope || 'user';
-    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Crear fecha'}</button></form>`;
+    const simpleScope = teacher ? '' : `<label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label>`;
+    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form t60-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label>${simpleScope}</div>${teacher?eventRecipientSelector(e):''}<button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
+
   async function queueCalendarEmailNotification(rec, isUpdate=false){
     if(roleTeacher() || isUpdate) return;
     try {
@@ -1044,16 +1088,38 @@
     }
   }
   async function saveEvent(form){
-    const fd=new FormData(form); const id=String(fd.get('id')||'').trim(); const type=fd.get('eventType')||'personal';
+    const fd=new FormData(form);
+    const id=String(fd.get('id')||'').trim();
+    const type=fd.get('eventType')||'personal';
+    const ids=fd.getAll('targetUserIds').map(x=>String(x||'').trim()).filter(Boolean);
     const rawScope = fd.get('scope') || (roleTeacher() ? 'all' : 'user');
     const scope = roleTeacher() ? (type==='closed'?'all':rawScope) : (rawScope==='class'?'class':'user');
-    const rec={ id:id||null, event_date:fd.get('eventDate'), title:String(fd.get('title')||'').trim(), body:fd.get('body')||'', event_type:type, scope, center:State.profile.center, stage:State.profile.stage, course:State.profile.course, created_by:State.profile.id, user_id:(scope==='user'?State.profile.id:null), hidden:false };
+    const center = roleTeacher() ? (fd.get('center') || State.profile.center || null) : State.profile.center;
+    const stage = roleTeacher() ? (fd.get('stage') || State.profile.stage || null) : State.profile.stage;
+    const course = roleTeacher() ? (fd.get('course') || State.profile.course || null) : State.profile.course;
+    if(scope==='class' && (!center || !stage || !course)) throw new Error('Para mostrar el evento a un grupo-clase, selecciona centro, etapa y curso.');
+    if(scope==='selected' && !ids.length) throw new Error('Selecciona al menos un alumno para este evento.');
+    const rec={
+      id:id||null,
+      event_date:fd.get('eventDate'),
+      title:String(fd.get('title')||'').trim(),
+      body:fd.get('body')||'',
+      event_type:type,
+      scope,
+      center,
+      stage,
+      course,
+      created_by:State.profile.id,
+      user_id:(!roleTeacher() && scope==='user') ? State.profile.id : (scope==='selected' && ids.length===1 ? ids[0] : null),
+      target_user_ids:scope==='selected' ? ids : [],
+      hidden:false
+    };
     if(!rec.event_date || !rec.title) throw new Error('Completa la fecha y el título.');
     const rpc=await State.client.rpc('tribeca_save_calendar_event_v27',{p_payload:rec});
     if(rpc.error) throw rpc.error;
-    await log('calendar', id?'Fecha actualizada':'Fecha creada', {title:rec.title,date:rec.event_date});
+    await log('calendar', id?'Evento actualizado':'Evento creado', {title:rec.title,date:rec.event_date,scope:rec.scope,target_user_ids:rec.target_user_ids});
     await queueCalendarEmailNotification(rec, !!id);
-    await loadData(true); toast(id?'Fecha actualizada.':'Fecha creada.'); rerender();
+    await loadData(true); toast(id?'Evento actualizado.':'Evento añadido.'); rerender();
   }
 
   function activityTypeClass(type=''){ const t=String(type||'').toLowerCase(); if(t.includes('login')) return 'activity-login'; if(t.includes('message')) return 'activity-message'; if(t.includes('publication')||t.includes('guidance')) return 'activity-publication'; if(t.includes('calendar')) return 'activity-calendar'; if(t.includes('badge')) return 'activity-badge'; if(t.includes('grade')) return 'activity-grade'; if(t.includes('difficulty')) return 'activity-difficulty'; if(t.includes('profile')) return 'activity-profile'; return 'activity-generic'; }
@@ -1112,8 +1178,11 @@
     const students = State.data.students || [];
     const selected = students.find(s => s.id === State.selectedStudentId) || students[0] || null;
     if(!State.selectedStudentId && selected) State.selectedStudentId = selected.id;
-    const studentList = groups(students).map(g => `<details class="t24-profile-group" open><summary>${safe(g.label)} <span>${g.items.length}</span></summary>${g.items.map(s => { const pause=pauseStatusText(s.id); return `<button type="button" class="t24-student-row ${selected?.id===s.id?'is-selected':''} ${pause?'is-paused-row':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}"><strong>${safe(displayName(s))}${pause?' <em class="pause-mini-badge">EN PAUSA</em>':''}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}${pause?' · '+safe(pause):''}</small></button>`; }).join('')}</details>`).join('');
-    return `<div class="t24-student-profiles"><section class="window-panel t24-profile-list"><h3>Alumnado</h3><p class="meta">Selecciona un perfil. Los cambios solo los puede guardar la profesora.</p><input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>${studentList || '<div class="empty-state">No hay alumnado cargado.</div>'}</section><section class="window-panel t24-profile-editor">${selected ? studentEditForm(selected) : '<div class="empty-state">Selecciona un alumno.</div>'}</section></div>`;
+    const pausedCount = students.filter(s=>pauseStatusText(s.id)).length;
+    const supportCount = students.filter(s=>s.personalized_attention || (Array.isArray(s.nee_types)&&s.nee_types.length) || (Array.isArray(s.neae_types)&&s.neae_types.length)).length;
+    const scheduledCount = students.filter(s=>(State.data.schedules||[]).some(x=>x.user_id===s.id && x.active!==false)).length;
+    const studentList = groups(students).map(g => `<details class="t24-profile-group t60-profile-group" open><summary>${safe(g.label)} <span>${g.items.length}</span></summary>${g.items.map(s => { const pause=pauseStatusText(s.id); const initials=displayName(s).split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase(); return `<button type="button" class="t24-student-row t60-student-row ${selected?.id===s.id?'is-selected':''} ${pause?'is-paused-row':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}"><span class="student-row-avatar">${safe(initials||'A')}</span><span class="student-row-copy"><strong>${safe(displayName(s))}${pause?' <em class="pause-mini-badge">EN PAUSA</em>':''}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}${pause?' · '+safe(pause):''}</small></span></button>`; }).join('')}</details>`).join('');
+    return `<div class="t60-student-profile-page"><section class="profile-overview-strip"><article><strong>${students.length}</strong><span>Perfiles</span></article><article><strong>${pausedCount}</strong><span>En pausa</span></article><article><strong>${supportCount}</strong><span>Con apoyos registrados</span></article><article><strong>${scheduledCount}</strong><span>Con horario</span></article></section><div class="t24-student-profiles t60-student-profiles"><section class="window-panel t24-profile-list t60-profile-list"><div class="section-title-row"><div><h3>Alumnado</h3><p class="meta">Busca, selecciona y edita un perfil. Los perfiles en pausa aparecen sombreados.</p></div></div><input class="t16-search" type="search" placeholder="Filtrar por nombre, usuario, centro, etapa o curso..." data-t16-student-search><div class="t60-profile-groups-scroll">${studentList || '<div class="empty-state">No hay alumnado cargado.</div>'}</div></section><section class="window-panel t24-profile-editor t60-profile-editor">${selected ? studentEditForm(selected) : '<div class="empty-state">Selecciona un alumno.</div>'}</section></div></div>`;
   }
 
   function studentEditForm(s){
@@ -1281,9 +1350,15 @@
     if(scope === 'center') return a.center || 'Centro concreto';
     return 'Anuncio general';
   }
+  function announcementReadKey(id){ return `tribeca-ann-seen-${id}`; }
+  function isAnnouncementRead(a){ return !!localStorage.getItem(announcementReadKey(a.id)); }
+  function markAnnouncementRead(id){ if(id) localStorage.setItem(announcementReadKey(id),'1'); updateBadges(); }
+  function markAllAnnouncementsRead(){ visibleAnnouncements().forEach(a=>markAnnouncementRead(a.id)); updateBadges(); }
+
   function announcementsContent(){
     const rows=visibleAnnouncements();
-    return `<section class="window-panel"><h3>Anuncios, avisos y noticias</h3>${rows.length?rows.map(a=>`<article class="t16-publication ${a.hidden?'is-hidden-item':''}"><small>${safe(announcementScopeLabel(a))}${a.created_at?` · ${fmtDT(a.created_at)}`:''}${a.hidden?' · Oculto':''}</small><h3>${safe(a.title || 'Anuncio sin título')}</h3>${a.image_url?`<img src="${safe(a.image_url)}" alt="">`:''}<p style="font-size:${Number(a.font_size||16)}px">${safe(a.body||a.description||a.content||'')}</p>${a.link_url?`<a href="${safe(a.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(a)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-ann="${safe(a.id)}">Editar</button><button type="button" data-t16-toggle-ann="${safe(a.id)}">${a.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-ann="${safe(a.id)}">Eliminar</button></div>`:''}</article>`).join(''):'<div class="empty-state">Todavía no hay anuncios publicados.</div>'}</section>`;
+    const unread=rows.filter(a=>!isAnnouncementRead(a)).length;
+    return `<section class="window-panel announcements-panel"><div class="section-title-row"><div><h3>Anuncios, avisos y noticias</h3><p class="meta">${unread?`${unread} anuncio${unread===1?'':'s'} pendiente${unread===1?'':'s'} de leer.`:'No tienes anuncios pendientes de lectura.'}</p></div>${rows.length?`<button type="button" class="secondary-btn" data-t60-mark-all-ann-read>Marcar todos como leídos</button>`:''}</div>${rows.length?rows.map(a=>{ const read=isAnnouncementRead(a); return `<article class="t16-publication announcement-card ${a.hidden?'is-hidden-item':''} ${read?'is-read-announcement':'is-unread-announcement'}"><small>${safe(announcementScopeLabel(a))}${a.created_at?` · ${fmtDT(a.created_at)}`:''}${a.hidden?' · Oculto':''}${read?' · Leído':' · Pendiente de leer'}</small><h3>${safe(a.title || 'Anuncio sin título')}</h3>${a.image_url?`<img src="${safe(a.image_url)}" alt="">`:''}<p style="font-size:${Number(a.font_size||16)}px">${safe(a.body||a.description||a.content||'')}</p>${a.link_url?`<a href="${safe(a.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(a)}<div class="inline-actions">${!read?`<button type="button" data-t60-mark-ann-read="${safe(a.id)}">Marcar como leído</button>`:''}${roleTeacher()?`<button type="button" data-t32-edit-ann="${safe(a.id)}">Editar</button><button type="button" data-t16-toggle-ann="${safe(a.id)}">${a.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-ann="${safe(a.id)}">Eliminar</button>`:''}</div></article>`; }).join(''):'<div class="empty-state">Todavía no hay anuncios publicados.</div>'}</section>`;
   }
   function subjectDetailContent(subject){
     const mats=visibleMaterials(subject);
@@ -1654,6 +1729,8 @@
         return;
       }
       const publicToolLink=ev.target.closest?.('[data-public-tool-link]'); if(publicToolLink){ return; }
+      const markAllAnn=ev.target.closest?.('[data-t60-mark-all-ann-read]'); if(markAllAnn){ ev.preventDefault(); ev.stopImmediatePropagation(); markAllAnnouncementsRead(); toast('Anuncios marcados como leídos.'); rerender(); return; }
+      const markAnn=ev.target.closest?.('[data-t60-mark-ann-read]'); if(markAnn){ ev.preventDefault(); ev.stopImmediatePropagation(); markAnnouncementRead(markAnn.dataset.t60MarkAnnRead); toast('Anuncio marcado como leído.'); rerender(); return; }
       const inlineHome=ev.target.closest?.('[data-t52-go-home]'); if(inlineHome){ ev.preventDefault(); ev.stopImmediatePropagation(); showHomePage(); return; }
       const dataTool=ev.target.closest?.('[data-tool]'); if(dataTool){ ev.preventDefault(); ev.stopImmediatePropagation(); openTool(dataTool.dataset.tool); return; }
       const undoBtn=ev.target.closest?.('[data-t30-undo]'); if(undoBtn){ ev.preventDefault(); ev.stopPropagation(); await undoLast(); return; } const teacherTool=ev.target.closest?.('[data-t16-tool]'); if(teacherTool){ ev.preventDefault(); openTool(teacherTool.dataset.t16Tool); return; }
