@@ -214,8 +214,15 @@
     } catch(_) {}
   }
 
+  function publicToolLinksMarkup(){
+    return `<div class="public-tools-strip" aria-label="Herramientas públicas de Tribeca">
+      <a class="public-tool-btn public-tool-lumen" href="https://aulatribeca.github.io/LUMEN-V/" target="_blank" rel="noopener" data-public-tool-link aria-label="Abrir LUMEN-V en una pestaña nueva"><img src="assets/lumen-v-icon.webp" alt="" aria-hidden="true"><span>LUMEN-V</span></a>
+      <a class="public-tool-btn public-tool-itinera" href="https://aulatribeca.github.io/itinera/#inicio" target="_blank" rel="noopener" data-public-tool-link aria-label="Abrir ITINERA en una pestaña nueva"><img src="assets/itinera-icon.webp" alt="" aria-hidden="true"><span>ITINERA</span></a>
+    </div>`;
+  }
+
   function loginMarkup() {
-    return `<div class="auth-card t16-auth"><div class="auth-brand"><img src="assets/logo-tribeca.png" alt=""><div><strong>Tribeca Aula</strong><span>Acceso seguro</span></div></div>${!configured?`<div class="auth-warning">Supabase aún no está configurado. Revisa supabase-config.js.</div>`:''}<form id="t16LoginForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="auth-form"><h1>Acceso a Tribeca Aula</h1><p>Introduce tu nombre de usuario y contraseña.</p><label><span>Usuario</span><input name="username" placeholder="nombre_apellido" autocomplete="username" required ${configured?'':'disabled'}></label><label><span>Contraseña</span><input name="password" type="password" autocomplete="current-password" required ${configured?'':'disabled'}></label><button class="primary-btn" type="submit" ${configured?'':'disabled'}>Entrar</button><div class="form-status auth-login-status" id="loginStatus" aria-live="polite"></div><button class="link-button" type="button" data-t16-forgot>No recuerdo mi contraseña</button></form><form id="t16ResetForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="auth-form is-secondary" hidden><h2>Recuperar contraseña</h2><p>La profesora recibirá la solicitud y restablecerá la contraseña manualmente.</p><label><span>Usuario</span><input name="username" placeholder="nombre_apellido" required></label><label><span>Nombre y apellidos</span><input name="displayName" maxlength="120"></label><button class="secondary-btn" type="submit">Solicitar recuperación</button><button class="link-button" type="button" data-t16-login>Volver al inicio de sesión</button></form></div>`;
+    return `<div class="auth-card t16-auth"><div class="auth-brand"><img src="assets/logo-tribeca.png" alt=""><div><strong>Tribeca Aula</strong><span>Acceso seguro</span></div></div>${publicToolLinksMarkup()}${!configured?`<div class="auth-warning">Supabase aún no está configurado. Revisa supabase-config.js.</div>`:''}<form id="t16LoginForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="auth-form"><h1>Acceso a Tribeca Aula</h1><p>Introduce tu nombre de usuario y contraseña.</p><label><span>Usuario</span><input name="username" placeholder="nombre_apellido" autocomplete="username" required ${configured?'':'disabled'}></label><label><span>Contraseña</span><input name="password" type="password" autocomplete="current-password" required ${configured?'':'disabled'}></label><button class="primary-btn" type="submit" ${configured?'':'disabled'}>Entrar</button><div class="form-status auth-login-status" id="loginStatus" aria-live="polite"></div><button class="link-button" type="button" data-t16-forgot>No recuerdo mi contraseña</button></form><form id="t16ResetForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="auth-form is-secondary" hidden><h2>Recuperar contraseña</h2><p>La profesora recibirá la solicitud y restablecerá la contraseña manualmente.</p><label><span>Usuario</span><input name="username" placeholder="nombre_apellido" required></label><label><span>Nombre y apellidos</span><input name="displayName" maxlength="120"></label><button class="secondary-btn" type="submit">Solicitar recuperación</button><button class="link-button" type="button" data-t16-login>Volver al inicio de sesión</button></form></div>`;
   }
   function showLogin() {
     let overlay = $('#tribecaAuthOverlay');
@@ -1603,6 +1610,7 @@
       const prof=ev.target.closest?.('#profileButton'); if(prof){ ev.preventDefault(); ev.stopImmediatePropagation(); openTool('profile'); return; }
       const navBtn=ev.target.closest?.('.main-nav .nav-btn');
       if(navBtn){
+        if(navBtn.matches('[data-public-tool-link]')) return;
         const target = navBtn.dataset.tool || navBtn.dataset.route || 'subjects';
         ev.preventDefault();
         ev.stopImmediatePropagation();
@@ -1610,6 +1618,7 @@
         else renderInlineSection(target);
         return;
       }
+      const publicToolLink=ev.target.closest?.('[data-public-tool-link]'); if(publicToolLink){ return; }
       const inlineHome=ev.target.closest?.('[data-t52-go-home]'); if(inlineHome){ ev.preventDefault(); ev.stopImmediatePropagation(); showHomePage(); return; }
       const dataTool=ev.target.closest?.('[data-tool]'); if(dataTool){ ev.preventDefault(); ev.stopImmediatePropagation(); openTool(dataTool.dataset.tool); return; }
       const undoBtn=ev.target.closest?.('[data-t30-undo]'); if(undoBtn){ ev.preventDefault(); ev.stopPropagation(); await undoLast(); return; } const teacherTool=ev.target.closest?.('[data-t16-tool]'); if(teacherTool){ ev.preventDefault(); openTool(teacherTool.dataset.t16Tool); return; }
