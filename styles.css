@@ -6171,3 +6171,133 @@ body.auth-locked .main-nav .public-tool-btn {
     grid-template-columns: 1fr;
   }
 }
+
+/* Tribeca Aula · versión 59
+   Mejora de contraste y legibilidad en la columna “Eventos del día” del calendario. */
+.t16-calendar-layout .calendar-side-panel .item-list {
+  display: grid;
+  gap: .8rem;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item,
+.t16-calendar-layout .calendar-side-panel article.list-item[class*="event-"] {
+  background: #fffdf8 !important;
+  color: #182118 !important;
+  border: 1px solid rgba(48, 42, 26, .14) !important;
+  border-left: .55rem solid var(--gold) !important;
+  border-radius: 1.2rem !important;
+  box-shadow: 0 .7rem 1.6rem rgba(34, 27, 12, .07) !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item strong,
+.t16-calendar-layout .calendar-side-panel .list-item p,
+.t16-calendar-layout .calendar-side-panel .list-item small {
+  color: #182118 !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item strong {
+  font-size: 1.08rem;
+  line-height: 1.32;
+  font-weight: 900;
+  margin-bottom: .32rem;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item p {
+  color: #2f3b2d !important;
+  line-height: 1.55;
+  margin-bottom: .45rem;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item small {
+  color: #586354 !important;
+  font-weight: 800;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item .inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .75rem;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item .inline-actions button {
+  background: #f7f0df !important;
+  color: #17301d !important;
+  border: 1px solid rgba(48, 42, 26, .12) !important;
+  font-weight: 800;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-national,
+.t16-calendar-layout .calendar-side-panel .list-item.event-galicia {
+  border-left-color: #b94040 !important;
+  background: #fff7f6 !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-local,
+.t16-calendar-layout .calendar-side-panel .list-item.event-local-cee,
+.t16-calendar-layout .calendar-side-panel .list-item.event-local-fisterra {
+  border-left-color: #a87b25 !important;
+  background: #fffaf0 !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-school,
+.t16-calendar-layout .calendar-side-panel .list-item.event-school-proposal {
+  border-left-color: #6d5fd0 !important;
+  background: #f8f5ff !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-exam {
+  border-left-color: #1d5fae !important;
+  background: #f5f9ff !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-delivery {
+  border-left-color: #0d7a55 !important;
+  background: #f4fbf8 !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-personal {
+  border-left-color: #6f7b83 !important;
+  background: #f8fafb !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-closed {
+  border-left-color: #7b1f1f !important;
+  background: #fff2f1 !important;
+}
+
+.t16-calendar-layout .calendar-side-panel .list-item.event-teacher,
+.t16-calendar-layout .calendar-side-panel .list-item.event-class,
+.t16-calendar-layout .calendar-side-panel .list-item.event-student_absence {
+  border-left-color: #0f3d24 !important;
+  background: #f2faf5 !important;
+}
+
+.t16-calendar-layout .calendar-side-panel h3 {
+  margin-bottom: .9rem;
+}
+
+.t16-calendar-layout .calendar-side-panel .closed-alert {
+  background: #fff6ef !important;
+  border: 1px solid rgba(155, 57, 38, .18) !important;
+}
+
+body.is-dark .t16-calendar-layout .calendar-side-panel .list-item,
+body.dark .t16-calendar-layout .calendar-side-panel .list-item,
+body[data-theme="dark"] .t16-calendar-layout .calendar-side-panel .list-item {
+  background: #171512 !important;
+  border-color: rgba(212, 175, 55, .20) !important;
+  color: #fff3da !important;
+}
+
+body.is-dark .t16-calendar-layout .calendar-side-panel .list-item strong,
+body.is-dark .t16-calendar-layout .calendar-side-panel .list-item p,
+body.is-dark .t16-calendar-layout .calendar-side-panel .list-item small,
+body.dark .t16-calendar-layout .calendar-side-panel .list-item strong,
+body.dark .t16-calendar-layout .calendar-side-panel .list-item p,
+body.dark .t16-calendar-layout .calendar-side-panel .list-item small,
+body[data-theme="dark"] .t16-calendar-layout .calendar-side-panel .list-item strong,
+body[data-theme="dark"] .t16-calendar-layout .calendar-side-panel .list-item p,
+body[data-theme="dark"] .t16-calendar-layout .calendar-side-panel .list-item small {
+  color: #fff3da !important;
+}
