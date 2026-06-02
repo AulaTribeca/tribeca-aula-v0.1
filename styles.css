@@ -7110,3 +7110,148 @@ body.is-dark .repo-course-chips span {
     flex-basis: 100%;
   }
 }
+
+
+/* Tribeca Aula · versión 78
+   Clasificación exacta del repositorio y creación directa de materiales privados. */
+.repo-classification-panel {
+  border-left: .45rem solid var(--gold);
+}
+
+.repo-create-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.repo-create-panel > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  cursor: pointer;
+  background:
+    linear-gradient(90deg, rgba(16, 63, 36, .08), rgba(168, 135, 45, .08)),
+    var(--panel-solid);
+  font-weight: 950;
+}
+
+.repo-create-panel > summary span {
+  color: var(--text);
+  font-size: 1.28rem;
+}
+
+.repo-create-panel > summary em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.repo-create-form {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.repo-create-form .repo-classification-panel {
+  grid-column: 1 / -1;
+}
+
+.repo-create-form .full-row {
+  grid-column: 1 / -1;
+}
+
+.repo-classify-box {
+  margin-top: .35rem;
+  border: 1px dashed rgba(55, 49, 34, .18);
+  border-radius: 12px;
+  background: rgba(251, 250, 247, .72);
+  overflow: hidden;
+}
+
+.repo-classify-box > summary {
+  padding: .55rem .7rem;
+  cursor: pointer;
+  color: var(--green);
+  font-weight: 950;
+}
+
+.repo-classify-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: .55rem;
+  padding: .75rem;
+}
+
+.repo-classify-form label {
+  font-size: .88rem;
+}
+
+.repo-classify-form button {
+  align-self: end;
+}
+
+.repository-tool-v78 .repository-hero h3 {
+  max-width: 62rem;
+}
+
+.repository-tool-v78 .repo-material-card small {
+  line-height: 1.45;
+}
+
+body.is-dark .repo-classification-panel,
+body.is-dark .repo-create-panel,
+body.is-dark .repo-classify-box {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .22);
+}
+
+@media (max-width: 760px) {
+  .repo-create-panel > summary {
+    flex-direction: column;
+  }
+
+  .repo-classify-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Tribeca Aula · versión 79
+   Pausas excluidas del resumen económico y forma de pago. */
+.payment-pause-exclusion {
+  margin: .8rem 0 1rem;
+  padding: .95rem 1rem;
+  border: 1px solid rgba(122, 31, 31, .16);
+  border-left: .45rem solid #8d2424;
+  border-radius: 16px;
+  background: #fff4f1;
+  color: #341c18;
+}
+
+.payment-pause-exclusion strong {
+  display: block;
+  margin-bottom: .25rem;
+  font-weight: 950;
+}
+
+.payment-pause-exclusion p {
+  margin: 0;
+  color: #5d3630;
+}
+
+.payment-total-card.is-paused-payment-total {
+  border-left-color: #8d2424;
+  background: #fff8f6;
+}
+
+.premium-table tr.is-paused-row td {
+  background: rgba(168, 135, 45, .065);
+}
+
+body.is-dark .payment-pause-exclusion,
+body.is-dark .payment-total-card.is-paused-payment-total {
+  background: rgba(141, 36, 36, .16);
+  border-color: rgba(255, 190, 170, .22);
+  color: #ffe8df;
+}
+
+body.is-dark .payment-pause-exclusion p {
+  color: #f3c8bd;
+}

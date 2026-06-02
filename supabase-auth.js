@@ -1067,6 +1067,38 @@
     }
     throw new Error('No se pudo guardar la publicación después de adaptar los campos a Supabase.');
   }
+  function repositoryContextFromItem(item={}){
+    const stage = item.stage || State.selectedSubjectStage || State.profile?.stage || '';
+    const course = item.course || State.selectedSubjectCourse || State.profile?.course || '';
+    const subject = State.prefillPublicationSubject || item.subject || '';
+    const unit = item.unit_title || item.unit || '';
+    const itemCenter = String(item.center || '').trim();
+    const matchingStudents = (State.data.students||[]).filter(s=>
+      (!stage || s.stage===stage) &&
+      (!course || s.course===course)
+    );
+    const matchingCenters = repoUnique(matchingStudents.map(s=>s.center));
+    const center = itemCenter && !/tribeca academia/i.test(itemCenter)
+      ? itemCenter
+      : (matchingCenters.length===1 ? matchingCenters[0] : '');
+    return {center, stage, course, subject, unit};
+  }
+  function repositoryClassificationFields(ctx={}, prefix='repo'){
+    const centerValues = repoUnique([...centersFromStudents(), ...(State.data.materialRepository||[]).map(r=>r.center), ...centers]);
+    const stageValue = ctx.stage || '';
+    const courseValue = ctx.course || '';
+    const courseValues = stageValue ? coursesForStage(stageValue) : dynamicCourses();
+    const stageValues = courseValue ? stagesForCourse(courseValue) : stages;
+    return `<section class="window-panel repo-classification-panel">
+      <h3>Clasificación para el repositorio</h3>
+      <p class="meta">Asocia este material al centro, etapa y curso reales. Esto no es decorativo: determina dónde quedará guardado para reutilizarlo otros años.</p>
+      <div class="window-grid">
+        <label>Centro educativo<select name="${prefix}Center"><option value="">Seleccionar centro</option>${repoOptions(centerValues, ctx.center||'', false)}</select></label>
+        <label>Etapa<select name="${prefix}Stage"><option value="">Seleccionar etapa</option>${repoOptions(stageValues, stageValue, false)}</select></label>
+        <label>Curso<select name="${prefix}Course"><option value="">Seleccionar curso</option>${repoOptions(courseValues, courseValue, false)}</select></label>
+      </div>
+    </section>`;
+  }
   function newPublicationContent() {
     const edit = State.pendingPublicationEdit || null;
     const item = edit?.item || {};
@@ -1078,9 +1110,11 @@
     const unitValue = item.unit_title || item.unit || '';
     const attachments = normalizeAttachments(item);
     const attachmentsJson = JSON.stringify(attachments).replace(/"/g, '&quot;');
+    const repoCtx = repositoryContextFromItem(item);
     const typeCard = (value, icon, title, desc) => `<label><input type="radio" name="publicationKind" value="${value}" ${normalizeMaterialKind(kind)===normalizeMaterialKind(value)?'checked':''}><span>${icon} ${title}<small>${desc}</small></span></label>`;
-    return `<form id="t16PublicationForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="t18-publication-wizard"><input type="hidden" name="editId" value="${safe(edit?.id||'')}"><input type="hidden" name="editTable" value="${safe(edit?.table||'')}"><section class="window-panel t18-publish-main"><h3>${editing?'Editar publicación':'1. Qué vas a publicar'}</h3>${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}<div class="t18-type-cards">${typeCard('announcement','📣','Anuncio, aviso o noticia','Se verá en Anuncios, no dentro de una materia.')}${typeCard('material','📄','Material de materia','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Las insignias se asignan manualmente desde el panel docente.')}${typeCard('test','🧪','Test externo','Usa el enlace para el test interactivo.')}${typeCard('game','🎮','Juego','Actividad lúdica o enlace a juego.')}</div><div class="window-grid"><label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label><label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label></div><label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label><label>Cuerpo<textarea name="body" rows="7" maxlength="1800" placeholder="Escribe el contenido de la publicación con instrucciones claras.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label><div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div><div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div></section><section class="window-panel publication-files-panel"><h3>2. Archivos adjuntos</h3><p class="meta">Añade una imagen visible o documentos para que el alumnado los consulte desde la publicación.</p><label>Imagen visible en la publicación<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"><input type="hidden" name="imageUrl" value="${safe(item.image_url||'')}"><span id="t16ImagePreview" class="t16-image-preview">${item.image_url?`<img src="${safe(item.image_url)}" alt="">`:''}</span></label><label>Documentos adjuntos PDF, Word o imágenes<input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple><input type="hidden" name="attachmentsJson" value="${attachmentsJson}"><span class="meta" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span></label></section>${recipientSelector()}<footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer></form>`;
+    return `<form id="t16PublicationForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="t18-publication-wizard"><input type="hidden" name="editId" value="${safe(edit?.id||'')}"><input type="hidden" name="editTable" value="${safe(edit?.table||'')}"><section class="window-panel t18-publish-main"><h3>${editing?'Editar publicación':'1. Qué vas a publicar'}</h3>${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}<div class="t18-type-cards">${typeCard('announcement','📣','Anuncio, aviso o noticia','Se verá en Anuncios, no dentro de una materia.')}${typeCard('material','📄','Material de materia','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Las insignias se asignan manualmente desde el panel docente.')}${typeCard('test','🧪','Test externo','Usa el enlace para el test interactivo.')}${typeCard('game','🎮','Juego','Actividad lúdica o enlace a juego.')}</div><div class="window-grid"><label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label><label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label></div><label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label><label>Cuerpo<textarea name="body" rows="7" maxlength="1800" placeholder="Escribe el contenido de la publicación con instrucciones claras.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label><div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div><div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div></section><section class="window-panel publication-files-panel"><h3>2. Archivos adjuntos</h3><p class="meta">Añade una imagen visible o documentos para que el alumnado los consulte desde la publicación.</p><label>Imagen visible en la publicación<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"><input type="hidden" name="imageUrl" value="${safe(item.image_url||'')}"><span id="t16ImagePreview" class="t16-image-preview">${item.image_url?`<img src="${safe(item.image_url)}" alt="">`:''}</span></label><label>Documentos adjuntos PDF, Word o imágenes<input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple><input type="hidden" name="attachmentsJson" value="${attachmentsJson}"><span class="meta" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span></label></section>${repositoryClassificationFields(repoCtx, 'repo')}${recipientSelector()}<footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer></form>`;
   }
+
   async function autoSaveMaterialPayloadToRepository(payload={}, sourceId=null){
     if(!roleTeacher()) return false;
     try {
@@ -1093,9 +1127,9 @@
         image_url:payload.image_url || null,
         link_url:payload.link_url || null,
         font_size:Number(payload.font_size||16),
-        center:payload.center || State.profile?.center || null,
-        stage:payload.stage || State.profile?.stage || null,
-        course:payload.course || State.profile?.course || null,
+        center:String(payload.center||'').trim() || null,
+        stage:String(payload.stage||'').trim() || null,
+        course:String(payload.course||'').trim() || null,
         subject:payload.subject || 'Apoyo personalizado',
         unit_title:payload.unit_title || payload.unit || 'Unidad 1',
         unit:payload.unit || payload.unit_title || 'Unidad 1',
@@ -1109,7 +1143,7 @@
       if(sourceId) existing = await maybe(table('teacher_material_repository').select('id').eq('source_material_id',sourceId).limit(1), []);
       if(existing?.[0]?.id) await persistSupabaseRecord('teacher_material_repository', repositoryPayload, existing[0].id);
       else await persistSupabaseRecord('teacher_material_repository', repositoryPayload, null);
-      await log('repository','Material guardado automáticamente en repositorio',{title:repositoryPayload.title,subject:repositoryPayload.subject});
+      await log('repository','Material guardado automáticamente en repositorio',{title:repositoryPayload.title,subject:repositoryPayload.subject,center:repositoryPayload.center,stage:repositoryPayload.stage,course:repositoryPayload.course});
       return true;
     } catch(error) {
       console.warn('[Tribeca Aula] No se pudo guardar automáticamente en el repositorio docente:', error);
@@ -1119,18 +1153,33 @@
 
   async function savePublication(form) {
     const fd=new FormData(form); const rawKind=fd.get('publicationKind'); const kind=normalizeMaterialKind(rawKind); const scope=fd.get('targetScope')||'all'; const ids=fd.getAll('targetUserIds'); const editId=String(fd.get('editId')||'').trim(); const editTable=String(fd.get('editTable')||'').trim();
+    const repoCenter=String(fd.get('repoCenter')||'').trim();
+    const repoStage=String(fd.get('repoStage')||'').trim();
+    const repoCourse=String(fd.get('repoCourse')||'').trim();
     const rec={ title:fd.get('title'), body:fd.get('body')||'', description:fd.get('body')||'', content:fd.get('body')||'', image_url:fd.get('imageUrl')||null, link_url:fd.get('linkUrl')||null, font_size:Number(fd.get('fontSize')||16), target_scope:scope, target_user_ids:ids, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, created_by:State.profile.id, hidden:false };
     let attachments = [];
     try { attachments = JSON.parse(fd.get('attachmentsJson')||'[]'); } catch(_e) { attachments = []; }
     const isAnnouncement = kind === 'announcement' || editTable === 'announcements';
     const tableName = isAnnouncement ? 'announcements' : 'subject_materials';
     const payload = isAnnouncement ? {...rec, announcement_type:'announcement', attachments} : {...rec, subject:fd.get('subject')||'Apoyo personalizado', unit_title:fd.get('unit')||'Unidad 1', unit:fd.get('unit')||'Unidad 1', material_type:dbMaterialType(kind), badge_codes:[], attachments};
+    if(!isAnnouncement){
+      payload.repository_center = repoCenter || null;
+      payload.repository_stage = repoStage || null;
+      payload.repository_course = repoCourse || null;
+    }
     if(editId) { delete payload.created_by; delete payload.hidden; }
-    const saveResult = await persistSupabaseRecord(tableName, payload, editId || null);
+    const savePayload = {...payload};
+    delete savePayload.repository_center; delete savePayload.repository_stage; delete savePayload.repository_course;
+    const saveResult = await persistSupabaseRecord(tableName, savePayload, editId || null);
     let repositorySaved=false;
     if(!isAnnouncement) {
-      const savedId = editId || saveResult?.data?.[0]?.id || saveResult?.data?.id || null;
-      repositorySaved = await autoSaveMaterialPayloadToRepository(payload, savedId);
+      let savedId = editId || saveResult?.data?.[0]?.id || saveResult?.data?.id || null;
+      if(!savedId && !editId) {
+        const found = await maybe(table('subject_materials').select('id').eq('created_by', State.profile.id).eq('title', payload.title).eq('subject', payload.subject).order('created_at',{ascending:false}).limit(1), []);
+        savedId = found?.[0]?.id || null;
+      }
+      const repoPayload = {...payload, center:repoCenter||null, stage:repoStage||null, course:repoCourse||null};
+      repositorySaved = await autoSaveMaterialPayloadToRepository(repoPayload, savedId);
     }
     await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName});
     State.pendingPublicationEdit=null; State.prefillPublicationSubject=null;
@@ -1403,11 +1452,25 @@
   function addMonthsToMonth(month, delta){ const [y,m]=String(month||todayIso().slice(0,7)).split('-').map(Number); const d=new Date(y||new Date().getFullYear(), (m||1)-1+delta, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
   function paymentModeForStudent(s){ const haystack = `${displayName(s)} ${s?.username||''}`.toLowerCase(); return (/wronna/.test(haystack) || /marco\s+calvo|marco_calvo/.test(haystack)) ? 'advance' : 'arrears'; }
   function paymentModeLabel(s){ return paymentModeForStudent(s)==='advance' ? 'Pago por adelantado' : 'Pago a mes vencido'; }
+  function paymentMethodLabel(value=''){
+    const v=String(value||'').trim().toLowerCase();
+    if(v==='cash') return 'Efectivo';
+    if(v==='bizum') return 'Bizum';
+    return 'Sin forma de pago indicada';
+  }
+  function paymentPausedForMonth(userId, month){
+    const overlaps = pauseMonthOverlap(userId, month);
+    if(!overlaps.length) return false;
+    const activeToday = activePauseFor(userId, todayIso());
+    if(activeToday && overlaps.some(p=>String(p.id)===String(activeToday.id))) return true;
+    const c = calculatePaymentAmount(userId, month);
+    return Number(c.amount||0) === 0 && overlaps.length > 0;
+  }
   function paymentDueDate(s, month){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return new Date(); return paymentModeForStudent(s)==='advance' ? new Date(y, m-1, 1) : new Date(y, m, 20); }
   function isPaymentOverdue(month, student=null){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return false; const due = student ? paymentDueDate(student, month) : new Date(y, m, 20); const today=new Date(); return today > due; }
   function quarterMonthsFor(month){ const [y,m]=String(month||todayIso().slice(0,7)).split('-').map(Number); const start=Math.floor(((m||1)-1)/3)*3+1; return [0,1,2].map(i=>`${y}-${String(start+i).padStart(2,'0')}`); }
   function paidMonthsForStudent(userId){ return [...new Set((State.data.paymentMonths||[]).filter(p=>String(p.user_id)===String(userId) && p.paid).map(p=>String(p.month).slice(0,7)).filter(Boolean))].sort().reverse(); }
-  function unpaidPaymentAlerts(){ const month=(State.billingMonth||todayIso().slice(0,7)); return (State.data.students||[]).map(s=>({student:s, bill:(State.data.billing||[]).find(b=>b.user_id===s.id)||{}, pay:paymentMonthRecord(s.id, month)})).filter(x=>isPaymentOverdue(month, x.student) && x.pay.paid!==true).map(x=>({name:displayName(x.student), month, amount:calculatePaymentAmount(x.student.id, month).amount})); }
+  function unpaidPaymentAlerts(){ const month=(State.billingMonth||todayIso().slice(0,7)); return (State.data.students||[]).map(s=>({student:s, bill:(State.data.billing||[]).find(b=>b.user_id===s.id)||{}, pay:paymentMonthRecord(s.id, month), paused:paymentPausedForMonth(s.id, month)})).filter(x=>!x.paused && isPaymentOverdue(month, x.student) && x.pay.paid!==true).map(x=>({name:displayName(x.student), month, amount:calculatePaymentAmount(x.student.id, month).amount})); }
   function teacherStudentPicker(selected, context='payments'){
     const students=State.data.students||[];
     const title = context === 'attendance' ? 'Alumnado' : 'Alumnado';
@@ -1427,8 +1490,10 @@
     return `<div class="payments-layout attendance-layout t54-attendance-layout"><div class="t54-section-intro window-panel"><h3>Asistencia y pausas</h3><p class="meta">Sección operativa: asistencia mensual, faltas justificadas y pausas temporales de asistencia y acceso al aula virtual.</p></div>${teacherStudentPicker(selected,'attendance')}<section class="window-panel attendance-main">${selected?attendanceEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section><section class="window-panel attendance-summary"><h3>Resumen de asistencia</h3>${attendanceSummary(month)}</section></div>`;
   }
   function paymentEditor(s,month){
-    const bill=(State.data.billing||[]).find(b=>b.user_id===s.id)||{}; const pay=paymentMonthRecord(s.id,month); const calc=calculatePaymentAmount(s.id,month);
-    return `<h3>Pagos de ${safe(displayName(s))}</h3>${paymentMonthNavigator(month,'Mes económico')}<form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-form"><input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase asistida</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija + clases individuales</option></select></label><div class="window-grid"><label>Cuota mensual fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Precio por clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div><p class="meta">El importe se calcula con la asistencia registrada y con las pausas activas. Regla general: mensualidad a mes vencido. Excepciones configuradas: Wronna y Marco Calvo, pago por adelantado. Criterio actual: ${safe(paymentModeLabel(s))}.</p><div class="window-grid"><label class="check-line"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> Mes ${safe(monthLabel(month))} pagado</label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label></div><label>Notas privadas de pago<textarea name="paymentNotes" rows="3">${safe(bill.payment_notes||'')}</textarea></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar tarifa y estado de pago</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Descargar recibí del mes</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Descargar recibís del trimestre</button></div><div class="payment-total-card is-visible"><strong>Total calculado: ${money(calc.amount)}</strong><p>${safe(calc.detail)} · Asistencias: ${calc.present} · Individuales: ${calc.individualPresent||0} · Faltas: ${calc.absent} · Justificadas: ${calc.justified} · Pausadas: ${calc.paused||0} · Estado: ${pay.paid?'pagado':'pendiente'}</p></div></form><section class="payment-history-panel"><h4>Histórico económico del alumno</h4>${paymentStudentHistory(s.id)}<div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('student')">Descargar histórico del alumno en PDF</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Descargar recibí de ${safe(monthLabel(month))}</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Descargar todos los recibís del trimestre</button></div></section>`;
+    const bill=(State.data.billing||[]).find(b=>b.user_id===s.id)||{}; const pay=paymentMonthRecord(s.id,month); const calc=calculatePaymentAmount(s.id,month); const pausedBilling=paymentPausedForMonth(s.id,month);
+    const method=pay.payment_method || '';
+    const pauseNotice = pausedBilling ? `<div class="payment-pause-exclusion"><strong>Alumno/a en pausa de asistencia.</strong><p>No se marca como pendiente de pago y no se suma al total previsto del mes mientras dure la pausa.</p></div>` : '';
+    return `<h3>Pagos de ${safe(displayName(s))}</h3>${paymentMonthNavigator(month,'Mes económico')}${pauseNotice}<form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-form"><input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase asistida</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija + clases individuales</option></select></label><div class="window-grid"><label>Cuota mensual fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Precio por clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div><p class="meta">El importe se calcula con la asistencia registrada y con las pausas activas. Regla general: mensualidad a mes vencido. Excepciones configuradas: Wronna y Marco Calvo, pago por adelantado. Criterio actual: ${safe(paymentModeLabel(s))}.</p><div class="window-grid"><label class="check-line"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> Mes ${safe(monthLabel(month))} pagado</label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div><label>Notas privadas de pago<textarea name="paymentNotes" rows="3">${safe(bill.payment_notes||'')}</textarea></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar tarifa y estado de pago</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Descargar recibí del mes</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Descargar recibís del trimestre</button></div><div class="payment-total-card is-visible ${pausedBilling?'is-paused-payment-total':''}"><strong>Total calculado: ${money(calc.amount)}</strong><p>${safe(calc.detail)} · Asistencias: ${calc.present} · Individuales: ${calc.individualPresent||0} · Faltas: ${calc.absent} · Justificadas: ${calc.justified} · Pausadas: ${calc.paused||0} · Estado: ${pausedBilling?'en pausa, excluido de pendientes':pay.paid?'pagado':'pendiente'} · Forma de pago: ${safe(paymentMethodLabel(method))}</p></div></form><section class="payment-history-panel"><h4>Histórico económico del alumno</h4>${paymentStudentHistory(s.id)}<div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('student')">Descargar histórico del alumno en PDF</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Descargar recibí de ${safe(monthLabel(month))}</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Descargar todos los recibís del trimestre</button></div></section>`;
   }
   function attendanceEditor(s,month){
     const days=monthScheduleDays(s.id,month,{includePaused:true}); const calc=calculatePaymentAmount(s.id,month);
@@ -1450,11 +1515,11 @@
   function paymentStudentHistory(userId){
     const pauseMonths=pauseRecords(userId).flatMap(p=>{ const start=String(p.start_date||todayIso()).slice(0,7); const end=String(p.end_date||start).slice(0,7); return [start,end]; });
     const months=[...new Set([...(State.data.paymentMonths||[]).filter(p=>p.user_id===userId).map(p=>String(p.month).slice(0,7)), ...pauseMonths, State.billingMonth||todayIso().slice(0,7)])].filter(Boolean).sort().reverse();
-    return `<table class="premium-table compact"><thead><tr><th>Mes</th><th>Importe</th><th>Estado</th><th>Día de pago</th><th>Pausas</th><th>Recibí</th></tr></thead><tbody>${months.map(m=>{ const c=calculatePaymentAmount(userId,m); const p=paymentMonthRecord(userId,m); const pauses=pauseMonthOverlap(userId,m).length; return `<tr><td>${safe(monthLabel(m))}</td><td>${money(c.amount)}</td><td>${p.paid?'Pagado':'Pendiente'}</td><td>${p.paid_date?fmtDate(p.paid_date):'—'}</td><td>${pauses?`${pauses} pausa/s`:c.paused?`${c.paused} clase/s`: '—'}</td><td><button type="button" class="secondary-btn compact-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(userId)}','${safe(m)}')">Descargar</button></td></tr>`; }).join('')}</tbody></table>`;
+    return `<table class="premium-table compact"><thead><tr><th>Mes</th><th>Importe</th><th>Estado</th><th>Forma de pago</th><th>Día de pago</th><th>Pausas</th><th>Recibí</th></tr></thead><tbody>${months.map(m=>{ const c=calculatePaymentAmount(userId,m); const p=paymentMonthRecord(userId,m); const pausedBilling=paymentPausedForMonth(userId,m); const pauses=pauseMonthOverlap(userId,m).length; return `<tr class="${pausedBilling?'is-paused-row':''}"><td>${safe(monthLabel(m))}</td><td>${money(pausedBilling?0:c.amount)}</td><td>${pausedBilling?'En pausa, excluido':p.paid?'Pagado':'Pendiente'}</td><td>${safe(paymentMethodLabel(p.payment_method))}</td><td>${p.paid_date?fmtDate(p.paid_date):'—'}</td><td>${pauses?`${pauses} pausa/s`:c.paused?`${c.paused} clase/s`: '—'}</td><td><button type="button" class="secondary-btn compact-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(userId)}','${safe(m)}')">Descargar</button></td></tr>`; }).join('')}</tbody></table>`;
   }
-  function paymentSummary(month){ const students=State.data.students||[]; let total=0; const rows=students.map(s=>{ const bill=(State.data.billing||[]).find(b=>b.user_id===s.id)||{}; const c=calculatePaymentAmount(s.id,month); const pay=paymentMonthRecord(s.id,month); total+=c.amount; const pText=pauseMonthOverlap(s.id,month).length?' · pausa registrada':''; return `<tr class="${!pay.paid&&isPaymentOverdue(month,s)?'payment-overdue-row':''} ${pText?'is-paused-row':''}"><td>${safe(displayName(s))}${pText?'<br><small>Con pausa</small>':''}</td><td>${bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual':'Grupal'}</td><td>${c.present}</td><td>${money(c.amount)}</td><td>${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente'}<br><small>${safe(paymentModeLabel(s))}</small></td></tr>`; }).join(''); return `<label>Mes<input type="month" value="${safe(month)}" data-t16-billing-month></label><div class="payment-grand-total">Total previsto: ${money(total)}</div><h4>Histórico total mensual</h4><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('month')">Descargar histórico mensual en PDF</button></div><table class="premium-table"><thead><tr><th>Alumno/a</th><th>Tarifa</th><th>Asistencias</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`; }
+  function paymentSummary(month){ const students=State.data.students||[]; let total=0; const rows=students.map(s=>{ const bill=(State.data.billing||[]).find(b=>b.user_id===s.id)||{}; const c=calculatePaymentAmount(s.id,month); const pay=paymentMonthRecord(s.id,month); const pausedBilling=paymentPausedForMonth(s.id,month); if(!pausedBilling) total+=c.amount; const pText=pauseMonthOverlap(s.id,month).length?' · pausa registrada':''; return `<tr class="${!pausedBilling&&!pay.paid&&isPaymentOverdue(month,s)?'payment-overdue-row':''} ${pText?'is-paused-row':''}"><td>${safe(displayName(s))}${pausedBilling?'<br><small>En pausa, excluido de pagos esperados</small>':pText?'<br><small>Con pausa</small>':''}</td><td>${bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual':'Grupal'}</td><td>${c.present}</td><td>${pausedBilling?money(0):money(c.amount)}</td><td>${pausedBilling?'En pausa, sin pendiente':pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente'}<br><small>${safe(paymentModeLabel(s))}${pay.payment_method?` · ${safe(paymentMethodLabel(pay.payment_method))}`:''}</small></td></tr>`; }).join(''); return `<label>Mes<input type="month" value="${safe(month)}" data-t16-billing-month></label><div class="payment-grand-total">Total previsto: ${money(total)}</div><p class="meta">El total previsto excluye al alumnado en pausa de asistencia. Ese alumnado tampoco genera alerta de pago pendiente mientras dure la pausa.</p><h4>Histórico total mensual</h4><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('month')">Descargar histórico mensual en PDF</button></div><table class="premium-table"><thead><tr><th>Alumno/a</th><th>Tarifa</th><th>Asistencias</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`; }
   function money(v){ return `${Number(v||0).toFixed(2).replace('.',',')} €`; }
-  async function saveBilling(form){ const fd=new FormData(form); const rec={user_id:fd.get('userId'), tariff_type:fd.get('tariffType'), monthly_fee:fd.get('monthlyFee')?Number(fd.get('monthlyFee')):0, class_rate:fd.get('classRate')?Number(fd.get('classRate')):0, payment_notes:fd.get('paymentNotes')||'', updated_at:new Date().toISOString()}; const pay={user_id:fd.get('userId'), month:fd.get('month')||State.billingMonth||todayIso().slice(0,7), paid:!!fd.get('paid'), paid_date:fd.get('paidDate')||null, updated_at:new Date().toISOString()}; const r=await State.client.rpc('tribeca_save_payment_v28',{p_billing:rec,p_month:pay}); if(r.error) throw r.error; await log('payment','Tarifa o pago actualizado',{student:studentName(rec.user_id),month:pay.month}); await loadData(true); toast('Pago guardado.'); rerender(); }
+  async function saveBilling(form){ const fd=new FormData(form); const rec={user_id:fd.get('userId'), tariff_type:fd.get('tariffType'), monthly_fee:fd.get('monthlyFee')?Number(fd.get('monthlyFee')):0, class_rate:fd.get('classRate')?Number(fd.get('classRate')):0, payment_notes:fd.get('paymentNotes')||'', updated_at:new Date().toISOString()}; const paymentMethod=fd.get('paymentMethod')||null; const pay={user_id:fd.get('userId'), month:fd.get('month')||State.billingMonth||todayIso().slice(0,7), paid:!!fd.get('paid'), paid_date:fd.get('paidDate')||null, updated_at:new Date().toISOString()}; const r=await State.client.rpc('tribeca_save_payment_v28',{p_billing:rec,p_month:pay}); if(r.error) throw r.error; await maybe(table('payment_months').update({payment_method:paymentMethod, updated_at:new Date().toISOString()}).eq('user_id',pay.user_id).eq('month',pay.month)); await log('payment','Tarifa o pago actualizado',{student:studentName(rec.user_id),month:pay.month,payment_method:paymentMethod}); await loadData(true); toast('Pago guardado.'); rerender(); }
   async function saveStudentPause(form){ const fd=new FormData(form); const id=String(fd.get('pauseId')||'').trim(); const userId=String(fd.get('userId')||'').trim(); const start=String(fd.get('startDate')||todayIso()).slice(0,10); const end=String(fd.get('endDate')||'').slice(0,10)||null; if(end && end < start) throw new Error('La fecha de fin no puede ser anterior a la fecha de inicio.'); const active=!!fd.get('active'); if(!active && !id) throw new Error('Marca “Pausa activa” para crear una nueva pausa.'); const rec={user_id:userId,start_date:start,end_date:end,active,mode:fd.get('mode')||'scheduled',reason:String(fd.get('reason')||'').trim()||null,updated_at:new Date().toISOString()}; let error; if(id){ ({error}=await table('student_pauses').update(rec).eq('id',id)); } else { rec.created_by=State.profile.id; ({error}=await table('student_pauses').insert(rec)); } if(error) throw error; await log('pause','Pausa de asistencia actualizada',{student:studentName(userId),start,end,active}); await loadData(true); toast(active?'Pausa guardada. El acceso del alumno quedará bloqueado durante el período indicado.':'Pausa desactivada.'); rerender(); }
   async function endStudentPause(id){ const rec=(State.data.studentPauses||[]).find(p=>p.id===id); if(!rec) return toast('No se encontró la pausa.'); const {error}=await table('student_pauses').update({active:false,end_date:todayIso(),updated_at:new Date().toISOString()}).eq('id',id); if(error) return toast(error.message || 'No se pudo finalizar la pausa.'); await log('pause','Pausa finalizada',{student:studentName(rec.user_id)}); await loadData(true); toast('Pausa finalizada. El alumno podrá volver a acceder.'); rerender(); }
   async function saveAttendance(btn){ if(pausedOnDate(btn.dataset.user, btn.dataset.date)) return toast('Este día está dentro de una pausa y no cuenta como asistencia ni como falta.'); const rec={user_id:btn.dataset.user, class_date:btn.dataset.date, scheduled_start:btn.dataset.start||null, scheduled_end:btn.dataset.end||null, class_type:btn.dataset.classType||'group', status:btn.dataset.t16Attendance, updated_at:new Date().toISOString()}; const { error } = await State.client.from('attendance_records').upsert(rec,{onConflict:'user_id,class_date,scheduled_start'}); if(error) throw error; await loadData(true); rerender(); }
@@ -1648,6 +1713,24 @@
       (!f.subject || r.subject===f.subject)
     );
   }
+  function repositoryManualCreateForm(){
+    const ctx={center:'',stage:State.selectedSubjectStage||'',course:State.selectedSubjectCourse||'',subject:'',unit:'Unidad 1'};
+    const dynamic = (State.data.subjects || []).map(s => s.subject).filter(Boolean);
+    const allSubjects = [...new Set(Object.values(subjectCatalog).flat().concat(dynamic, ['Apoyo personalizado','Tutoría']).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    return `<details class="window-panel repo-create-panel"><summary><span>Crear material directamente en el repositorio</span><em>No se publica aún al alumnado</em></summary>
+      <form id="t78RepoMaterialForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid repo-create-form">
+        ${repositoryClassificationFields(ctx,'repoNew')}
+        <label>Materia<select name="subject" required><option value="">Seleccionar materia</option>${allSubjects.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('')}</select></label>
+        <label>Unidad didáctica<input name="unit" value="Unidad 1" placeholder="Unidad 1"></label>
+        <label>Tipo<select name="materialType"><option value="apuntes">Material</option><option value="tarea">Tarea o actividad</option><option value="test">Test externo</option><option value="juego">Juego</option></select></label>
+        <label>Título<input name="title" maxlength="120" required placeholder="Título del material"></label>
+        <label class="full-row">Contenido<textarea name="body" rows="5" maxlength="1800" placeholder="Descripción o instrucciones del material"></textarea></label>
+        <label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..."></label>
+        <label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${n===16?'selected':''}>${n}</option>`).join('')}</select></label>
+        <button class="primary-btn full-row" type="submit">Guardar en repositorio</button>
+      </form>
+    </details>`;
+  }
   function materialRepositoryContent(){
     if(!roleTeacher()) return '<div class="empty-state">Solo la profesora puede acceder al repositorio docente.</div>';
     const rows=(State.data.materialRepository||[]).filter(x=>x && x.active!==false);
@@ -1663,15 +1746,16 @@
     const centers = repoUnique([...centersFromStudents(), ...rows.map(r=>r.center)]);
     const list = repositoryGroupedList(visibleRows);
     const summary = repositoryCenterOverview(rows, f);
-    return `<section class="repository-tool repository-tool-v77">
+    return `<section class="repository-tool repository-tool-v78">
       <section class="repository-hero window-panel">
         <div>
           <p class="eyebrow">Repositorio privado docente</p>
-          <h3>Materiales organizados por centros, cursos y materias</h3>
-          <p class="meta">Todo material publicado en una materia queda conservado aquí. Desde este repositorio puedes localizarlo por centro, curso, materia y unidad, y republicarlo visible u oculto cuando lo necesites.</p>
+          <h3>Materiales asociados a centros, etapas, cursos y materias</h3>
+          <p class="meta">Cada material queda vinculado al centro educativo, etapa, curso, asignatura y unidad correspondientes para poder republicarlo en el lugar correcto.</p>
         </div>
         <button type="button" class="repo-stats repo-stats-button" onclick="return window.TribecaRepositoryShowAll(event)" title="Ver todos los materiales guardados"><strong>${rows.length}</strong><span>material${rows.length===1?'':'es'} guardado${rows.length===1?'':'s'}</span></button>
       </section>
+      ${repositoryManualCreateForm()}
       ${summary}
       <section class="window-panel repository-filters">
         <div class="repo-filter-head">
@@ -1748,6 +1832,12 @@
     }).join('');
   }
   function centersFromStudents(){ return (State.data.students||[]).map(s=>s.center); }
+  function repositoryClassificationMiniForm(r){
+    const centerValues = repoUnique([...centersFromStudents(), ...(State.data.materialRepository||[]).map(x=>x.center), ...centers]);
+    const stageValues = r.course ? stagesForCourse(r.course) : stages;
+    const courseValues = r.stage ? coursesForStage(r.stage) : dynamicCourses();
+    return `<details class="repo-classify-box"><summary>Cambiar clasificación</summary><form onsubmit="return window.TribecaRepositorySaveClassification(this,event)" class="repo-classify-form"><input type="hidden" name="id" value="${safe(r.id)}"><label>Centro<select name="center"><option value="">Sin centro</option>${repoOptions(centerValues,r.center||'',false)}</select></label><label>Etapa<select name="stage"><option value="">Sin etapa</option>${repoOptions(stageValues,r.stage||'',false)}</select></label><label>Curso<select name="course"><option value="">Sin curso</option>${repoOptions(courseValues,r.course||'',false)}</select></label><label>Materia<input name="subject" value="${safe(r.subject||'')}"></label><label>Unidad<input name="unit" value="${safe(r.unit_title||r.unit||'Unidad 1')}"></label><button type="submit" class="secondary-btn">Guardar clasificación</button></form></details>`;
+  }
   function repositoryMaterialCard(r){
     const meta=materialTypeMeta(r.material_type||r.type||'material');
     const att=normalizeAttachments(r);
@@ -1757,12 +1847,55 @@
       <h3>${safe(r.title||'Material sin título')}</h3>
       <p>${safe(snippet)}${snippet.length>=210?'…':''}</p>
       <small>${att.length?`${att.length} adjunto${att.length===1?'':'s'}`:'Sin adjuntos'}${r.link_url?' · enlace':''}</small>
+      ${repositoryClassificationMiniForm(r)}
       <div class="inline-actions repo-actions">
         <button type="button" class="primary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,true)">Publicar visible</button>
         <button type="button" class="secondary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,false)">Publicar oculto</button>
         <button type="button" data-t70-repo-delete="${safe(r.id)}" onclick="return window.TribecaRepositoryDeleteDirect(this,event)">Eliminar</button>
       </div>
     </article>`;
+  }
+  async function saveRepositoryMaterial(form){
+    if(!roleTeacher()) return;
+    const fd=new FormData(form);
+    const payload={
+      source_material_id:null,
+      title:fd.get('title') || 'Material sin título',
+      body:fd.get('body') || '',
+      description:fd.get('body') || '',
+      content:fd.get('body') || '',
+      image_url:null,
+      link_url:fd.get('linkUrl') || null,
+      font_size:Number(fd.get('fontSize')||16),
+      center:fd.get('repoNewCenter') || null,
+      stage:fd.get('repoNewStage') || null,
+      course:fd.get('repoNewCourse') || null,
+      subject:fd.get('subject') || 'Apoyo personalizado',
+      unit_title:fd.get('unit') || 'Unidad 1',
+      unit:fd.get('unit') || 'Unidad 1',
+      material_type:fd.get('materialType') || 'apuntes',
+      attachments:[],
+      created_by:State.profile.id,
+      active:true,
+      notes:'Creado directamente en el repositorio docente.'
+    };
+    if(!payload.center || !payload.stage || !payload.course) throw new Error('Selecciona centro, etapa y curso para clasificar el material.');
+    await persistSupabaseRecord('teacher_material_repository', payload, null);
+    await log('repository','Material creado directamente en repositorio',{title:payload.title,center:payload.center,stage:payload.stage,course:payload.course,subject:payload.subject});
+    await loadData(true);
+    toast('Material creado en el repositorio docente.');
+    form.reset();
+    rerender();
+  }
+  async function saveRepositoryClassification(form){
+    const fd=new FormData(form); const id=fd.get('id');
+    if(!id) return;
+    const unit=fd.get('unit') || 'Unidad 1';
+    const payload={center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, subject:fd.get('subject')||'Apoyo personalizado', unit_title:unit, unit};
+    await persistSupabaseRecord('teacher_material_repository', payload, id);
+    await loadData(true);
+    toast('Clasificación del material actualizada.');
+    rerender();
   }
   async function saveMaterialToRepository(materialId){
     if(!roleTeacher()) return toast('Solo la profesora puede guardar materiales en el repositorio.');
@@ -1787,9 +1920,9 @@
       font_size:Number(r.font_size||16),
       target_scope:'class',
       target_user_ids:[],
-      center:r.center || State.profile?.center || null,
-      stage:r.stage || State.profile?.stage || null,
-      course:r.course || State.profile?.course || null,
+      center:r.center || null,
+      stage:r.stage || null,
+      course:r.course || null,
       created_by:State.profile.id,
       hidden:!visible,
       subject:r.subject || 'Apoyo personalizado',
@@ -1799,10 +1932,11 @@
       badge_codes:[],
       attachments:normalizeAttachments(r)
     };
+    if(!payload.center || !payload.stage || !payload.course) throw new Error('Antes de publicar, clasifica el material con centro, etapa y curso.');
     await persistSupabaseRecord('subject_materials', payload, null);
-    await log('repository', visible?'Material republicado visible':'Material republicado oculto',{title:payload.title,subject:payload.subject});
+    await log('repository', visible?'Material republicado visible':'Material republicado oculto',{title:payload.title,subject:payload.subject,center:payload.center,stage:payload.stage,course:payload.course});
     await loadData(true);
-    toast(visible?'Material publicado y visible en la materia.':'Material publicado como oculto. Podrás mostrarlo cuando lo necesites.');
+    toast(visible?'Material publicado y visible en la materia correspondiente.':'Material publicado como oculto en la materia correspondiente. Podrás mostrarlo cuando lo necesites.');
     rerender();
   }
   async function deleteRepositoryMaterial(repoId){
@@ -1820,6 +1954,7 @@
   window.TribecaRepositoryShowAll=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); ['center','stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); State.profilePanel='profile'; rerender(); return false; };
   window.TribecaRepositoryClearFilters=function(ev){ ev?.preventDefault?.(); ['center','stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); rerender(); return false; };
   window.TribecaRepositorySaveMaterialDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoSave; saveMaterialToRepository(id).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar en el repositorio.'); }); return false; };
+  window.TribecaRepositorySaveClassification=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); saveRepositoryClassification(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar la clasificación.'); }); return false; };
   window.TribecaRepositoryPublishDirect=function(btn,ev,visible=true){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoPublish; publishRepositoryMaterial(id, !!visible).catch(e=>{ console.error(e); toast(e.message||'No se pudo republicar el material.'); }); return false; };
   window.TribecaRepositoryDeleteDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoDelete; deleteRepositoryMaterial(id).catch(e=>{ console.error(e); toast(e.message||'No se pudo eliminar del repositorio.'); }); return false; };
 
@@ -2103,6 +2238,7 @@
       else if(form.id==='t50PauseForm') await saveStudentPause(form);
       else if(form.id==='t18GuidanceForm' || form.id==='t24GuidanceForm') await saveGuidance(form);
       else if(form.id==='t27SubjectForm') await saveSubjectOverride(form);
+      else if(form.id==='t78RepoMaterialForm') await saveRepositoryMaterial(form);
       else if(form.id==='contactForm'){ const fd=new FormData(form); location.href=`mailto:tribecaacademia@gmail.com?subject=${encodeURIComponent('Consulta Tribeca Aula: '+fd.get('topic'))}&body=${encodeURIComponent('Nombre: '+fd.get('name')+'\nTeléfono: '+fd.get('phone')+'\nEmail: '+fd.get('email')+'\n\n'+fd.get('message'))}`; }
     } catch(e){ console.error(e); toast(e.message || 'No se pudo completar la acción.'); }
     finally { setTimeout(()=>{ if(form) form.dataset.tribecaSubmitting = ''; }, 250); }
@@ -2117,10 +2253,10 @@
   function paymentReceiptMarkup(userId, month, opts={}){
     const s=(State.data.students||[]).find(x=>String(x.id)===String(userId)); if(!s) return '';
     const c=calculatePaymentAmount(userId, month); const pay=paymentMonthRecord(userId, month); const bill=(State.data.billing||[]).find(b=>b.user_id===userId)||{};
-    const now=new Date(); const generated=now.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}); const paidText=pay.paid?(pay.paid_date?fmtDate(pay.paid_date):'pagado'):'pendiente de pago'; const code=receiptVerificationCode(userId, month, c.amount);
+    const now=new Date(); const generated=now.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}); const pausedBilling=paymentPausedForMonth(userId,month); const paidText=pausedBilling?'en pausa, excluido de pago':pay.paid?(pay.paid_date?fmtDate(pay.paid_date):'pagado'):'pendiente de pago'; const code=receiptVerificationCode(userId, month, pausedBilling?0:c.amount);
     const tariff=bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual, por clase asistida':'Grupal, cuota fija mensual';
     const logo='assets/tribeca-academia-logo.webp';
-    return `<main class="receipt-slip"><header class="receipt-head"><div class="receipt-brand"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Recibí interno · no factura</span></div></div><div class="receipt-code"><strong>${safe(code)}</strong><span>${safe(generated)}</span></div></header><section class="receipt-title"><h1>RECIBÍ</h1><p>${safe(monthLabel(month))} · ${safe(paymentModeLabel(s))}</p></section><section class="receipt-grid"><div><small>Alumno/a</small><strong>${safe(displayName(s))}</strong><span>${safe(academicLine(s))}</span></div><div><small>Estado</small><strong>${safe(paidText)}</strong><span>${pay.paid_date?fmtDate(pay.paid_date):'Fecha no registrada'}</span></div><div><small>Tarifa</small><strong>${safe(tariff)}</strong><span>${safe(c.detail)}</span></div><div><small>Importe</small><strong class="receipt-amount">${money(c.amount)}</strong><span>${c.present} asist. · ${c.justified} justif. · ${c.paused||0} pausadas</span></div></section><section class="receipt-concept"><strong>Concepto:</strong> apoyo educativo y clases de refuerzo correspondientes a ${safe(monthLabel(month))}.</section><footer class="receipt-sign"><div><small>Recibido por</small><strong>Patricia Trillo</strong></div><div><small>Firma electrónica interna</small><strong>${safe(code)}</strong></div></footer></main>`;
+    return `<main class="receipt-slip"><header class="receipt-head"><div class="receipt-brand"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Recibí interno · no factura</span></div></div><div class="receipt-code"><strong>${safe(code)}</strong><span>${safe(generated)}</span></div></header><section class="receipt-title"><h1>RECIBÍ</h1><p>${safe(monthLabel(month))} · ${safe(paymentModeLabel(s))} · ${safe(paymentMethodLabel(pay.payment_method))}</p></section><section class="receipt-grid"><div><small>Alumno/a</small><strong>${safe(displayName(s))}</strong><span>${safe(academicLine(s))}</span></div><div><small>Estado</small><strong>${safe(paidText)}</strong><span>${pay.paid_date?fmtDate(pay.paid_date):'Fecha no registrada'}</span></div><div><small>Tarifa</small><strong>${safe(tariff)}</strong><span>${safe(c.detail)}</span></div><div><small>Importe</small><strong class="receipt-amount">${money(pausedBilling?0:c.amount)}</strong><span>${c.present} asist. · ${c.justified} justif. · ${c.paused||0} pausadas</span></div><div><small>Forma de pago</small><strong>${safe(paymentMethodLabel(pay.payment_method))}</strong><span>${pay.payment_method?'Registrada':'No indicada'}</span></div></section><section class="receipt-concept"><strong>Concepto:</strong> apoyo educativo y clases de refuerzo correspondientes a ${safe(monthLabel(month))}.</section><footer class="receipt-sign"><div><small>Recibido por</small><strong>Patricia Trillo</strong></div><div><small>Firma electrónica interna</small><strong>${safe(code)}</strong></div></footer></main>`;
   }
   function receiptPrintDocument(title, body){
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(title)}</title><style>@page{size:A4;margin:10mm}*{box-sizing:border-box}body{margin:0;background:#f7f5ee;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.actions{position:sticky;top:0;z-index:2;padding:8px;text-align:right;background:#f7f5ee}.actions button{border:0;border-radius:999px;background:#0b3d22;color:#fffdf8;font-weight:900;padding:8px 12px}.receipt-sheet{display:grid;gap:8mm;align-content:start}.receipt-slip{width:190mm;min-height:86mm;margin:0 auto;background:#fffdf8;border:1px solid #d9cfb7;border-left:5px solid #0b3d22;border-radius:10px;padding:8mm;break-inside:avoid;page-break-inside:avoid}.receipt-head{display:flex;justify-content:space-between;gap:10px;border-bottom:1.5px solid #b99a3b;padding-bottom:6px}.receipt-brand{display:flex;align-items:center;gap:9px}.receipt-brand img{width:34px;height:34px;object-fit:contain}.receipt-brand strong{display:block;font-family:Georgia,serif;font-size:15px;color:#0b3d22}.receipt-brand span,.receipt-code span{display:block;color:#6f6658;font-size:9px;font-weight:750}.receipt-code{text-align:right;font-size:9px;color:#4b443b}.receipt-title{display:flex;align-items:end;justify-content:space-between;margin:8px 0}.receipt-title h1{font-family:Georgia,serif;font-size:22px;letter-spacing:.16em;color:#0b3d22;margin:0}.receipt-title p{margin:0;color:#6f6658;font-weight:850;font-size:10px}.receipt-grid{display:grid;grid-template-columns:1.15fr .85fr 1.15fr .85fr;gap:6px}.receipt-grid div{border:1px solid #e2d8c2;border-radius:8px;padding:7px;background:#fff}.receipt-grid small,.receipt-sign small{display:block;text-transform:uppercase;letter-spacing:.08em;color:#8a753b;font-size:8px;font-weight:900;margin-bottom:3px}.receipt-grid strong{display:block;font-size:11px}.receipt-grid span{display:block;color:#6f6658;font-size:9px;margin-top:2px}.receipt-amount{font-size:16px!important;color:#0b3d22}.receipt-concept{border-left:3px solid #b99a3b;margin:8px 0;padding:5px 0 5px 8px;font-size:10px}.receipt-sign{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid #e2d8c2;padding-top:6px}.receipt-sign strong{font-family:Georgia,serif;font-size:12px}@media print{body{background:white}.actions{display:none}.receipt-slip{margin:0 auto 5mm}}</style></head><body><div class="actions"><button onclick="window.print()">Descargar o guardar como PDF</button></div><section class="receipt-sheet">${body}</section><script>setTimeout(()=>window.print(),350)</script></body></html>`;
@@ -2224,7 +2360,7 @@
       if(ev.target.closest?.('[data-t16-forgot]')){ $('#t16LoginForm').hidden=true; $('#t16ResetForm').hidden=false; return; }
       if(ev.target.closest?.('[data-t16-login]')){ $('#t16ResetForm').hidden=true; $('#t16LoginForm').hidden=false; return; }
     }, true);
-    document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
+    document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
     document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
