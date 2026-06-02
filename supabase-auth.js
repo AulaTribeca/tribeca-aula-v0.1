@@ -940,7 +940,7 @@
     w.document.close();
   }
 
-  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',assignBadge:'Asignar insignia',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',badges:'Mis insignias',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
+  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',assignBadge:'Asignar insignia',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',badges:'Mis insignias',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     $('#profileMenu')?.setAttribute('hidden','');
@@ -2175,101 +2175,90 @@
     const editCourse=edit?.course || State.selectedSubjectCourse || '1.º ESO';
     const editName=edit?.name || '';
     const editYear=edit?.academic_year || currentAcademicYearLabel();
-    const activeRows=rows.filter(c=>c.active!==false);
+    const activeRows=rows.filter(c=>c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
     const hiddenRows=rows.filter(c=>c.hidden || c.active===false);
+    const assignedCount=new Set(activeClassAssignments().map(x=>String(x.user_id))).size;
     const unassigned=unassignedStudents();
-    const byCenter=new Map();
-    activeRows.forEach(c=>{ const center=c.center||'Sin centro educativo'; if(!byCenter.has(center)) byCenter.set(center, []); byCenter.get(center).push(c); });
-    const grouped=[...byCenter.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([center,items])=>`<details class="classroom-center-group" open><summary><span>${safe(center)}</span><em>${items.length} clase${items.length===1?'':'s'}</em></summary><div class="classroom-card-grid">${items.sort((a,b)=>String(a.stage||'').localeCompare(String(b.stage||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es')).map(classroomCard).join('')}</div></details>`).join('');
-    return `<section class="classrooms-tool classrooms-tool-v81">
-      <section class="window-panel classroom-hero">
+    const classCards=activeRows.map((c,i)=>classroomCard(c,i)).join('');
+    return `<section class="classrooms-tool classrooms-tool-v89">
+      <section class="classroom-topbar panel">
         <div>
-          <p class="eyebrow">Nuevo modelo de aula virtual</p>
-          <h3>Clases permanentes y alumnado asignado</h3>
-          <p class="meta">Fase 2: ya puedes asignar alumnado a clases y promocionarlo manualmente de una clase a otra. Las clases permanecen; el alumnado entra o sale según lo decidas.</p>
+          <p class="eyebrow">Panel docente</p>
+          <h2>Clases</h2>
+          <p>Gestiona el aula desde clases permanentes: alumnado, materias, unidades y materiales.</p>
         </div>
-        <div class="classroom-stats"><strong>${activeRows.length}</strong><span>clase${activeRows.length===1?'':'s'} activa${activeRows.length===1?'':'s'}</span></div>
+        <div class="classroom-top-stats">
+          <span><strong>${activeRows.length}</strong> clases</span>
+          <span><strong>${assignedCount}</strong> alumnos asignados</span>
+          <span><strong>${unassigned.length}</strong> sin clase</span>
+        </div>
       </section>
 
-      <section class="window-panel classroom-form-panel">
-        <h3>${editId?'Editar clase':'Crear clase'}</h3>
-        <p class="meta">Ejemplos: “IES Fernando Blanco · 1.º ESO”, “CEIP Praia de Quenxe · 5.º Primaria”.</p>
-        <form id="t80ClassroomForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-form">
+      <details class="classroom-create-drawer window-panel" ${editId?'open':''}>
+        <summary><span>${editId?'Editar clase':'Crear nueva clase'}</span><em>${editId?'Edición activa':'Opcional'}</em></summary>
+        <form id="t80ClassroomForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-form classroom-compact-form">
           <input type="hidden" name="id" value="${safe(editId)}">
           <label>Centro educativo<select name="center" required><option value="">Seleccionar centro</option>${repoOptions(repoUnique([...centersFromStudents(), ...centers, ...rows.map(c=>c.center)]), editCenter, false)}</select></label>
           <label>Etapa<select name="stage" required>${repoOptions(stagesForCourse(editCourse), editStage, false)}</select></label>
           <label>Curso<select name="course" required>${repoOptions(coursesForStage(editStage), editCourse, false)}</select></label>
           <label>Curso académico<input name="academicYear" value="${safe(editYear)}" placeholder="2026/27"></label>
-          <label class="full-row">Nombre visible de la clase<input name="name" maxlength="160" value="${safe(editName)}" placeholder="Se puede dejar vacío para generarlo automáticamente"></label>
+          <label class="full-row">Nombre visible<input name="name" maxlength="160" value="${safe(editName)}" placeholder="Ejemplo: 1.º ESO Fernando Blanco"></label>
           <label class="full-row">Descripción interna<textarea name="description" rows="2" maxlength="600">${safe(edit?.description||'')}</textarea></label>
           <label class="check-line"><input type="checkbox" name="hidden" ${edit?.hidden?'checked':''}> Clase oculta para el alumnado</label>
           <label class="check-line"><input type="checkbox" name="active" ${editId?(edit?.active!==false?'checked':''):'checked'}> Clase activa</label>
           <div class="inline-actions full-row"><button class="primary-btn" type="submit">${editId?'Guardar cambios':'Crear clase'}</button>${editId?'<button class="secondary-btn" type="button" onclick="window.TribecaClassroomCancelEdit && window.TribecaClassroomCancelEdit(event)">Cancelar edición</button>':''}</div>
         </form>
+      </details>
+
+      ${unassigned.length?`<details class="classroom-unassigned-drawer window-panel"><summary><span>Alumnado sin clase activa</span><em>${unassigned.length}</em></summary><div class="classroom-chip-row">${unassigned.map(s=>`<span>${safe(displayName(s))}<small>${safe(academicLine(s))}</small></span>`).join('')}</div></details>`:''}
+
+      <section class="classroom-google-grid">
+        ${classCards || '<div class="empty-state">Todavía no hay clases activas. Crea una clase para empezar.</div>'}
       </section>
 
-      <section class="window-panel classroom-assignment-overview">
-        <h3>Alumnado sin clase activa</h3>
-        <p class="meta">Estos perfiles todavía no están asociados a ninguna clase permanente del nuevo modelo.</p>
-        <div class="classroom-chip-row">${unassigned.length?unassigned.map(s=>`<span>${safe(displayName(s))}<small>${safe(academicLine(s))}</small></span>`).join(''):'<span>Todo el alumnado tiene una clase activa asignada.</span>'}</div>
-      </section>
-
-      <section class="window-panel classroom-visibility-guide">
-        <h3>Visibilidad jerárquica</h3>
-        <p class="meta">La visibilidad funciona de arriba abajo. Si ocultas una clase, no se ve nada de esa clase. Si ocultas una materia, se ocultan sus unidades y materiales. Si ocultas una unidad, se ocultan sus materiales. También puedes ocultar un material concreto.</p>
-        <div class="classroom-chip-row"><span>Clase</span><span>Materia</span><span>Unidad</span><span>Material</span></div>
-      </section>
-
-      <section class="window-panel classroom-roadmap">
-        <h3>Fases del nuevo modelo</h3>
-        <ol>
-          <li><strong>Fase 1</strong>: crear clases permanentes por centro, etapa y curso.</li>
-          <li><strong>Fase 2</strong>: asignar y promocionar alumnado manualmente a clases.</li>
-          <li><strong>Fase 3</strong>: vincular materias, unidades y materiales a cada clase.</li>
-          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li><li><strong>Fase 5</strong>: panel del alumnado basado en clases.</li><li><strong>Fase 6</strong>: migración de materiales antiguos al nuevo modelo y retirada del repositorio del panel principal.</li><li><strong>Fase 7</strong>: gestión completa de materiales desde cada clase, sin depender del sistema antiguo de materias.</li><li><strong>Fase 8</strong>: creación automática de clases desde alumnado actual y bloqueo de materiales sueltos.</li>
-        </ol>
-      </section>
-
-      ${classroomBootstrapPanel()}
-
-      <section class="window-panel classroom-consolidation-guide">
-        <h3>Modelo de clases consolidado</h3>
-        <p class="meta">A partir de esta fase, la gestión ordinaria debe hacerse desde Clases. Además, si existen clases activas, la creación de materiales sueltos queda bloqueada: antes de publicar un material hay que seleccionar su clase.</p>
-      </section>
-
-      <section class="classroom-results">
-        ${grouped || '<div class="empty-state">Todavía no hay clases creadas.</div>'}
-        ${hiddenRows.length?`<details class="classroom-center-group is-muted"><summary><span>Clases ocultas o inactivas</span><em>${hiddenRows.length}</em></summary><div class="classroom-card-grid">${hiddenRows.map(classroomCard).join('')}</div></details>`:''}
-      </section>
+      ${hiddenRows.length?`<details class="classroom-hidden-drawer window-panel"><summary><span>Clases ocultas o inactivas</span><em>${hiddenRows.length}</em></summary><section class="classroom-google-grid is-hidden-list">${hiddenRows.map((c,i)=>classroomCard(c,i+activeRows.length)).join('')}</section></details>`:''}
     </section>`;
   }
-  function classroomCard(c){
+  function classroomCard(c,i=0){
     const subjects=classroomSubjects(c.id);
     const assigned=classroomStudents(c.id);
     const students=assigned.length;
-    const subjectPreview=subjects.slice(0,6).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
-    const rosterPreview=assigned.slice(0,8).map(s=>`<span>${safe(displayName(s))}<small>${safe(s.username||'')}</small></span>`).join('');
-    const label=classroomAutoName(c.center,c.stage,c.course);
-    return `<article class="classroom-card classroom-card-v82 ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
-      <div class="classroom-card-head"><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(c.name||label)}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p><span class="visibility-state ${c.hidden?'is-hidden':'is-visible'}">${c.hidden?'Clase oculta':'Clase visible'}</span></div><strong title="Alumnado asignado">${students}</strong></div>
-      ${c.description?`<p>${safe(c.description)}</p>`:''}
-      <div class="classroom-chip-row classroom-roster-preview">${rosterPreview || '<span>Sin alumnado asignado</span>'}${assigned.length>8?`<span>+${assigned.length-8} más</span>`:''}</div>
-      <div class="classroom-chip-row">${subjects.length?subjectPreview:'<span>Materias pendientes de crear</span>'}</div>
-      ${classroomSubjectsBox(c)}
-      ${classroomLegacyMigrationBox(c)}
-      ${classroomAssignmentBox(c)}
-      <div class="inline-actions">
-        <button type="button" class="secondary-btn" data-t80-edit-class="${safe(c.id)}" onclick="return window.TribecaClassroomEditDirect(this,event)">Editar</button>
-        <button type="button" data-t80-toggle-class="${safe(c.id)}" onclick="return window.TribecaClassroomToggleDirect(this,event)">${c.hidden?'Mostrar':'Ocultar'}</button>
-        <button type="button" data-t80-delete-class="${safe(c.id)}" onclick="return window.TribecaClassroomDeleteDirect(this,event)">Eliminar</button>
-      </div>
+    const subjectPreview=subjects.slice(0,5).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
+    const rosterPreview=assigned.slice(0,4).map(s=>`<span title="${safe(displayName(s))}">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>`).join('');
+    const label=classroomLabel(c);
+    const theme=i%6;
+    return `<article class="classroom-google-card classroom-theme-${theme} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
+      <header class="classroom-google-cover">
+        <div>
+          <p>${safe(c.academic_year||currentAcademicYearLabel())}</p>
+          <h3>${safe(label)}</h3>
+          <span>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</span>
+        </div>
+        <strong>${students}</strong>
+      </header>
+      <section class="classroom-google-body">
+        <div class="classroom-roster-mini">${rosterPreview || '<span>?</span>'}${assigned.length>4?`<em>+${assigned.length-4}</em>`:''}</div>
+        <div class="classroom-subject-mini">${subjectPreview || '<span>Sin materias todavía</span>'}</div>
+      </section>
+      <footer class="classroom-google-actions">
+        <button type="button" title="Editar clase" data-t80-edit-class="${safe(c.id)}" onclick="return window.TribecaClassroomEditDirect(this,event)">Editar</button>
+        <button type="button" title="Visibilidad" data-t80-toggle-class="${safe(c.id)}" onclick="return window.TribecaClassroomToggleDirect(this,event)">${c.hidden?'Mostrar':'Ocultar'}</button>
+        <button type="button" title="Eliminar" data-t80-delete-class="${safe(c.id)}" onclick="return window.TribecaClassroomDeleteDirect(this,event)">Eliminar</button>
+      </footer>
+      <details class="classroom-manage-drawer">
+        <summary><span>Gestionar clase</span><em>Materias, unidades, materiales y alumnado</em></summary>
+        ${c.description?`<p class="meta">${safe(c.description)}</p>`:''}
+        ${classroomSubjectsBox(c)}
+        ${classroomLegacyMigrationBox(c)}
+        ${classroomAssignmentBox(c)}
+      </details>
     </article>`;
   }
   function classroomSubjectsBox(c){
     const subjects=classroomSubjects(c.id);
     const dynamic=(State.data.subjects||[]).map(s=>s.subject).filter(Boolean);
     const opts=[...new Set([...(subjectCatalog[`${c.stage}-${c.course}`]||[]), ...dynamic, 'Apoyo personalizado','Tutoría'])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
-    return `<details class="classroom-subjects-box" open><summary><span>Materias, unidades y materiales</span><em>${subjects.length} materia${subjects.length===1?'':'s'}</em></summary>
+    return `<details class="classroom-subjects-box"><summary><span>Materias, unidades y materiales</span><em>${subjects.length} materia${subjects.length===1?'':'s'}</em></summary>
       <form class="classroom-subject-form" onsubmit="return window.TribecaClassroomAddSubject(this,event)">
         <input type="hidden" name="classId" value="${safe(c.id)}">
         <label>Añadir materia<select name="subject">${opts.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('')}</select></label>
