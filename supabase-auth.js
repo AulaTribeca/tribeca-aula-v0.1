@@ -459,10 +459,25 @@
     if(u && (u.active===false || u.hidden)) return false;
     return true;
   }
+  function isSubjectMaterialRecord(item={}){
+    if(!item || typeof item !== 'object') return false;
+    return !!(item.subject || item.unit_title || item.unit || item.material_type || item.class_subject_id || item.class_unit_id || item.badge_codes || item.embed_code || item.embed_url);
+  }
+  function studentHasNewClassModel(p=State.profile){
+    if(!p) return false;
+    return (State.data.classStudents||[]).some(a=>String(a.user_id)===String(p.id) && a.active!==false && classById(a.class_id));
+  }
+  function hideLegacyMaterialForStudent(item={}, p=State.profile){
+    if(roleTeacher() || !p) return false;
+    if(!isSubjectMaterialRecord(item)) return false;
+    if(item.class_id) return false;
+    return studentHasNewClassModel(p);
+  }
   function visibleForProfile(item={}, p=State.profile) {
     if(!p || !item || typeof item !== 'object') return false;
     if(roleTeacher()) return true;
     if(item.hidden) return false;
+    if(hideLegacyMaterialForStudent(item,p)) return false;
     if(!visibleByClassHierarchy(item,p)) return false;
     const scope = item.target_scope || item.scope || 'all';
     const ids = parseArrayField(item.target_user_ids);
