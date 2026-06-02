@@ -940,7 +940,7 @@
     w.document.close();
   }
 
-  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',assignBadge:'Asignar insignia',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',badges:'Mis insignias',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
+  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',assignBadge:'Asignar insignia',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',badges:'Mis insignias',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     $('#profileMenu')?.setAttribute('hidden','');
@@ -1040,7 +1040,7 @@
       bodyHtml = `<section class="window-panel"><h3>No se pudo cargar esta sección</h3><p class="login-note">${safe(error?.message || 'Error desconocido')}</p></section>`;
     }
 
-    const title = (id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id));
+    const title = (id === 'classroomDetail' && State.currentClassId) ? (classroomLabel(classById(State.currentClassId)||{}) || 'Clase') : ((id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id)));
     main.innerHTML = `<section class="t52-inline-head panel">
       <div>
         <p class="eyebrow">Tribeca Aula</p>
@@ -1105,7 +1105,7 @@
   window.rerenderOpenWindows = rerender;
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -2165,7 +2165,60 @@
   function classroomAutoName(center, stage, course){
     return [course, center].filter(Boolean).join(' · ') || 'Nueva clase';
   }
-  function classroomsContent(){
+  function classroomPeoplePanel(c){
+    const students=classroomStudents(c.id);
+    return `<section class="classroom-people-panel">
+      <header class="classroom-section-title"><div><h3>Alumnado</h3><p>${students.length} alumno${students.length===1?'':'s'} asignado${students.length===1?'':'s'}</p></div></header>
+      <div class="classroom-people-list">${students.length?students.map(s=>`<article class="classroom-person-row"><span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span><div><strong>${safe(displayName(s))}</strong><small>${safe([s.username, academicLine(s)].filter(Boolean).join(' · '))}</small></div></article>`).join(''):'<div class="empty-state">Todavía no hay alumnado asignado a esta clase.</div>'}</div>
+      ${classroomAssignmentBox(c)}
+    </section>`;
+  }
+  function classroomStreamPanel(c){
+    const materials=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+    const latest=materials.slice(0,4);
+    return `<section class="classroom-stream-panel">
+      <header class="classroom-section-title"><div><h3>Tablón</h3><p>Resumen rápido de la clase</p></div></header>
+      <div class="classroom-stream-grid">
+        <article><strong>${classroomSubjects(c.id).length}</strong><span>Materias</span></article>
+        <article><strong>${classroomStudentsCount(c.id)}</strong><span>Alumnos</span></article>
+        <article><strong>${materials.length}</strong><span>Materiales</span></article>
+      </div>
+      <div class="classroom-latest-list">${latest.length?latest.map(m=>`<button type="button" data-t33-open-mat="${safe(m.id)}"><strong>${safe(m.title||'Material sin título')}</strong><small>${safe(m.subject||'Materia')} · ${safe(m.unit_title||m.unit||'Unidad')}</small></button>`).join(''):'<p class="meta">Todavía no hay materiales publicados en esta clase.</p>'}</div>
+    </section>`;
+  }
+  function classroomDetailContent(classId){
+    const c=classById(classId || State.currentClassId);
+    if(!c) return '<div class="empty-state premium-empty">No se encontró esta clase.</div>';
+    const assigned=classroomStudents(c.id);
+    const subjects=classroomSubjects(c.id);
+    const label=classroomLabel(c);
+    return `<section class="classroom-detail-v90">
+      <header class="classroom-detail-hero classroom-theme-${Math.abs(String(c.id||'').split('').reduce((a,ch)=>a+ch.charCodeAt(0),0))%6}">
+        <div>
+          <p>${safe(c.academic_year||currentAcademicYearLabel())}</p>
+          <h2>${safe(label)}</h2>
+          <span>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</span>
+        </div>
+        <strong>${assigned.length}</strong>
+      </header>
+      <nav class="classroom-detail-tabs" aria-label="Apartados de la clase">
+        <a href="#t90-tablon">Tablón</a>
+        <a href="#t90-materias">Materias</a>
+        <a href="#t90-personas">Personas</a>
+      </nav>
+      <section id="t90-tablon">${classroomStreamPanel(c)}</section>
+      <section id="t90-materias" class="classroom-detail-grid">
+        <main>${classroomSubjectsBox(c)}</main>
+        <aside class="classroom-detail-side">
+          <button type="button" class="primary-btn full-width" data-t90-quick-new-subject="${safe(c.id)}">Añadir materia</button>
+          <p class="meta">Abre cada materia para añadir unidades y materiales. El alumnado solo verá lo que esté visible.</p>
+        </aside>
+      </section>
+      <section id="t90-personas">${classroomPeoplePanel(c)}</section>
+    </section>`;
+  }
+
+function classroomsContent(){
     if(!roleTeacher()) return '<div class="empty-state">Solo la profesora puede gestionar clases.</div>';
     const rows=(State.data.classrooms||[]).filter(Boolean);
     const edit=State.pendingClassroomEdit || null;
@@ -2223,49 +2276,48 @@
     const subjects=classroomSubjects(c.id);
     const assigned=classroomStudents(c.id);
     const students=assigned.length;
-    const subjectPreview=subjects.slice(0,5).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
-    const rosterPreview=assigned.slice(0,4).map(s=>`<span title="${safe(displayName(s))}">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>`).join('');
+    const subjectPreview=subjects.slice(0,4).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
+    const rosterPreview=assigned.slice(0,5).map(s=>`<span title="${safe(displayName(s))}">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>`).join('');
     const label=classroomLabel(c);
     const theme=i%6;
-    return `<article class="classroom-google-card classroom-theme-${theme} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
+    return `<article class="classroom-google-card classroom-google-card-v90 classroom-theme-${theme} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}" data-t90-open-class="${safe(c.id)}" tabindex="0" role="button" aria-label="Abrir clase ${safe(label)}">
       <header class="classroom-google-cover">
         <div>
           <p>${safe(c.academic_year||currentAcademicYearLabel())}</p>
           <h3>${safe(label)}</h3>
           <span>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</span>
         </div>
-        <strong>${students}</strong>
+        <strong title="Alumnado asignado">${students}</strong>
       </header>
       <section class="classroom-google-body">
-        <div class="classroom-roster-mini">${rosterPreview || '<span>?</span>'}${assigned.length>4?`<em>+${assigned.length-4}</em>`:''}</div>
+        <div class="classroom-roster-mini">${rosterPreview || '<span>?</span>'}${assigned.length>5?`<em>+${assigned.length-5}</em>`:''}</div>
         <div class="classroom-subject-mini">${subjectPreview || '<span>Sin materias todavía</span>'}</div>
       </section>
-      <footer class="classroom-google-actions">
+      <footer class="classroom-google-actions classroom-card-actions-v90">
+        <button type="button" class="primary-btn" data-t90-open-class-button="${safe(c.id)}">Abrir clase</button>
         <button type="button" title="Editar clase" data-t80-edit-class="${safe(c.id)}" onclick="return window.TribecaClassroomEditDirect(this,event)">Editar</button>
         <button type="button" title="Visibilidad" data-t80-toggle-class="${safe(c.id)}" onclick="return window.TribecaClassroomToggleDirect(this,event)">${c.hidden?'Mostrar':'Ocultar'}</button>
         <button type="button" title="Eliminar" data-t80-delete-class="${safe(c.id)}" onclick="return window.TribecaClassroomDeleteDirect(this,event)">Eliminar</button>
       </footer>
-      <details class="classroom-manage-drawer">
-        <summary><span>Gestionar clase</span><em>Materias, unidades, materiales y alumnado</em></summary>
-        ${c.description?`<p class="meta">${safe(c.description)}</p>`:''}
-        ${classroomSubjectsBox(c)}
-        ${classroomLegacyMigrationBox(c)}
-        ${classroomAssignmentBox(c)}
-      </details>
     </article>`;
   }
   function classroomSubjectsBox(c){
     const subjects=classroomSubjects(c.id);
     const dynamic=(State.data.subjects||[]).map(s=>s.subject).filter(Boolean);
-    const opts=[...new Set([...(subjectCatalog[`${c.stage}-${c.course}`]||[]), ...dynamic, 'Apoyo personalizado','Tutoría'])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
-    return `<details class="classroom-subjects-box"><summary><span>Materias, unidades y materiales</span><em>${subjects.length} materia${subjects.length===1?'':'s'}</em></summary>
-      <form class="classroom-subject-form" onsubmit="return window.TribecaClassroomAddSubject(this,event)">
+    const opts=[...new Set([...(subjectCatalog[`${c.stage}-${c.course}`]||[]), ...dynamic, 'English','Matemáticas','Lengua Castellana','Lingua Galega','Bioloxía','Física e Química','Apoyo personalizado','Tutoría'])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
+    return `<section class="classroom-subjects-box classroom-subjects-box-v90">
+      <header class="classroom-section-title">
+        <div><h3>Materias</h3><p>${subjects.length} materia${subjects.length===1?'':'s'} en esta clase</p></div>
+      </header>
+      <form class="classroom-subject-form classroom-subject-form-v90" onsubmit="return window.TribecaClassroomAddSubject(this,event)">
         <input type="hidden" name="classId" value="${safe(c.id)}">
         <label>Añadir materia<select name="subject">${opts.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('')}</select></label>
-        <button type="submit" class="secondary-btn">Añadir materia</button>
+        <label>Otra materia<input name="subjectCustom" placeholder="Escribir una materia que no esté en la lista"></label>
+        <button type="submit" class="primary-btn">Añadir materia</button>
+        <p class="form-status is-info" data-t90-subject-status></p>
       </form>
-      <div class="classroom-subject-list">${subjects.length?subjects.map(classroomSubjectCard).join(''):'<div class="empty-state">Añade materias a esta clase para organizar unidades y materiales.</div>'}</div>
-    </details>`;
+      <div class="classroom-subject-list classroom-subject-list-v90">${subjects.length?subjects.map(classroomSubjectCard).join(''):'<div class="empty-state">Añade la primera materia para empezar a organizar unidades y materiales.</div>'}</div>
+    </section>`;
   }
   function classroomSubjectCard(s){
     const units=classroomUnitsForSubject(s.id);
@@ -2409,26 +2461,36 @@
     </details>`;
   }
   async function addClassSubject(form){
+    const status=form?.querySelector?.('[data-t90-subject-status]');
+    const setStatus=(msg,kind='info')=>{
+      if(status){ status.textContent=msg; status.className='form-status '+(kind==='ok'?'is-ok':kind==='error'?'is-error':'is-info'); }
+      if(msg) toast(msg);
+    };
     const fd=new FormData(form);
-    const classId=fd.get('classId');
-    const subject=String(fd.get('subject')||'').trim();
-    if(!classId || !subject) throw new Error('Selecciona una materia.');
+    const classId=String(fd.get('classId')||'').trim();
+    const subject=String(fd.get('subjectCustom')||fd.get('subject')||'').trim();
+    if(!classId || !subject){ setStatus('Selecciona o escribe una materia.','error'); return; }
     const existing=(State.data.classSubjects||[]).find(s=>String(s.class_id)===String(classId) && String(s.subject||'').toLowerCase()===subject.toLowerCase());
-    if(existing) return toast('La materia ya existe en esta clase.');
-    await table('tribeca_class_subjects').insert({class_id:classId, subject, sort_order:(State.data.classSubjects||[]).filter(s=>String(s.class_id)===String(classId)).length+1, hidden:false, active:true});
+    if(existing){ setStatus('La materia ya existe en esta clase.','info'); return; }
+    setStatus('Guardando materia…','info');
+    const {error}=await table('tribeca_class_subjects').insert({class_id:classId, subject, sort_order:(State.data.classSubjects||[]).filter(s=>String(s.class_id)===String(classId)).length+1, hidden:false, active:true});
+    if(error){ setStatus(error.message || 'No se pudo añadir la materia.','error'); throw error; }
     await log('classroom','Materia añadida a clase',{class_id:classId,subject});
-    await loadData(true); toast('Materia añadida a la clase.'); rerender();
+    await loadData(true);
+    setStatus(`Materia “${subject}” añadida correctamente.`, 'ok');
+    rerender();
   }
   async function addClassUnit(form){
     const fd=new FormData(form);
-    const classSubjectId=fd.get('classSubjectId');
+    const classSubjectId=String(fd.get('classSubjectId')||'').trim();
     const title=String(fd.get('title')||'').trim();
-    if(!classSubjectId || !title) throw new Error('Escribe el título de la unidad.');
+    if(!classSubjectId || !title){ toast('Escribe el título de la unidad.'); return; }
     const existing=(State.data.classUnits||[]).find(u=>String(u.class_subject_id)===String(classSubjectId) && String(u.title||'').toLowerCase()===title.toLowerCase());
-    if(existing) return toast('La unidad ya existe en esta materia.');
-    await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true});
+    if(existing){ toast('La unidad ya existe en esta materia.'); return; }
+    const {error}=await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true});
+    if(error) throw error;
     await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
-    await loadData(true); toast('Unidad añadida.'); rerender();
+    await loadData(true); toast(`Unidad “${title}” añadida correctamente.`); rerender();
   }
   async function bootstrapClassesFromStudents(){
     if(!roleTeacher()) return toast('Solo la profesora puede crear clases desde alumnado.');
@@ -3008,6 +3070,16 @@
       const inlineHome=ev.target.closest?.('[data-t52-go-home]'); if(inlineHome){ ev.preventDefault(); ev.stopImmediatePropagation(); showHomePage(); return; }
       const dataTool=ev.target.closest?.('[data-tool]'); if(dataTool){ ev.preventDefault(); ev.stopImmediatePropagation(); closeAccountMenu(); openTool(dataTool.dataset.tool); return; }
       const undoBtn=ev.target.closest?.('[data-t30-undo]'); if(undoBtn){ ev.preventDefault(); ev.stopPropagation(); await undoLast(); return; } const teacherTool=ev.target.closest?.('[data-t16-tool]'); if(teacherTool){ ev.preventDefault(); openTool(teacherTool.dataset.t16Tool); return; }
+      const openClassBtn=ev.target.closest?.('[data-t90-open-class-button]');
+      const openClassCard=ev.target.closest?.('[data-t90-open-class]');
+      if(openClassBtn || openClassCard){
+        if(openClassCard && !openClassBtn && ev.target.closest?.('button,a,input,select,textarea,label,summary,details')) return;
+        ev.preventDefault(); ev.stopPropagation();
+        const classId=openClassBtn?.dataset?.t90OpenClassButton || openClassCard?.dataset?.t90OpenClass;
+        renderInlineSection('classroomDetail',{classId});
+        return;
+      }
+      const quickSubject=ev.target.closest?.('[data-t90-quick-new-subject]'); if(quickSubject){ ev.preventDefault(); ev.stopPropagation(); document.querySelector('.classroom-subject-form-v90 select')?.focus?.(); return; }
       if(ev.target.closest?.('[data-t44-mobile-back],[data-t16-close]')){ const w=ev.target.closest('.tool-window'); State.windows.delete(w?.dataset.window); w?.remove(); return; }
       if(ev.target.closest?.('[data-t16-min]')){ ev.target.closest('.tool-window')?.classList.add('is-hidden'); return; }
       if(ev.target.closest?.('[data-t16-max]')){ ev.target.closest('.tool-window')?.classList.toggle('is-maximized'); return; }
