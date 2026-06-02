@@ -7774,3 +7774,91 @@ body.is-dark .classroom-material-row {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tribeca Aula · versión 84
+   Fase 5: panel del alumnado basado en clases, al estilo aula virtual. */
+.student-classroom-area {
+  display: grid;
+  gap: 1.1rem;
+  margin-top: 1rem;
+}
+
+.student-classroom-card {
+  display: grid;
+  gap: .85rem;
+  border-left: .45rem solid var(--green);
+  background:
+    radial-gradient(circle at top right, rgba(168, 135, 45, .12), transparent 45%),
+    var(--panel-solid);
+}
+
+.student-classroom-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.student-classroom-card > header h3 {
+  margin: .15rem 0 .25rem;
+  font-size: clamp(1.55rem, 2vw, 2.1rem);
+}
+
+.student-classroom-card > header p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.student-classroom-card > header strong {
+  display: grid;
+  place-items: center;
+  min-width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: rgba(16, 63, 36, .10);
+  color: var(--green);
+  font-size: 1.25rem;
+}
+
+.student-class-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: .85rem;
+  margin-top: .25rem;
+}
+
+.class-subject-card {
+  min-height: 18rem;
+}
+
+.class-subject-detail .subject-detail-head {
+  background:
+    linear-gradient(135deg, rgba(16, 63, 36, .94), rgba(35, 78, 52, .88)),
+    var(--panel-solid);
+}
+
+.class-subject-detail .subject-detail-copy p {
+  color: rgba(255,255,255,.84);
+}
+
+body.is-dark .student-classroom-card {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .22);
+}
+
+body.is-dark .student-classroom-card > header strong {
+  background: rgba(212, 175, 55, .14);
+  color: #f2d37c;
+}
+
+@media (max-width: 760px) {
+  .student-classroom-card > header {
+    flex-direction: column;
+  }
+
+  .student-class-subject-grid {
+    grid-template-columns: 1fr;
+  }
+}

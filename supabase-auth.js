@@ -811,12 +811,78 @@
     const unseenAlerts = Math.max(0, alertCount - Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
     return `<section class="teacher-dashboard t16-dashboard"><div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${assignedBadges} insignias asignadas</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span><button type="button" class="undo-chip" data-t30-undo>Deshacer último cambio</button></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div></section>`;
   }
+  function studentAssignedClasses(studentId=State.profile?.id){
+    const assignments=(State.data.classStudents||[]).filter(a=>String(a.user_id)===String(studentId) && a.active!==false);
+    const ids=new Set(assignments.map(a=>String(a.class_id)));
+    return (State.data.classrooms||[]).filter(c=>ids.has(String(c.id)) && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}));
+  }
+  function classSubjectsForStudentClass(classId){
+    return (State.data.classSubjects||[]).filter(s=>String(s.class_id)===String(classId) && s.active!==false && !s.hidden).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.subject||'').localeCompare(String(b.subject||''),'es'));
+  }
+  function visibleClassUnitsForSubject(classSubjectId){
+    return (State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId) && u.active!==false && !u.hidden).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true}));
+  }
+  function materialsForClassSubject(classSubjectId){
+    const s=classSubjectById(classSubjectId);
+    if(!s) return [];
+    return (State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_subject_id||'')===String(classSubjectId) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||''))));
+  }
+  function materialsForClassUnit(classUnitId, classSubjectId=''){
+    const u=classUnitById(classUnitId);
+    if(!u) return [];
+    const s=classSubjectById(classSubjectId || u.class_subject_id);
+    return (State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_unit_id||'')===String(classUnitId) || (s && String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||''))));
+  }
+  function classSubjectProgress(classSubjectId){
+    const mats=materialsForClassSubject(classSubjectId);
+    const total=mats.length;
+    const done=mats.filter(m=>isMaterialCompleted(m.id)).length;
+    const percent=total?Math.round((done/total)*100):0;
+    return {total,done,percent};
+  }
+  function studentClassesMarkup(){
+    const classes=studentAssignedClasses();
+    if(!classes.length) return '';
+    return `<section class="student-classroom-area"><div class="section-heading"><h2>Mis clases</h2><span>${classes.length} clase${classes.length===1?'':'s'} activa${classes.length===1?'':'s'}</span></div>${classes.map(studentClassroomCard).join('')}</section>`;
+  }
+  function studentClassroomCard(c){
+    const subjects=classSubjectsForStudentClass(c.id);
+    const totalMaterials=subjects.reduce((acc,s)=>acc+materialsForClassSubject(s.id).length,0);
+    const done=subjects.reduce((acc,s)=>acc+materialsForClassSubject(s.id).filter(m=>isMaterialCompleted(m.id)).length,0);
+    const percent=totalMaterials?Math.round((done/totalMaterials)*100):0;
+    return `<article class="student-classroom-card panel">
+      <header><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div><strong>${percent}%</strong></header>
+      <div class="progress"><span style="width:${percent}%"></span></div>
+      <small>${done}/${totalMaterials} materiales hechos.</small>
+      <div class="student-class-subject-grid">${subjects.length?subjects.map((s,i)=>classSubjectCard(s,i,c)).join(''):'<div class="empty-state">Esta clase todavía no tiene materias visibles.</div>'}</div>
+    </article>`;
+  }
+  function classSubjectCard(s,i,c){
+    const vis=subjectVisual(s.subject);
+    const units=visibleClassUnitsForSubject(s.id);
+    const mats=materialsForClassSubject(s.id);
+    const pr=classSubjectProgress(s.id);
+    return `<article class="subject-card class-subject-card subject-${i%6}" tabindex="0" role="button" data-class-subject="${safe(s.id)}" data-class-id="${safe(c.id)}" data-subject="${safe(s.subject)}" style="--subject-color:${vis.color}">
+      <div class="subject-top"><span>${safe(c.course||'')}</span></div>
+      <div class="subject-mark">${safe(vis.glyph)}</div>
+      <h3>${safe(s.subject)}</h3>
+      <p>${mats.length} publicaciones · ${units.length||0} unidades</p>
+      <div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div>
+      <div class="progress"><span style="width:${pr.percent}%"></span></div>
+      <small>${pr.done}/${pr.total} publicaciones hechas.</small>
+    </article>`;
+  }
   function studentHome() {
     const p=State.profile; const diffs=State.data.difficulties||[]; const grades=State.data.grades||[]; const fails=grades.filter(g=>Number(g.grade)<5).length; const subjects=subjectList(p);
-    const q=dailyQuote(); return `<section class="hero-card panel"><div class="hero-main"><p class="eyebrow">Panel personal de aprendizaje</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span> <span class="wave">👋</span></h1><p>${new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p><p class="muted">${safe(academicLine(p))}</p></div><div class="hero-quote-block"><blockquote>“${safe(q.text)}”<cite>${safe(q.author)}</cite></blockquote><img class="hero-watermark" src="assets/watermark-tribeca.png" alt="" aria-hidden="true"></div></section><section class="quick-grid"><article class="quick-card panel" data-tool="guidance" role="button"><span class="quick-icon">${toolIcon('guidance')}</span><h2>Orientación académica</h2><p>Tests vocacionales, inteligencia emocional, itinerarios, Bachillerato, FP y recursos para decidir mejor.</p></article><article class="quick-card panel" data-tool="badges" role="button"><span class="quick-icon">${toolIcon('badges')}</span><h2>Mis insignias</h2><p>${studentBadgeSummary()}</p></article><article class="quick-card panel" data-tool="difficulties" role="button"><span class="quick-icon">${toolIcon('difficulties')}</span><h2>Mis materias con dificultades</h2><p>${diffs.length?diffs.map(d=>safe(d.subject)).join(', '):'Indica dónde necesitas más refuerzo.'}</p></article><article class="quick-card panel" data-tool="grades" role="button"><span class="quick-icon">${toolIcon('grades')}</span><h2>Mis calificaciones</h2><p>${fails?`${fails} calificación/es suspensa/s`:grades.length?`${grades.length} calificaciones registradas`:'Registra tus notas del centro escolar.'}</p></article></section><section class="section-heading"><h2>Mis materias</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    const classMarkup=studentClassesMarkup();
+    const legacySubjects = classMarkup ? '' : `<section class="section-heading"><h2>Mis materias</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    const q=dailyQuote(); return `<section class="hero-card panel"><div class="hero-main"><p class="eyebrow">Panel personal de aprendizaje</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span> <span class="wave">👋</span></h1><p>${new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p><p class="muted">${safe(academicLine(p))}</p></div><div class="hero-quote-block"><blockquote>“${safe(q.text)}”<cite>${safe(q.author)}</cite></blockquote><img class="hero-watermark" src="assets/watermark-tribeca.png" alt="" aria-hidden="true"></div></section><section class="quick-grid"><article class="quick-card panel" data-tool="guidance" role="button"><span class="quick-icon">${toolIcon('guidance')}</span><h2>Orientación académica</h2><p>Tests vocacionales, inteligencia emocional, itinerarios, Bachillerato, FP y recursos para decidir mejor.</p></article><article class="quick-card panel" data-tool="badges" role="button"><span class="quick-icon">${toolIcon('badges')}</span><h2>Mis insignias</h2><p>${studentBadgeSummary()}</p></article><article class="quick-card panel" data-tool="difficulties" role="button"><span class="quick-icon">${toolIcon('difficulties')}</span><h2>Mis materias con dificultades</h2><p>${diffs.length?diffs.map(d=>safe(d.subject)).join(', '):'Indica dónde necesitas más refuerzo.'}</p></article><article class="quick-card panel" data-tool="grades" role="button"><span class="quick-icon">${toolIcon('grades')}</span><h2>Mis calificaciones</h2><p>${fails?`${fails} calificación/es suspensa/s`:grades.length?`${grades.length} calificaciones registradas`:'Registra tus notas del centro escolar.'}</p></article></section>${classMarkup || legacySubjects}`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); return `<article class="subject-card subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}"><div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} publicaciones · ${units.size||0} unidades</p><div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} publicaciones hechas.</small></article>`; }
-  function bindSubjectCards(){ $$('.subject-card[data-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); }
+  function bindSubjectCards(){ 
+    $$('.subject-card[data-class-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('classSubjectDetail', {classSubjectId:card.dataset.classSubject, classId:card.dataset.classId, subject:card.dataset.subject});});});
+    $$('.subject-card[data-subject]:not([data-class-subject])').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); 
+  }
   function studentBadgeSummary(){ const earned=(State.data.userBadges||[]).filter(b=>b.user_id===State.profile?.id || b.student_id===State.profile?.id).length; if(earned) return `${earned} insignia${earned===1?'':'s'} asignada${earned===1?'':'s'} por la profesora`; return 'Sin insignias todavía.'; }
 
   function completionRows(){ return State.data.materialCompletions || []; }
@@ -906,6 +972,8 @@
   }
   function standaloneSubjectsContent(){
     const p=State.profile;
+    const classMarkup=studentClassesMarkup();
+    if(classMarkup) return `<section class="t36-standalone-head panel"><p class="eyebrow">Mis clases</p><h1>Clases de ${safe(displayName(p))}</h1><p>${safe(academicLine(p))}</p></section>${classMarkup}`;
     const subjects=subjectList(p);
     return `<section class="t36-standalone-head panel"><p class="eyebrow">Mis materias</p><h1>Materias de ${safe(p?.course||'')}</h1><p>${safe(academicLine(p))}</p></section><section class="subjects-grid t36-standalone-subjects" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
@@ -928,7 +996,7 @@
       catch(error) { console.error(`[Tribeca Aula] Error al abrir página ${id}:`, error); bodyHtml = `<section class="window-panel"><h3>No se pudo cargar esta página</h3><p class="login-note">${safe(error?.message || 'Error desconocido')}</p></section>`; }
       main.innerHTML = `<section class="t36-standalone-head panel"><p class="eyebrow">Tribeca Aula</p><h1>${safe(titleMap[id]||id)}</h1></section><section class="t36-standalone-tool">${bodyHtml}</section>`;
       wireManagedForms(main);
-      $$('.subject-card[data-subject]', main).forEach(card=>card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail',{subject:card.dataset.subject});}));
+      bindSubjectCards();
       if(id==='announcements') visibleAnnouncements().forEach(a=>localStorage.setItem(`tribeca-ann-seen-${a.id}`,'1'));
     }
     updateBadges();
@@ -942,6 +1010,8 @@
     State.activeInlineSection = id;
     State.activeInlineOptions = opts || {};
     if(opts.subject) State.currentSubject = opts.subject;
+    if(opts.classSubjectId) State.currentClassSubjectId = opts.classSubjectId;
+    if(opts.classId) State.currentClassId = opts.classId;
     State.windows.forEach(win => win?.remove?.());
     State.windows.clear();
     document.body.classList.remove('is-standalone-page');
@@ -972,7 +1042,7 @@
       bodyHtml = `<section class="window-panel"><h3>No se pudo cargar esta sección</h3><p class="login-note">${safe(error?.message || 'Error desconocido')}</p></section>`;
     }
 
-    const title = id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id);
+    const title = (id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id));
     main.innerHTML = `<section class="t52-inline-head panel">
       <div>
         <p class="eyebrow">Tribeca Aula</p>
@@ -983,11 +1053,7 @@
     <section class="t52-inline-tool ${safe(id)}-inline">${bodyHtml}</section>`;
 
     wireManagedForms(main);
-    $$('.subject-card[data-subject]', main).forEach(card => card.addEventListener('click', ev => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      renderInlineSection('subjectDetail', {subject: card.dataset.subject});
-    }));
+    bindSubjectCards();
     if(id === 'announcements') visibleAnnouncements().forEach(a => localStorage.setItem(`tribeca-ann-seen-${a.id}`, '1'));
     if(id === 'teacherAlerts' && roleTeacher()) localStorage.setItem(`tribeca-alerts-seen-${State.profile.id}`, String(teacherAlertCount()));
     window.scrollTo({top: 0, behavior: 'smooth'});
@@ -1041,7 +1107,7 @@
   window.rerenderOpenWindows = rerender;
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -1712,6 +1778,35 @@
   window.TribecaMarkAnnouncementReadDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAnnouncementRead(btn?.dataset?.t73ReadAnn); toast('Anuncio marcado como leído.'); rerender(); return false; };
   window.TribecaMarkAllAnnouncementsRead=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAllAnnouncementsRead(); return false; };
 
+  function classSubjectDetailContent(classSubjectId){
+    const s=classSubjectById(classSubjectId || State.currentClassSubjectId);
+    if(!s) return '<div class="empty-state premium-empty">No se encontró esta materia de clase.</div>';
+    const c=classById(s.class_id) || {};
+    const units=visibleClassUnitsForSubject(s.id);
+    const orphanMaterials=materialsForClassSubject(s.id).filter(m=>!m.class_unit_id && !units.some(u=>String(m.unit_title||m.unit||'')===String(u.title||'')));
+    const vis=subjectVisual(s.subject);
+    const pr=classSubjectProgress(s.id);
+    const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidad todavía no tiene materiales visibles.</div>'}</div></details>`; }).join('');
+    const orphanHtml=orphanMaterials.length?`<details class="subject-unit-card" open><summary><span>Otros materiales</span><em>${orphanMaterials.length}</em></summary><div class="subject-material-list">${orphanMaterials.map(m=>materialCard(m)).join('')}</div></details>`:'';
+    return `<section class="t16-subject-detail subject-detail-premium class-subject-detail">
+      <header class="subject-detail-head subject-0" style="--subject-color:${vis.color}">
+        <div class="subject-detail-emblem">${safe(vis.glyph)}</div>
+        <div class="subject-detail-copy">
+          <span class="subject-detail-kicker">${safe(classroomLabel(c))}</span>
+          <h2>${safe(s.subject)}</h2>
+          <p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))} · ${pr.total} publicaciones · progreso ${pr.percent}%</p>
+          <div class="subject-detail-progress"><span style="width:${pr.percent}%"></span></div>
+        </div>
+      </header>
+      <div class="subject-detail-intro window-panel">
+        <strong>Materiales de esta clase</strong>
+        <p>Estos materiales pertenecen a tu clase concreta. Solo se muestran las materias, unidades y publicaciones que la profesora ha dejado visibles.</p>
+      </div>
+      <div class="subject-units-list">
+        ${unitsHtml}${orphanHtml || (!unitsHtml?'<div class="empty-state premium-empty">Todavía no hay publicaciones visibles en esta materia.</div>':'')}
+      </div>
+    </section>`;
+  }
   function subjectDetailContent(subject){
     const mats=visibleMaterials(subject);
     const byUnit=new Map();
