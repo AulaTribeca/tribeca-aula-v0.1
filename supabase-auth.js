@@ -474,7 +474,24 @@
     return true;
   }
   function visibleAnnouncements() { return (State.data.announcements||[]).filter(x=>visibleForProfile(x)); }
-  function visibleMaterials(subject='') { return (State.data.materials||[]).filter(x=>visibleForProfile(x) && (!subject || x.subject===subject)); }
+  function materialDateValue(m={}){
+    const raw=m.created_at || m.createdAt || m.date || m.updated_at || '';
+    const t=raw ? Date.parse(raw) : NaN;
+    return Number.isFinite(t) ? t : 0;
+  }
+  function materialOrderAsc(a={}, b={}){
+    const d=materialDateValue(a)-materialDateValue(b);
+    if(d) return d;
+    return String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true,sensitivity:'base'});
+  }
+  function unitTitleOrder(a='', b=''){
+    const norm=value=>String(value||'').trim();
+    return norm(a).localeCompare(norm(b),'es',{numeric:true,sensitivity:'base'});
+  }
+  function sortMaterialsAsc(items=[]){
+    return [...items].sort(materialOrderAsc);
+  }
+  function visibleMaterials(subject='') { return sortMaterialsAsc((State.data.materials||[]).filter(x=>visibleForProfile(x) && (!subject || x.subject===subject))); }
   function relevantEvents() {
     const p=State.profile;
     const db = (State.data.events||[]).filter(Boolean).filter(e=>{
@@ -833,13 +850,13 @@
   function materialsForClassSubject(classSubjectId){
     const s=classSubjectById(classSubjectId);
     if(!s) return [];
-    return (State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_subject_id||'')===String(classSubjectId) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||''))));
+    return sortMaterialsAsc((State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_subject_id||'')===String(classSubjectId) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||'')))));
   }
   function materialsForClassUnit(classUnitId, classSubjectId=''){
     const u=classUnitById(classUnitId);
     if(!u) return [];
     const s=classSubjectById(classSubjectId || u.class_subject_id);
-    return (State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_unit_id||'')===String(classUnitId) || (s && String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||''))));
+    return sortMaterialsAsc((State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_unit_id||'')===String(classUnitId) || (s && String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||'')))));
   }
   function classSubjectProgress(classSubjectId){
     const mats=materialsForClassSubject(classSubjectId);
@@ -2086,8 +2103,8 @@
     const s=classSubjectById(classSubjectId || State.currentClassSubjectId);
     if(!s) return '<div class="empty-state premium-empty">No se encontró esta materia de clase.</div>';
     const c=classById(s.class_id) || {};
-    const units=visibleClassUnitsForSubject(s.id);
-    const orphanMaterials=materialsForClassSubject(s.id).filter(m=>!m.class_unit_id && !units.some(u=>String(m.unit_title||m.unit||'')===String(u.title||'')));
+    const units=visibleClassUnitsForSubject(s.id).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || unitTitleOrder(a.title,b.title));
+    const orphanMaterials=sortMaterialsAsc(materialsForClassSubject(s.id).filter(m=>!m.class_unit_id && !units.some(u=>String(m.unit_title||m.unit||'')===String(u.title||''))));
     const vis=subjectVisual(s.subject);
     const pr=classSubjectProgress(s.id);
     const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidad todavía no tiene materiales visibles.</div>'}</div></details>`; }).join('');
@@ -2103,8 +2120,8 @@
         </div>
       </header>
       <div class="subject-detail-intro window-panel">
-        <strong>Materiales de esta clase</strong>
-        <p>Estos materiales pertenecen a tu clase concreta. Solo se muestran las materias, unidades y publicaciones que la profesora ha dejado visibles.</p>
+        <strong>Materiales organizados por unidades didácticas</strong>
+        <p>Las unidades aparecen en orden natural y, dentro de cada unidad, los materiales más recientes quedan al final.</p>
       </div>
       <div class="subject-units-list">
         ${unitsHtml}${orphanHtml || (!unitsHtml?'<div class="empty-state premium-empty">Todavía no hay publicaciones visibles en esta materia.</div>':'')}
@@ -2117,7 +2134,7 @@
     mats.forEach(m=>{ const u=m.unit_title||m.unit||'Unidad 1'; if(!byUnit.has(u)) byUnit.set(u,[]); byUnit.get(u).push(m); });
     const i=subjectList().indexOf(subject);
     const vis=subjectVisual(subject);
-    const units=[...byUnit.entries()];
+    const units=[...byUnit.entries()].sort((a,b)=>unitTitleOrder(a[0],b[0])).map(([u,items])=>[u,sortMaterialsAsc(items)]);
     const course = roleTeacher() ? (State.selectedSubjectCourse || State.profile?.course || '') : (State.profile?.course || '');
     const pr = subjectProgress(subject);
     return `<section class="t16-subject-detail subject-detail-premium">
@@ -2133,7 +2150,7 @@
       ${roleTeacher()?`<div class="subject-teacher-actions premium-actions"><button type="button" class="primary-btn" data-t29-new-material="${safe(subject)}">Publicar nuevo material</button><button type="button" class="secondary-btn" data-t30-subject-edit-by-name="${safe(subject)}">Editar materia</button></div>`:''}
       <div class="subject-detail-intro window-panel">
         <strong>Materiales organizados por unidades didácticas</strong>
-        <p>Abre o cierra cada unidad para consultar apuntes, boletines, pruebas, juegos o enlaces publicados por la profesora.</p>
+        <p>Las unidades aparecen en orden natural. Dentro de cada unidad, las publicaciones más recientes quedan al final.</p>
       </div>
       <div class="subject-units-list">
         ${units.map(([u,items],idx)=>`<details class="subject-unit-card" ${idx===0?'open':''}>
@@ -2143,7 +2160,29 @@
       </div>
     </section>`;
   }
-  function materialCard(m){ const meta=materialTypeMeta(m.material_type||m.type); const done=isMaterialCompleted(m.id); return `<article class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}"><div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>${m.hidden?'<small>Oculto</small>':''}${done&&!roleTeacher()?'<small class="completed-chip">Hecha</small>':''}</div><h3 class="material-title-prominent">${safe(m.title)}</h3>${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}<p class="material-body-text" style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${materialEmbedMarkup(m)}${attachmentList(m)}<div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div></article>`; }
+  function materialCard(m){
+    const meta=materialTypeMeta(m.material_type||m.type);
+    const done=isMaterialCompleted(m.id);
+    const dateLabel=m.created_at ? new Date(m.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+    return `<details class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} material-collapse-card ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}">
+      <summary class="material-collapse-summary">
+        <div class="material-summary-main">
+          <span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>
+          <h3 class="material-title-prominent">${safe(m.title)}</h3>
+          <small>${safe([m.unit_title||m.unit||'', dateLabel].filter(Boolean).join(' · '))}</small>
+        </div>
+        <div class="material-summary-flags">${m.hidden?'<span>Oculto</span>':''}${done&&!roleTeacher()?'<span class="completed-chip">Hecha</span>':''}<span class="material-expand-hint">Abrir</span></div>
+      </summary>
+      <div class="material-collapse-body">
+        ${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}
+        <p class="material-body-text" style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>
+        ${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}
+        ${materialEmbedMarkup(m)}
+        ${attachmentList(m)}
+        <div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div>
+      </div>
+    </details>`;
+  }
 
 
 
@@ -2707,7 +2746,7 @@ function classroomCard(c,i=0){
     </details>`;
   }
   function classroomUnitCard(u,s){
-    const materials=(State.data.materials||[]).filter(m=>String(m.class_unit_id||'')===String(u.id) || (String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||'')));
+    const materials=sortMaterialsAsc((State.data.materials||[]).filter(m=>String(m.class_unit_id||'')===String(u.id) || (String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||''))));
     const matRows=materials.length?`<div class="classroom-material-visibility-list classroom-material-list-v91">${materials.map(classroomMaterialVisibilityRow).join('')}</div>`:'<div class="empty-state">Sin materiales en esta unidad.</div>';
     return `<details class="classroom-unit-card classroom-unit-card-v92 ${u.hidden?'is-hidden-classroom':''}">
       <summary>

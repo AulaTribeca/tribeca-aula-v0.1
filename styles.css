@@ -9922,3 +9922,118 @@ body.is-dark .native-quiz-options button.is-incorrect {
   font-size: clamp(1.35rem, 1.9vw, 2rem);
   line-height: 1.18;
 }
+
+
+/* Tribeca Aula · versión 101
+   Publicaciones contraíbles y orden didáctico natural. */
+.material-collapse-card {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.material-collapse-card > summary.material-collapse-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  cursor: pointer;
+  list-style: none;
+  padding: 1rem 1.15rem;
+  border-radius: 18px;
+}
+
+.material-collapse-card > summary.material-collapse-summary::-webkit-details-marker {
+  display: none;
+}
+
+.material-collapse-card > summary.material-collapse-summary:hover {
+  background: rgba(16,63,36,.045);
+}
+
+.material-summary-main {
+  min-width: 0;
+  display: grid;
+  gap: .35rem;
+}
+
+.material-summary-main .material-title-prominent {
+  margin: .1rem 0;
+  font-size: clamp(1.35rem, 1.8vw, 2.2rem);
+  line-height: 1.1;
+}
+
+.material-summary-main small {
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.material-summary-flags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .35rem;
+  flex: 0 0 auto;
+}
+
+.material-summary-flags > span,
+.material-expand-hint {
+  display: inline-flex;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  background: rgba(16,63,36,.08);
+  color: var(--green);
+  font-size: .78rem;
+  font-weight: 950;
+}
+
+.material-collapse-card[open] .material-expand-hint {
+  background: rgba(168,135,45,.12);
+  color: var(--gold);
+}
+
+.material-collapse-card[open] .material-expand-hint::before {
+  content: 'Cerrar';
+  font-size: .78rem;
+}
+
+.material-collapse-card[open] .material-expand-hint {
+  font-size: 0;
+}
+
+.material-collapse-body {
+  padding: 0 1.15rem 1.1rem;
+  border-top: 1px solid rgba(55,49,34,.08);
+}
+
+.material-collapse-body > img {
+  display: block;
+  max-width: 100%;
+  max-height: 26rem;
+  object-fit: contain;
+  border-radius: 14px;
+  margin: 1rem 0;
+}
+
+.material-collapse-body .material-body-text {
+  margin-top: 1rem;
+}
+
+.subject-material-list {
+  display: grid;
+  gap: .85rem;
+}
+
+body.is-dark .material-collapse-card > summary.material-collapse-summary:hover {
+  background: rgba(212,175,55,.08);
+}
+
+@media (max-width: 760px) {
+  .material-collapse-card > summary.material-collapse-summary {
+    flex-direction: column;
+  }
+
+  .material-summary-flags {
+    justify-content: flex-start;
+  }
+}
