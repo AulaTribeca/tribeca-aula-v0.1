@@ -940,7 +940,7 @@
   }
   function stripEmbedCodeFence(code=''){
     let raw=String(code||'').trim();
-    raw=raw.replace(/^```(?:html|HTML|iframe|IFRAME|javascript|js)?\s*/,'').replace(/\s*```$/,'').trim();
+    raw=raw.replace(/^```(?:html|HTML|iframe|IFRAME|javascript|js|json|JSON)?\s*/,'').replace(/\s*```$/,'').trim();
     return raw;
   }
   function extractIframeSrc(code=''){
@@ -974,27 +974,137 @@
     if(/<!doctype|<html[\s>]/i.test(raw)) return raw;
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${raw}</body></html>`;
   }
+  function extractBalancedArrayLiteral(source='', startAt=0){
+    const src=String(source||'');
+    const start=src.indexOf('[', Math.max(0,startAt));
+    if(start<0) return '';
+    let depth=0, quote='', esc=false, lineComment=false, blockComment=false;
+    for(let i=start;i<src.length;i++){
+      const ch=src[i], next=src[i+1];
+      if(lineComment){ if(ch==='\n') lineComment=false; continue; }
+      if(blockComment){ if(ch==='*' && next==='/'){ blockComment=false; i++; } continue; }
+      if(quote){ if(esc){ esc=false; continue; } if(ch==='\\'){ esc=true; continue; } if(ch===quote) quote=''; continue; }
+      if(ch==='/' && next==='/'){ lineComment=true; i++; continue; }
+      if(ch==='/' && next==='*'){ blockComment=true; i++; continue; }
+      if(ch==='"' || ch==="'" || ch==='`'){ quote=ch; continue; }
+      if(ch==='[') depth++;
+      if(ch===']'){
+        depth--;
+        if(depth===0) return src.slice(start,i+1);
+      }
+    }
+    return '';
+  }
+  function normalizeQuizPayload(payload){
+    let raw=payload;
+    if(Array.isArray(raw)) raw={questions:raw};
+    if(raw?.quizData && Array.isArray(raw.quizData)) raw={...raw, questions:raw.quizData};
+    if(raw?.items && Array.isArray(raw.items)) raw={...raw, questions:raw.items};
+    if(!raw || !Array.isArray(raw.questions)) return null;
+    const questions=raw.questions.map(q=>{
+      const options=q.opts || q.options || q.answers || q.choices || [];
+      return {
+        q:String(q.q || q.question || q.text || q.statement || '').trim(),
+        opts:(options||[]).map(o=>{
+          if(typeof o==='string') return {t:o,c:false,r:''};
+          return {t:String(o.t || o.text || o.label || o.answer || '').trim(), c:!!(o.c || o.correct || o.is_correct), r:String(o.r || o.reason || o.feedback || o.explanation || '').trim()};
+        }).filter(o=>o.t)
+      };
+    }).filter(q=>q.q && q.opts.length);
+    if(!questions.length) return null;
+    return {type:'tribeca-quiz', title:String(raw.title || raw.name || 'Test interactivo'), questions};
+  }
+  function parseQuizFromInteractiveCode(code=''){
+    const raw=stripEmbedCodeFence(code);
+    if(!raw) return null;
+    if(raw.startsWith('tribeca-quiz-json::')){
+      try{return normalizeQuizPayload(JSON.parse(raw.slice('tribeca-quiz-json::'.length)));}catch(_e){return null;}
+    }
+    if(/^\s*[\[{]/.test(raw)){
+      try{return normalizeQuizPayload(JSON.parse(raw));}catch(_e){}
+    }
+    const quizIdx=raw.search(/\bquizData\b/);
+    if(quizIdx>=0){
+      const arr=extractBalancedArrayLiteral(raw, quizIdx);
+      if(arr){
+        try{return normalizeQuizPayload(Function(`"use strict"; return (${arr});`)());}
+        catch(error){ console.warn('[Tribeca Aula] No se pudo extraer quizData:', error); }
+      }
+    }
+    return null;
+  }
+  function quizPayloadToStorage(payload){
+    const q=normalizeQuizPayload(payload);
+    return q ? `tribeca-quiz-json::${JSON.stringify(q)}` : '';
+  }
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
+    const quiz=parseQuizFromInteractiveCode(code);
+    if(quiz) return {src:'', mode:'quiz', html:'', quiz};
     if(code){
       const iframeSrc=extractIframeSrc(code);
-      if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:''};
-      return {src:'', mode:'html', html:normalizeEmbeddedHtml(code)};
+      if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:'', quiz:null};
+      return {src:'', mode:'html', html:normalizeEmbeddedHtml(code), quiz:null};
     }
-    if(url) return {src:url, mode:'url', html:''};
-    return {src:'', mode:'', html:''};
+    if(url) return {src:url, mode:'url', html:'', quiz:null};
+    return {src:'', mode:'', html:'', quiz:null};
+  }
+  function nativeQuizMarkup(quiz){
+    if(!quiz?.questions?.length) return '';
+    return `<section class="material-embed-block native-quiz-shell"><div><strong>Recurso interactivo</strong><small>Test nativo de Tribeca Aula</small></div><div class="native-quiz-block" data-t99-quiz="${safe(encodeBase64Utf8(JSON.stringify(quiz)))}"><p>Cargando test…</p></div></section>`;
   }
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
+    if(source.mode==='quiz') return nativeQuizMarkup(source.quiz);
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const encoded=source.html ? encodeBase64Utf8(source.html) : '';
     const srcAttr = source.src ? ` src="${safe(source.src)}"` : ' src="about:blank"';
     return `<section class="material-embed-block material-embed-block-v98"><div><strong>Recurso interactivo</strong><small>${source.mode==='html'?'Código HTML insertado':source.mode==='iframe'?'Iframe insertado':'URL embebida'}</small></div><iframe title="Recurso interactivo" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads"${srcAttr} data-t98-embed-html="${safe(encoded)}" style="min-height:${height}px"></iframe>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir recurso en pestaña nueva</a>`:''}</section>`;
   }
+  function renderNativeQuiz(container){
+    if(!container || container.dataset.t99Rendered==='1') return;
+    let quiz=null;
+    try{ quiz=JSON.parse(decodeBase64Utf8(container.dataset.t99Quiz||'')); }catch(_e){ quiz=null; }
+    quiz=normalizeQuizPayload(quiz);
+    if(!quiz){ container.innerHTML='<p>No se pudo cargar el test.</p>'; container.dataset.t99Rendered='error'; return; }
+    let index=0, score=0, answered=false;
+    const total=quiz.questions.length;
+    const draw=()=>{
+      const q=quiz.questions[index]; answered=false;
+      container.innerHTML=`<div class="native-quiz-progress">Pregunta ${index+1} de ${total}</div><h4>${safe(q.q)}</h4><div class="native-quiz-options">${q.opts.map((o,i)=>`<button type="button" data-quiz-opt="${i}">${safe(o.t)}</button>`).join('')}</div><div class="native-quiz-feedback" hidden></div><button type="button" class="native-quiz-next" hidden>${index===total-1?'Ver resultados':'Siguiente pregunta'}</button>`;
+      container.querySelectorAll('[data-quiz-opt]').forEach(btn=>btn.addEventListener('click',()=>{
+        if(answered) return; answered=true;
+        const selected=q.opts[Number(btn.dataset.quizOpt)];
+        const feedback=container.querySelector('.native-quiz-feedback');
+        container.querySelectorAll('[data-quiz-opt]').forEach((b,i)=>{ b.disabled=true; if(q.opts[i].c) b.classList.add('is-correct'); });
+        if(selected?.c){ score++; btn.classList.add('is-correct'); feedback.className='native-quiz-feedback is-correct'; }
+        else { btn.classList.add('is-incorrect'); feedback.className='native-quiz-feedback is-incorrect'; }
+        feedback.textContent=selected?.r || (selected?.c ? 'Correcto.' : 'Revisa la respuesta correcta.');
+        feedback.hidden=false;
+        container.querySelector('.native-quiz-next').hidden=false;
+      }));
+      container.querySelector('.native-quiz-next').addEventListener('click',()=>{
+        index++;
+        if(index<total) draw();
+        else {
+          const pct=Math.round((score/total)*100);
+          container.innerHTML=`<div class="native-quiz-result"><h4>Test completado</h4><strong>${score}/${total}</strong><p>${pct}% de aciertos.</p><button type="button" class="secondary-btn">Repetir test</button></div>`;
+          container.querySelector('button')?.addEventListener('click',()=>{ index=0; score=0; draw(); });
+        }
+      });
+    };
+    container.dataset.t99Rendered='1';
+    draw();
+  }
+  function hydrateNativeQuizzes(root=document){
+    const scope=root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('.native-quiz-block[data-t99-quiz]').forEach(renderNativeQuiz);
+  }
   function hydrateInteractiveEmbeds(root=document){
     const scope=root && root.querySelectorAll ? root : document;
+    hydrateNativeQuizzes(scope);
     scope.querySelectorAll('iframe[data-t98-embed-html]:not([data-t98-ready])').forEach(frame=>{
       const encoded=frame.getAttribute('data-t98-embed-html')||'';
       if(!encoded){ frame.dataset.t98Ready='1'; return; }
@@ -1024,9 +1134,12 @@
     }catch(_e){}
   }
   ensureEmbedHydrationObserver();
-
   function materialEmbedMarkupForNewWindow(m={}){
     const source=materialEmbedSource(m);
+    if(source.mode==='quiz'){
+      const encoded=encodeBase64Utf8(JSON.stringify(source.quiz));
+      return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>Test nativo de Tribeca Aula</small></div><div class="native-quiz-block" data-t99-quiz="${safe(encoded)}"><p>Cargando test…</p></div></section><script>(${renderNativeQuiz.toString()})(document.querySelector('.native-quiz-block'))<\/script>`;
+    }
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     if(source.html){
@@ -1389,14 +1502,21 @@
             <span class="attachment-preview-pill" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span>
           </label>
         </div>
-        <div class="interactive-embed-panel">
-          <h4>Insertar test o juego interactivo</h4>
+        <div class="interactive-embed-panel interactive-embed-panel-v99">
+          <h4>Test o juego interactivo</h4>
+          <p class="meta">Opción recomendada: sube un archivo JSON o HTML. Si el HTML contiene <code>quizData</code>, Tribeca Aula lo convierte en un test nativo, más estable que un iframe.</p>
+          <label class="publication-upload-card interactive-file-card">
+            <strong>Subir recurso interactivo</strong>
+            <small>JSON, HTML, HTM o TXT. El JSON es la opción más limpia para tests.</small>
+            <input name="interactiveFile" type="file" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain">
+            <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún recurso interactivo seleccionado.</span>
+          </label>
           <div class="window-grid">
             <label>URL embebible<input name="embedUrl" type="url" placeholder="https://..." value="${safe(embedUrl)}"></label>
-            <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1200" value="${safe(item.embed_height||520)}"></label>
+            <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
           </div>
-          <label>Código HTML o iframe<textarea name="embedCode" rows="5" maxlength="20000" placeholder="Pega aquí el HTML completo o un iframe. También funciona si viene entre marcas de código.">${safe(embedCode)}</textarea></label>
-          <p class="meta">Prioridad: si pegas código HTML, se usará ese código. Si no, se usará la URL embebible.</p>
+          <label>Código HTML, JSON o iframe<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo o iframe. Para tests, se recomienda JSON o HTML con quizData.">${safe(embedCode)}</textarea></label>
+          <p class="meta">Si subes o pegas JSON de preguntas, el test se mostrará con el motor nativo de Tribeca Aula. Si pegas HTML sin quizData, se intentará mostrar como recurso externo.</p>
         </div>
       </section>
       <footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer>
@@ -3223,6 +3343,33 @@ function classroomCard(c,i=0){
   async function deleteSubjectOverride(id){ if(!confirm('¿Eliminar esta materia personalizada?')) return; const before=(State.data.subjects||[]).find(x=>x.id===id); const rpc=await State.client.rpc('tribeca_delete_subject_override_v30',{p_id:id}); if(rpc.error) throw rpc.error; if(before){ pushUndo('eliminación de materia', async()=>{ await State.client.rpc('tribeca_save_subject_override_v30',{p_payload:before}); }); } await loadData(true); toast('Materia eliminada.'); rerender(); }
   function studentName(id){ const s=(State.data.students||[]).find(x=>x.id===id); if(s) return displayName(s); if(id===State.profile?.id) return displayName(State.profile); return 'Usuario'; }
   function badgeName(code){ return badges.find(b=>b.code===code)?.name || code || 'Insignia'; } function badgeIcon(code){ return badges.find(b=>b.code===code)?.icon || '🏅'; }
+  function readFileAsText(file){
+    if(file?.text) return file.text();
+    return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(String(r.result||'')); r.onerror=reject; r.readAsText(file); });
+  }
+  async function handleInteractiveFile(file, form){
+    if(!file || !form) return;
+    const preview=form.querySelector('#interactiveFilePreview');
+    const embed=form.elements.embedCode;
+    const typeInput=form.elements.publicationKind;
+    const raw=await readFileAsText(file);
+    const quiz=parseQuizFromInteractiveCode(raw);
+    if(quiz){
+      if(embed) embed.value=quizPayloadToStorage(quiz);
+      if(preview) preview.textContent=`${file.name} · test nativo (${quiz.questions.length} preguntas)`;
+      const radios=form.querySelectorAll('input[name="publicationKind"]');
+      radios.forEach(r=>{ r.checked = r.value==='test'; });
+      toast(`Test importado: ${quiz.questions.length} preguntas.`);
+      return;
+    }
+    if(embed) embed.value=raw;
+    if(preview) preview.textContent=`${file.name} · HTML/iframe guardado como recurso interactivo`;
+    const radios=form.querySelectorAll('input[name="publicationKind"]');
+    if(/game|juego/i.test(file.name)) radios.forEach(r=>{ r.checked = r.value==='game'; });
+    else radios.forEach(r=>{ if(r.value==='test') r.checked=true; });
+    toast('Recurso interactivo cargado.');
+  }
+
   function normImage(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); }
 
 
@@ -3397,7 +3544,7 @@ function classroomCard(c,i=0){
     }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
