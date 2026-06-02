@@ -995,21 +995,38 @@
     }
     return '';
   }
+  function quizTruth(value){
+    if(value === true) return true;
+    if(value === false || value == null) return false;
+    const raw=String(value).trim().toLowerCase();
+    return ['true','1','yes','sí','si','correct','correcto','verdadero'].includes(raw);
+  }
   function normalizeQuizPayload(payload){
     let raw=payload;
     if(Array.isArray(raw)) raw={questions:raw};
     if(raw?.quizData && Array.isArray(raw.quizData)) raw={...raw, questions:raw.quizData};
     if(raw?.items && Array.isArray(raw.items)) raw={...raw, questions:raw.items};
+    if(raw?.preguntas && Array.isArray(raw.preguntas)) raw={...raw, questions:raw.preguntas};
     if(!raw || !Array.isArray(raw.questions)) return null;
-    const questions=raw.questions.map(q=>{
-      const options=q.opts || q.options || q.answers || q.choices || [];
-      return {
-        q:String(q.q || q.question || q.text || q.statement || '').trim(),
-        opts:(options||[]).map(o=>{
-          if(typeof o==='string') return {t:o,c:false,r:''};
-          return {t:String(o.t || o.text || o.label || o.answer || '').trim(), c:!!(o.c || o.correct || o.is_correct), r:String(o.r || o.reason || o.feedback || o.explanation || '').trim()};
-        }).filter(o=>o.t)
-      };
+    const questions=raw.questions.map((q,idx)=>{
+      const options=q.opts || q.options || q.answerOptions || q.answer_options || q.answers || q.choices || q.opciones || q.respuestas || [];
+      const text=String(q.q || q.question || q.text || q.statement || q.prompt || q.enunciado || q.pregunta || '').trim();
+      const hint=String(q.hint || q.ayuda || q.clue || '').trim();
+      const normalizedOptions=(options||[]).map(o=>{
+        if(typeof o==='string') return {t:o,c:false,r:''};
+        const t=String(o.t || o.text || o.label || o.answer || o.option || o.value || o.respuesta || '').trim();
+        const c=quizTruth(o.c ?? o.correct ?? o.is_correct ?? o.isCorrect ?? o.correcta ?? o.esCorrecta ?? o.valid ?? o.right);
+        const r=String(o.r || o.rationale || o.reason || o.feedback || o.explanation || o.explicacion || o.retroalimentacion || '').trim();
+        return {t,c,r};
+      }).filter(o=>o.t);
+      const hasCorrect=normalizedOptions.some(o=>o.c);
+      if(!hasCorrect && Number.isInteger(q.correctIndex) && normalizedOptions[q.correctIndex]) normalizedOptions[q.correctIndex].c=true;
+      if(!hasCorrect && Number.isInteger(q.correct_index) && normalizedOptions[q.correct_index]) normalizedOptions[q.correct_index].c=true;
+      if(!hasCorrect && q.correctAnswer){
+        const answer=String(q.correctAnswer).trim().toLowerCase();
+        normalizedOptions.forEach(o=>{ if(o.t.toLowerCase()===answer) o.c=true; });
+      }
+      return {q:text || `Pregunta ${idx+1}`, hint, opts:normalizedOptions};
     }).filter(q=>q.q && q.opts.length);
     if(!questions.length) return null;
     return {type:'tribeca-quiz', title:String(raw.title || raw.name || 'Test interactivo'), questions};
@@ -1040,12 +1057,14 @@
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
-    const quiz=parseQuizFromInteractiveCode(code);
+    const clean=stripEmbedCodeFence(code);
+    const quiz=parseQuizFromInteractiveCode(clean);
     if(quiz) return {src:'', mode:'quiz', html:'', quiz};
-    if(code){
-      const iframeSrc=extractIframeSrc(code);
+    if(clean){
+      if(/^\s*[\[{]/.test(clean)) return {src:'', mode:'quizError', html:'', quiz:null};
+      const iframeSrc=extractIframeSrc(clean);
       if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:'', quiz:null};
-      return {src:'', mode:'html', html:normalizeEmbeddedHtml(code), quiz:null};
+      return {src:'', mode:'html', html:normalizeEmbeddedHtml(clean), quiz:null};
     }
     if(url) return {src:url, mode:'url', html:'', quiz:null};
     return {src:'', mode:'', html:'', quiz:null};
@@ -1057,6 +1076,7 @@
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
     if(source.mode==='quiz') return nativeQuizMarkup(source.quiz);
+    if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test. Comprueba que contiene <code>questions</code> y opciones en <code>answerOptions</code>, <code>options</code> u <code>opts</code>.</p></section>`;
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const encoded=source.html ? encodeBase64Utf8(source.html) : '';
@@ -1073,7 +1093,7 @@
     const total=quiz.questions.length;
     const draw=()=>{
       const q=quiz.questions[index]; answered=false;
-      container.innerHTML=`<div class="native-quiz-progress">Pregunta ${index+1} de ${total}</div><h4>${safe(q.q)}</h4><div class="native-quiz-options">${q.opts.map((o,i)=>`<button type="button" data-quiz-opt="${i}">${safe(o.t)}</button>`).join('')}</div><div class="native-quiz-feedback" hidden></div><button type="button" class="native-quiz-next" hidden>${index===total-1?'Ver resultados':'Siguiente pregunta'}</button>`;
+      container.innerHTML=`<div class="native-quiz-progress">Pregunta ${index+1} de ${total}</div><h4>${safe(q.q)}</h4>${q.hint?`<p class="native-quiz-hint">${safe(q.hint)}</p>`:''}<div class="native-quiz-options">${q.opts.map((o,i)=>`<button type="button" data-quiz-opt="${i}">${safe(o.t)}</button>`).join('')}</div><div class="native-quiz-feedback" hidden></div><button type="button" class="native-quiz-next" hidden>${index===total-1?'Ver resultados':'Siguiente pregunta'}</button>`;
       container.querySelectorAll('[data-quiz-opt]').forEach(btn=>btn.addEventListener('click',()=>{
         if(answered) return; answered=true;
         const selected=q.opts[Number(btn.dataset.quizOpt)];
