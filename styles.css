@@ -8052,3 +8052,129 @@ body.is-dark .classroom-material-actions button[data-t86-delete-class-material] 
     width: 100%;
   }
 }
+
+
+/* Tribeca Aula · versión 87
+   Fase 8: creación automática de clases desde alumnado actual y bloqueo de materiales sueltos. */
+.classroom-bootstrap-panel {
+  border-left: .45rem solid var(--gold);
+  background:
+    radial-gradient(circle at top right, rgba(168, 135, 45, .13), transparent 42%),
+    var(--panel-solid);
+}
+
+.bootstrap-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.2rem;
+  margin-bottom: .9rem;
+}
+
+.bootstrap-head h3 {
+  margin: .15rem 0 .3rem;
+}
+
+.bootstrap-head > strong {
+  display: grid;
+  place-items: center;
+  min-width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: rgba(168, 135, 45, .13);
+  color: var(--gold);
+  font-size: 1.45rem;
+}
+
+.bootstrap-class-list {
+  display: grid;
+  gap: .55rem;
+  margin: .75rem 0;
+}
+
+.bootstrap-class-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: .75rem .85rem;
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 14px;
+  background: rgba(255,255,255,.55);
+}
+
+.bootstrap-class-row strong {
+  display: block;
+  color: var(--text);
+}
+
+.bootstrap-class-row small {
+  display: block;
+  margin-top: .1rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.bootstrap-class-row em {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-weight: 950;
+  color: var(--green);
+  background: rgba(16, 63, 36, .08);
+  border-radius: 999px;
+  padding: .25rem .55rem;
+}
+
+.bootstrap-class-row.is-new em {
+  color: #8a5a00;
+  background: rgba(168, 135, 45, .12);
+}
+
+.bootstrap-warning {
+  margin-top: .8rem;
+  padding: .8rem .9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(122,31,31,.16);
+  background: rgba(122,31,31,.06);
+}
+
+.bootstrap-warning strong {
+  display: block;
+  color: #8d2424;
+  margin-bottom: .2rem;
+}
+
+.bootstrap-warning p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 780;
+}
+
+body.is-dark .classroom-bootstrap-panel,
+body.is-dark .bootstrap-class-row {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .18);
+}
+
+body.is-dark .bootstrap-head > strong,
+body.is-dark .bootstrap-class-row.is-new em {
+  background: rgba(212, 175, 55, .13);
+  color: #f2d37c;
+}
+
+body.is-dark .bootstrap-warning {
+  background: rgba(141,36,36,.18);
+  border-color: rgba(255,180,160,.22);
+}
+
+body.is-dark .bootstrap-warning strong {
+  color: #ffd4c8;
+}
+
+@media (max-width: 760px) {
+  .bootstrap-head,
+  .bootstrap-class-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

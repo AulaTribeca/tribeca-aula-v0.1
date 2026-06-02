@@ -1199,8 +1199,8 @@
     const selected=State.prefillPublicationClassId || item.class_id || '';
     return `<section class="window-panel classroom-publication-panel">
       <h3>Clase del nuevo modelo</h3>
-      <p class="meta">Selecciona una clase si este material debe quedar vinculado al nuevo modelo de aula. Si eliges una clase, se guardará también dentro de su materia y unidad.</p>
-      <label>Clase<select name="classId"><option value="">Sin clase del nuevo modelo</option>${classes.map(c=>`<option value="${safe(c.id)}" ${selectedAttr(c.id,selected)}>${safe(classroomLabel(c))} · ${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</option>`).join('')}</select></label>
+      <p class="meta">Para publicar materiales en el nuevo modelo, selecciona siempre la clase. Los anuncios pueden seguir publicándose sin clase.</p>
+      <label>Clase<select name="classId"><option value="">Seleccionar clase</option>${classes.map(c=>`<option value="${safe(c.id)}" ${selectedAttr(c.id,selected)}>${safe(classroomLabel(c))} · ${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</option>`).join('')}</select></label>
     </section>`;
   }
   async function ensureClassSubjectAndUnit(classId, subject, unit='Unidad 1'){
@@ -1285,6 +1285,8 @@
     const repoStage=String(fd.get('repoStage')||'').trim();
     const repoCourse=String(fd.get('repoCourse')||'').trim();
     const isAnnouncement = kind === 'announcement' || editTable === 'announcements';
+    const hasClassModel = (State.data.classrooms||[]).some(c=>c && c.active!==false);
+    if(!isAnnouncement && hasClassModel && !classId) throw new Error('Selecciona una clase del nuevo modelo antes de publicar materiales. Los materiales sueltos quedan bloqueados para evitar desorden.');
     if(classId && !isAnnouncement) scope='class';
     const rec={ title:fd.get('title'), body:fd.get('body')||'', description:fd.get('body')||'', content:fd.get('body')||'', image_url:fd.get('imageUrl')||null, link_url:fd.get('linkUrl')||null, font_size:Number(fd.get('fontSize')||16), target_scope:scope, target_user_ids:ids, center:selectedClass?.center || fd.get('center')||null, stage:selectedClass?.stage || fd.get('stage')||null, course:selectedClass?.course || fd.get('course')||null, created_by:State.profile.id, hidden:false };
     let attachments = [];
@@ -2224,13 +2226,15 @@
           <li><strong>Fase 1</strong>: crear clases permanentes por centro, etapa y curso.</li>
           <li><strong>Fase 2</strong>: asignar y promocionar alumnado manualmente a clases.</li>
           <li><strong>Fase 3</strong>: vincular materias, unidades y materiales a cada clase.</li>
-          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li><li><strong>Fase 5</strong>: panel del alumnado basado en clases.</li><li><strong>Fase 6</strong>: migración de materiales antiguos al nuevo modelo y retirada del repositorio del panel principal.</li><li><strong>Fase 7</strong>: gestión completa de materiales desde cada clase, sin depender del sistema antiguo de materias.</li>
+          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li><li><strong>Fase 5</strong>: panel del alumnado basado en clases.</li><li><strong>Fase 6</strong>: migración de materiales antiguos al nuevo modelo y retirada del repositorio del panel principal.</li><li><strong>Fase 7</strong>: gestión completa de materiales desde cada clase, sin depender del sistema antiguo de materias.</li><li><strong>Fase 8</strong>: creación automática de clases desde alumnado actual y bloqueo de materiales sueltos.</li>
         </ol>
       </section>
 
+      ${classroomBootstrapPanel()}
+
       <section class="window-panel classroom-consolidation-guide">
         <h3>Modelo de clases consolidado</h3>
-        <p class="meta">A partir de esta fase, la gestión ordinaria debe hacerse desde Clases: crear materia, crear unidad y crear, editar, duplicar, ocultar o eliminar materiales desde la propia clase. El sistema anterior de “Materias y materiales” queda retirado del panel principal.</p>
+        <p class="meta">A partir de esta fase, la gestión ordinaria debe hacerse desde Clases. Además, si existen clases activas, la creación de materiales sueltos queda bloqueada: antes de publicar un material hay que seleccionar su clase.</p>
       </section>
 
       <section class="classroom-results">
@@ -2317,6 +2321,44 @@
       </div>
     </article>`;
   }
+  function classBootstrapGroups(){
+    const students=(State.data.students||[]).filter(Boolean);
+    const map=new Map();
+    students.forEach(s=>{
+      const center=String(s.center||'').trim();
+      const stage=String(s.stage||'').trim();
+      const course=String(s.course||'').trim();
+      if(!center || !stage || !course) return;
+      const key=[center,stage,course].join('||');
+      if(!map.has(key)) map.set(key,{center,stage,course,students:[]});
+      map.get(key).students.push(s);
+    });
+    return [...map.values()].sort((a,b)=>a.center.localeCompare(b.center,'es') || a.stage.localeCompare(b.stage,'es') || a.course.localeCompare(b.course,'es',{numeric:true}));
+  }
+  function matchingClassForGroup(g){
+    return (State.data.classrooms||[]).find(c=>String(c.center||'')===String(g.center) && String(c.stage||'')===String(g.stage) && String(c.course||'')===String(g.course) && c.active!==false) || null;
+  }
+  function classroomBootstrapPanel(){
+    const groups=classBootstrapGroups();
+    const studentsWithData=groups.reduce((n,g)=>n+g.students.length,0);
+    const missing=(State.data.students||[]).filter(s=>!String(s.center||'').trim() || !String(s.stage||'').trim() || !String(s.course||'').trim());
+    const rows=groups.map(g=>{ const existing=matchingClassForGroup(g); return `<article class="bootstrap-class-row ${existing?'is-existing':'is-new'}"><div><strong>${safe(classroomAutoName(g.center,g.stage,g.course))}</strong><small>${safe([g.center,g.stage,g.course].join(' · '))} · ${g.students.length} alumno${g.students.length===1?'':'s'}</small></div><em>${existing?'Ya existe':'Se creará'}</em></article>`; }).join('');
+    return `<section class="window-panel classroom-bootstrap-panel">
+      <div class="bootstrap-head">
+        <div>
+          <p class="eyebrow">Asistente de transición</p>
+          <h3>Crear clases desde el alumnado actual</h3>
+          <p class="meta">Agrupa automáticamente tus perfiles por centro, etapa y curso, crea las clases que falten y asigna cada alumno a su clase correspondiente.</p>
+        </div>
+        <strong>${groups.length}</strong>
+      </div>
+      <div class="bootstrap-class-list">${rows || '<div class="empty-state">No hay alumnado con centro, etapa y curso completos.</div>'}</div>
+      ${missing.length?`<div class="bootstrap-warning"><strong>${missing.length} perfil${missing.length===1?'':'es'} sin datos completos</strong><p>Estos perfiles no se asignarán hasta que tengan centro, etapa y curso: ${missing.map(s=>safe(displayName(s))).join(', ')}.</p></div>`:''}
+      <div class="inline-actions">
+        <button type="button" class="primary-btn" onclick="return window.TribecaClassroomBootstrapFromStudents(event)" ${studentsWithData?'':'disabled'}>Crear clases y asignar alumnado actual</button>
+      </div>
+    </section>`;
+  }
   function legacyMaterialsForClass(c){
     return (State.data.materials||[])
       .filter(m=>m && !m.class_id && m.hidden!==true)
@@ -2372,6 +2414,59 @@
     await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true});
     await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
     await loadData(true); toast('Unidad añadida.'); rerender();
+  }
+  async function bootstrapClassesFromStudents(){
+    if(!roleTeacher()) return toast('Solo la profesora puede crear clases desde alumnado.');
+    const groups=classBootstrapGroups();
+    if(!groups.length) return toast('No hay alumnado con centro, etapa y curso completos.');
+    if(!confirm('¿Crear las clases correspondientes al alumnado actual y asignar cada alumno a su clase?')) return;
+    const academicYear=currentAcademicYearLabel();
+    const allStudentIds=groups.flatMap(g=>g.students.map(s=>String(s.id))).filter(Boolean);
+    const groupClassPairs=[];
+    for(const g of groups){
+      let classroom=matchingClassForGroup(g);
+      if(!classroom){
+        classroom=await maybe(table('tribeca_classes').insert({
+          name:classroomAutoName(g.center,g.stage,g.course),
+          center:g.center,
+          stage:g.stage,
+          course:g.course,
+          academic_year:academicYear,
+          description:'Clase creada automáticamente desde los perfiles de alumnado actuales.',
+          hidden:false,
+          active:true,
+          created_by:State.profile.id,
+          updated_at:new Date().toISOString()
+        }).select('*').single(), null);
+        if(!classroom) throw new Error(`No se pudo crear la clase ${g.course} · ${g.center}.`);
+        State.data.classrooms=[...(State.data.classrooms||[]), classroom];
+      }
+      groupClassPairs.push({group:g,classroom});
+    }
+    if(allStudentIds.length){
+      const {error:offError}=await table('tribeca_class_students').update({active:false, withdrawn_at:todayIso(), updated_at:new Date().toISOString()}).in('user_id', allStudentIds);
+      if(offError) console.warn('[Tribeca Aula] No se pudieron desactivar asignaciones previas:', offError);
+    }
+    const upserts=[];
+    groupClassPairs.forEach(({group,classroom})=>{
+      group.students.forEach(s=>upserts.push({
+        class_id:classroom.id,
+        user_id:s.id,
+        active:true,
+        enrolled_at:todayIso(),
+        withdrawn_at:null,
+        notes:'Asignación automática desde perfiles existentes.',
+        updated_at:new Date().toISOString()
+      }));
+    });
+    if(upserts.length){
+      const {error}=await table('tribeca_class_students').upsert(upserts,{onConflict:'class_id,user_id'});
+      if(error) throw error;
+    }
+    await log('classroom','Clases creadas desde alumnado actual',{classes:groupClassPairs.length,students:upserts.length});
+    await loadData(true);
+    toast(`${groupClassPairs.length} clase${groupClassPairs.length===1?'':'s'} revisada${groupClassPairs.length===1?'':'s'} y ${upserts.length} alumno${upserts.length===1?'':'s'} asignado${upserts.length===1?'':'s'}.`);
+    rerender();
   }
   async function duplicateClassMaterial(materialId){
     if(!roleTeacher()) return toast('Solo la profesora puede duplicar materiales.');
@@ -2552,6 +2647,7 @@
   window.TribecaClassroomToggleMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t83ToggleMaterial; const m=(State.data.materials||[]).find(x=>String(x.id)===String(id)); if(!m) return false; persistSupabaseRecord('subject_materials',{hidden:!m.hidden},id).then(()=>loadData(true)).then(()=>{toast(m.hidden?'Material visible para el alumnado.':'Material oculto para el alumnado.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar el material.')); return false; };
   window.TribecaClassroomMigrateMaterials=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); migrateLegacyMaterialsToClass(form).catch(e=>{ console.error(e); toast(e.message||'No se pudieron migrar los materiales.'); }); return false; };
   window.TribecaClassroomUnlinkMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); unlinkMaterialFromClass(btn?.dataset?.t85UnlinkMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo desvincular el material.'); }); return false; };
+  window.TribecaClassroomBootstrapFromStudents=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); bootstrapClassesFromStudents().catch(e=>{ console.error(e); toast(e.message||'No se pudieron crear las clases desde el alumnado.'); }); return false; };
   window.TribecaClassroomDuplicateMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); duplicateClassMaterial(btn?.dataset?.t86DuplicateMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo duplicar el material.'); }); return false; };
   window.TribecaClassroomDeleteMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassMaterial(btn?.dataset?.t86DeleteClassMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo eliminar el material.'); }); return false; };
   window.TribecaClassroomDeleteSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteSubject; if(!confirm('¿Eliminar esta materia de la clase? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de materia de clase.')) return false; table('tribeca_class_subjects').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Materia eliminada de la clase.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la materia.')); return false; };
