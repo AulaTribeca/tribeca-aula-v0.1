@@ -6756,3 +6756,74 @@ body.is-dark .repo-subject-group {
     display: grid;
   }
 }
+
+
+/* Tribeca Aula · versión 74
+   Correcciones de Mi cuenta, anuncios destacados y alertas ignorables. */
+.profile-account-tabs button {
+  cursor: pointer;
+}
+
+.profile-account-tabs button:hover,
+.profile-account-tabs button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 .6rem 1.2rem rgba(16, 63, 36, .08);
+}
+
+.alerts-summary {
+  margin-bottom: 1rem;
+  border-left: .45rem solid var(--green);
+}
+
+.alerts-grid {
+  align-items: start;
+}
+
+.alerts-panel {
+  display: grid;
+  gap: .7rem;
+}
+
+.ignore-alert-check {
+  margin-top: .55rem;
+  padding: .55rem .65rem;
+  border-radius: 12px;
+  background: rgba(168, 135, 45, .08);
+  font-weight: 900;
+}
+
+.list-item.is-ignored-alert {
+  opacity: .62;
+  border-style: dashed !important;
+}
+
+.list-item.is-ignored-alert strong,
+.list-item.is-ignored-alert p {
+  color: var(--muted) !important;
+}
+
+.list-item.is-ignored-alert::after {
+  content: "Ignorada";
+  display: inline-block;
+  width: fit-content;
+  margin-top: .45rem;
+  padding: .22rem .55rem;
+  border-radius: 999px;
+  background: rgba(104, 107, 100, .12);
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 950;
+}
+
+.announcement-card.is-new-announcement {
+  animation: tribecaNewAnnouncementPulse 1.1s ease-out 1;
+}
+
+@keyframes tribecaNewAnnouncementPulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 63, 36, .22); }
+  100% { box-shadow: 0 1rem 2.2rem rgba(16, 63, 36, .10); }
+}
+
+body.is-dark .ignore-alert-check {
+  background: rgba(212, 175, 55, .10);
+}

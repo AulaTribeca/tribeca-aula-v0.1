@@ -600,12 +600,47 @@
     }
     scrubZeroBadges();
   }
+  function teacherAlertIgnoreKey(key){ return `tribeca-teacher-alert-ignore-${State.profile?.id||'teacher'}-${key}`; }
+  function teacherAlertIgnored(key){ return !!localStorage.getItem(teacherAlertIgnoreKey(key)); }
+  function setTeacherAlertIgnored(key, ignored=true){
+    if(!key) return;
+    if(ignored) localStorage.setItem(teacherAlertIgnoreKey(key), new Date().toISOString());
+    else localStorage.removeItem(teacherAlertIgnoreKey(key));
+    updateBadges();
+  }
+  function teacherAlertItems(){
+    const grades=(State.data.grades||[]).filter(g=>Number(g.grade)<5).map(g=>({
+      key:`grade-low:${g.id||g.user_id||g.student_id}:${g.subject||''}:${g.evaluation||''}:${g.grade||''}`,
+      group:'Calificaciones bajas',
+      tone:'danger',
+      title:`${g.subject||'Materia'} · ${g.grade}`,
+      body:`${studentName(g.user_id||g.student_id)} · ${g.evaluation||''}`
+    }));
+    const diff=(State.data.difficulties||[]).map(d=>({
+      key:`difficulty:${d.id||d.user_id}:${d.subject||''}:${d.level||''}`,
+      group:'Dificultades declaradas',
+      tone:'',
+      title:d.subject||'Materia con dificultad',
+      body:`${studentName(d.user_id)} · ${d.level||''}`
+    }));
+    const pass=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').map(r=>({
+      key:`password:${r.id||r.username||r.display_name}`,
+      group:'Recuperación de contraseña',
+      tone:'',
+      title:r.display_name||r.username||'Solicitud pendiente',
+      body:'Solicitud de recuperación de contraseña pendiente.'
+    }));
+    const unpaid=unpaidPaymentAlerts().map(a=>({
+      key:`payment:${a.name}:${a.month}`,
+      group:'Mensualidades pendientes',
+      tone:'danger',
+      title:`${a.name} · ${a.month}`,
+      body:`Importe previsto: ${money(a.amount)}`
+    }));
+    return [...grades, ...diff, ...pass, ...unpaid];
+  }
   function teacherAlertCount(){
-    const fail=(State.data.grades||[]).filter(g=>Number(g.grade)<5).length;
-    const diff=(State.data.difficulties||[]).length;
-    const pass=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
-    const unpaid=unpaidPaymentAlerts().length;
-    return fail+diff+pass+unpaid;
+    return teacherAlertItems().filter(a=>!teacherAlertIgnored(a.key)).length;
   }
   function setBadge(sel, n, dot=false){ const b=$(sel); if(!b) return; const count=Number(n||0); b.hidden=count<=0; b.textContent=count<=0?'':(dot?'•':String(Math.min(count,99))); b.classList.toggle('is-empty', count<=0); }
   function scrubZeroBadges(){ $$('.bubble,.badge,[id$="Badge"],.t16-tool-card em').forEach(b=>{ if((b.textContent||'').trim()==='0'){ b.textContent=''; b.hidden=true; b.classList.add('is-empty'); } }); $$('[data-section="notifications"]').forEach(btn=>btn.remove()); }
@@ -1221,7 +1256,28 @@
 
   function activityTypeClass(type=''){ const t=String(type||'').toLowerCase(); if(t.includes('login')) return 'activity-login'; if(t.includes('message')) return 'activity-message'; if(t.includes('publication')||t.includes('guidance')) return 'activity-publication'; if(t.includes('calendar')) return 'activity-calendar'; if(t.includes('badge')) return 'activity-badge'; if(t.includes('grade')) return 'activity-grade'; if(t.includes('difficulty')) return 'activity-difficulty'; if(t.includes('profile')) return 'activity-profile'; return 'activity-generic'; }
   function activityContent(){ const cutoff=State.activitySince?new Date(State.activitySince):new Date(0); const rows=(State.data.activity||[]).filter(a=>new Date(a.created_at||0)>cutoff); return `<section class="window-panel"><h3>Qué ha ocurrido desde tu última sesión</h3><p class="meta">Solo se muestran acciones posteriores a tu último acceso al aula.</p>${rows.length?`<div class="activity-list">${rows.map(a=>`<article class="list-item activity-card ${activityTypeClass(a.action_type)}"><strong>${safe(a.title||a.action_type)}</strong><p>${safe(a.actor_name||'Sistema')} · ${safe(a.action_type||'')}</p><small>${fmtDT(a.created_at)}</small></article>`).join('')}</div>`:'<div class="empty-state">No hay actividad nueva desde tu última sesión.</div>'}</section>`; }
-  function alertsContent(){ const grades=(State.data.grades||[]).filter(g=>Number(g.grade)<5); const diff=State.data.difficulties||[]; const pass=(State.data.passwordRequests||[]).filter(r=>r.status==='pending'); const unpaid=unpaidPaymentAlerts(); return `<div class="window-grid"><section class="window-panel"><h3>Calificaciones bajas</h3>${grades.length?grades.map(g=>`<article class="list-item danger"><strong>${safe(g.subject)} · ${g.grade}</strong><p>${studentName(g.user_id)} · ${safe(g.evaluation||'')}</p></article>`).join(''):'<div class="empty-state">Sin suspensos registrados.</div>'}</section><section class="window-panel"><h3>Dificultades declaradas</h3>${diff.length?diff.map(d=>`<article class="list-item"><strong>${safe(d.subject)}</strong><p>${studentName(d.user_id)} · ${safe(d.level||'')}</p></article>`).join(''):'<div class="empty-state">Sin materias con dificultades.</div>'}</section><section class="window-panel"><h3>Pendientes</h3><p>${pass.length} recuperaciones de contraseña · ${unpaid.length} mensualidades pendientes vencidas.</p>${unpaid.map(a=>`<article class="list-item danger"><strong>${safe(a.name)} · ${safe(a.month)}</strong><p>Importe previsto: ${money(a.amount)}</p></article>`).join('')}</section></div>`; }
+  function alertItemCard(a){
+    const ignored=teacherAlertIgnored(a.key);
+    return `<article class="list-item ${a.tone||''} ${ignored?'is-ignored-alert':''}"><strong>${safe(a.title)}</strong><p>${safe(a.body||'')}</p><label class="check-line ignore-alert-check"><input type="checkbox" data-t74-ignore-alert="${safe(a.key)}" ${ignored?'checked':''}> Ignorar alerta</label></article>`;
+  }
+  function alertsContent(){
+    const items=teacherAlertItems();
+    const groupsMap=new Map();
+    items.forEach(a=>{ if(!groupsMap.has(a.group)) groupsMap.set(a.group, []); groupsMap.get(a.group).push(a); });
+    const order=['Calificaciones bajas','Dificultades declaradas','Recuperación de contraseña','Mensualidades pendientes'];
+    const sections=order.map(group=>{
+      const rows=groupsMap.get(group)||[];
+      let empty='Sin alertas en esta categoría.';
+      if(group==='Calificaciones bajas') empty='Sin suspensos registrados.';
+      if(group==='Dificultades declaradas') empty='Sin materias con dificultades.';
+      if(group==='Recuperación de contraseña') empty='Sin solicitudes pendientes.';
+      if(group==='Mensualidades pendientes') empty='Sin mensualidades vencidas pendientes.';
+      return `<section class="window-panel alerts-panel"><h3>${safe(group)}</h3>${rows.length?rows.map(alertItemCard).join(''):`<div class="empty-state">${empty}</div>`}</section>`;
+    }).join('');
+    const active=items.filter(a=>!teacherAlertIgnored(a.key)).length;
+    const ignored=items.length-active;
+    return `<div class="alerts-summary window-panel"><h3>Alertas docentes</h3><p class="meta">${active} alerta${active===1?'':'s'} activa${active===1?'':'s'} · ${ignored} ignorada${ignored===1?'':'s'}. Marca “Ignorar alerta” para que no aparezca la notificación mientras la situación siga activa.</p></div><div class="window-grid alerts-grid">${sections}</div>`;
+  }
   function fieldArray(value){ if(Array.isArray(value)) return value.filter(Boolean); if(!value) return []; if(typeof value==='string'){ try{ const parsed=JSON.parse(value); if(Array.isArray(parsed)) return parsed.filter(Boolean); }catch(_e){} return value.split(/[;,]/).map(x=>x.trim()).filter(Boolean); } return []; }
   function supportSummary(s){ const nee=fieldArray(s.nee_types); const neae=fieldArray(s.neae_types); const health=fieldArray(s.health_conditions); const flags=[]; if(s.personalized_attention) flags.push('Atención personalizada'); if(nee.length) flags.push(`${nee.length} NEE`); if(neae.length) flags.push(`${neae.length} NEAE`); if(health.length) flags.push(`${health.length} condición/es registradas`); return {nee,neae,health,flags}; }
   function classOverviewContent(){
@@ -1485,11 +1541,15 @@
   }
   function announcementSeenKey(id){ return `tribeca-ann-seen-${State.profile?.id||'anon'}-${id}`; }
   function announcementOldSeenKey(id){ return `tribeca-ann-seen-${id}`; }
+  function announcementViewedKey(id){ return `tribeca-ann-viewed-${State.profile?.id||'anon'}-${id}`; }
   function announcementIsRead(a){ return !!(a?.id && (localStorage.getItem(announcementSeenKey(a.id)) || localStorage.getItem(announcementOldSeenKey(a.id)))); }
+  function announcementIsViewed(a){ return !!(a?.id && localStorage.getItem(announcementViewedKey(a.id))); }
+  function markAnnouncementViewed(id){ if(id) localStorage.setItem(announcementViewedKey(id), new Date().toISOString()); }
   function markAnnouncementRead(id){
     if(!id) return;
     localStorage.setItem(announcementSeenKey(id), new Date().toISOString());
     localStorage.setItem(announcementOldSeenKey(id), new Date().toISOString());
+    markAnnouncementViewed(id);
     updateBadges();
   }
   function markAllAnnouncementsRead(){
@@ -1499,9 +1559,11 @@
   }
   function announcementsContent(){
     const rows=visibleAnnouncements();
+    const firstViewIds = new Set(rows.filter(a=>!announcementIsViewed(a)).map(a=>String(a.id)));
+    rows.forEach(a=>markAnnouncementViewed(a.id));
     const unread=rows.filter(a=>!announcementIsRead(a));
-    const head=`<div class="announcements-head"><div><h3>Anuncios, avisos y noticias</h3><p class="meta">${unread.length?`${unread.length} anuncio${unread.length===1?'':'s'} nuevo${unread.length===1?'':'s'}.`:'No hay anuncios nuevos pendientes de lectura.'}</p></div>${rows.length?`<button type="button" class="secondary-btn" onclick="return window.TribecaMarkAllAnnouncementsRead(event)">Marcar todos como leídos</button>`:''}</div>`;
-    return `<section class="window-panel announcements-panel">${head}${rows.length?rows.map(a=>{ const isNew=!announcementIsRead(a); return `<article class="t16-publication announcement-card ${a.hidden?'is-hidden-item':''} ${isNew?'is-new-announcement':''}"><small>${isNew?'<span class="new-announcement-tag">Nuevo anuncio</span> ':''}${safe(announcementScopeLabel(a))}${a.created_at?` · ${fmtDT(a.created_at)}`:''}${a.hidden?' · Oculto':''}</small><h3>${safe(a.title || 'Anuncio sin título')}</h3>${a.image_url?`<img src="${safe(a.image_url)}" alt="">`:''}<p style="font-size:${Number(a.font_size||16)}px">${safe(a.body||a.description||a.content||'')}</p>${a.link_url?`<a href="${safe(a.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(a)}<div class="inline-actions"><button type="button" data-t73-read-ann="${safe(a.id)}" onclick="return window.TribecaMarkAnnouncementReadDirect(this,event)" ${isNew?'':'disabled'}>${isNew?'Marcar como leído':'Leído'}</button>${roleTeacher()?`<button type="button" data-t32-edit-ann="${safe(a.id)}">Editar</button><button type="button" data-t16-toggle-ann="${safe(a.id)}">${a.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-ann="${safe(a.id)}">Eliminar</button>`:''}</div></article>`; }).join(''):'<div class="empty-state">Todavía no hay anuncios publicados.</div>'}</section>`;
+    const head=`<div class="announcements-head"><div><h3>Anuncios, avisos y noticias</h3><p class="meta">${unread.length?`${unread.length} anuncio${unread.length===1?'':'s'} pendiente${unread.length===1?'':'s'} de lectura.`:'No hay anuncios pendientes de lectura.'}</p></div>${rows.length?`<button type="button" class="secondary-btn" onclick="return window.TribecaMarkAllAnnouncementsRead(event)">Marcar todos como leídos</button>`:''}</div>`;
+    return `<section class="window-panel announcements-panel">${head}${rows.length?rows.map(a=>{ const isNew=firstViewIds.has(String(a.id)); const unreadOne=!announcementIsRead(a); return `<article class="t16-publication announcement-card ${a.hidden?'is-hidden-item':''} ${isNew?'is-new-announcement':''}"><small>${isNew?'<span class="new-announcement-tag">Nuevo anuncio</span> ':''}${safe(announcementScopeLabel(a))}${a.created_at?` · ${fmtDT(a.created_at)}`:''}${a.hidden?' · Oculto':''}</small><h3>${safe(a.title || 'Anuncio sin título')}</h3>${a.image_url?`<img src="${safe(a.image_url)}" alt="">`:''}<p style="font-size:${Number(a.font_size||16)}px">${safe(a.body||a.description||a.content||'')}</p>${a.link_url?`<a href="${safe(a.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(a)}<div class="inline-actions"><button type="button" data-t73-read-ann="${safe(a.id)}" onclick="return window.TribecaMarkAnnouncementReadDirect(this,event)" ${unreadOne?'':'disabled'}>${unreadOne?'Marcar como leído':'Leído'}</button>${roleTeacher()?`<button type="button" data-t32-edit-ann="${safe(a.id)}">Editar</button><button type="button" data-t16-toggle-ann="${safe(a.id)}">${a.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-ann="${safe(a.id)}">Eliminar</button>`:''}</div></article>`; }).join(''):'<div class="empty-state">Todavía no hay anuncios publicados.</div>'}</section>`;
   }
   window.TribecaMarkAnnouncementReadDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAnnouncementRead(btn?.dataset?.t73ReadAnn); toast('Anuncio marcado como leído.'); rerender(); return false; };
   window.TribecaMarkAllAnnouncementsRead=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAllAnnouncementsRead(); return false; };
@@ -1805,7 +1867,7 @@
           <p>${safe(p.role === 'teacher' ? 'Profesora' : academic)}</p>
         </div>
       </section>`;
-    const tabs = `<div class="profile-account-tabs"><button type="button" class="${panel==='profile'?'is-active':''}" onclick="State.profilePanel='profile'; rerender(); return false;">Mi perfil</button><button type="button" class="${panel==='password'?'is-active':''}" onclick="State.profilePanel='password'; rerender(); return false;">Ajustes de contraseña</button><button type="button" class="${panel==='notifications'?'is-active':''}" onclick="State.profilePanel='notifications'; rerender(); return false;">Ajustes de notificaciones</button></div>`;
+    const tabs = `<div class="profile-account-tabs"><button type="button" data-t74-profile-tab="profile" class="${panel==='profile'?'is-active':''}">Mi perfil</button><button type="button" data-t74-profile-tab="password" class="${panel==='password'?'is-active':''}">Ajustes de contraseña</button><button type="button" data-t74-profile-tab="notifications" class="${panel==='notifications'?'is-active':''}">Ajustes de notificaciones</button></div>`;
     const profileCard = `<section class="profile-tool-card profile-avatar-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🎨</span>
@@ -2024,6 +2086,7 @@
     window.addEventListener('click', async ev=>{ const btn=ev.target.closest?.('[data-t24-save-student]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=btn.closest('form'); if(f) await saveStudentProfile(f); } }, true);
     document.addEventListener('click', async ev=>{
       const mailTab=ev.target.closest?.('[data-mail-box]'); if(mailTab){ const box=mailTab.dataset.mailBox; const root=mailTab.closest('.mail-app'); root?.querySelectorAll('.mail-tab').forEach(b=>b.classList.toggle('is-active', b===mailTab)); root?.querySelectorAll('[data-mail-box-view]').forEach(v=>v.hidden=v.dataset.mailBoxView!==box); return; }
+      const profileTab=ev.target.closest?.('[data-t74-profile-tab]'); if(profileTab){ ev.preventDefault(); ev.stopPropagation(); State.profilePanel=profileTab.dataset.t74ProfileTab || 'profile'; rerender(); return; }
       const monthNav=ev.target.closest?.('[data-t51-month-nav]'); if(monthNav){ ev.preventDefault(); ev.stopPropagation(); State.billingMonth=monthNav.dataset.t51MonthNav; rerender(); return; }
       const logout=ev.target.closest?.('#logoutButton,[data-action="logout"]'); if(logout){ ev.preventDefault(); ev.stopImmediatePropagation(); signOut(); return; }
       const accountPanel=ev.target.closest?.('[data-t73-account-panel]'); if(accountPanel){ ev.preventDefault(); ev.stopImmediatePropagation(); State.profilePanel=accountPanel.dataset.t73AccountPanel || 'profile'; closeAccountMenu(); openTool('profile'); return; }
@@ -2107,11 +2170,20 @@
     }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
   const BASE_TRANSLATIONS = {
+    'Mi cuenta':{Galego:'A miña conta',English:'My account',Français:'Mon compte',Polski:'Moje konto',Deutsch:'Mein Konto',Português:'A minha conta'},
+    'Mi perfil':{Galego:'O meu perfil',English:'My profile',Français:'Mon profil',Polski:'Mój profil',Deutsch:'Mein Profil',Português:'O meu perfil'},
+    'Ajustes de contraseña':{Galego:'Axustes de contrasinal',English:'Password settings',Français:'Paramètres du mot de passe',Polski:'Ustawienia hasła',Deutsch:'Passworteinstellungen',Português:'Definições de palavra-passe'},
+    'Ajustes de notificaciones':{Galego:'Axustes de notificacións',English:'Notification settings',Français:'Paramètres des notifications',Polski:'Ustawienia powiadomień',Deutsch:'Benachrichtigungseinstellungen',Português:'Definições de notificações'},
+    'Marcar como leído':{Galego:'Marcar como lido',English:'Mark as read',Français:'Marquer comme lu',Polski:'Oznacz jako przeczytane',Deutsch:'Als gelesen markieren',Português:'Marcar como lido'},
+    'Marcar todos como leídos':{Galego:'Marcar todos como lidos',English:'Mark all as read',Français:'Tout marquer comme lu',Polski:'Oznacz wszystko jako przeczytane',Deutsch:'Alle als gelesen markieren',Português:'Marcar todos como lidos'},
+    'Nuevo anuncio':{Galego:'Novo anuncio',English:'New announcement',Français:'Nouvelle annonce',Polski:'Nowe ogłoszenie',Deutsch:'Neue Ankündigung',Português:'Novo anúncio'},
+    'Ignorar alerta':{Galego:'Ignorar alerta',English:'Ignore alert',Français:'Ignorer l’alerte',Polski:'Ignoruj alert',Deutsch:'Warnung ignorieren',Português:'Ignorar alerta'},
+
     'Panel personal de aprendizaje':{Galego:'Panel persoal de aprendizaxe',English:'Personal learning panel',Français:'Tableau personnel d’apprentissage',Polski:'Osobisty panel nauki',Deutsch:'Persönlicher Lernbereich',Português:'Painel pessoal de aprendizagem'},
     'Materiales organizados por unidades didácticas':{Galego:'Materiais organizados por unidades didácticas',English:'Materials organised by teaching units',Français:'Ressources organisées par unités',Polski:'Materiały uporządkowane według działów',Deutsch:'Materialien nach Lerneinheiten geordnet',Português:'Materiais organizados por unidades didáticas'},
     'Abre o cierra cada unidad para consultar apuntes, boletines, pruebas, juegos o enlaces publicados por la profesora.':{Galego:'Abre ou pecha cada unidade para consultar apuntamentos, boletíns, probas, xogos ou ligazóns publicados pola profesora.',English:'Open or close each unit to check notes, worksheets, tests, games or links published by the teacher.',Français:'Ouvre ou ferme chaque unité pour consulter les notes, fiches, tests, jeux ou liens publiés par l’enseignante.',Polski:'Otwórz lub zamknij każdy dział, aby sprawdzić notatki, karty pracy, testy, gry lub linki opublikowane przez nauczycielkę.',Deutsch:'Öffne oder schließe jede Einheit, um Notizen, Arbeitsblätter, Tests, Spiele oder Links der Lehrerin anzusehen.',Português:'Abre ou fecha cada unidade para consultar apontamentos, fichas, testes, jogos ou ligações publicados pela professora.'},
