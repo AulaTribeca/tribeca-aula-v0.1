@@ -6462,3 +6462,144 @@ body.is-dark .repo-stats strong {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tribeca Aula · versión 71
+   Mejora visual de las unidades dentro de cada materia. */
+.subject-units-list {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.subject-unit-card {
+  border: 1px solid rgba(55, 49, 34, .13);
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255, 253, 248, .86);
+  box-shadow: 0 .85rem 1.8rem rgba(38, 32, 19, .045);
+}
+
+.subject-unit-card > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .85rem;
+  padding: 1.15rem 1.25rem;
+  cursor: pointer;
+  list-style: none;
+  background:
+    linear-gradient(90deg, rgba(16, 63, 36, .105), rgba(168, 135, 45, .07)),
+    var(--panel-solid);
+  border-bottom: 1px solid rgba(55, 49, 34, .10);
+}
+
+.subject-unit-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.subject-unit-card > summary::before {
+  content: "▸";
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fffdf8;
+  font-size: 1.25rem;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow: 0 .4rem 1rem rgba(16, 63, 36, .16);
+  transition: transform .18s ease, background .18s ease;
+}
+
+.subject-unit-card[open] > summary::before {
+  content: "▾";
+  background: var(--gold);
+  color: #1f251f;
+}
+
+.subject-unit-card > summary span {
+  display: block;
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.9rem, 2.2vw, 2.75rem);
+  font-weight: 950;
+  line-height: 1.18;
+  letter-spacing: .01em;
+}
+
+.subject-unit-card > summary span::after {
+  content: "Haz clic para desplegar o replegar la unidad";
+  display: block;
+  margin-top: .28rem;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: .86rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.subject-unit-card > summary em {
+  justify-self: end;
+  padding: .45rem .7rem;
+  border-radius: 999px;
+  background: rgba(168, 135, 45, .13);
+  color: var(--green);
+  border: 1px solid rgba(168, 135, 45, .18);
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.subject-unit-card .subject-material-list {
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.subject-unit-card[open] {
+  border-color: rgba(16, 63, 36, .20);
+}
+
+.subject-unit-card[open] > summary {
+  border-bottom-color: rgba(16, 63, 36, .12);
+}
+
+body.is-dark .subject-unit-card {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .18);
+}
+
+body.is-dark .subject-unit-card > summary {
+  background:
+    linear-gradient(90deg, rgba(212, 175, 55, .12), rgba(16, 63, 36, .16)),
+    var(--panel-solid);
+}
+
+body.is-dark .subject-unit-card > summary::before {
+  background: var(--gold);
+  color: #1f251f;
+}
+
+body.is-dark .subject-unit-card > summary em {
+  color: var(--gold);
+  border-color: rgba(212, 175, 55, .25);
+}
+
+@media (max-width: 760px) {
+  .subject-unit-card > summary {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .subject-unit-card > summary em {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: .25rem;
+  }
+
+  .subject-unit-card > summary span {
+    font-size: 1.85rem;
+  }
+}
