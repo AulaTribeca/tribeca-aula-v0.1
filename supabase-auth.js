@@ -396,6 +396,7 @@
       maybe(table('guidance_resources').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidance=d||[]),
       maybe(table('subject_overrides').select('*').order('stage').order('course').order('subject'), []).then(d=>State.data.subjects=d||[]),
       maybe(table('material_completions').select('*'), []).then(d=>State.data.materialCompletions=d||[]),
+      maybe(table('exam_attempts').select('*').order('completed_at',{ascending:false}), []).then(d=>State.data.examAttempts=d||[]),
       maybe(table('student_pauses').select('*').order('start_date',{ascending:false}), []).then(d=>State.data.studentPauses=d||[]),
       maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]),
       maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]),
@@ -1086,6 +1087,261 @@
     const q=normalizeQuizPayload(payload);
     return q ? `tribeca-quiz-json::${JSON.stringify(q)}` : '';
   }
+  function examPayloadToStorage(payload){
+    const exam=normalizeExamPayload(payload);
+    return exam ? `tribeca-exam-json::${JSON.stringify(exam)}` : '';
+  }
+  function normalizeExamType(value=''){
+    const v=String(value||'').trim().toLowerCase().replace(/\s+/g,'_');
+    if(['single','single_choice','choice','radio','select','test'].includes(v)) return 'single_choice';
+    if(['multiple','multiple_choice','checkbox','multi'].includes(v)) return 'multiple_choice';
+    if(['true_false','truefalse','verdadero_falso','vf'].includes(v)) return 'true_false';
+    if(['short','short_text','text','fill','fill_blank','fill_in_blank','respuesta_corta'].includes(v)) return 'short_text';
+    if(['writing','redaccion','redacción','essay','open_text'].includes(v)) return 'writing';
+    if(['matching','match','unir','unir_flechas','pairs','parejas'].includes(v)) return 'matching';
+    if(['ordering','order','ordenar','sequence','secuencia'].includes(v)) return 'ordering';
+    if(['reading','reading_comprehension','comprension_lectora','comprensión_lectora'].includes(v)) return 'reading';
+    return 'single_choice';
+  }
+  function arrayFromMaybe(value){
+    if(Array.isArray(value)) return value;
+    if(value === null || value === undefined || value === '') return [];
+    return [value];
+  }
+  function textNorm(value='', caseSensitive=false){
+    const raw=String(value||'').trim();
+    const base=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+    return caseSensitive ? base : base.toLowerCase();
+  }
+  function normalizeExamQuestion(q={}, idx=0, parentPassage=''){
+    const type=normalizeExamType(q.type || q.kind || q.exerciseType || q.exercise_type || q.formato || '');
+    const prompt=String(q.question || q.q || q.prompt || q.statement || q.text || q.enunciado || q.pregunta || '').trim() || `Pregunta ${idx+1}`;
+    const passage=String(q.passage || q.texto || q.reading || parentPassage || '').trim();
+    const options=(q.options || q.answerOptions || q.answer_options || q.choices || q.opts || q.opciones || []).map((o,i)=>{
+      if(typeof o==='string') return {text:o, correct:false, rationale:''};
+      return {
+        text:String(o.text || o.label || o.answer || o.option || o.value || o.respuesta || '').trim(),
+        correct:quizTruth(o.isCorrect ?? o.correct ?? o.c ?? o.correcta ?? o.esCorrecta ?? false),
+        rationale:String(o.rationale || o.feedback || o.explanation || o.reason || o.explicacion || '').trim()
+      };
+    }).filter(o=>o.text);
+    const acceptedAnswers=arrayFromMaybe(q.acceptedAnswers || q.accepted_answers || q.correctAnswers || q.correct_answers || q.answer || q.respuesta_correcta).map(String).filter(Boolean);
+    const keywords=arrayFromMaybe(q.requiredKeywords || q.required_keywords || q.keywords || q.palabras_clave).map(String).filter(Boolean);
+    const pairs=(q.pairs || q.matches || q.matching || q.parejas || []).map(p=>{
+      if(Array.isArray(p)) return {left:String(p[0]||''), right:String(p[1]||'')};
+      return {left:String(p.left || p.a || p.term || p.concepto || ''), right:String(p.right || p.b || p.match || p.definicion || p.definición || '')};
+    }).filter(p=>p.left && p.right);
+    const items=arrayFromMaybe(q.items || q.order || q.sequence || q.orden || q.secuencia).map(String).filter(Boolean);
+    return {
+      id:String(q.id || `q${idx+1}`),
+      type,
+      prompt,
+      passage,
+      options,
+      acceptedAnswers,
+      keywords,
+      pairs,
+      items,
+      caseSensitive:!!q.caseSensitive,
+      minWords:Number(q.minWords || q.min_words || 0),
+      feedback:String(q.feedback || q.rationale || q.explanation || q.explicacion || '').trim()
+    };
+  }
+  function normalizeExamPayload(payload){
+    let raw=payload;
+    if(typeof raw==='string'){
+      const parsed=parseExamFromInteractiveCode(raw);
+      if(parsed) return parsed;
+      try{ raw=JSON.parse(stripEmbedCodeFence(raw)); }catch(_e){ return null; }
+    }
+    if(Array.isArray(raw)) raw={questions:raw};
+    if(raw?.exam && Array.isArray(raw.exam)) raw={...raw, questions:raw.exam};
+    if(raw?.exercises && Array.isArray(raw.exercises)) raw={...raw, questions:raw.exercises};
+    if(raw?.items && Array.isArray(raw.items)) raw={...raw, questions:raw.items};
+    if(raw?.preguntas && Array.isArray(raw.preguntas)) raw={...raw, questions:raw.preguntas};
+    if(raw?.quizData && Array.isArray(raw.quizData)) raw={...raw, questions:raw.quizData};
+    if(!raw || !Array.isArray(raw.questions)) return null;
+    const flat=[];
+    raw.questions.forEach((q,idx)=>{
+      const type=normalizeExamType(q.type || q.kind || q.exerciseType || q.exercise_type || '');
+      if(type==='reading' && Array.isArray(q.questions || q.subquestions || q.preguntas)){
+        const passage=String(q.passage || q.text || q.texto || q.reading || '').trim();
+        (q.questions || q.subquestions || q.preguntas).forEach((sub,j)=>flat.push(normalizeExamQuestion({...sub, type:sub.type||sub.kind||'single_choice'}, flat.length, passage)));
+      } else {
+        flat.push(normalizeExamQuestion(q, flat.length));
+      }
+    });
+    const questions=flat.filter(q=>{
+      if(['single_choice','multiple_choice','true_false'].includes(q.type)) return q.options.length >= 2;
+      if(['short_text','writing'].includes(q.type)) return !!q.prompt;
+      if(q.type==='matching') return q.pairs.length >= 1;
+      if(q.type==='ordering') return q.items.length >= 2;
+      return !!q.prompt;
+    });
+    if(!questions.length) return null;
+    return {
+      type:'tribeca-exam',
+      title:String(raw.title || raw.name || 'Simulacro de examen'),
+      instructions:String(raw.instructions || raw.instrucciones || 'Responde todas las preguntas y pulsa finalizar para obtener tu nota sobre 10.'),
+      subject:String(raw.subject || ''),
+      unit:String(raw.unit || raw.unit_title || ''),
+      questions
+    };
+  }
+  function parseExamFromInteractiveCode(code=''){
+    const raw=stripEmbedCodeFence(code);
+    if(!raw) return null;
+    if(raw.startsWith('tribeca-exam-json::')){
+      try{return normalizeExamPayload(JSON.parse(raw.slice('tribeca-exam-json::'.length)));}catch(_e){return null;}
+    }
+    if(/^\s*[\[{]/.test(raw)){
+      try{
+        const parsed=JSON.parse(raw);
+        const marker=String(parsed.type || parsed.kind || parsed.format || '').toLowerCase();
+        if(/exam|simulacro|examen/.test(marker) || parsed.exam || parsed.exercises) return normalizeExamPayload(parsed);
+      }catch(_e){}
+    }
+    return null;
+  }
+  function isExamMaterial(m={}){
+    const code=materialEmbedValue(m,'code');
+    return normalizeMaterialKind(m.material_type || m.type)==='exam' || String(code||'').trim().startsWith('tribeca-exam-json::');
+  }
+  function materialVisualKind(m={}){
+    if(isExamMaterial(m)) return 'exam';
+    return m.material_type || m.type || 'material';
+  }
+  function nativeExamMarkup(exam, m={}){
+    if(!exam?.questions?.length) return '';
+    return `<section class="material-embed-block native-exam-shell"><div><strong>Simulacro de examen</strong><small>Autocorregible · nota sobre 10</small></div><div class="native-exam-block" data-t103-exam="${safe(encodeBase64Utf8(JSON.stringify(exam)))}" data-material-id="${safe(m.id||'')}"><p>Cargando simulacro…</p></div></section>`;
+  }
+  function examAttemptFor(materialId, userId=State.profile?.id){
+    return (State.data.examAttempts||[]).find(a=>String(a.material_id)===String(materialId) && String(a.user_id)===String(userId));
+  }
+  function scoreTextAnswer(value='', accepted=[], caseSensitive=false){
+    const v=textNorm(value, caseSensitive);
+    return accepted.some(a=>textNorm(a, caseSensitive)===v) ? 1 : 0;
+  }
+  function scoreWriting(value='', q={}){
+    const words=String(value||'').trim().split(/\s+/).filter(Boolean);
+    if(q.acceptedAnswers?.length && scoreTextAnswer(value,q.acceptedAnswers,q.caseSensitive)) return 1;
+    if(q.minWords && words.length<q.minWords) return 0;
+    if(q.keywords?.length){
+      const text=textNorm(value,false);
+      const ok=q.keywords.filter(k=>text.includes(textNorm(k,false))).length;
+      return q.keywords.length ? ok/q.keywords.length : 0;
+    }
+    return 0;
+  }
+  function renderNativeExam(container){
+    if(!container || container.dataset.t103Rendered==='1') return;
+    let exam=null;
+    try{ exam=JSON.parse(decodeBase64Utf8(container.dataset.t103Exam||'')); }catch(_e){ exam=null; }
+    exam=normalizeExamPayload(exam);
+    if(!exam){ container.innerHTML='<p>No se pudo cargar el simulacro.</p>'; container.dataset.t103Rendered='error'; return; }
+    const materialId=container.dataset.materialId||'';
+    const previous=examAttemptFor(materialId);
+    const total=exam.questions.length;
+    const perQuestion=total ? 10/total : 0;
+    const optionsForPairs=q=>q.pairs.map(p=>p.right).slice().sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
+    const questionHtml=(q,idx)=>{
+      const number=idx+1;
+      const passage=q.passage?`<blockquote class="exam-passage">${safe(q.passage)}</blockquote>`:'';
+      if(q.type==='matching') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="matching"><legend>${number}. ${safe(q.prompt)}</legend>${passage}<div class="exam-matching">${q.pairs.map((p,i)=>`<label><span>${safe(p.left)}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${optionsForPairs(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
+      if(q.type==='ordering') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="ordering"><legend>${number}. ${safe(q.prompt)}</legend>${passage}<div class="exam-ordering">${q.items.map((_,i)=>`<label><span>Posición ${i+1}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${q.items.map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
+      if(q.type==='short_text') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="short_text"><legend>${number}. ${safe(q.prompt)}</legend>${passage}<input name="q${idx}" type="text" placeholder="Escribe tu respuesta"></fieldset>`;
+      if(q.type==='writing') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="writing"><legend>${number}. ${safe(q.prompt)}</legend>${passage}<textarea name="q${idx}" rows="5" placeholder="Escribe tu respuesta"></textarea>${q.keywords?.length?`<small>Se autocorrige por criterios configurados.</small>`:''}</fieldset>`;
+      const multiple=q.type==='multiple_choice';
+      const type=multiple?'checkbox':'radio';
+      return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="${safe(q.type)}"><legend>${number}. ${safe(q.prompt)}</legend>${passage}<div class="exam-options">${q.options.map((o,i)=>`<label><input type="${type}" name="q${idx}${multiple?'[]':''}" value="${i}"><span>${safe(o.text)}</span></label>`).join('')}</div></fieldset>`;
+    };
+    container.innerHTML=`<form class="native-exam-form"><header><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p>${previous?`<strong class="exam-previous-grade">Última nota: ${Number(previous.score||0).toFixed(2)}/10</strong>`:''}</header>${exam.questions.map(questionHtml).join('')}<footer><button type="submit" class="primary-btn">Finalizar simulacro y corregir</button><span>${total} pregunta${total===1?'':'s'} · ${perQuestion.toFixed(2)} puntos cada una</span></footer></form><div class="native-exam-result" hidden></div>`;
+    const form=container.querySelector('form');
+    form.addEventListener('submit', async ev=>{
+      ev.preventDefault();
+      let rawScore=0;
+      const answers=[];
+      exam.questions.forEach((q,idx)=>{
+        let fraction=0, value=null, correct=null;
+        if(q.type==='matching'){
+          const vals=q.pairs.map((p,i)=>form.elements[`q${idx}_${i}`]?.value || '');
+          const ok=vals.filter((v,i)=>v===q.pairs[i].right).length;
+          fraction=q.pairs.length?ok/q.pairs.length:0; value=vals; correct=q.pairs.map(p=>p.right);
+        } else if(q.type==='ordering'){
+          const vals=q.items.map((_,i)=>form.elements[`q${idx}_${i}`]?.value || '');
+          const ok=vals.filter((v,i)=>v===q.items[i]).length;
+          fraction=q.items.length?ok/q.items.length:0; value=vals; correct=q.items;
+        } else if(q.type==='multiple_choice'){
+          const selected=[...form.querySelectorAll(`[name="q${idx}[]"]:checked`)].map(x=>Number(x.value)).sort((a,b)=>a-b);
+          const expected=q.options.map((o,i)=>o.correct?i:null).filter(x=>x!==null).sort((a,b)=>a-b);
+          fraction=selected.length===expected.length && selected.every((v,i)=>v===expected[i]) ? 1 : 0; value=selected; correct=expected;
+        } else if(q.type==='short_text'){
+          value=form.elements[`q${idx}`]?.value || '';
+          fraction=scoreTextAnswer(value, q.acceptedAnswers, q.caseSensitive); correct=q.acceptedAnswers;
+        } else if(q.type==='writing'){
+          value=form.elements[`q${idx}`]?.value || '';
+          fraction=scoreWriting(value, q); correct=q.acceptedAnswers?.length?q.acceptedAnswers:q.keywords;
+        } else {
+          const selected=form.querySelector(`[name="q${idx}"]:checked`);
+          value=selected?Number(selected.value):null;
+          const expected=q.options.findIndex(o=>o.correct);
+          fraction=value===expected ? 1 : 0; correct=expected;
+        }
+        rawScore += fraction*perQuestion;
+        answers.push({question:q.prompt,type:q.type,value,correct,fraction});
+      });
+      const score=Math.max(0, Math.min(10, Number(rawScore.toFixed(2))));
+      const result={score, max_score:10, answers, completed_at:new Date().toISOString()};
+      const resultBox=container.querySelector('.native-exam-result');
+      resultBox.hidden=false;
+      resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>${score>=5?'Simulacro superado':'Simulacro no superado'}</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas.</p></div>`;
+      form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);
+      await saveExamAttempt(materialId, exam, result);
+    });
+    container.dataset.t103Rendered='1';
+  }
+  async function saveExamAttempt(materialId, exam, result){
+    if(!materialId || !State.profile?.id) return;
+    const material=(State.data.materials||[]).find(m=>String(m.id)===String(materialId)) || {};
+    const row={
+      user_id:State.profile.id,
+      material_id:materialId,
+      class_id:material.class_id || null,
+      class_subject_id:material.class_subject_id || null,
+      class_unit_id:material.class_unit_id || null,
+      subject:material.subject || exam.subject || '',
+      unit_title:material.unit_title || material.unit || exam.unit || '',
+      title:material.title || exam.title || 'Simulacro de examen',
+      score:result.score,
+      max_score:10,
+      percent:Math.round((result.score/10)*100),
+      answers:result.answers,
+      correction:result,
+      completed_at:result.completed_at
+    };
+    await maybe(table('exam_attempts').insert(row));
+    await maybe(persistSupabaseRecord('grades',{
+      user_id:State.profile.id,
+      student_id:State.profile.id,
+      subject:row.subject,
+      unit:row.unit_title,
+      didactic_unit:row.unit_title,
+      evaluation:'Simulacro de examen',
+      type:'Simulacro de examen',
+      assessment_type:'Simulacro de examen',
+      test_type:'Simulacro de examen',
+      grade:row.score,
+      weight:null
+    }, null));
+    await maybe(table('material_completions').upsert({user_id:State.profile.id, material_id:materialId, completed_at:result.completed_at},{onConflict:'user_id,material_id'}));
+    await loadData(true);
+    toast(`Simulacro corregido: ${Number(row.score).toFixed(2)}/10.`);
+  }
+  function hydrateNativeExams(root=document){
+    const scope=root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('.native-exam-block[data-t103-exam]').forEach(renderNativeExam);
+  }
+
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
@@ -1107,6 +1363,7 @@
   }
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
+    if(source.mode==='exam') return nativeExamMarkup(source.exam, m);
     if(source.mode==='quiz') return nativeQuizMarkup(source.quiz);
     if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test. Comprueba que contiene <code>questions</code> y opciones en <code>answerOptions</code>, <code>options</code> u <code>opts</code>.</p></section>`;
     if(!source.src && !source.html) return '';
@@ -1157,6 +1414,7 @@
   function hydrateInteractiveEmbeds(root=document){
     const scope=root && root.querySelectorAll ? root : document;
     hydrateNativeQuizzes(scope);
+    hydrateNativeExams(scope);
     scope.querySelectorAll('iframe[data-t98-embed-html]:not([data-t98-ready])').forEach(frame=>{
       const encoded=frame.getAttribute('data-t98-embed-html')||'';
       if(!encoded){ frame.dataset.t98Ready='1'; return; }
@@ -1205,7 +1463,7 @@
   function openMaterialInNewWindow(materialId){
     const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
     if(!m) return toast('No se encontró la publicación.');
-    const meta=materialTypeMeta(m.material_type||m.type);
+    const meta=materialTypeMeta(materialVisualKind(m));
     const attachments=normalizeAttachments(m);
     const body=m.body||m.description||m.content||m.text||'';
     const w=window.open('', '_blank');
@@ -1399,6 +1657,7 @@
     if(!v) return 'material';
     if(['announcement','notice','news','anuncio','aviso','noticia'].includes(v)) return 'announcement';
     if(['game','juego','jocs','play','gamified','ludico','lúdico'].includes(v) || /juego|game|l[uú]dic/.test(v)) return 'game';
+    if(['exam','simulacro','mock_exam','simulacro_examen','mock','examen'].includes(v) || /simulacro|mock.?exam|examen/.test(v)) return 'exam';
     if(['test','quiz','external_test','prueba','cuestionario','daypo'].includes(v) || /test|quiz|cuestionario|prueba/.test(v)) return 'test';
     if(['task','tarea','actividad','activity','assignment','exercise','ejercicio'].includes(v) || /tarea|actividad|assignment|ejercicio/.test(v)) return 'task';
     if(['link','url','external_link','enlace','recurso','resource'].includes(v) || /enlace|link|url|recurso/.test(v)) return 'material';
@@ -1406,7 +1665,7 @@
   }
   function dbMaterialType(kind='material') {
     const k = normalizeMaterialKind(kind);
-    return ({ material:'apuntes', task:'tarea', test:'test', game:'juego' }[k] || 'apuntes');
+    return ({ material:'apuntes', task:'tarea', test:'test', exam:'simulacro', game:'juego' }[k] || 'apuntes');
   }
   function materialTypeMeta(value='material') {
     const k = normalizeMaterialKind(value);
@@ -1414,6 +1673,7 @@
       material: { key:'material', label:'Material', icon:'📄' },
       task: { key:'task', label:'Tarea', icon:'✅' },
       test: { key:'test', label:'Test externo', icon:'🧪' },
+      exam: { key:'exam', label:'Simulacro de examen', icon:'📝' },
       game: { key:'game', label:'Juego', icon:'🎮' },
       announcement: { key:'announcement', label:'Anuncio', icon:'📣' }
     };
@@ -1422,7 +1682,7 @@
   function selectedAttr(a,b){ return String(a||'')===String(b||'') ? 'selected' : ''; }
   async function persistSupabaseRecord(tableName, payload, id=null) {
     let current = {...payload};
-    const materialFallbacks = ['apuntes','tarea','test','juego','actividad','recurso','documento','document','link','material'];
+    const materialFallbacks = ['simulacro','test','apuntes','tarea','juego','actividad','recurso','documento','document','link','material'];
     for(let attempt=0; attempt<12; attempt++) {
       const res = id ? await table(tableName).update(current).eq('id', id) : await table(tableName).insert(current);
       if(!res.error) return res;
@@ -1524,7 +1784,7 @@
       <section class="window-panel t18-publish-main">
         <h3>${editing?'Editar publicación':'1. Contenido'}</h3>
         ${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}
-        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
+        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con nota sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
         ${publicationClassroomSelector(item)}
         <div class="window-grid">
           <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
@@ -1568,7 +1828,7 @@
             <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
           </div>
           <label>Código HTML, JSON o iframe<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo o iframe. Para tests, se recomienda JSON o HTML con quizData.">${safe(embedCode)}</textarea></label>
-          <p class="meta">Si subes o pegas JSON de preguntas, el test se mostrará con el motor nativo de Tribeca Aula. Si pegas HTML sin quizData, se intentará mostrar como recurso externo.</p>
+          <p class="meta">Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo. El simulacro se corrige automáticamente sobre 10 y guarda la nota del alumno.</p>
         </div>
       </section>
       <footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer>
@@ -2776,7 +3036,7 @@ function classroomCard(c,i=0){
     </details>`;
   }
   function classroomMaterialVisibilityRow(m){
-    const meta=materialTypeMeta(m.material_type||m.type||'material');
+    const meta=materialTypeMeta(materialVisualKind(m));
     return `<article class="classroom-material-row ${m.hidden?'is-hidden-material':''}">
       <div><strong>${safe(m.title||'Material sin título')}</strong><small>${safe(meta.label)} · ${m.hidden?'oculto para alumnado':'visible para alumnado'}</small></div>
       <div class="inline-actions classroom-material-actions">
@@ -3427,6 +3687,16 @@ function classroomCard(c,i=0){
     const embed=form.elements.embedCode;
     const typeInput=form.elements.publicationKind;
     const raw=await readFileAsText(file);
+    const selectedKind=form.querySelector('input[name="publicationKind"]:checked')?.value || '';
+    const exam=parseExamFromInteractiveCode(raw) || ((selectedKind==='exam' || /simulacro|examen|exam/i.test(file.name)) ? normalizeExamPayload(raw) : null);
+    if(exam){
+      if(embed) embed.value=examPayloadToStorage(exam);
+      if(preview) preview.textContent=`${file.name} · simulacro autocorregible (${exam.questions.length} preguntas)`;
+      const radios=form.querySelectorAll('input[name="publicationKind"]');
+      radios.forEach(r=>{ r.checked = r.value==='exam'; });
+      toast(`Simulacro importado: ${exam.questions.length} preguntas.`);
+      return;
+    }
     const quiz=parseQuizFromInteractiveCode(raw);
     if(quiz){
       if(embed) embed.value=quizPayloadToStorage(quiz);
