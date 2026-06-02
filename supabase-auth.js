@@ -1137,6 +1137,10 @@
       type,
       prompt,
       passage,
+      section:String(q.section || q.skill || q.category || q.bloque || q.apartado || '').trim(),
+      exerciseTitle:String(q.exerciseTitle || q.exercise_title || q.title || '').trim(),
+      points:q.points || q.puntos || null,
+      originalNumber:q.questionNumber || q.question_number || q.number || q.numero || '',
       options,
       acceptedAnswers,
       keywords,
@@ -1244,21 +1248,36 @@
     const total=exam.questions.length;
     const perQuestion=total ? 10/total : 0;
     const optionsForPairs=q=>q.pairs.map(p=>p.right).slice().sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
-    const questionTypeLabel=q=>({single_choice:'Respuesta única',multiple_choice:'Selección múltiple',true_false:'Verdadero o falso',short_text:'Respuesta breve',writing:'Writing',matching:'Relacionar',ordering:'Ordenar'})[q.type] || 'Ejercicio';
-    const questionHtml=(q,idx)=>{
-      const number=idx+1;
+    const questionTypeLabel=q=>({single_choice:'Elige la respuesta correcta',multiple_choice:'Selecciona todas las correctas',true_false:'Verdadero o falso',short_text:'Completa',writing:'Writing',matching:'Relaciona',ordering:'Ordena'})[q.type] || 'Ejercicio';
+    const sectionLabel=q=>String(q.section||'Simulacro').trim() || 'Simulacro';
+    const grouped=[];
+    exam.questions.forEach((q,idx)=>{
+      const name=sectionLabel(q);
+      let group=grouped[grouped.length-1];
+      if(!group || group.name!==name){ group={name,items:[]}; grouped.push(group); }
+      group.items.push({q,idx});
+    });
+    const questionHtml=(q,idx,localIdx)=>{
+      const number=localIdx+1;
+      const globalNumber=idx+1;
+      const displayNumber=q.originalNumber || number;
       const passage=q.passage?`<blockquote class="exam-passage">${safe(q.passage)}</blockquote>`:'';
-      const head=`<div class="exam-question-head"><span class="exam-question-number">Pregunta ${number}</span><span class="exam-question-type">${safe(questionTypeLabel(q))}</span></div>`;
+      const title=q.exerciseTitle?`<p class="exam-exercise-title">${safe(q.exerciseTitle)}</p>`:'';
+      const head=`<div class="exam-question-head"><span class="exam-question-number">${displayNumber}</span><span class="exam-question-type">${safe(questionTypeLabel(q))}</span></div>`;
       const legend=`<legend>${safe(q.prompt)}</legend>`;
-      if(q.type==='matching') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="matching">${head}${legend}${passage}<div class="exam-matching">${q.pairs.map((p,i)=>`<label><span>${safe(p.left)}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${optionsForPairs(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
-      if(q.type==='ordering') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="ordering">${head}${legend}${passage}<div class="exam-ordering">${q.items.map((_,i)=>`<label><span>Posición ${i+1}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${q.items.map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
-      if(q.type==='short_text') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="short_text">${head}${legend}${passage}<input name="q${idx}" type="text" placeholder="Escribe tu respuesta"></fieldset>`;
-      if(q.type==='writing') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="writing">${head}${legend}${passage}<textarea name="q${idx}" rows="6" placeholder="Escribe tu respuesta"></textarea>${q.keywords?.length?`<small class="exam-help">Se autocorrige por criterios configurados.</small>`:''}</fieldset>`;
+      if(q.type==='matching') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="matching">${head}${title}${legend}${passage}<div class="exam-matching">${q.pairs.map((p,i)=>`<label><span>${safe(p.left)}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${optionsForPairs(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
+      if(q.type==='ordering') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="ordering">${head}${title}${legend}${passage}<div class="exam-ordering">${q.items.map((_,i)=>`<label><span>${i+1}.</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${q.items.map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
+      if(q.type==='short_text') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="short_text">${head}${title}${legend}${passage}<input name="q${idx}" type="text" placeholder="Escribe tu respuesta"></fieldset>`;
+      if(q.type==='writing') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="writing">${head}${title}${legend}${passage}<textarea name="q${idx}" rows="7" placeholder="Escribe tu respuesta"></textarea>${q.keywords?.length?`<small class="exam-help">Se autocorrige por criterios configurados.</small>`:''}</fieldset>`;
       const multiple=q.type==='multiple_choice';
       const type=multiple?'checkbox':'radio';
-      return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="${safe(q.type)}">${head}${legend}${passage}<div class="exam-options">${q.options.map((o,i)=>`<label><input type="${type}" name="q${idx}${multiple?'[]':''}" value="${i}"><span>${safe(o.text)}</span></label>`).join('')}</div></fieldset>`;
+      return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="${safe(q.type)}">${head}${title}${legend}${passage}<div class="exam-options">${q.options.map((o,i)=>`<label><input type="${type}" name="q${idx}${multiple?'[]':''}" value="${i}"><span>${safe(o.text)}</span></label>`).join('')}</div></fieldset>`;
     };
-    container.innerHTML=`<form class="native-exam-form"><header class="native-exam-header"><div class="exam-header-copy"><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p>${previous?`<strong class="exam-previous-grade">Última nota: ${Number(previous.score||0).toFixed(2)}/10</strong>`:''}</div><div class="exam-summary-pills"><span class="exam-summary-pill">${total} pregunta${total===1?'':'s'}</span><span class="exam-summary-pill">Nota máxima: 10</span><span class="exam-summary-pill">${perQuestion.toFixed(2)} puntos por pregunta</span></div></header><div class="native-exam-questions">${exam.questions.map(questionHtml).join('')}</div><footer class="native-exam-footer"><button type="submit" class="primary-btn">Finalizar simulacro y corregir</button><span>Responde todo antes de finalizar.</span></footer></form><div class="native-exam-result" hidden></div>`;
+    const sectionsHtml=grouped.map(group=>{
+      const pts=group.items.length*perQuestion;
+      return `<section class="exam-paper-section"><header><h5>${safe(group.name)}</h5><span>${pts.toFixed(2)} / 10</span></header>${group.items.map(({q,idx},localIdx)=>questionHtml(q,idx,localIdx)).join('')}</section>`;
+    }).join('');
+    container.innerHTML=`<form class="native-exam-form exam-paper-form"><header class="native-exam-header exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p>${previous?`<strong class="exam-previous-grade">Última nota: ${Number(previous.score||0).toFixed(2)}/10</strong>`:''}</header><div class="native-exam-questions exam-paper-body">${sectionsHtml}</div><footer class="native-exam-footer exam-paper-footer"><button type="submit" class="primary-btn">Finalizar y corregir</button><span>${total} pregunta${total===1?'':'s'} · corrección automática sobre 10</span></footer></form><div class="native-exam-result" hidden></div>`;
     const form=container.querySelector('form');
     form.addEventListener('submit', async ev=>{
       ev.preventDefault();
