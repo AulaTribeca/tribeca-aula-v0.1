@@ -1013,10 +1013,12 @@
     const currentScope = e?.scope || e?.target_scope || 'user';
     return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
-  async function triggerEmailOutboxSend(reason=''){
+  async function triggerEmailOutboxSend(eventType=''){
     try {
       if(!State.client?.functions?.invoke) return null;
-      const res = await State.client.functions.invoke('tribeca-send-email-outbox', { body: { reason } });
+      const cleanType = String(eventType || '').trim();
+      const body = cleanType ? { event_type: cleanType } : {};
+      const res = await State.client.functions.invoke('tribeca-send-email-outbox', { body });
       if(res?.error) throw res.error;
       return res?.data || null;
     } catch(error) {
