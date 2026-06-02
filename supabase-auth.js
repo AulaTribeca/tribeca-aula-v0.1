@@ -1894,7 +1894,7 @@
           <span class="profile-tool-icon">✉️</span>
           <div>
             <h3>Ajustes de notificaciones</h3>
-            <p>Indica un correo personal y marca qué avisos quieres recibir. Para que los emails salgan de verdad, debe estar activo el servicio de envío de Supabase.</p>
+            <p>Indica un correo personal y marca qué avisos quieres recibir.</p>
           </div>
         </header>
         <form id="t16ProfileNotificationsForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid">
