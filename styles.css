@@ -7575,3 +7575,110 @@ body.is-dark .classroom-student-select-list label.is-assigned-elsewhere {
     width: 100%;
   }
 }
+
+
+/* Tribeca Aula · versión 82
+   Fase 3: materias, unidades y materiales vinculados a clases permanentes. */
+.classroom-publication-panel {
+  border-left: .45rem solid var(--gold);
+}
+
+.classroom-card-v82 {
+  gap: 1rem;
+}
+
+.classroom-subjects-box {
+  border: 1px solid rgba(55, 49, 34, .12);
+  border-radius: 16px;
+  background: rgba(251, 250, 247, .78);
+  overflow: hidden;
+}
+
+.classroom-subjects-box > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1rem;
+  cursor: pointer;
+  background: rgba(168, 135, 45, .08);
+  font-weight: 950;
+}
+
+.classroom-subjects-box > summary em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.classroom-subject-form,
+.classroom-unit-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .65rem;
+  align-items: end;
+  padding: .85rem 1rem;
+  border-bottom: 1px solid rgba(55,49,34,.08);
+}
+
+.classroom-subject-list,
+.classroom-unit-list {
+  display: grid;
+  gap: .75rem;
+  padding: .85rem;
+}
+
+.classroom-subject-card,
+.classroom-unit-card {
+  display: grid;
+  gap: .65rem;
+  padding: .85rem;
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 14px;
+  background: var(--panel-solid);
+}
+
+.classroom-subject-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.classroom-subject-card strong,
+.classroom-unit-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 1.08rem;
+}
+
+.classroom-subject-card small,
+.classroom-unit-card small {
+  display: block;
+  margin-top: .1rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.classroom-unit-card {
+  border-left: .3rem solid var(--green);
+}
+
+body.is-dark .classroom-publication-panel,
+body.is-dark .classroom-subjects-box,
+body.is-dark .classroom-subject-card,
+body.is-dark .classroom-unit-card {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .18);
+}
+
+body.is-dark .classroom-subjects-box > summary {
+  background: rgba(212, 175, 55, .10);
+}
+
+@media (max-width: 760px) {
+  .classroom-subject-form,
+  .classroom-unit-form,
+  .classroom-subject-card > header {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}

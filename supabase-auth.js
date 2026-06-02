@@ -41,7 +41,10 @@
     loadedAt: 0,
     activitySince: null,
     selfPause: null,
-    profilePanel: 'profile'
+    profilePanel: 'profile',
+    prefillPublicationClassId: null,
+    prefillPublicationClassSubjectId: null,
+    prefillPublicationClassUnitId: null
   };
   window.TribecaAuth = State;
   const TRIBECA_TEACHER_PROFILE_IMAGE = 'assets/patricia-trillo-perfil.webp';
@@ -1104,6 +1107,40 @@
       </div>
     </section>`;
   }
+
+  function classroomLabel(c={}){
+    return c?.name || classroomAutoName(c?.center, c?.stage, c?.course);
+  }
+  function publicationClassroomSelector(item={}){
+    const classes=(State.data.classrooms||[]).filter(c=>c && c.active!==false).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}));
+    const selected=State.prefillPublicationClassId || item.class_id || '';
+    return `<section class="window-panel classroom-publication-panel">
+      <h3>Clase del nuevo modelo</h3>
+      <p class="meta">Selecciona una clase si este material debe quedar vinculado al nuevo modelo de aula. Si eliges una clase, se guardará también dentro de su materia y unidad.</p>
+      <label>Clase<select name="classId"><option value="">Sin clase del nuevo modelo</option>${classes.map(c=>`<option value="${safe(c.id)}" ${selectedAttr(c.id,selected)}>${safe(classroomLabel(c))} · ${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</option>`).join('')}</select></label>
+    </section>`;
+  }
+  async function ensureClassSubjectAndUnit(classId, subject, unit='Unidad 1'){
+    if(!classId || !subject) return {classSubjectId:null, classUnitId:null};
+    let classSubject=(State.data.classSubjects||[]).find(s=>String(s.class_id)===String(classId) && String(s.subject||'').trim().toLowerCase()===String(subject||'').trim().toLowerCase());
+    if(!classSubject){
+      const inserted=await maybe(table('tribeca_class_subjects').insert({class_id:classId, subject:String(subject).trim(), sort_order:0, hidden:false, active:true}).select('id,class_id,subject').single(), null);
+      classSubject=inserted;
+      if(classSubject) State.data.classSubjects=[...(State.data.classSubjects||[]), classSubject];
+    }
+    let classUnitId=null;
+    if(classSubject?.id){
+      const unitTitle=String(unit||'Unidad 1').trim() || 'Unidad 1';
+      let classUnit=(State.data.classUnits||[]).find(u=>String(u.class_subject_id)===String(classSubject.id) && String(u.title||'').trim().toLowerCase()===unitTitle.toLowerCase());
+      if(!classUnit){
+        const insertedUnit=await maybe(table('tribeca_class_units').insert({class_subject_id:classSubject.id, title:unitTitle, sort_order:0, hidden:false, active:true}).select('id,class_subject_id,title').single(), null);
+        classUnit=insertedUnit;
+        if(classUnit) State.data.classUnits=[...(State.data.classUnits||[]), classUnit];
+      }
+      classUnitId=classUnit?.id || null;
+    }
+    return {classSubjectId:classSubject?.id || null, classUnitId};
+  }
   function newPublicationContent() {
     const edit = State.pendingPublicationEdit || null;
     const item = edit?.item || {};
@@ -1111,13 +1148,14 @@
     const kind = editing ? (edit.kind || (edit.table === 'announcements' ? 'announcement' : normalizeMaterialKind(item.material_type || item.type))) : 'announcement';
     const subjectValue = State.prefillPublicationSubject || item.subject || '';
     const dynamic = (State.data.subjects || []).map(s => s.subject).filter(Boolean);
-    const allSubjects = [...new Set(Object.values(subjectCatalog).flat().concat(dynamic, ['Apoyo personalizado','Tutoría', subjectValue].filter(Boolean)))];
-    const unitValue = item.unit_title || item.unit || '';
+    const classDynamic = (State.data.classSubjects || []).map(s => s.subject).filter(Boolean);
+    const allSubjects = [...new Set(Object.values(subjectCatalog).flat().concat(dynamic, classDynamic, ['Apoyo personalizado','Tutoría', subjectValue].filter(Boolean)))].sort((a,b)=>a.localeCompare(b,'es'));
+    const unitValue = State.prefillPublicationUnit || item.unit_title || item.unit || '';
     const attachments = normalizeAttachments(item);
     const attachmentsJson = JSON.stringify(attachments).replace(/"/g, '&quot;');
     const repoCtx = repositoryContextFromItem(item);
     const typeCard = (value, icon, title, desc) => `<label><input type="radio" name="publicationKind" value="${value}" ${normalizeMaterialKind(kind)===normalizeMaterialKind(value)?'checked':''}><span>${icon} ${title}<small>${desc}</small></span></label>`;
-    return `<form id="t16PublicationForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="t18-publication-wizard"><input type="hidden" name="editId" value="${safe(edit?.id||'')}"><input type="hidden" name="editTable" value="${safe(edit?.table||'')}"><section class="window-panel t18-publish-main"><h3>${editing?'Editar publicación':'1. Qué vas a publicar'}</h3>${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}<div class="t18-type-cards">${typeCard('announcement','📣','Anuncio, aviso o noticia','Se verá en Anuncios, no dentro de una materia.')}${typeCard('material','📄','Material de materia','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Las insignias se asignan manualmente desde el panel docente.')}${typeCard('test','🧪','Test externo','Usa el enlace para el test interactivo.')}${typeCard('game','🎮','Juego','Actividad lúdica o enlace a juego.')}</div><div class="window-grid"><label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label><label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label></div><label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label><label>Cuerpo<textarea name="body" rows="7" maxlength="1800" placeholder="Escribe el contenido de la publicación con instrucciones claras.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label><div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div><div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div></section><section class="window-panel publication-files-panel"><h3>2. Archivos adjuntos</h3><p class="meta">Añade una imagen visible o documentos para que el alumnado los consulte desde la publicación.</p><label>Imagen visible en la publicación<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"><input type="hidden" name="imageUrl" value="${safe(item.image_url||'')}"><span id="t16ImagePreview" class="t16-image-preview">${item.image_url?`<img src="${safe(item.image_url)}" alt="">`:''}</span></label><label>Documentos adjuntos PDF, Word o imágenes<input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple><input type="hidden" name="attachmentsJson" value="${attachmentsJson}"><span class="meta" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span></label></section>${repositoryClassificationFields(repoCtx, 'repo')}${recipientSelector()}<footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer></form>`;
+    return `<form id="t16PublicationForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="t18-publication-wizard"><input type="hidden" name="editId" value="${safe(edit?.id||'')}"><input type="hidden" name="editTable" value="${safe(edit?.table||'')}"><section class="window-panel t18-publish-main"><h3>${editing?'Editar publicación':'1. Qué vas a publicar'}</h3>${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}<div class="t18-type-cards">${typeCard('announcement','📣','Anuncio, aviso o noticia','Se verá en Anuncios, no dentro de una materia.')}${typeCard('material','📄','Material de materia','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Las insignias se asignan manualmente desde el panel docente.')}${typeCard('test','🧪','Test externo','Usa el enlace para el test interactivo.')}${typeCard('game','🎮','Juego','Actividad lúdica o enlace a juego.')}</div>${publicationClassroomSelector(item)}<div class="window-grid"><label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label><label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label></div><label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label><label>Cuerpo<textarea name="body" rows="7" maxlength="1800" placeholder="Escribe el contenido de la publicación con instrucciones claras.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label><div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div><div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div></section><section class="window-panel publication-files-panel"><h3>2. Archivos adjuntos</h3><p class="meta">Añade una imagen visible o documentos para que el alumnado los consulte desde la publicación.</p><label>Imagen visible en la publicación<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"><input type="hidden" name="imageUrl" value="${safe(item.image_url||'')}"><span id="t16ImagePreview" class="t16-image-preview">${item.image_url?`<img src="${safe(item.image_url)}" alt="">`:''}</span></label><label>Documentos adjuntos PDF, Word o imágenes<input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple><input type="hidden" name="attachmentsJson" value="${attachmentsJson}"><span class="meta" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span></label></section>${repositoryClassificationFields(repoCtx, 'repo')}${recipientSelector()}<footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer></form>`;
   }
 
   async function autoSaveMaterialPayloadToRepository(payload={}, sourceId=null){
@@ -1157,20 +1195,31 @@
   }
 
   async function savePublication(form) {
-    const fd=new FormData(form); const rawKind=fd.get('publicationKind'); const kind=normalizeMaterialKind(rawKind); const scope=fd.get('targetScope')||'all'; const ids=fd.getAll('targetUserIds'); const editId=String(fd.get('editId')||'').trim(); const editTable=String(fd.get('editTable')||'').trim();
+    const fd=new FormData(form); const rawKind=fd.get('publicationKind'); const kind=normalizeMaterialKind(rawKind); let scope=fd.get('targetScope')||'all'; const ids=fd.getAll('targetUserIds'); const editId=String(fd.get('editId')||'').trim(); const editTable=String(fd.get('editTable')||'').trim();
+    const classId=String(fd.get('classId')||'').trim();
+    const selectedClass=classId ? (State.data.classrooms||[]).find(c=>String(c.id)===String(classId)) : null;
     const repoCenter=String(fd.get('repoCenter')||'').trim();
     const repoStage=String(fd.get('repoStage')||'').trim();
     const repoCourse=String(fd.get('repoCourse')||'').trim();
-    const rec={ title:fd.get('title'), body:fd.get('body')||'', description:fd.get('body')||'', content:fd.get('body')||'', image_url:fd.get('imageUrl')||null, link_url:fd.get('linkUrl')||null, font_size:Number(fd.get('fontSize')||16), target_scope:scope, target_user_ids:ids, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, created_by:State.profile.id, hidden:false };
+    const isAnnouncement = kind === 'announcement' || editTable === 'announcements';
+    if(classId && !isAnnouncement) scope='class';
+    const rec={ title:fd.get('title'), body:fd.get('body')||'', description:fd.get('body')||'', content:fd.get('body')||'', image_url:fd.get('imageUrl')||null, link_url:fd.get('linkUrl')||null, font_size:Number(fd.get('fontSize')||16), target_scope:scope, target_user_ids:ids, center:selectedClass?.center || fd.get('center')||null, stage:selectedClass?.stage || fd.get('stage')||null, course:selectedClass?.course || fd.get('course')||null, created_by:State.profile.id, hidden:false };
     let attachments = [];
     try { attachments = JSON.parse(fd.get('attachmentsJson')||'[]'); } catch(_e) { attachments = []; }
-    const isAnnouncement = kind === 'announcement' || editTable === 'announcements';
     const tableName = isAnnouncement ? 'announcements' : 'subject_materials';
-    const payload = isAnnouncement ? {...rec, announcement_type:'announcement', attachments} : {...rec, subject:fd.get('subject')||'Apoyo personalizado', unit_title:fd.get('unit')||'Unidad 1', unit:fd.get('unit')||'Unidad 1', material_type:dbMaterialType(kind), badge_codes:[], attachments};
+    const subject=fd.get('subject')||'Apoyo personalizado';
+    const unit=fd.get('unit')||'Unidad 1';
+    const payload = isAnnouncement ? {...rec, announcement_type:'announcement', attachments} : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), badge_codes:[], attachments};
     if(!isAnnouncement){
-      payload.repository_center = repoCenter || null;
-      payload.repository_stage = repoStage || null;
-      payload.repository_course = repoCourse || null;
+      if(classId){
+        const linked=await ensureClassSubjectAndUnit(classId, subject, unit);
+        payload.class_id=classId;
+        payload.class_subject_id=linked.classSubjectId;
+        payload.class_unit_id=linked.classUnitId;
+      }
+      payload.repository_center = repoCenter || selectedClass?.center || null;
+      payload.repository_stage = repoStage || selectedClass?.stage || null;
+      payload.repository_course = repoCourse || selectedClass?.course || null;
     }
     if(editId) { delete payload.created_by; delete payload.hidden; }
     const savePayload = {...payload};
@@ -1183,13 +1232,13 @@
         const found = await maybe(table('subject_materials').select('id').eq('created_by', State.profile.id).eq('title', payload.title).eq('subject', payload.subject).order('created_at',{ascending:false}).limit(1), []);
         savedId = found?.[0]?.id || null;
       }
-      const repoPayload = {...payload, center:repoCenter||null, stage:repoStage||null, course:repoCourse||null};
+      const repoPayload = {...payload, center:(repoCenter || selectedClass?.center || null), stage:(repoStage || selectedClass?.stage || null), course:(repoCourse || selectedClass?.course || null)};
       repositorySaved = await autoSaveMaterialPayloadToRepository(repoPayload, savedId);
     }
-    await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName});
-    State.pendingPublicationEdit=null; State.prefillPublicationSubject=null;
+    await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName, class_id:classId||null});
+    State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationUnit=null; State.prefillPublicationClassId=null; State.prefillPublicationClassSubjectId=null; State.prefillPublicationClassUnitId=null;
     await loadData(true);
-    const msg = isAnnouncement ? (editId?'Publicación modificada.':'Publicación guardada.') : (repositorySaved ? (editId?'Material modificado y actualizado en el repositorio.':'Material publicado y guardado automáticamente en el repositorio.') : (editId?'Material modificado. No se pudo actualizar el repositorio.':'Material publicado. No se pudo guardar automáticamente en el repositorio.'));
+    const msg = isAnnouncement ? (editId?'Publicación modificada.':'Publicación guardada.') : (repositorySaved ? (editId?'Material modificado y actualizado en el repositorio.':'Material publicado, vinculado a su clase y guardado automáticamente en el repositorio.') : (editId?'Material modificado. No se pudo actualizar el repositorio.':'Material publicado y vinculado a su clase. No se pudo guardar automáticamente en el repositorio.'));
     toast(msg); form.reset(); rerender();
   }
 
@@ -2074,11 +2123,12 @@
     const subjectPreview=subjects.slice(0,6).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
     const rosterPreview=assigned.slice(0,8).map(s=>`<span>${safe(displayName(s))}<small>${safe(s.username||'')}</small></span>`).join('');
     const label=classroomAutoName(c.center,c.stage,c.course);
-    return `<article class="classroom-card ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
+    return `<article class="classroom-card classroom-card-v82 ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
       <div class="classroom-card-head"><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(c.name||label)}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div><strong title="Alumnado asignado">${students}</strong></div>
       ${c.description?`<p>${safe(c.description)}</p>`:''}
       <div class="classroom-chip-row classroom-roster-preview">${rosterPreview || '<span>Sin alumnado asignado</span>'}${assigned.length>8?`<span>+${assigned.length-8} más</span>`:''}</div>
-      <div class="classroom-chip-row">${subjects.length?subjectPreview:'<span>Materias pendientes de crear en fases siguientes</span>'}</div>
+      <div class="classroom-chip-row">${subjects.length?subjectPreview:'<span>Materias pendientes de crear</span>'}</div>
+      ${classroomSubjectsBox(c)}
       ${classroomAssignmentBox(c)}
       <div class="inline-actions">
         <button type="button" class="secondary-btn" data-t80-edit-class="${safe(c.id)}" onclick="return window.TribecaClassroomEditDirect(this,event)">Editar</button>
@@ -2087,30 +2137,68 @@
       </div>
     </article>`;
   }
-  function classroomAssignmentBox(c){
-    const students=(State.data.students||[]).slice().sort((a,b)=>{
-      const aIn=String(studentActiveClass(a.id)?.id||'')===String(c.id), bIn=String(studentActiveClass(b.id)?.id||'')===String(c.id);
-      if(aIn!==bIn) return aIn?-1:1;
-      const stageCmp=String(a.stage||'').localeCompare(String(b.stage||''),'es');
-      if(stageCmp) return stageCmp;
-      const courseCmp=String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true});
-      if(courseCmp) return courseCmp;
-      return displayName(a).localeCompare(displayName(b),'es');
-    });
-    return `<details class="classroom-assignment-box"><summary><span>Asignar o promocionar alumnado</span><em>${classroomStudentsCount(c.id)} asignado${classroomStudentsCount(c.id)===1?'':'s'}</em></summary>
-      <form class="classroom-assignment-form" onsubmit="return false;">
+  function classroomSubjectsBox(c){
+    const subjects=classroomSubjects(c.id);
+    const dynamic=(State.data.subjects||[]).map(s=>s.subject).filter(Boolean);
+    const opts=[...new Set([...(subjectCatalog[`${c.stage}-${c.course}`]||[]), ...dynamic, 'Apoyo personalizado','Tutoría'])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
+    return `<details class="classroom-subjects-box" open><summary><span>Materias, unidades y materiales</span><em>${subjects.length} materia${subjects.length===1?'':'s'}</em></summary>
+      <form class="classroom-subject-form" onsubmit="return window.TribecaClassroomAddSubject(this,event)">
         <input type="hidden" name="classId" value="${safe(c.id)}">
-        <p class="meta">Selecciona alumnado. “Guardar lista” actualiza solo esta clase. “Promocionar a esta clase” retira al alumnado seleccionado de otras clases activas y actualiza su centro, etapa y curso al de esta clase.</p>
-        <input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>
-        <div class="classroom-student-select-list">
-          ${students.map(s=>{ const current=studentActiveClass(s.id); const checked=String(current?.id||'')===String(c.id); return `<label data-student-name="${safe((displayName(s)+' '+s.username+' '+academicLine(s)+' '+(current?.name||'')).toLowerCase())}" class="${checked?'is-assigned-here':current?'is-assigned-elsewhere':''}"><input type="checkbox" name="studentIds" value="${safe(s.id)}" ${checked?'checked':''}><span><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}${current?` · Clase actual: ${safe(current.name||classroomAutoName(current.center,current.stage,current.course))}`:' · Sin clase activa'}</small></span></label>`; }).join('')}
-        </div>
-        <div class="inline-actions">
-          <button type="button" class="secondary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'assign')">Guardar lista de esta clase</button>
-          <button type="button" class="primary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'promote')">Asignar/promocionar a esta clase</button>
-        </div>
+        <label>Añadir materia<select name="subject">${opts.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('')}</select></label>
+        <button type="submit" class="secondary-btn">Añadir materia</button>
       </form>
+      <div class="classroom-subject-list">${subjects.length?subjects.map(classroomSubjectCard).join(''):'<div class="empty-state">Añade materias a esta clase para organizar unidades y materiales.</div>'}</div>
     </details>`;
+  }
+  function classroomSubjectCard(s){
+    const units=classroomUnitsForSubject(s.id);
+    const materials=(State.data.materials||[]).filter(m=>String(m.class_subject_id||'')===String(s.id) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||'')));
+    const materialCount=materials.length;
+    return `<article class="classroom-subject-card ${s.hidden?'is-hidden-classroom':''}">
+      <header><div><strong>${safe(s.subject)}</strong><small>${materialCount} material${materialCount===1?'':'es'} vinculado${materialCount===1?'':'s'}</small></div><div class="inline-actions"><button type="button" data-t82-toggle-subject="${safe(s.id)}" onclick="return window.TribecaClassroomToggleSubject(this,event)">${s.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t82-delete-subject="${safe(s.id)}" onclick="return window.TribecaClassroomDeleteSubject(this,event)">Eliminar</button></div></header>
+      <form class="classroom-unit-form" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
+        <input type="hidden" name="classSubjectId" value="${safe(s.id)}">
+        <input name="title" placeholder="Unidad 1, Module 5, Tema 3..." required>
+        <button type="submit" class="secondary-btn">Añadir unidad</button>
+      </form>
+      <div class="classroom-unit-list">${units.length?units.map(u=>classroomUnitCard(u,s)).join(''):'<div class="empty-state">Sin unidades todavía.</div>'}</div>
+    </article>`;
+  }
+  function classroomUnitCard(u,s){
+    const materials=(State.data.materials||[]).filter(m=>String(m.class_unit_id||'')===String(u.id) || (String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||'')));
+    const chips=materials.slice(0,5).map(m=>`<span>${safe(m.title||'Material sin título')}${m.hidden?' · oculto':''}</span>`).join('');
+    return `<article class="classroom-unit-card ${u.hidden?'is-hidden-classroom':''}">
+      <div><strong>${safe(u.title)}</strong><small>${materials.length} material${materials.length===1?'':'es'}</small></div>
+      <div class="classroom-chip-row">${chips || '<span>Sin materiales vinculados</span>'}${materials.length>5?`<span>+${materials.length-5} más</span>`:''}</div>
+      <div class="inline-actions">
+        <button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button>
+        <button type="button" data-t82-toggle-unit="${safe(u.id)}" onclick="return window.TribecaClassroomToggleUnit(this,event)">${u.hidden?'Mostrar':'Ocultar'}</button>
+        <button type="button" data-t82-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar</button>
+      </div>
+    </article>`;
+  }
+
+  async function addClassSubject(form){
+    const fd=new FormData(form);
+    const classId=fd.get('classId');
+    const subject=String(fd.get('subject')||'').trim();
+    if(!classId || !subject) throw new Error('Selecciona una materia.');
+    const existing=(State.data.classSubjects||[]).find(s=>String(s.class_id)===String(classId) && String(s.subject||'').toLowerCase()===subject.toLowerCase());
+    if(existing) return toast('La materia ya existe en esta clase.');
+    await table('tribeca_class_subjects').insert({class_id:classId, subject, sort_order:(State.data.classSubjects||[]).filter(s=>String(s.class_id)===String(classId)).length+1, hidden:false, active:true});
+    await log('classroom','Materia añadida a clase',{class_id:classId,subject});
+    await loadData(true); toast('Materia añadida a la clase.'); rerender();
+  }
+  async function addClassUnit(form){
+    const fd=new FormData(form);
+    const classSubjectId=fd.get('classSubjectId');
+    const title=String(fd.get('title')||'').trim();
+    if(!classSubjectId || !title) throw new Error('Escribe el título de la unidad.');
+    const existing=(State.data.classUnits||[]).find(u=>String(u.class_subject_id)===String(classSubjectId) && String(u.title||'').toLowerCase()===title.toLowerCase());
+    if(existing) return toast('La unidad ya existe en esta materia.');
+    await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true});
+    await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
+    await loadData(true); toast('Unidad añadida.'); rerender();
   }
   async function saveClassroom(form){
     if(!roleTeacher()) throw new Error('Solo la profesora puede gestionar clases.');
@@ -2192,6 +2280,15 @@
   window.TribecaClassroomSaveStudents=function(btn,ev,mode='assign'){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const form=btn?.closest?.('form'); if(!form){ toast('No se encontró el formulario de alumnado.'); return false; } saveClassroomStudents(form,mode).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar el alumnado de la clase.'); }); return false; };
   window.TribecaClassroomToggleDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80ToggleClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(!c) return false; persistSupabaseRecord('tribeca_classes',{hidden:!c.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(c.hidden?'Clase visible.':'Clase oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la clase.')); return false; };
   window.TribecaClassroomDeleteDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassroom(btn?.dataset?.t80DeleteClass).catch(e=>toast(e.message||'No se pudo eliminar la clase.')); return false; };
+
+  window.TribecaClassroomAddSubject=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); addClassSubject(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo añadir la materia.'); }); return false; };
+  window.TribecaClassroomAddUnit=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); addClassUnit(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo añadir la unidad.'); }); return false; };
+  window.TribecaClassroomNewMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); State.pendingPublicationEdit=null; State.prefillPublicationClassId=btn?.dataset?.classId||null; State.prefillPublicationSubject=btn?.dataset?.subject||''; State.prefillPublicationUnit=btn?.dataset?.unit||'Unidad 1'; openTool('newPublication'); return false; };
+  window.TribecaClassroomToggleSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleSubject; const s=(State.data.classSubjects||[]).find(x=>String(x.id)===String(id)); if(!s) return false; persistSupabaseRecord('tribeca_class_subjects',{hidden:!s.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(s.hidden?'Materia visible.':'Materia oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la materia.')); return false; };
+  window.TribecaClassroomToggleUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleUnit; const u=(State.data.classUnits||[]).find(x=>String(x.id)===String(id)); if(!u) return false; persistSupabaseRecord('tribeca_class_units',{hidden:!u.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(u.hidden?'Unidad visible.':'Unidad oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la unidad.')); return false; };
+  window.TribecaClassroomDeleteSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteSubject; if(!confirm('¿Eliminar esta materia de la clase? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de materia de clase.')) return false; table('tribeca_class_subjects').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Materia eliminada de la clase.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la materia.')); return false; };
+  window.TribecaClassroomDeleteUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteUnit; if(!confirm('¿Eliminar esta unidad? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de unidad de clase.')) return false; table('tribeca_class_units').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Unidad eliminada.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la unidad.')); return false; };
+
 
   function teacherSubjectsContent(){
     const stage=State.selectedSubjectStage, course=State.selectedSubjectCourse; const subjects=teacherSubjectList(stage,course);
