@@ -7453,3 +7453,125 @@ body.is-dark .classroom-center-group > summary {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tribeca Aula · versión 81
+   Fase 2: asignación y promoción manual de alumnado a clases permanentes. */
+.classrooms-tool-v81 .classroom-hero {
+  border-left: .45rem solid var(--gold);
+}
+
+.classroom-assignment-overview {
+  border-left: .45rem solid var(--green);
+}
+
+.classroom-roster-preview span small,
+.classroom-assignment-overview .classroom-chip-row span small {
+  display: block;
+  margin-top: .1rem;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.classroom-assignment-box {
+  border: 1px solid rgba(55, 49, 34, .12);
+  border-radius: 16px;
+  background: rgba(251, 250, 247, .78);
+  overflow: hidden;
+}
+
+.classroom-assignment-box > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  background: rgba(16, 63, 36, .06);
+  font-weight: 950;
+}
+
+.classroom-assignment-box > summary em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.classroom-assignment-form {
+  display: grid;
+  gap: .8rem;
+  padding: 1rem;
+}
+
+.classroom-student-select-list {
+  display: grid;
+  gap: .45rem;
+  max-height: 26rem;
+  overflow: auto;
+  padding-right: .2rem;
+}
+
+.classroom-student-select-list label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .65rem;
+  align-items: start;
+  padding: .65rem .7rem;
+  border: 1px solid rgba(55, 49, 34, .10);
+  border-radius: 14px;
+  background: var(--panel-solid);
+}
+
+.classroom-student-select-list label.is-assigned-here {
+  border-color: rgba(16, 63, 36, .28);
+  background: rgba(16, 63, 36, .07);
+}
+
+.classroom-student-select-list label.is-assigned-elsewhere {
+  border-color: rgba(168, 135, 45, .26);
+  background: rgba(168, 135, 45, .08);
+}
+
+.classroom-student-select-list strong {
+  display: block;
+  color: var(--text);
+}
+
+.classroom-student-select-list small {
+  display: block;
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.35;
+  margin-top: .1rem;
+}
+
+body.is-dark .classroom-assignment-box,
+body.is-dark .classroom-student-select-list label {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .18);
+}
+
+body.is-dark .classroom-assignment-box > summary {
+  background: rgba(212, 175, 55, .10);
+}
+
+body.is-dark .classroom-student-select-list label.is-assigned-here {
+  background: rgba(16, 63, 36, .22);
+}
+
+body.is-dark .classroom-student-select-list label.is-assigned-elsewhere {
+  background: rgba(212, 175, 55, .13);
+}
+
+@media (max-width: 760px) {
+  .classroom-assignment-box > summary {
+    flex-direction: column;
+  }
+
+  .classroom-assignment-form .inline-actions {
+    display: grid;
+  }
+
+  .classroom-assignment-form .inline-actions button {
+    width: 100%;
+  }
+}

@@ -1966,13 +1966,32 @@
 
 
 
+
   function currentAcademicYearLabel(){
     const d=new Date(); const y=d.getFullYear(); const m=d.getMonth()+1;
     const start=m>=9 ? y : y-1;
     return `${start}/${String(start+1).slice(-2)}`;
   }
+  function activeClassAssignments(){
+    return (State.data.classStudents||[]).filter(x=>x && x.active!==false);
+  }
+  function classroomAssignments(classId){
+    return activeClassAssignments().filter(x=>String(x.class_id)===String(classId));
+  }
+  function studentActiveClass(studentId){
+    const assignment=activeClassAssignments().find(x=>String(x.user_id)===String(studentId));
+    return assignment ? (State.data.classrooms||[]).find(c=>String(c.id)===String(assignment.class_id)) || null : null;
+  }
+  function classroomStudents(classId){
+    const ids=new Set(classroomAssignments(classId).map(x=>String(x.user_id)));
+    return (State.data.students||[]).filter(s=>ids.has(String(s.id))).sort((a,b)=>displayName(a).localeCompare(displayName(b),'es'));
+  }
   function classroomStudentsCount(classId){
-    return (State.data.classStudents||[]).filter(x=>String(x.class_id)===String(classId) && x.active!==false).length;
+    return classroomStudents(classId).length;
+  }
+  function unassignedStudents(){
+    const assigned=new Set(activeClassAssignments().map(x=>String(x.user_id)));
+    return (State.data.students||[]).filter(s=>!assigned.has(String(s.id))).sort((a,b)=>displayName(a).localeCompare(displayName(b),'es'));
   }
   function classroomSubjects(classId){
     return (State.data.classSubjects||[]).filter(x=>String(x.class_id)===String(classId) && x.active!==false).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.subject||'').localeCompare(String(b.subject||''),'es'));
@@ -1995,15 +2014,16 @@
     const editYear=edit?.academic_year || currentAcademicYearLabel();
     const activeRows=rows.filter(c=>c.active!==false);
     const hiddenRows=rows.filter(c=>c.hidden || c.active===false);
+    const unassigned=unassignedStudents();
     const byCenter=new Map();
     activeRows.forEach(c=>{ const center=c.center||'Sin centro educativo'; if(!byCenter.has(center)) byCenter.set(center, []); byCenter.get(center).push(c); });
     const grouped=[...byCenter.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([center,items])=>`<details class="classroom-center-group" open><summary><span>${safe(center)}</span><em>${items.length} clase${items.length===1?'':'s'}</em></summary><div class="classroom-card-grid">${items.sort((a,b)=>String(a.stage||'').localeCompare(String(b.stage||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es')).map(classroomCard).join('')}</div></details>`).join('');
-    return `<section class="classrooms-tool">
+    return `<section class="classrooms-tool classrooms-tool-v81">
       <section class="window-panel classroom-hero">
         <div>
           <p class="eyebrow">Nuevo modelo de aula virtual</p>
-          <h3>Clases permanentes por centro y curso</h3>
-          <p class="meta">Fase 1: creación de la estructura de clases. Las clases permanecen; al inicio de curso se asignará o promocionará manualmente el alumnado a la clase correspondiente.</p>
+          <h3>Clases permanentes y alumnado asignado</h3>
+          <p class="meta">Fase 2: ya puedes asignar alumnado a clases y promocionarlo manualmente de una clase a otra. Las clases permanecen; el alumnado entra o sale según lo decidas.</p>
         </div>
         <div class="classroom-stats"><strong>${activeRows.length}</strong><span>clase${activeRows.length===1?'':'s'} activa${activeRows.length===1?'':'s'}</span></div>
       </section>
@@ -2025,6 +2045,12 @@
         </form>
       </section>
 
+      <section class="window-panel classroom-assignment-overview">
+        <h3>Alumnado sin clase activa</h3>
+        <p class="meta">Estos perfiles todavía no están asociados a ninguna clase permanente del nuevo modelo.</p>
+        <div class="classroom-chip-row">${unassigned.length?unassigned.map(s=>`<span>${safe(displayName(s))}<small>${safe(academicLine(s))}</small></span>`).join(''):'<span>Todo el alumnado tiene una clase activa asignada.</span>'}</div>
+      </section>
+
       <section class="window-panel classroom-roadmap">
         <h3>Fases del nuevo modelo</h3>
         <ol>
@@ -2043,19 +2069,48 @@
   }
   function classroomCard(c){
     const subjects=classroomSubjects(c.id);
-    const students=classroomStudentsCount(c.id);
+    const assigned=classroomStudents(c.id);
+    const students=assigned.length;
     const subjectPreview=subjects.slice(0,6).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
+    const rosterPreview=assigned.slice(0,8).map(s=>`<span>${safe(displayName(s))}<small>${safe(s.username||'')}</small></span>`).join('');
     const label=classroomAutoName(c.center,c.stage,c.course);
     return `<article class="classroom-card ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
-      <div class="classroom-card-head"><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(c.name||label)}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div><strong>${students}</strong></div>
+      <div class="classroom-card-head"><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(c.name||label)}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div><strong title="Alumnado asignado">${students}</strong></div>
       ${c.description?`<p>${safe(c.description)}</p>`:''}
+      <div class="classroom-chip-row classroom-roster-preview">${rosterPreview || '<span>Sin alumnado asignado</span>'}${assigned.length>8?`<span>+${assigned.length-8} más</span>`:''}</div>
       <div class="classroom-chip-row">${subjects.length?subjectPreview:'<span>Materias pendientes de crear en fases siguientes</span>'}</div>
+      ${classroomAssignmentBox(c)}
       <div class="inline-actions">
         <button type="button" class="secondary-btn" data-t80-edit-class="${safe(c.id)}" onclick="return window.TribecaClassroomEditDirect(this,event)">Editar</button>
         <button type="button" data-t80-toggle-class="${safe(c.id)}" onclick="return window.TribecaClassroomToggleDirect(this,event)">${c.hidden?'Mostrar':'Ocultar'}</button>
         <button type="button" data-t80-delete-class="${safe(c.id)}" onclick="return window.TribecaClassroomDeleteDirect(this,event)">Eliminar</button>
       </div>
     </article>`;
+  }
+  function classroomAssignmentBox(c){
+    const students=(State.data.students||[]).slice().sort((a,b)=>{
+      const aIn=String(studentActiveClass(a.id)?.id||'')===String(c.id), bIn=String(studentActiveClass(b.id)?.id||'')===String(c.id);
+      if(aIn!==bIn) return aIn?-1:1;
+      const stageCmp=String(a.stage||'').localeCompare(String(b.stage||''),'es');
+      if(stageCmp) return stageCmp;
+      const courseCmp=String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true});
+      if(courseCmp) return courseCmp;
+      return displayName(a).localeCompare(displayName(b),'es');
+    });
+    return `<details class="classroom-assignment-box"><summary><span>Asignar o promocionar alumnado</span><em>${classroomStudentsCount(c.id)} asignado${classroomStudentsCount(c.id)===1?'':'s'}</em></summary>
+      <form class="classroom-assignment-form" onsubmit="return false;">
+        <input type="hidden" name="classId" value="${safe(c.id)}">
+        <p class="meta">Selecciona alumnado. “Guardar lista” actualiza solo esta clase. “Promocionar a esta clase” retira al alumnado seleccionado de otras clases activas y actualiza su centro, etapa y curso al de esta clase.</p>
+        <input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>
+        <div class="classroom-student-select-list">
+          ${students.map(s=>{ const current=studentActiveClass(s.id); const checked=String(current?.id||'')===String(c.id); return `<label data-student-name="${safe((displayName(s)+' '+s.username+' '+academicLine(s)+' '+(current?.name||'')).toLowerCase())}" class="${checked?'is-assigned-here':current?'is-assigned-elsewhere':''}"><input type="checkbox" name="studentIds" value="${safe(s.id)}" ${checked?'checked':''}><span><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}${current?` · Clase actual: ${safe(current.name||classroomAutoName(current.center,current.stage,current.course))}`:' · Sin clase activa'}</small></span></label>`; }).join('')}
+        </div>
+        <div class="inline-actions">
+          <button type="button" class="secondary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'assign')">Guardar lista de esta clase</button>
+          <button type="button" class="primary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'promote')">Asignar/promocionar a esta clase</button>
+        </div>
+      </form>
+    </details>`;
   }
   async function saveClassroom(form){
     if(!roleTeacher()) throw new Error('Solo la profesora puede gestionar clases.');
@@ -2083,8 +2138,48 @@
     toast(id?'Clase actualizada.':'Clase creada.');
     rerender();
   }
+  async function saveClassroomStudents(form, mode='assign'){
+    if(!roleTeacher()) throw new Error('Solo la profesora puede asignar alumnado.');
+    const fd=new FormData(form);
+    const classId=String(fd.get('classId')||'').trim();
+    const classroom=(State.data.classrooms||[]).find(c=>String(c.id)===String(classId));
+    if(!classroom) throw new Error('No se encontró la clase.');
+    const selected=fd.getAll('studentIds').map(String);
+    const selectedSet=new Set(selected);
+    const existing=classroomAssignments(classId);
+    const today=todayIso();
+    const toDeactivate=existing.filter(x=>!selectedSet.has(String(x.user_id)));
+    if(toDeactivate.length){
+      const ids=toDeactivate.map(x=>x.id).filter(Boolean);
+      if(ids.length){
+        const {error}=await table('tribeca_class_students').update({active:false, withdrawn_at:today, updated_at:new Date().toISOString()}).in('id',ids);
+        if(error) throw error;
+      }
+    }
+    if(mode==='promote' && selected.length){
+      const other=activeClassAssignments().filter(x=>selectedSet.has(String(x.user_id)) && String(x.class_id)!==String(classId));
+      const otherIds=other.map(x=>x.id).filter(Boolean);
+      if(otherIds.length){
+        const {error}=await table('tribeca_class_students').update({active:false, withdrawn_at:today, updated_at:new Date().toISOString()}).in('id',otherIds);
+        if(error) throw error;
+      }
+    }
+    if(selected.length){
+      const upserts=selected.map(userId=>({class_id:classId,user_id:userId,active:true,enrolled_at:today,withdrawn_at:null,updated_at:new Date().toISOString()}));
+      const {error}=await table('tribeca_class_students').upsert(upserts,{onConflict:'class_id,user_id'});
+      if(error) throw error;
+      if(mode==='promote'){
+        const {error:profileError}=await table('profiles').update({center:classroom.center,stage:classroom.stage,course:classroom.course}).in('id',selected);
+        if(profileError) console.warn('[Tribeca Aula] No se pudo actualizar centro/curso del perfil tras promoción:', profileError);
+      }
+    }
+    await log('classroom', mode==='promote'?'Alumnado asignado/promocionado':'Lista de alumnado de clase actualizada',{class_id:classId,classroom:classroom.name||classroomAutoName(classroom.center,classroom.stage,classroom.course),selected:selected.length});
+    await loadData(true);
+    toast(mode==='promote'?'Alumnado asignado o promocionado a la clase.':'Lista de alumnado de la clase guardada.');
+    rerender();
+  }
   async function deleteClassroom(id){
-    if(!confirm('¿Eliminar esta clase? En esta fase solo se eliminará la clase, no los perfiles de alumnado.')) return;
+    if(!confirm('¿Eliminar esta clase? Se eliminarán también sus asignaciones internas, pero no los perfiles de alumnado.')) return;
     const {error}=await table('tribeca_classes').delete().eq('id',id);
     if(error) throw error;
     await log('classroom','Clase eliminada',{id});
@@ -2094,6 +2189,7 @@
   }
   window.TribecaClassroomEditDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80EditClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(c){ State.pendingClassroomEdit={...c}; rerender(); } return false; };
   window.TribecaClassroomCancelEdit=function(ev){ ev?.preventDefault?.(); State.pendingClassroomEdit=null; rerender(); return false; };
+  window.TribecaClassroomSaveStudents=function(btn,ev,mode='assign'){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const form=btn?.closest?.('form'); if(!form){ toast('No se encontró el formulario de alumnado.'); return false; } saveClassroomStudents(form,mode).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar el alumnado de la clase.'); }); return false; };
   window.TribecaClassroomToggleDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80ToggleClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(!c) return false; persistSupabaseRecord('tribeca_classes',{hidden:!c.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(c.hidden?'Clase visible.':'Clase oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la clase.')); return false; };
   window.TribecaClassroomDeleteDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassroom(btn?.dataset?.t80DeleteClass).catch(e=>toast(e.message||'No se pudo eliminar la clase.')); return false; };
 
