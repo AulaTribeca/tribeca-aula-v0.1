@@ -386,7 +386,11 @@
       maybe(table('guidance_resources').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidance=d||[]),
       maybe(table('subject_overrides').select('*').order('stage').order('course').order('subject'), []).then(d=>State.data.subjects=d||[]),
       maybe(table('material_completions').select('*'), []).then(d=>State.data.materialCompletions=d||[]),
-      maybe(table('student_pauses').select('*').order('start_date',{ascending:false}), []).then(d=>State.data.studentPauses=d||[])
+      maybe(table('student_pauses').select('*').order('start_date',{ascending:false}), []).then(d=>State.data.studentPauses=d||[]),
+      maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]),
+      maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]),
+      maybe(table('tribeca_class_subjects').select('*').order('sort_order').order('subject'), []).then(d=>State.data.classSubjects=d||[]),
+      maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[])
     ];
     if(roleTeacher()) {
       common.push(maybe(table('profiles').select('*').eq('role','student').order('center').order('stage').order('course').order('full_name'), []).then(d=>State.data.students=d||[]));
@@ -397,10 +401,6 @@
       common.push(maybe(table('attendance_records').select('*').order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]));
       common.push(maybe(table('payment_months').select('*').order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]));
       common.push(maybe(table('teacher_material_repository').select('*').order('stage').order('course').order('subject').order('unit_title').order('created_at',{ascending:false}), []).then(d=>State.data.materialRepository=d||[]));
-      common.push(maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]));
-      common.push(maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]));
-      common.push(maybe(table('tribeca_class_subjects').select('*').order('sort_order').order('subject'), []).then(d=>State.data.classSubjects=d||[]));
-      common.push(maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[]));
     } else {
       common.push(maybe(table('grades').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
       common.push(maybe(table('difficult_subjects').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
@@ -432,12 +432,31 @@
     }
     return [];
   }
+  function classById(id){ return (State.data.classrooms||[]).find(c=>String(c.id)===String(id)) || null; }
+  function classSubjectById(id){ return (State.data.classSubjects||[]).find(s=>String(s.id)===String(id)) || null; }
+  function classUnitById(id){ return (State.data.classUnits||[]).find(u=>String(u.id)===String(id)) || null; }
+  function activeClassAssignmentFor(studentId, classId){
+    return (State.data.classStudents||[]).find(a=>String(a.user_id)===String(studentId) && String(a.class_id)===String(classId) && a.active!==false) || null;
+  }
+  function visibleByClassHierarchy(item={}, p=State.profile){
+    if(!item?.class_id) return true;
+    const c=classById(item.class_id);
+    if(!c || c.active===false || c.hidden) return false;
+    if(!roleTeacher() && !activeClassAssignmentFor(p?.id, c.id)) return false;
+    const s=item.class_subject_id ? classSubjectById(item.class_subject_id) : null;
+    if(s && (s.active===false || s.hidden)) return false;
+    const u=item.class_unit_id ? classUnitById(item.class_unit_id) : null;
+    if(u && (u.active===false || u.hidden)) return false;
+    return true;
+  }
   function visibleForProfile(item={}, p=State.profile) {
     if(!p || !item || typeof item !== 'object') return false;
     if(roleTeacher()) return true;
     if(item.hidden) return false;
+    if(!visibleByClassHierarchy(item,p)) return false;
     const scope = item.target_scope || item.scope || 'all';
     const ids = parseArrayField(item.target_user_ids);
+    if(item.class_id) return !!activeClassAssignmentFor(p.id, item.class_id);
     if(scope === 'all') return true;
     if(['selected','user'].includes(scope)) return ids.includes(String(p.id));
     if(scope === 'center') return item.center === p.center;
@@ -2100,13 +2119,19 @@
         <div class="classroom-chip-row">${unassigned.length?unassigned.map(s=>`<span>${safe(displayName(s))}<small>${safe(academicLine(s))}</small></span>`).join(''):'<span>Todo el alumnado tiene una clase activa asignada.</span>'}</div>
       </section>
 
+      <section class="window-panel classroom-visibility-guide">
+        <h3>Visibilidad jerárquica</h3>
+        <p class="meta">La visibilidad funciona de arriba abajo. Si ocultas una clase, no se ve nada de esa clase. Si ocultas una materia, se ocultan sus unidades y materiales. Si ocultas una unidad, se ocultan sus materiales. También puedes ocultar un material concreto.</p>
+        <div class="classroom-chip-row"><span>Clase</span><span>Materia</span><span>Unidad</span><span>Material</span></div>
+      </section>
+
       <section class="window-panel classroom-roadmap">
         <h3>Fases del nuevo modelo</h3>
         <ol>
           <li><strong>Fase 1</strong>: crear clases permanentes por centro, etapa y curso.</li>
           <li><strong>Fase 2</strong>: asignar y promocionar alumnado manualmente a clases.</li>
           <li><strong>Fase 3</strong>: vincular materias, unidades y materiales a cada clase.</li>
-          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material.</li>
+          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li>
         </ol>
       </section>
 
@@ -2124,7 +2149,7 @@
     const rosterPreview=assigned.slice(0,8).map(s=>`<span>${safe(displayName(s))}<small>${safe(s.username||'')}</small></span>`).join('');
     const label=classroomAutoName(c.center,c.stage,c.course);
     return `<article class="classroom-card classroom-card-v82 ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
-      <div class="classroom-card-head"><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(c.name||label)}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div><strong title="Alumnado asignado">${students}</strong></div>
+      <div class="classroom-card-head"><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(c.name||label)}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p><span class="visibility-state ${c.hidden?'is-hidden':'is-visible'}">${c.hidden?'Clase oculta':'Clase visible'}</span></div><strong title="Alumnado asignado">${students}</strong></div>
       ${c.description?`<p>${safe(c.description)}</p>`:''}
       <div class="classroom-chip-row classroom-roster-preview">${rosterPreview || '<span>Sin alumnado asignado</span>'}${assigned.length>8?`<span>+${assigned.length-8} más</span>`:''}</div>
       <div class="classroom-chip-row">${subjects.length?subjectPreview:'<span>Materias pendientes de crear</span>'}</div>
@@ -2155,7 +2180,7 @@
     const materials=(State.data.materials||[]).filter(m=>String(m.class_subject_id||'')===String(s.id) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||'')));
     const materialCount=materials.length;
     return `<article class="classroom-subject-card ${s.hidden?'is-hidden-classroom':''}">
-      <header><div><strong>${safe(s.subject)}</strong><small>${materialCount} material${materialCount===1?'':'es'} vinculado${materialCount===1?'':'s'}</small></div><div class="inline-actions"><button type="button" data-t82-toggle-subject="${safe(s.id)}" onclick="return window.TribecaClassroomToggleSubject(this,event)">${s.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t82-delete-subject="${safe(s.id)}" onclick="return window.TribecaClassroomDeleteSubject(this,event)">Eliminar</button></div></header>
+      <header><div><strong>${safe(s.subject)}</strong><small>${materialCount} material${materialCount===1?'':'es'} vinculado${materialCount===1?'':'s'}</small></div><div class="inline-actions"><button type="button" data-t82-toggle-subject="${safe(s.id)}" onclick="return window.TribecaClassroomToggleSubject(this,event)">${s.hidden?'Mostrar materia':'Ocultar materia'}</button><button type="button" data-t82-delete-subject="${safe(s.id)}" onclick="return window.TribecaClassroomDeleteSubject(this,event)">Eliminar</button></div></header>
       <form class="classroom-unit-form" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
         <input type="hidden" name="classSubjectId" value="${safe(s.id)}">
         <input name="title" placeholder="Unidad 1, Module 5, Tema 3..." required>
@@ -2167,17 +2192,25 @@
   function classroomUnitCard(u,s){
     const materials=(State.data.materials||[]).filter(m=>String(m.class_unit_id||'')===String(u.id) || (String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||'')));
     const chips=materials.slice(0,5).map(m=>`<span>${safe(m.title||'Material sin título')}${m.hidden?' · oculto':''}</span>`).join('');
+    const matRows=materials.length?`<div class="classroom-material-visibility-list">${materials.map(classroomMaterialVisibilityRow).join('')}</div>`:'';
     return `<article class="classroom-unit-card ${u.hidden?'is-hidden-classroom':''}">
-      <div><strong>${safe(u.title)}</strong><small>${materials.length} material${materials.length===1?'':'es'}</small></div>
+      <div><strong>${safe(u.title)}</strong><small>${materials.length} material${materials.length===1?'':'es'} · ${u.hidden?'unidad oculta':'unidad visible'}</small></div>
       <div class="classroom-chip-row">${chips || '<span>Sin materiales vinculados</span>'}${materials.length>5?`<span>+${materials.length-5} más</span>`:''}</div>
+      ${matRows}
       <div class="inline-actions">
         <button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button>
-        <button type="button" data-t82-toggle-unit="${safe(u.id)}" onclick="return window.TribecaClassroomToggleUnit(this,event)">${u.hidden?'Mostrar':'Ocultar'}</button>
-        <button type="button" data-t82-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar</button>
+        <button type="button" data-t82-toggle-unit="${safe(u.id)}" onclick="return window.TribecaClassroomToggleUnit(this,event)">${u.hidden?'Mostrar unidad':'Ocultar unidad'}</button>
+        <button type="button" data-t82-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar unidad</button>
       </div>
     </article>`;
   }
-
+  function classroomMaterialVisibilityRow(m){
+    const meta=materialTypeMeta(m.material_type||m.type||'material');
+    return `<article class="classroom-material-row ${m.hidden?'is-hidden-material':''}">
+      <div><strong>${safe(m.title||'Material sin título')}</strong><small>${safe(meta.label)} · ${m.hidden?'oculto para alumnado':'visible para alumnado'}</small></div>
+      <div class="inline-actions"><button type="button" data-t83-toggle-material="${safe(m.id)}" onclick="return window.TribecaClassroomToggleMaterial(this,event)">${m.hidden?'Mostrar material':'Ocultar material'}</button></div>
+    </article>`;
+  }
   async function addClassSubject(form){
     const fd=new FormData(form);
     const classId=fd.get('classId');
@@ -2286,6 +2319,7 @@
   window.TribecaClassroomNewMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); State.pendingPublicationEdit=null; State.prefillPublicationClassId=btn?.dataset?.classId||null; State.prefillPublicationSubject=btn?.dataset?.subject||''; State.prefillPublicationUnit=btn?.dataset?.unit||'Unidad 1'; openTool('newPublication'); return false; };
   window.TribecaClassroomToggleSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleSubject; const s=(State.data.classSubjects||[]).find(x=>String(x.id)===String(id)); if(!s) return false; persistSupabaseRecord('tribeca_class_subjects',{hidden:!s.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(s.hidden?'Materia visible.':'Materia oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la materia.')); return false; };
   window.TribecaClassroomToggleUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleUnit; const u=(State.data.classUnits||[]).find(x=>String(x.id)===String(id)); if(!u) return false; persistSupabaseRecord('tribeca_class_units',{hidden:!u.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(u.hidden?'Unidad visible.':'Unidad oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la unidad.')); return false; };
+  window.TribecaClassroomToggleMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t83ToggleMaterial; const m=(State.data.materials||[]).find(x=>String(x.id)===String(id)); if(!m) return false; persistSupabaseRecord('subject_materials',{hidden:!m.hidden},id).then(()=>loadData(true)).then(()=>{toast(m.hidden?'Material visible para el alumnado.':'Material oculto para el alumnado.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar el material.')); return false; };
   window.TribecaClassroomDeleteSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteSubject; if(!confirm('¿Eliminar esta materia de la clase? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de materia de clase.')) return false; table('tribeca_class_subjects').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Materia eliminada de la clase.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la materia.')); return false; };
   window.TribecaClassroomDeleteUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteUnit; if(!confirm('¿Eliminar esta unidad? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de unidad de clase.')) return false; table('tribeca_class_units').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Unidad eliminada.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la unidad.')); return false; };
 

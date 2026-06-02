@@ -7682,3 +7682,95 @@ body.is-dark .classroom-subjects-box > summary {
     display: grid;
   }
 }
+
+
+/* Tribeca Aula · versión 83
+   Fase 4: visibilidad jerárquica real de clases, materias, unidades y materiales. */
+.classroom-visibility-guide {
+  border-left: .45rem solid var(--gold);
+}
+
+.visibility-state {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: .45rem;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 950;
+}
+
+.visibility-state.is-visible {
+  background: rgba(16, 63, 36, .10);
+  color: var(--green);
+}
+
+.visibility-state.is-hidden {
+  background: rgba(122, 31, 31, .10);
+  color: #8d2424;
+}
+
+.classroom-material-visibility-list {
+  display: grid;
+  gap: .45rem;
+}
+
+.classroom-material-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .65rem;
+  align-items: center;
+  padding: .6rem .7rem;
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 12px;
+  background: rgba(255,255,255,.48);
+}
+
+.classroom-material-row strong {
+  display: block;
+  color: var(--text);
+}
+
+.classroom-material-row small {
+  display: block;
+  color: var(--muted);
+  font-weight: 800;
+  margin-top: .1rem;
+}
+
+.classroom-material-row.is-hidden-material {
+  opacity: .62;
+  border-style: dashed;
+}
+
+.classroom-material-row.is-hidden-material strong,
+.classroom-material-row.is-hidden-material small {
+  color: var(--muted);
+}
+
+.classroom-unit-card.is-hidden-classroom,
+.classroom-subject-card.is-hidden-classroom {
+  opacity: .68;
+  border-style: dashed;
+}
+
+body.is-dark .visibility-state.is-visible {
+  background: rgba(16, 63, 36, .24);
+  color: #d8f3df;
+}
+
+body.is-dark .visibility-state.is-hidden {
+  background: rgba(141, 36, 36, .20);
+  color: #ffd4c8;
+}
+
+body.is-dark .classroom-material-row {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(212, 175, 55, .16);
+}
+
+@media (max-width: 760px) {
+  .classroom-material-row {
+    grid-template-columns: 1fr;
+  }
+}
