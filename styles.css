@@ -10378,3 +10378,483 @@ body.is-dark .exam-passage {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tribeca Aula · versión 107
+   Limpieza integral del panel docente y estética común premium. */
+.teacher-dashboard .teacher-stats {
+  gap: .55rem;
+}
+
+.teacher-dashboard .undo-chip {
+  display: none !important;
+}
+
+.teacher-clean-form,
+.clean-finance-layout,
+.clean-overview,
+.mail-app-v107,
+.calendar-clean-v107 {
+  --clean-border: rgba(55,49,34,.10);
+  --clean-bg: rgba(255,255,255,.72);
+}
+
+.clean-hero {
+  background:
+    radial-gradient(circle at top right, rgba(16,63,36,.08), transparent 42%),
+    var(--panel-solid);
+  border: 1px solid var(--clean-border);
+  border-radius: 24px;
+}
+
+.clean-editor-head {
+  padding: .9rem 1rem;
+  border: 1px solid var(--clean-border);
+  border-radius: 20px;
+  background: var(--clean-bg);
+}
+
+.clean-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .55rem;
+}
+
+.clean-chip-row span,
+.clean-kpis span,
+.overview-tags em {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .28rem .6rem;
+  border-radius: 999px;
+  background: rgba(16,63,36,.075);
+  color: var(--green);
+  font-size: .82rem;
+  font-weight: 900;
+}
+
+.clean-primary-section {
+  border: 1px solid var(--clean-border);
+  border-radius: 20px;
+  background: var(--panel-solid);
+}
+
+.teacher-option-drawer {
+  border: 1px solid var(--clean-border);
+  border-radius: 18px;
+  background: var(--panel-solid);
+  overflow: hidden;
+  box-shadow: 0 .55rem 1.25rem rgba(31,28,17,.035);
+}
+
+.teacher-option-drawer > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .8rem;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 950;
+}
+
+.teacher-option-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.teacher-option-drawer > summary span {
+  color: var(--text);
+}
+
+.teacher-option-drawer > summary em {
+  flex: 0 0 auto;
+  font-style: normal;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 850;
+}
+
+.teacher-option-drawer[open] > summary {
+  border-bottom: 1px solid rgba(55,49,34,.08);
+  background: rgba(16,63,36,.035);
+}
+
+.teacher-option-drawer > .premium-form-section,
+.teacher-option-drawer > form,
+.teacher-option-drawer > p,
+.teacher-option-drawer > .classroom-assignment-box,
+.teacher-option-drawer > .t35-badge-student-grid,
+.teacher-option-drawer > .t32-group-tools {
+  margin: 1rem;
+}
+
+.clean-sticky-actions {
+  border-radius: 18px;
+  border: 1px solid var(--clean-border);
+  background: rgba(255,255,255,.88);
+}
+
+/* Vista general del aula */
+.clean-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+.clean-kpis span strong {
+  margin-right: .22rem;
+}
+
+.clean-overview-grid {
+  display: grid;
+  gap: .85rem;
+}
+
+.clean-group-card {
+  padding: 0;
+}
+
+.clean-group-card > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.clean-group-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.clean-group-card > summary h3 {
+  margin: 0;
+}
+
+.clean-group-card > summary p {
+  margin: .15rem 0 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.clean-group-card > summary > span {
+  display: grid;
+  place-items: center;
+  min-width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: rgba(16,63,36,.08);
+  color: var(--green);
+  font-weight: 950;
+}
+
+.clean-student-list {
+  padding: 0 1rem 1rem;
+}
+
+/* Pagos y asistencia */
+.clean-finance-layout {
+  align-items: start;
+}
+
+.clean-main-summary {
+  border-radius: 22px;
+  background: var(--panel-solid);
+}
+
+.clean-editor-drawer {
+  padding: 0;
+}
+
+.clean-editor-drawer > h3,
+.clean-editor-drawer > form,
+.clean-editor-drawer > .payment-pause-exclusion,
+.clean-editor-drawer > .premium-table,
+.clean-editor-drawer > .payment-total-card,
+.clean-editor-drawer > .attendance-month-grid,
+.clean-editor-drawer > .attendance-pause-panel {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+.clean-editor-drawer > h3 {
+  margin-top: 1rem;
+}
+
+/* Insignias */
+.t32-assign-badge .assign-badge-header,
+.t32-assign-badge .t32-badge-form {
+  border-radius: 24px;
+}
+
+.t32-badge-group > summary {
+  background: rgba(16,63,36,.035);
+}
+
+.t32-badge-group:not([open]) .t32-group-tools,
+.t32-badge-group:not([open]) .t32-badge-student-grid {
+  display: none;
+}
+
+/* Mensajes */
+.mail-app-v107 {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.mail-app-v107 .mail-sidebar {
+  position: sticky;
+  top: 1rem;
+}
+
+.mail-list-panel-v107 {
+  min-height: 32rem;
+}
+
+.mail-compose-drawer {
+  grid-column: 1 / -1;
+}
+
+.mail-compose-drawer .email-compose {
+  padding: 1rem;
+}
+
+.mail-card {
+  border-radius: 18px;
+  border: 1px solid rgba(55,49,34,.10);
+  background: rgba(255,255,255,.72);
+  box-shadow: 0 .5rem 1.2rem rgba(31,28,17,.035);
+}
+
+.mail-card header {
+  gap: .4rem;
+}
+
+.mail-card p {
+  line-height: 1.55;
+}
+
+/* Calendario, sin tocar la vista mensual */
+.calendar-clean-v107 .calendar-side-panel,
+.calendar-clean-v107 .upcoming-panel {
+  border-radius: 22px;
+}
+
+.calendar-form-drawer {
+  margin-top: 1rem;
+}
+
+.calendar-form-drawer .premium-event-form {
+  padding: 1rem;
+}
+
+/* Estética común */
+.window-panel {
+  border-radius: 22px;
+}
+
+.list-item {
+  border-radius: 16px;
+}
+
+body.is-dark .teacher-option-drawer,
+body.is-dark .clean-primary-section,
+body.is-dark .clean-editor-head,
+body.is-dark .clean-main-summary,
+body.is-dark .mail-card,
+body.is-dark .clean-sticky-actions {
+  background: var(--panel-solid);
+  border-color: rgba(212,175,55,.16);
+}
+
+body.is-dark .teacher-option-drawer[open] > summary {
+  background: rgba(212,175,55,.08);
+}
+
+body.is-dark .clean-chip-row span,
+body.is-dark .clean-kpis span,
+body.is-dark .clean-group-card > summary > span {
+  background: rgba(212,175,55,.12);
+  color: #f2d37c;
+}
+
+@media (max-width: 960px) {
+  .mail-app-v107 {
+    grid-template-columns: 1fr;
+  }
+
+  .mail-app-v107 .mail-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .clean-group-card > summary,
+  .teacher-option-drawer > summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .clean-editor-drawer > h3,
+  .clean-editor-drawer > form,
+  .clean-editor-drawer > .payment-pause-exclusion,
+  .clean-editor-drawer > .premium-table,
+  .clean-editor-drawer > .payment-total-card,
+  .clean-editor-drawer > .attendance-month-grid,
+  .clean-editor-drawer > .attendance-pause-panel {
+    margin-left: .75rem;
+    margin-right: .75rem;
+  }
+}
+
+
+/* Tribeca Aula · versión 108
+   Enlace asistencia-pagos, mes económico por defecto y código de colores de pagos. */
+.clean-linked-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.clean-linked-hero > div {
+  min-width: 0;
+}
+
+.tool-jump-btn {
+  white-space: nowrap;
+  border-color: rgba(16,63,36,.18);
+  background: rgba(16,63,36,.06);
+  color: var(--green);
+  font-weight: 950;
+}
+
+.payment-status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin: .7rem 0 .6rem;
+}
+
+.payment-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .25rem;
+  width: fit-content;
+  padding: .3rem .68rem;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 950;
+  border: 1px solid transparent;
+}
+
+.payment-status-paid {
+  background: rgba(16, 111, 56, .12);
+  color: #0b6a34;
+  border-color: rgba(16,111,56,.18);
+}
+
+.payment-status-pending {
+  background: rgba(168, 135, 45, .14);
+  color: #7d5b12;
+  border-color: rgba(168,135,45,.20);
+}
+
+.payment-status-late {
+  background: rgba(141, 36, 36, .12);
+  color: #8d2424;
+  border-color: rgba(141,36,36,.20);
+}
+
+.payment-status-paused {
+  background: rgba(90, 96, 104, .12);
+  color: #5a6068;
+  border-color: rgba(90,96,104,.18);
+}
+
+.payment-summary-table tr.payment-status-row td {
+  border-left: .35rem solid transparent;
+}
+
+.payment-summary-table tr.payment-status-paid td:first-child {
+  border-left-color: #0b6a34;
+}
+
+.payment-summary-table tr.payment-status-pending td:first-child {
+  border-left-color: var(--gold);
+}
+
+.payment-summary-table tr.payment-status-late td:first-child {
+  border-left-color: #8d2424;
+}
+
+.payment-summary-table tr.payment-status-paused td:first-child {
+  border-left-color: #777;
+}
+
+.payment-summary-table tr.payment-status-paid {
+  background: rgba(16,111,56,.035);
+}
+
+.payment-summary-table tr.payment-status-pending {
+  background: rgba(168,135,45,.04);
+}
+
+.payment-summary-table tr.payment-status-late {
+  background: rgba(141,36,36,.045);
+}
+
+.payment-summary-table tr.payment-status-paused {
+  background: rgba(90,96,104,.035);
+}
+
+body.is-dark .tool-jump-btn {
+  background: rgba(212,175,55,.10);
+  color: #f2d37c;
+  border-color: rgba(212,175,55,.20);
+}
+
+body.is-dark .payment-status-paid {
+  background: rgba(50,180,96,.14);
+  color: #bff3cf;
+  border-color: rgba(50,180,96,.24);
+}
+
+body.is-dark .payment-status-pending {
+  background: rgba(212,175,55,.14);
+  color: #f2d37c;
+  border-color: rgba(212,175,55,.26);
+}
+
+body.is-dark .payment-status-late {
+  background: rgba(255,132,120,.14);
+  color: #ffd4cf;
+  border-color: rgba(255,132,120,.24);
+}
+
+body.is-dark .payment-status-paused {
+  background: rgba(180,185,192,.12);
+  color: #d6dbe0;
+  border-color: rgba(180,185,192,.20);
+}
+
+@media (max-width: 760px) {
+  .clean-linked-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tool-jump-btn {
+    width: 100%;
+  }
+
+  .payment-status-legend {
+    display: grid;
+  }
+}
