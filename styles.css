@@ -9716,3 +9716,23 @@ body.is-dark .t16-publication .material-title-prominent {
     width: 100%;
   }
 }
+
+
+/* Tribeca Aula · versión 97
+   Embebidos interactivos robustos mediante escritura directa en iframe. */
+.material-embed-block-v97 iframe {
+  display: block;
+  width: 100%;
+  min-height: 560px;
+  border: 1px solid rgba(55,49,34,.14);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.material-embed-block-v97 iframe[data-t97-ready="error"] {
+  border-color: rgba(141,36,36,.28);
+}
+
+.material-embed-block-v97 {
+  overflow: hidden;
+}

@@ -948,36 +948,92 @@
     const m=raw.match(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/i);
     return m ? m[1].trim() : '';
   }
-  function embedDataUrl(code=''){
-    const html=stripEmbedCodeFence(code);
-    if(!html) return '';
+  function encodeBase64Utf8(value=''){
     try{
-      const bytes = new TextEncoder().encode(html);
+      const bytes = new TextEncoder().encode(String(value||''));
       let binary='';
       bytes.forEach(b=>binary+=String.fromCharCode(b));
-      return `data:text/html;charset=utf-8;base64,${btoa(binary)}`;
+      return btoa(binary);
     }catch(_e){
-      return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+      return btoa(unescape(encodeURIComponent(String(value||''))));
     }
+  }
+  function decodeBase64Utf8(value=''){
+    try{
+      const binary=atob(String(value||''));
+      const bytes=Uint8Array.from(binary, ch=>ch.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }catch(_e){
+      try{return decodeURIComponent(escape(atob(String(value||''))));}
+      catch(_err){return '';}
+    }
+  }
+  function normalizeEmbeddedHtml(code=''){
+    const raw=stripEmbedCodeFence(code);
+    if(!raw) return '';
+    if(/<!doctype|<html[\s>]/i.test(raw)) return raw;
+    return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${raw}</body></html>`;
   }
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
     if(code){
       const iframeSrc=extractIframeSrc(code);
-      if(iframeSrc) return {src:iframeSrc, mode:'iframe'};
-      return {src:embedDataUrl(code), mode:'html'};
+      if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:''};
+      return {src:'about:blank', mode:'html', html:normalizeEmbeddedHtml(code)};
     }
-    if(url) return {src:url, mode:'url'};
-    return {src:'', mode:''};
+    if(url) return {src:url, mode:'url', html:''};
+    return {src:'', mode:'', html:''};
   }
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
-    if(!source.src) return '';
-    const height=Math.max(300, Math.min(Number(m.embed_height||520), 1200));
-    return `<section class="material-embed-block material-embed-block-v95"><div><strong>Recurso interactivo</strong><small>${source.mode==='html'?'Código HTML insertado':source.mode==='iframe'?'Iframe insertado':'URL embebida'}</small></div><iframe title="Recurso interactivo" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="${safe(source.src)}" style="min-height:${height}px"></iframe><a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir recurso en pestaña nueva</a></section>`;
+    if(!source.src && !source.html) return '';
+    const height=Math.max(360, Math.min(Number(m.embed_height||560), 1400));
+    const encoded=source.html ? encodeBase64Utf8(source.html) : '';
+    return `<section class="material-embed-block material-embed-block-v97"><div><strong>Recurso interactivo</strong><small>${source.mode==='html'?'Código HTML insertado':source.mode==='iframe'?'Iframe insertado':'URL embebida'}</small></div><iframe title="Recurso interactivo" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="${safe(source.src||'about:blank')}" data-t97-embed-html="${safe(encoded)}" style="min-height:${height}px"></iframe><a class="embed-open-link" href="${safe(source.src||'#')}" target="_blank" rel="noopener">Abrir recurso en pestaña nueva</a></section>`;
+  }
+  function hydrateInteractiveEmbeds(root=document){
+    const scope=root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('iframe[data-t97-embed-html]:not([data-t97-ready])').forEach(frame=>{
+      const encoded=frame.getAttribute('data-t97-embed-html')||'';
+      if(!encoded){ frame.dataset.t97Ready='1'; return; }
+      const html=decodeBase64Utf8(encoded);
+      if(!html){ frame.dataset.t97Ready='error'; return; }
+      try{
+        frame.dataset.t97Ready='1';
+        const doc=frame.contentWindow?.document || frame.contentDocument;
+        doc.open();
+        doc.write(html);
+        doc.close();
+      }catch(error){
+        console.error('[Tribeca Aula] No se pudo escribir el recurso interactivo:', error);
+        frame.dataset.t97Ready='error';
+      }
+    });
   }
 
+
+  function ensureEmbedHydrationObserver(){
+    if(window.__tribecaEmbedHydrationObserver) return;
+    try{
+      const observer=new MutationObserver(()=>hydrateInteractiveEmbeds(document));
+      observer.observe(document.body,{childList:true,subtree:true});
+      window.__tribecaEmbedHydrationObserver=observer;
+      setTimeout(()=>hydrateInteractiveEmbeds(document),120);
+    }catch(_e){}
+  }
+  ensureEmbedHydrationObserver();
+
+  function materialEmbedMarkupForNewWindow(m={}){
+    const source=materialEmbedSource(m);
+    if(!source.src && !source.html) return '';
+    const height=Math.max(360, Math.min(Number(m.embed_height||560), 1400));
+    if(source.html){
+      const encoded=encodeBase64Utf8(source.html);
+      return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>Código HTML insertado</small></div><iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="data:text/html;charset=utf-8;base64,${encoded}" style="min-height:${height}px"></iframe></section>`;
+    }
+    return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>URL embebida</small></div><iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="${safe(source.src)}" style="min-height:${height}px"></iframe></section>`;
+  }
 
   function openMaterialInNewWindow(materialId){
     const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
@@ -988,7 +1044,7 @@
     const w=window.open('', '_blank');
     if(!w) return toast('El navegador ha bloqueado la ventana emergente.');
     const attachmentHtml=attachments.length?`<section class="files"><h2>Archivos adjuntos</h2>${attachments.map((att,i)=>{ const url=att.url||att.href||att.path||att.publicUrl||att.public_url||''; const name=att.name||att.filename||att.file_name||`Archivo ${i+1}`; const type=String(att.type||att.mime_type||'').toLowerCase(); return url?`<a class="attachment" href="${safe(url)}" target="_blank" rel="noopener">${/^image\//.test(type)?`<img src="${safe(url)}" alt="">`:''}<span>📎 ${safe(name)}</span></a>`:`<p>📎 ${safe(name)}</p>`; }).join('')}</section>`:'';
-    const embedHtml=materialEmbedMarkup(m);
+    const embedHtml=materialEmbedMarkupForNewWindow(m);
     const fontSize = 12.5;
     w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(m.title||'Publicación')}</title><style>:root{font-size:12.5px}*{box-sizing:border-box}body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5}.back-btn{position:fixed;top:16px;left:16px;z-index:20;display:inline-flex;align-items:center;gap:7px;border:1px solid #d7ccb5;border-radius:999px;background:#fffdf7;color:#0b3d22;text-decoration:none;font-weight:900;padding:8px 13px;box-shadow:0 8px 20px rgba(34,27,12,.09);font-size:13px}.back-btn:hover{background:#eef4e9}.wrap{max-width:860px;margin:0 auto;padding:64px 16px 28px}.head{border-left:6px solid #0b3d22;background:#fffdf7;border-radius:16px;padding:18px 22px;box-shadow:0 10px 26px rgba(35,28,12,.075)}.tag{display:inline-flex;border-radius:999px;background:#fff1df;color:#7b3c00;border:1px solid #f0c894;padding:4px 9px;font-weight:900;font-size:12px}h1{font-family:Georgia,serif;font-size:clamp(26px,2.4vw,38px);line-height:1.08;margin:14px 0 8px;letter-spacing:.005em;color:#0b3d22}.meta{color:#6a6458;font-weight:750;font-size:13px;margin:0}.body,.files{background:#fffdf7;border:1px solid #e0d7c0;border-radius:13px;padding:13px 16px;margin-top:12px}.body{font-size:${fontSize}px}.body p{margin:0 0 12px}.image{display:block;max-width:100%;max-height:240px;object-fit:contain;border-radius:12px;margin:12px 0}.link,.attachment{display:flex;align-items:center;gap:8px;width:fit-content;margin:9px 0 0;padding:7px 11px;border-radius:999px;background:#eef4e9;color:#0b3d22;font-weight:900;text-decoration:none;font-size:13px}.files h2{font-size:16px;margin:0 0 10px}.material-embed-block{background:#fffdf7;border:1px solid #e0d7c0;border-radius:13px;padding:13px 16px;margin-top:12px}.material-embed-block strong,.material-embed-block small{display:block}.material-embed-block small{color:#6a6458;font-weight:750}.material-embed-block iframe{width:100%;min-height:420px;border:1px solid #d7ccb5;border-radius:12px;background:#fff;margin-top:10px}.attachment img{width:64px;height:48px;object-fit:cover;border-radius:8px}@media (max-width:680px){.wrap{padding:66px 12px 24px}.back-btn{top:10px;left:10px}.body,.files,.head{padding:14px}}@media print{.back-btn,.link{display:none}}</style></head><body><a class="back-btn" href="#" onclick="if(history.length>1){history.back();}else{window.close();}return false;">← Atrás</a><main class="wrap"><header class="head"><span class="tag">${safe(meta.icon)} ${safe(meta.label)}</span><h1>${safe(m.title||'Publicación')}</h1><p class="meta">${safe(m.subject||'Materia')} · ${safe(m.unit_title||m.unit||'Unidad 1')}</p></header><section class="body">${m.image_url?`<img class="image" src="${safe(m.image_url)}" alt="">`:''}<p>${safe(body).replace(/\n/g,'<br>')}</p>${m.link_url?`<a class="link" href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace externo</a>`:''}</section>${embedHtml}${attachmentHtml}</main></body></html>`);
     w.document.close();
@@ -1082,6 +1138,7 @@
       window.scrollTo({top: 0, behavior: 'smooth'});
       updateBadges();
       applyTranslations();
+      hydrateInteractiveEmbeds(main);
       return;
     }
 
@@ -1109,6 +1166,7 @@
     window.scrollTo({top: 0, behavior: 'smooth'});
     updateBadges();
     applyTranslations();
+      hydrateInteractiveEmbeds(main);
   }
   window.TribecaRenderInlineSection = renderInlineSection;
 
