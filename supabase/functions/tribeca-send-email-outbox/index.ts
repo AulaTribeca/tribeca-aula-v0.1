@@ -1,6 +1,6 @@
-// Tribeca Aula · versión 58
+// Tribeca Aula · versión 63
 // Edge Function para enviar los emails pendientes de public.email_outbox mediante Resend.
-// Secrets necesarios:
+// Secrets necesarios en Supabase Functions:
 //   RESEND_API_KEY
 //   SUPABASE_SERVICE_ROLE_KEY
 //   TRIBECA_EMAIL_FROM, por ejemplo: "Tribeca Aula <notificaciones@tudominio.com>"
@@ -17,7 +17,10 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -26,19 +29,29 @@ serve(async (req) => {
   const from = Deno.env.get("TRIBECA_EMAIL_FROM") || "Tribeca Aula <notificaciones@example.com>";
 
   if (!supabaseUrl || !serviceRole || !resendKey) {
-    return new Response(JSON.stringify({ error: "Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY or RESEND_API_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({
+      ok: false,
+      error: "Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY or RESEND_API_KEY",
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const supabase = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
+
   const { data: rows, error } = await supabase
     .from("email_outbox")
-    .select("id, recipient_email, subject, body")
+    .select("id, recipient_email, subject, body, event_type")
     .eq("status", "pending")
     .order("created_at", { ascending: true })
     .limit(25);
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: false, error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   let sent = 0;
@@ -57,6 +70,7 @@ serve(async (req) => {
           to: [row.recipient_email],
           subject: row.subject,
           text: row.body,
+          html: `<pre style="font-family: Arial, sans-serif; white-space: pre-wrap; line-height: 1.5; color: #172018;">${escapeHtml(row.body)}</pre>`,
         }),
       });
 
@@ -65,13 +79,30 @@ serve(async (req) => {
         throw new Error(errText || `Resend error ${response.status}`);
       }
 
-      await supabase.from("email_outbox").update({ status: "sent", sent_at: new Date().toISOString(), error: null }).eq("id", row.id);
+      await supabase
+        .from("email_outbox")
+        .update({ status: "sent", sent_at: new Date().toISOString(), error: null })
+        .eq("id", row.id);
       sent++;
     } catch (e) {
       failed++;
-      await supabase.from("email_outbox").update({ status: "error", error: String(e?.message || e) }).eq("id", row.id);
+      await supabase
+        .from("email_outbox")
+        .update({ status: "error", error: String(e?.message || e) })
+        .eq("id", row.id);
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, sent, failed, pending_read: rows?.length || 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ ok: true, sent, failed, checked: rows?.length || 0 }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 });
+
+function escapeHtml(value: string) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}

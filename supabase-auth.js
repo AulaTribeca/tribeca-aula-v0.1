@@ -1013,6 +1013,18 @@
     const currentScope = e?.scope || e?.target_scope || 'user';
     return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
+  async function triggerEmailOutboxSend(reason=''){
+    try {
+      if(!State.client?.functions?.invoke) return null;
+      const res = await State.client.functions.invoke('tribeca-send-email-outbox', { body: { reason } });
+      if(res?.error) throw res.error;
+      return res?.data || null;
+    } catch(error) {
+      console.warn('[Tribeca Aula] La cola de email se ha preparado, pero no se pudo activar el envío inmediato:', error);
+      return null;
+    }
+  }
+
   async function queueCalendarEmailNotification(rec, isUpdate=false){
     if(roleTeacher() || isUpdate) return;
     try {
@@ -1030,10 +1042,13 @@
         actor_username: State.profile?.username || '',
         created_at: new Date().toISOString()
       };
-      const rpc = await State.client.rpc('tribeca_queue_teacher_calendar_email_v58', { p_payload: payload });
+      const rpc = await State.client.rpc('tribeca_queue_teacher_calendar_email_v63', { p_payload: payload });
       if(rpc?.error) throw rpc.error;
       const queued = Number(rpc?.data || 0);
-      if(queued > 0) toast(`Fecha creada. Aviso por email preparado para ${queued} destinatario${queued===1?'':'s'}.`);
+      if(queued > 0) {
+        await triggerEmailOutboxSend('calendar');
+        toast(`Fecha creada. Aviso por email enviado o preparado para ${queued} destinatario${queued===1?'':'s'}.`);
+      }
     } catch(error) {
       console.warn('[Tribeca Aula] No se pudo preparar el aviso por email del calendario:', error);
       await maybe(table('notifications').insert({
@@ -1043,6 +1058,33 @@
         body:`${displayName(State.profile)} ha añadido una fecha al calendario, pero no se pudo preparar el email automático. Revisa la configuración de notificaciones.`
       }));
       toast('Fecha creada. No se pudo preparar el email automático; revisa la configuración de notificaciones.');
+    }
+  }
+
+  async function queueTeacherMessageEmailNotification(payload){
+    try {
+      const emailPayload = {
+        subject: payload.subject || 'Mensaje nuevo',
+        body: payload.body || '',
+        reason: payload.reason || '',
+        sender_id: payload.sender_id || State.profile?.id || null,
+        sender_name: payload.sender_name || displayName(State.profile),
+        sender_username: State.profile?.username || '',
+        recipient_id: payload.recipient_id || null,
+        created_at: new Date().toISOString()
+      };
+      const rpc = await State.client.rpc('tribeca_queue_teacher_message_email_v63', { p_payload: emailPayload });
+      if(rpc?.error) throw rpc.error;
+      const queued = Number(rpc?.data || 0);
+      if(queued > 0) await triggerEmailOutboxSend('message');
+    } catch(error) {
+      console.warn('[Tribeca Aula] No se pudo preparar el aviso por email del mensaje:', error);
+      await maybe(table('notifications').insert({
+        target_role:'teacher',
+        tool:'messages',
+        title:'Aviso pendiente de mensaje',
+        body:`${displayName(State.profile)} ha enviado un mensaje, pero no se pudo preparar el email automático.`
+      }));
     }
   }
   async function saveEvent(form){
@@ -1245,7 +1287,46 @@
     return `<div class="mail-app"><aside class="mail-sidebar window-panel"><h3>Mensajes</h3><button class="mail-tab is-active" type="button" data-mail-box="inbox">Recibidos <span>${inbox.filter(m=>!m.read_at).length}</span></button><button class="mail-tab" type="button" data-mail-box="sent">Enviados <span>${sent.length}</span></button><button class="mail-tab" type="button" data-mail-box="archived">Archivados <span>${archived.length}</span></button></aside><section class="window-panel mail-compose-panel"><h3>${roleTeacher()?'Escribir mensaje privado':'Mensaje para la profesora'}</h3><p class="meta">Los mensajes son privados entre profesora y alumno/a.</p>${compose}</section><section class="window-panel mail-list-panel"><div class="mail-box" data-mail-box-view="inbox"><h3>Bandeja de entrada</h3>${inbox.length?inbox.map(messageCard).join(''):'<div class="empty-state">No hay mensajes recibidos.</div>'}</div><div class="mail-box" data-mail-box-view="sent" hidden><h3>Enviados</h3>${sent.length?sent.map(messageCard).join(''):'<div class="empty-state">No hay mensajes enviados.</div>'}</div><div class="mail-box" data-mail-box-view="archived" hidden><h3>Archivados</h3>${archived.length?archived.map(messageCard).join(''):'<div class="empty-state">No hay mensajes archivados.</div>'}</div></section></div>`;
   }
   function messageCard(m){ const mine=m.sender_id===State.profile?.id; const atts=Array.isArray(m.attachments)?m.attachments:[]; return `<article class="mail-card ${!m.read_at && !mine?'is-unread':''}"><header><strong>${safe(m.subject||'Sin asunto')}</strong><span>${mine?'Enviado a '+safe(m.recipient_name||studentName(m.recipient_id)):'De '+safe(m.sender_name||studentName(m.sender_id))}</span></header><p style="font-size:${Number(m.font_size||16)}px;color:${safe(m.text_color||'inherit')}">${safe(m.body||'')}</p>${atts.length?`<div class="attachment-list">${atts.map(a=>`<a href="${safe(a.url)}" target="_blank" rel="noopener">📎 ${safe(a.name||'Archivo')}</a>`).join('')}</div>`:''}<footer><small>${fmtDT(m.created_at)}</small><div class="inline-actions">${!mine&&!m.read_at?`<button type="button" data-t28-mark-read="${safe(m.id)}">Marcar como leído</button>`:''}<button type="button" data-t16-archive-message="${safe(m.id)}">Archivar</button><button type="button" data-t28-delete-message="${safe(m.id)}">Eliminar</button></div></footer></article>`; }
-  async function sendMessage(form, teacher=false){ const fd=new FormData(form); let recipientId=fd.get('recipientId'); let recipientName='Profesora'; if(!teacher){ const t=await maybe(table('profiles').select('id,full_name,username').eq('role','teacher').limit(1), []); recipientId=t?.[0]?.id; recipientName=displayName(t?.[0]); } else recipientName=studentName(recipientId); if(!recipientId) return toast('No se encontró destinatario.'); let attachments=[]; try{ attachments=fd.get('attachmentsJson')?JSON.parse(fd.get('attachmentsJson')):[]; }catch(_e){} const bodyRaw=String(fd.get('body')||'').trim(); const payload={sender_id:State.profile.id,sender_name:displayName(State.profile),recipient_id:recipientId,recipient_name:recipientName,subject:String(fd.get('subject')||'').trim(),body:teacher?bodyRaw:`${fd.get('reason')}. ${bodyRaw}`,reason:fd.get('reason')||'',font_size:Number(fd.get('fontSize')||16),text_color:fd.get('textColor')||null,attachments,is_draft:false,archived:false}; if(!payload.subject||!bodyRaw) return toast('Completa asunto y mensaje.'); const rpc=await State.client.rpc('tribeca_send_private_message_v28',{p_payload:payload}); if(rpc.error) throw rpc.error; await log('message','Mensaje enviado',{subject:payload.subject}); await loadData(true); toast('Mensaje enviado.'); form.reset(); rerender(); }
+  async function sendMessage(form, teacher=false){
+    const fd=new FormData(form);
+    let recipientId=fd.get('recipientId');
+    let recipientName='Profesora';
+    if(!teacher){
+      const t=await maybe(table('profiles').select('id,full_name,username').eq('role','teacher').limit(1), []);
+      recipientId=t?.[0]?.id;
+      recipientName=displayName(t?.[0]);
+    } else {
+      recipientName=studentName(recipientId);
+    }
+    if(!recipientId) return toast('No se encontró destinatario.');
+    let attachments=[];
+    try{ attachments=fd.get('attachmentsJson')?JSON.parse(fd.get('attachmentsJson')):[]; }catch(_e){}
+    const bodyRaw=String(fd.get('body')||'').trim();
+    const payload={
+      sender_id:State.profile.id,
+      sender_name:displayName(State.profile),
+      recipient_id:recipientId,
+      recipient_name:recipientName,
+      subject:String(fd.get('subject')||'').trim(),
+      body:teacher?bodyRaw:`${fd.get('reason')}. ${bodyRaw}`,
+      reason:fd.get('reason')||'',
+      font_size:Number(fd.get('fontSize')||16),
+      text_color:fd.get('textColor')||null,
+      attachments,
+      is_draft:false,
+      archived:false
+    };
+    if(!payload.subject||!bodyRaw) return toast('Completa asunto y mensaje.');
+    const rpc=await State.client.rpc('tribeca_send_private_message_v28',{p_payload:payload});
+    if(rpc.error) throw rpc.error;
+    await log('message','Mensaje enviado',{subject:payload.subject});
+    if(!teacher) await queueTeacherMessageEmailNotification(payload);
+    await loadData(true);
+    toast('Mensaje enviado.');
+    form.reset();
+    rerender();
+  }
+
   function safeJsonArray(value) { return parseArrayField(value); }
   function normalizeAttachments(item={}) {
     const raw = item.attachments ?? item.attachment ?? item.files ?? item.attachment_url ?? item.file_url ?? [];
