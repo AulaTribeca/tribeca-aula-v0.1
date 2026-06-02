@@ -793,7 +793,7 @@
   function teacherHome() {
     const students=State.data.students||[]; const assignedBadges=(State.data.userBadges||[]).length; const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
     const tools=[
-      ['newPublication','✍️','Nueva publicación','Crear anuncios, avisos, materiales o tareas. Destinatarios ordenados por centro, etapa, curso y alumnado.'],
+      ['newPublication','✍️','Nueva publicación','Crear anuncios o materiales y vincularlos a una clase, materia y unidad.'],
       ['activityLog','🕘','Qué ha ocurrido en el aula','Inicios de sesión, mensajes, publicaciones, calificaciones, dificultades e insignias.'],
       ['teacherAlerts','⚠️','Alertas docentes','Suspensos, materias con dificultades, solicitudes de contraseña e insignias pendientes.'],
       ['classOverview','📊','Vista general del aula','Cada grupo aparece en una tarjeta con alumnado y avisos básicos.'],
@@ -801,7 +801,6 @@
       ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
       ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
       ['classrooms','🏫','Clases','Crear aulas permanentes por centro y curso, al estilo Google Classroom.'],
-      ['teacherSubjects','📚','Materias y materiales','Ver, crear, editar, ocultar o eliminar materias y revisar materiales por curso.'],
       ['guidance','🧭','Orientación académica','Subir, editar, ocultar o eliminar tests, documentos, enlaces y presentaciones de orientación.'],
       ['payments','💶','Pagos','Tarifas, mensualidades, meses pagados, recibís e histórico económico.'],
       ['attendance','📅','Asistencia y pausas','Registro de asistencia, faltas justificadas y pausas temporales de acceso.']
@@ -1838,7 +1837,7 @@
       </div>
     </section>`;
   }
-  function materialCard(m){ const meta=materialTypeMeta(m.material_type||m.type); const done=isMaterialCompleted(m.id); return `<article class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}"><div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>${m.hidden?'<small>Oculto</small>':''}${done&&!roleTeacher()?'<small class="completed-chip">Hecha</small>':''}</div><h3>${safe(m.title)}</h3>${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}<p style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(m)}<div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t70-repo-save="${safe(m.id)}" onclick="return window.TribecaRepositorySaveMaterialDirect(this,event)">Guardar en repositorio</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div></article>`; }
+  function materialCard(m){ const meta=materialTypeMeta(m.material_type||m.type); const done=isMaterialCompleted(m.id); return `<article class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}"><div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>${m.hidden?'<small>Oculto</small>':''}${done&&!roleTeacher()?'<small class="completed-chip">Hecha</small>':''}</div><h3>${safe(m.title)}</h3>${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}<p style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(m)}<div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div></article>`; }
 
 
 
@@ -2225,8 +2224,13 @@
           <li><strong>Fase 1</strong>: crear clases permanentes por centro, etapa y curso.</li>
           <li><strong>Fase 2</strong>: asignar y promocionar alumnado manualmente a clases.</li>
           <li><strong>Fase 3</strong>: vincular materias, unidades y materiales a cada clase.</li>
-          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li><li><strong>Fase 5</strong>: panel del alumnado basado en clases.</li><li><strong>Fase 6</strong>: migración de materiales antiguos al nuevo modelo y retirada del repositorio del panel principal.</li>
+          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li><li><strong>Fase 5</strong>: panel del alumnado basado en clases.</li><li><strong>Fase 6</strong>: migración de materiales antiguos al nuevo modelo y retirada del repositorio del panel principal.</li><li><strong>Fase 7</strong>: gestión completa de materiales desde cada clase, sin depender del sistema antiguo de materias.</li>
         </ol>
+      </section>
+
+      <section class="window-panel classroom-consolidation-guide">
+        <h3>Modelo de clases consolidado</h3>
+        <p class="meta">A partir de esta fase, la gestión ordinaria debe hacerse desde Clases: crear materia, crear unidad y crear, editar, duplicar, ocultar o eliminar materiales desde la propia clase. El sistema anterior de “Materias y materiales” queda retirado del panel principal.</p>
       </section>
 
       <section class="classroom-results">
@@ -2303,7 +2307,14 @@
     const meta=materialTypeMeta(m.material_type||m.type||'material');
     return `<article class="classroom-material-row ${m.hidden?'is-hidden-material':''}">
       <div><strong>${safe(m.title||'Material sin título')}</strong><small>${safe(meta.label)} · ${m.hidden?'oculto para alumnado':'visible para alumnado'}</small></div>
-      <div class="inline-actions"><button type="button" data-t83-toggle-material="${safe(m.id)}" onclick="return window.TribecaClassroomToggleMaterial(this,event)">${m.hidden?'Mostrar material':'Ocultar material'}</button><button type="button" data-t85-unlink-material="${safe(m.id)}" onclick="return window.TribecaClassroomUnlinkMaterial(this,event)">Quitar vínculo</button></div>
+      <div class="inline-actions classroom-material-actions">
+        <button type="button" data-t33-open-mat="${safe(m.id)}">Abrir</button>
+        <button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button>
+        <button type="button" data-t86-duplicate-material="${safe(m.id)}" onclick="return window.TribecaClassroomDuplicateMaterial(this,event)">Duplicar</button>
+        <button type="button" data-t83-toggle-material="${safe(m.id)}" onclick="return window.TribecaClassroomToggleMaterial(this,event)">${m.hidden?'Mostrar':'Ocultar'}</button>
+        <button type="button" data-t85-unlink-material="${safe(m.id)}" onclick="return window.TribecaClassroomUnlinkMaterial(this,event)">Quitar vínculo</button>
+        <button type="button" data-t86-delete-class-material="${safe(m.id)}" onclick="return window.TribecaClassroomDeleteMaterial(this,event)">Eliminar</button>
+      </div>
     </article>`;
   }
   function legacyMaterialsForClass(c){
@@ -2361,6 +2372,53 @@
     await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true});
     await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
     await loadData(true); toast('Unidad añadida.'); rerender();
+  }
+  async function duplicateClassMaterial(materialId){
+    if(!roleTeacher()) return toast('Solo la profesora puede duplicar materiales.');
+    const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
+    if(!m) return toast('No se encontró el material.');
+    const payload={
+      title:`Copia de ${m.title || 'material'}`,
+      body:m.body || m.description || m.content || '',
+      description:m.description || m.body || m.content || '',
+      content:m.content || m.body || m.description || '',
+      image_url:m.image_url || null,
+      link_url:m.link_url || null,
+      font_size:Number(m.font_size||16),
+      target_scope:m.target_scope || 'class',
+      target_user_ids:parseArrayField(m.target_user_ids),
+      center:m.center || null,
+      stage:m.stage || null,
+      course:m.course || null,
+      created_by:State.profile.id,
+      hidden:true,
+      subject:m.subject || 'Apoyo personalizado',
+      unit_title:m.unit_title || m.unit || 'Unidad 1',
+      unit:m.unit || m.unit_title || 'Unidad 1',
+      material_type:m.material_type || 'apuntes',
+      badge_codes:parseArrayField(m.badge_codes),
+      attachments:normalizeAttachments(m),
+      class_id:m.class_id || null,
+      class_subject_id:m.class_subject_id || null,
+      class_unit_id:m.class_unit_id || null
+    };
+    await persistSupabaseRecord('subject_materials', payload, null);
+    await log('classroom','Material duplicado dentro de clase',{source:m.id,title:payload.title,class_id:payload.class_id});
+    await loadData(true);
+    toast('Material duplicado y dejado oculto para revisarlo antes de mostrarlo.');
+    rerender();
+  }
+  async function deleteClassMaterial(materialId){
+    const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
+    if(!m) return toast('No se encontró el material.');
+    if(!confirm('¿Eliminar definitivamente este material? Esta acción sí borra la publicación.')) return;
+    await maybe(table('material_completions').delete().eq('material_id', materialId));
+    const {error}=await table('subject_materials').delete().eq('id',materialId);
+    if(error) throw error;
+    await log('classroom','Material eliminado desde clase',{id:materialId,title:m.title});
+    await loadData(true);
+    toast('Material eliminado.');
+    rerender();
   }
   async function migrateLegacyMaterialsToClass(form){
     if(!roleTeacher()) throw new Error('Solo la profesora puede migrar materiales.');
@@ -2494,6 +2552,8 @@
   window.TribecaClassroomToggleMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t83ToggleMaterial; const m=(State.data.materials||[]).find(x=>String(x.id)===String(id)); if(!m) return false; persistSupabaseRecord('subject_materials',{hidden:!m.hidden},id).then(()=>loadData(true)).then(()=>{toast(m.hidden?'Material visible para el alumnado.':'Material oculto para el alumnado.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar el material.')); return false; };
   window.TribecaClassroomMigrateMaterials=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); migrateLegacyMaterialsToClass(form).catch(e=>{ console.error(e); toast(e.message||'No se pudieron migrar los materiales.'); }); return false; };
   window.TribecaClassroomUnlinkMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); unlinkMaterialFromClass(btn?.dataset?.t85UnlinkMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo desvincular el material.'); }); return false; };
+  window.TribecaClassroomDuplicateMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); duplicateClassMaterial(btn?.dataset?.t86DuplicateMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo duplicar el material.'); }); return false; };
+  window.TribecaClassroomDeleteMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassMaterial(btn?.dataset?.t86DeleteClassMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo eliminar el material.'); }); return false; };
   window.TribecaClassroomDeleteSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteSubject; if(!confirm('¿Eliminar esta materia de la clase? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de materia de clase.')) return false; table('tribeca_class_subjects').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Materia eliminada de la clase.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la materia.')); return false; };
   window.TribecaClassroomDeleteUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteUnit; if(!confirm('¿Eliminar esta unidad? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de unidad de clase.')) return false; table('tribeca_class_units').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Unidad eliminada.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la unidad.')); return false; };
 

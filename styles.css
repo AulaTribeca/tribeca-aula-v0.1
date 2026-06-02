@@ -7989,3 +7989,66 @@ body.is-dark .migration-unit-group label {
     width: 100%;
   }
 }
+
+
+/* Tribeca Aula · versión 86
+   Fase 7: gestión completa de materiales desde la clase. */
+.classroom-consolidation-guide {
+  border-left: .45rem solid var(--green);
+  background:
+    radial-gradient(circle at top right, rgba(16, 63, 36, .10), transparent 44%),
+    var(--panel-solid);
+}
+
+.classroom-material-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.classroom-material-actions button {
+  min-width: 7.5rem;
+}
+
+.classroom-material-actions button[data-t86-delete-class-material] {
+  border-color: rgba(122, 31, 31, .25);
+  color: #8d2424;
+}
+
+.classroom-material-actions button[data-t86-delete-class-material]:hover {
+  background: rgba(122, 31, 31, .08);
+}
+
+.classroom-material-row {
+  grid-template-columns: minmax(18rem, 1fr) minmax(24rem, auto);
+}
+
+body.is-dark .classroom-consolidation-guide {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .22);
+}
+
+body.is-dark .classroom-material-actions button[data-t86-delete-class-material] {
+  color: #ffd4c8;
+  border-color: rgba(255, 180, 160, .28);
+}
+
+@media (max-width: 920px) {
+  .classroom-material-row {
+    grid-template-columns: 1fr;
+  }
+
+  .classroom-material-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .classroom-material-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .classroom-material-actions button {
+    width: 100%;
+  }
+}
