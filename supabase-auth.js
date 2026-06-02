@@ -394,6 +394,10 @@
       common.push(maybe(table('attendance_records').select('*').order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]));
       common.push(maybe(table('payment_months').select('*').order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]));
       common.push(maybe(table('teacher_material_repository').select('*').order('stage').order('course').order('subject').order('unit_title').order('created_at',{ascending:false}), []).then(d=>State.data.materialRepository=d||[]));
+      common.push(maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]));
+      common.push(maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]));
+      common.push(maybe(table('tribeca_class_subjects').select('*').order('sort_order').order('subject'), []).then(d=>State.data.classSubjects=d||[]));
+      common.push(maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[]));
     } else {
       common.push(maybe(table('grades').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
       common.push(maybe(table('difficult_subjects').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
@@ -774,6 +778,7 @@
       ['assignBadge','🏅','Asignar insignia','Seleccionar uno o varios alumnos y asignar insignias docentes.'],
       ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
       ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
+      ['classrooms','🏫','Clases','Crear aulas permanentes por centro y curso, al estilo Google Classroom.'],
       ['teacherSubjects','📚','Materias y materiales','Ver, crear, editar, ocultar o eliminar materias y revisar materiales por curso.'],
       ['materialRepository','🗄️','Repositorio docente','Conservar materiales de cursos anteriores y republicarlos cuando los necesites.'],
       ['guidance','🧭','Orientación académica','Subir, editar, ocultar o eliminar tests, documentos, enlaces y presentaciones de orientación.'],
@@ -1014,7 +1019,7 @@
   window.rerenderOpenWindows = rerender;
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -1960,6 +1965,138 @@
 
 
 
+
+  function currentAcademicYearLabel(){
+    const d=new Date(); const y=d.getFullYear(); const m=d.getMonth()+1;
+    const start=m>=9 ? y : y-1;
+    return `${start}/${String(start+1).slice(-2)}`;
+  }
+  function classroomStudentsCount(classId){
+    return (State.data.classStudents||[]).filter(x=>String(x.class_id)===String(classId) && x.active!==false).length;
+  }
+  function classroomSubjects(classId){
+    return (State.data.classSubjects||[]).filter(x=>String(x.class_id)===String(classId) && x.active!==false).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.subject||'').localeCompare(String(b.subject||''),'es'));
+  }
+  function classroomUnitsForSubject(subjectId){
+    return (State.data.classUnits||[]).filter(x=>String(x.class_subject_id)===String(subjectId) && x.active!==false).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true}));
+  }
+  function classroomAutoName(center, stage, course){
+    return [course, center].filter(Boolean).join(' · ') || 'Nueva clase';
+  }
+  function classroomsContent(){
+    if(!roleTeacher()) return '<div class="empty-state">Solo la profesora puede gestionar clases.</div>';
+    const rows=(State.data.classrooms||[]).filter(Boolean);
+    const edit=State.pendingClassroomEdit || null;
+    const editId=edit?.id || '';
+    const editCenter=edit?.center || '';
+    const editStage=edit?.stage || State.selectedSubjectStage || 'ESO';
+    const editCourse=edit?.course || State.selectedSubjectCourse || '1.º ESO';
+    const editName=edit?.name || '';
+    const editYear=edit?.academic_year || currentAcademicYearLabel();
+    const activeRows=rows.filter(c=>c.active!==false);
+    const hiddenRows=rows.filter(c=>c.hidden || c.active===false);
+    const byCenter=new Map();
+    activeRows.forEach(c=>{ const center=c.center||'Sin centro educativo'; if(!byCenter.has(center)) byCenter.set(center, []); byCenter.get(center).push(c); });
+    const grouped=[...byCenter.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([center,items])=>`<details class="classroom-center-group" open><summary><span>${safe(center)}</span><em>${items.length} clase${items.length===1?'':'s'}</em></summary><div class="classroom-card-grid">${items.sort((a,b)=>String(a.stage||'').localeCompare(String(b.stage||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es')).map(classroomCard).join('')}</div></details>`).join('');
+    return `<section class="classrooms-tool">
+      <section class="window-panel classroom-hero">
+        <div>
+          <p class="eyebrow">Nuevo modelo de aula virtual</p>
+          <h3>Clases permanentes por centro y curso</h3>
+          <p class="meta">Fase 1: creación de la estructura de clases. Las clases permanecen; al inicio de curso se asignará o promocionará manualmente el alumnado a la clase correspondiente.</p>
+        </div>
+        <div class="classroom-stats"><strong>${activeRows.length}</strong><span>clase${activeRows.length===1?'':'s'} activa${activeRows.length===1?'':'s'}</span></div>
+      </section>
+
+      <section class="window-panel classroom-form-panel">
+        <h3>${editId?'Editar clase':'Crear clase'}</h3>
+        <p class="meta">Ejemplos: “IES Fernando Blanco · 1.º ESO”, “CEIP Praia de Quenxe · 5.º Primaria”.</p>
+        <form id="t80ClassroomForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-form">
+          <input type="hidden" name="id" value="${safe(editId)}">
+          <label>Centro educativo<select name="center" required><option value="">Seleccionar centro</option>${repoOptions(repoUnique([...centersFromStudents(), ...centers, ...rows.map(c=>c.center)]), editCenter, false)}</select></label>
+          <label>Etapa<select name="stage" required>${repoOptions(stagesForCourse(editCourse), editStage, false)}</select></label>
+          <label>Curso<select name="course" required>${repoOptions(coursesForStage(editStage), editCourse, false)}</select></label>
+          <label>Curso académico<input name="academicYear" value="${safe(editYear)}" placeholder="2026/27"></label>
+          <label class="full-row">Nombre visible de la clase<input name="name" maxlength="160" value="${safe(editName)}" placeholder="Se puede dejar vacío para generarlo automáticamente"></label>
+          <label class="full-row">Descripción interna<textarea name="description" rows="2" maxlength="600">${safe(edit?.description||'')}</textarea></label>
+          <label class="check-line"><input type="checkbox" name="hidden" ${edit?.hidden?'checked':''}> Clase oculta para el alumnado</label>
+          <label class="check-line"><input type="checkbox" name="active" ${editId?(edit?.active!==false?'checked':''):'checked'}> Clase activa</label>
+          <div class="inline-actions full-row"><button class="primary-btn" type="submit">${editId?'Guardar cambios':'Crear clase'}</button>${editId?'<button class="secondary-btn" type="button" onclick="window.TribecaClassroomCancelEdit && window.TribecaClassroomCancelEdit(event)">Cancelar edición</button>':''}</div>
+        </form>
+      </section>
+
+      <section class="window-panel classroom-roadmap">
+        <h3>Fases del nuevo modelo</h3>
+        <ol>
+          <li><strong>Fase 1</strong>: crear clases permanentes por centro, etapa y curso.</li>
+          <li><strong>Fase 2</strong>: asignar y promocionar alumnado manualmente a clases.</li>
+          <li><strong>Fase 3</strong>: vincular materias, unidades y materiales a cada clase.</li>
+          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material.</li>
+        </ol>
+      </section>
+
+      <section class="classroom-results">
+        ${grouped || '<div class="empty-state">Todavía no hay clases creadas.</div>'}
+        ${hiddenRows.length?`<details class="classroom-center-group is-muted"><summary><span>Clases ocultas o inactivas</span><em>${hiddenRows.length}</em></summary><div class="classroom-card-grid">${hiddenRows.map(classroomCard).join('')}</div></details>`:''}
+      </section>
+    </section>`;
+  }
+  function classroomCard(c){
+    const subjects=classroomSubjects(c.id);
+    const students=classroomStudentsCount(c.id);
+    const subjectPreview=subjects.slice(0,6).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
+    const label=classroomAutoName(c.center,c.stage,c.course);
+    return `<article class="classroom-card ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}">
+      <div class="classroom-card-head"><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(c.name||label)}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div><strong>${students}</strong></div>
+      ${c.description?`<p>${safe(c.description)}</p>`:''}
+      <div class="classroom-chip-row">${subjects.length?subjectPreview:'<span>Materias pendientes de crear en fases siguientes</span>'}</div>
+      <div class="inline-actions">
+        <button type="button" class="secondary-btn" data-t80-edit-class="${safe(c.id)}" onclick="return window.TribecaClassroomEditDirect(this,event)">Editar</button>
+        <button type="button" data-t80-toggle-class="${safe(c.id)}" onclick="return window.TribecaClassroomToggleDirect(this,event)">${c.hidden?'Mostrar':'Ocultar'}</button>
+        <button type="button" data-t80-delete-class="${safe(c.id)}" onclick="return window.TribecaClassroomDeleteDirect(this,event)">Eliminar</button>
+      </div>
+    </article>`;
+  }
+  async function saveClassroom(form){
+    if(!roleTeacher()) throw new Error('Solo la profesora puede gestionar clases.');
+    const fd=new FormData(form);
+    const id=String(fd.get('id')||'').trim();
+    const center=String(fd.get('center')||'').trim();
+    const stage=String(fd.get('stage')||'').trim();
+    const course=String(fd.get('course')||'').trim();
+    if(!center || !stage || !course) throw new Error('Selecciona centro, etapa y curso.');
+    const payload={
+      name:String(fd.get('name')||'').trim() || classroomAutoName(center,stage,course),
+      center, stage, course,
+      academic_year:String(fd.get('academicYear')||'').trim() || currentAcademicYearLabel(),
+      description:String(fd.get('description')||'').trim() || null,
+      hidden:!!fd.get('hidden'),
+      active:!!fd.get('active'),
+      created_by:State.profile.id,
+      updated_at:new Date().toISOString()
+    };
+    if(id) delete payload.created_by;
+    await persistSupabaseRecord('tribeca_classes', payload, id || null);
+    await log('classroom', id?'Clase actualizada':'Clase creada',{name:payload.name,center,stage,course});
+    State.pendingClassroomEdit=null;
+    await loadData(true);
+    toast(id?'Clase actualizada.':'Clase creada.');
+    rerender();
+  }
+  async function deleteClassroom(id){
+    if(!confirm('¿Eliminar esta clase? En esta fase solo se eliminará la clase, no los perfiles de alumnado.')) return;
+    const {error}=await table('tribeca_classes').delete().eq('id',id);
+    if(error) throw error;
+    await log('classroom','Clase eliminada',{id});
+    await loadData(true);
+    toast('Clase eliminada.');
+    rerender();
+  }
+  window.TribecaClassroomEditDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80EditClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(c){ State.pendingClassroomEdit={...c}; rerender(); } return false; };
+  window.TribecaClassroomCancelEdit=function(ev){ ev?.preventDefault?.(); State.pendingClassroomEdit=null; rerender(); return false; };
+  window.TribecaClassroomToggleDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80ToggleClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(!c) return false; persistSupabaseRecord('tribeca_classes',{hidden:!c.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(c.hidden?'Clase visible.':'Clase oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la clase.')); return false; };
+  window.TribecaClassroomDeleteDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassroom(btn?.dataset?.t80DeleteClass).catch(e=>toast(e.message||'No se pudo eliminar la clase.')); return false; };
+
   function teacherSubjectsContent(){
     const stage=State.selectedSubjectStage, course=State.selectedSubjectCourse; const subjects=teacherSubjectList(stage,course);
     const custom=(State.data.subjects||[]).filter(x=>x.stage===stage&&x.course===course);
@@ -2239,6 +2376,7 @@
       else if(form.id==='t18GuidanceForm' || form.id==='t24GuidanceForm') await saveGuidance(form);
       else if(form.id==='t27SubjectForm') await saveSubjectOverride(form);
       else if(form.id==='t78RepoMaterialForm') await saveRepositoryMaterial(form);
+      else if(form.id==='t80ClassroomForm') await saveClassroom(form);
       else if(form.id==='contactForm'){ const fd=new FormData(form); location.href=`mailto:tribecaacademia@gmail.com?subject=${encodeURIComponent('Consulta Tribeca Aula: '+fd.get('topic'))}&body=${encodeURIComponent('Nombre: '+fd.get('name')+'\nTeléfono: '+fd.get('phone')+'\nEmail: '+fd.get('email')+'\n\n'+fd.get('message'))}`; }
     } catch(e){ console.error(e); toast(e.message || 'No se pudo completar la acción.'); }
     finally { setTimeout(()=>{ if(form) form.dataset.tribecaSubmitting = ''; }, 250); }
@@ -2360,7 +2498,7 @@
       if(ev.target.closest?.('[data-t16-forgot]')){ $('#t16LoginForm').hidden=true; $('#t16ResetForm').hidden=false; return; }
       if(ev.target.closest?.('[data-t16-login]')){ $('#t16ResetForm').hidden=true; $('#t16LoginForm').hidden=false; return; }
     }, true);
-    document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
+    document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
     document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
