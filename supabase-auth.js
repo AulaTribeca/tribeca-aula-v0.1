@@ -2167,54 +2167,50 @@
   }
   function classroomPeoplePanel(c){
     const students=classroomStudents(c.id);
-    return `<section class="classroom-people-panel">
-      <header class="classroom-section-title"><div><h3>Alumnado</h3><p>${students.length} alumno${students.length===1?'':'s'} asignado${students.length===1?'':'s'}</p></div></header>
-      <div class="classroom-people-list">${students.length?students.map(s=>`<article class="classroom-person-row"><span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span><div><strong>${safe(displayName(s))}</strong><small>${safe([s.username, academicLine(s)].filter(Boolean).join(' · '))}</small></div></article>`).join(''):'<div class="empty-state">Todavía no hay alumnado asignado a esta clase.</div>'}</div>
-      ${classroomAssignmentBox(c)}
+    return `<section class="classroom-people-panel classroom-people-panel-v91">
+      <header class="classroom-section-title">
+        <div><h3>Alumnado</h3><p>${students.length} alumno${students.length===1?'':'s'} en esta clase</p></div>
+      </header>
+      <div class="classroom-people-list classroom-people-list-v91">${students.length?students.map(s=>`<article class="classroom-person-row classroom-person-row-v91"><span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span><div><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small></div></article>`).join(''):'<div class="empty-state">Todavía no hay alumnado asignado a esta clase.</div>'}</div>
+      <details class="classroom-assignment-compact">
+        <summary><span>Editar alumnado asignado</span><em>${students.length}</em></summary>
+        ${classroomAssignmentBox(c)}
+      </details>
     </section>`;
   }
-  function classroomStreamPanel(c){
-    const materials=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-    const latest=materials.slice(0,4);
-    return `<section class="classroom-stream-panel">
-      <header class="classroom-section-title"><div><h3>Tablón</h3><p>Resumen rápido de la clase</p></div></header>
-      <div class="classroom-stream-grid">
-        <article><strong>${classroomSubjects(c.id).length}</strong><span>Materias</span></article>
-        <article><strong>${classroomStudentsCount(c.id)}</strong><span>Alumnos</span></article>
-        <article><strong>${materials.length}</strong><span>Materiales</span></article>
-      </div>
-      <div class="classroom-latest-list">${latest.length?latest.map(m=>`<button type="button" data-t33-open-mat="${safe(m.id)}"><strong>${safe(m.title||'Material sin título')}</strong><small>${safe(m.subject||'Materia')} · ${safe(m.unit_title||m.unit||'Unidad')}</small></button>`).join(''):'<p class="meta">Todavía no hay materiales publicados en esta clase.</p>'}</div>
+  function classroomClassSummary(c){
+    const subjects=classroomSubjects(c.id);
+    const materials=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id));
+    const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id)));
+    return `<section class="classroom-clean-summary">
+      <article><strong>${subjects.length}</strong><span>Materias</span></article>
+      <article><strong>${units.length}</strong><span>Unidades</span></article>
+      <article><strong>${materials.length}</strong><span>Materiales</span></article>
+      <article><strong>${classroomStudentsCount(c.id)}</strong><span>Alumnos</span></article>
     </section>`;
   }
   function classroomDetailContent(classId){
     const c=classById(classId || State.currentClassId);
     if(!c) return '<div class="empty-state premium-empty">No se encontró esta clase.</div>';
-    const assigned=classroomStudents(c.id);
-    const subjects=classroomSubjects(c.id);
     const label=classroomLabel(c);
-    return `<section class="classroom-detail-v90">
-      <header class="classroom-detail-hero classroom-theme-${Math.abs(String(c.id||'').split('').reduce((a,ch)=>a+ch.charCodeAt(0),0))%6}">
+    return `<section class="classroom-detail-v91">
+      <header class="classroom-detail-hero classroom-detail-hero-v91 classroom-theme-${Math.abs(String(c.id||'').split('').reduce((a,ch)=>a+ch.charCodeAt(0),0))%6}">
         <div>
           <p>${safe(c.academic_year||currentAcademicYearLabel())}</p>
           <h2>${safe(label)}</h2>
           <span>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</span>
         </div>
-        <strong>${assigned.length}</strong>
+        <button type="button" class="secondary-btn classroom-back-btn" onclick="return window.TribecaRenderInlineSection ? (window.TribecaRenderInlineSection('classrooms'), false) : false;">Ver todas las clases</button>
       </header>
-      <nav class="classroom-detail-tabs" aria-label="Apartados de la clase">
-        <a href="#t90-tablon">Tablón</a>
-        <a href="#t90-materias">Materias</a>
-        <a href="#t90-personas">Personas</a>
-      </nav>
-      <section id="t90-tablon">${classroomStreamPanel(c)}</section>
-      <section id="t90-materias" class="classroom-detail-grid">
-        <main>${classroomSubjectsBox(c)}</main>
-        <aside class="classroom-detail-side">
-          <button type="button" class="primary-btn full-width" data-t90-quick-new-subject="${safe(c.id)}">Añadir materia</button>
-          <p class="meta">Abre cada materia para añadir unidades y materiales. El alumnado solo verá lo que esté visible.</p>
+      ${classroomClassSummary(c)}
+      <section class="classroom-clean-layout">
+        <main class="classroom-clean-main">
+          ${classroomSubjectsBox(c)}
+        </main>
+        <aside class="classroom-clean-side">
+          ${classroomPeoplePanel(c)}
         </aside>
       </section>
-      <section id="t90-personas">${classroomPeoplePanel(c)}</section>
     </section>`;
   }
 
@@ -2276,11 +2272,10 @@ function classroomsContent(){
     const subjects=classroomSubjects(c.id);
     const assigned=classroomStudents(c.id);
     const students=assigned.length;
-    const subjectPreview=subjects.slice(0,4).map(s=>`<span>${safe(s.subject)}${s.hidden?' · oculta':''}</span>`).join('');
-    const rosterPreview=assigned.slice(0,5).map(s=>`<span title="${safe(displayName(s))}">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>`).join('');
+    const names=assigned.slice(0,3).map(s=>`<li>${safe(displayName(s))}</li>`).join('');
     const label=classroomLabel(c);
     const theme=i%6;
-    return `<article class="classroom-google-card classroom-google-card-v90 classroom-theme-${theme} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}" data-t90-open-class="${safe(c.id)}" tabindex="0" role="button" aria-label="Abrir clase ${safe(label)}">
+    return `<article class="classroom-google-card classroom-google-card-v91 classroom-theme-${theme} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}" data-t90-open-class="${safe(c.id)}" tabindex="0" role="button" aria-label="Abrir clase ${safe(label)}">
       <header class="classroom-google-cover">
         <div>
           <p>${safe(c.academic_year||currentAcademicYearLabel())}</p>
@@ -2289,9 +2284,12 @@ function classroomsContent(){
         </div>
         <strong title="Alumnado asignado">${students}</strong>
       </header>
-      <section class="classroom-google-body">
-        <div class="classroom-roster-mini">${rosterPreview || '<span>?</span>'}${assigned.length>5?`<em>+${assigned.length-5}</em>`:''}</div>
-        <div class="classroom-subject-mini">${subjectPreview || '<span>Sin materias todavía</span>'}</div>
+      <section class="classroom-google-body classroom-card-body-v91">
+        <div class="classroom-card-counts">
+          <span>${students} alumno${students===1?'':'s'}</span>
+          <span>${subjects.length} materia${subjects.length===1?'':'s'}</span>
+        </div>
+        <ul class="classroom-card-student-names">${names || '<li>Sin alumnado asignado</li>'}${assigned.length>3?`<li>+ ${assigned.length-3} más</li>`:''}</ul>
       </section>
       <footer class="classroom-google-actions classroom-card-actions-v90">
         <button type="button" class="primary-btn" data-t90-open-class-button="${safe(c.id)}">Abrir clase</button>
@@ -2305,48 +2303,55 @@ function classroomsContent(){
     const subjects=classroomSubjects(c.id);
     const dynamic=(State.data.subjects||[]).map(s=>s.subject).filter(Boolean);
     const opts=[...new Set([...(subjectCatalog[`${c.stage}-${c.course}`]||[]), ...dynamic, 'English','Matemáticas','Lengua Castellana','Lingua Galega','Bioloxía','Física e Química','Apoyo personalizado','Tutoría'])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
-    return `<section class="classroom-subjects-box classroom-subjects-box-v90">
+    return `<section class="classroom-subjects-box classroom-subjects-box-v91">
       <header class="classroom-section-title">
-        <div><h3>Materias</h3><p>${subjects.length} materia${subjects.length===1?'':'s'} en esta clase</p></div>
+        <div><h3>Materias</h3><p>Añade una materia, abre sus unidades y publica el material correspondiente.</p></div>
       </header>
-      <form class="classroom-subject-form classroom-subject-form-v90" onsubmit="return window.TribecaClassroomAddSubject(this,event)">
+      <form class="classroom-subject-form classroom-subject-form-v91" onsubmit="return window.TribecaClassroomAddSubject(this,event)">
         <input type="hidden" name="classId" value="${safe(c.id)}">
-        <label>Añadir materia<select name="subject">${opts.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('')}</select></label>
-        <label>Otra materia<input name="subjectCustom" placeholder="Escribir una materia que no esté en la lista"></label>
-        <button type="submit" class="primary-btn">Añadir materia</button>
+        <label><span>Materia</span><select name="subject">${opts.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('')}</select></label>
+        <label><span>Otra materia</span><input name="subjectCustom" placeholder="Escribir materia"></label>
+        <button type="submit" class="primary-btn">Añadir</button>
         <p class="form-status is-info" data-t90-subject-status></p>
       </form>
-      <div class="classroom-subject-list classroom-subject-list-v90">${subjects.length?subjects.map(classroomSubjectCard).join(''):'<div class="empty-state">Añade la primera materia para empezar a organizar unidades y materiales.</div>'}</div>
+      <div class="classroom-subject-list classroom-subject-list-v91">${subjects.length?subjects.map(classroomSubjectCard).join(''):'<div class="empty-state">Todavía no hay materias. Añade la primera para empezar.</div>'}</div>
     </section>`;
   }
   function classroomSubjectCard(s){
     const units=classroomUnitsForSubject(s.id);
     const materials=(State.data.materials||[]).filter(m=>String(m.class_subject_id||'')===String(s.id) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||'')));
     const materialCount=materials.length;
-    return `<article class="classroom-subject-card ${s.hidden?'is-hidden-classroom':''}">
-      <header><div><strong>${safe(s.subject)}</strong><small>${materialCount} material${materialCount===1?'':'es'} vinculado${materialCount===1?'':'s'}</small></div><div class="inline-actions"><button type="button" data-t82-toggle-subject="${safe(s.id)}" onclick="return window.TribecaClassroomToggleSubject(this,event)">${s.hidden?'Mostrar materia':'Ocultar materia'}</button><button type="button" data-t82-delete-subject="${safe(s.id)}" onclick="return window.TribecaClassroomDeleteSubject(this,event)">Eliminar</button></div></header>
-      <form class="classroom-unit-form" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
+    return `<details class="classroom-subject-card classroom-subject-card-v91 ${s.hidden?'is-hidden-classroom':''}">
+      <summary>
+        <div><strong>${safe(s.subject)}</strong><small>${units.length} unidad${units.length===1?'':'es'} · ${materialCount} material${materialCount===1?'':'es'}</small></div>
+        <span>${s.hidden?'Oculta':'Visible'}</span>
+      </summary>
+      <div class="classroom-subject-actions-v91">
+        <button type="button" data-t82-toggle-subject="${safe(s.id)}" onclick="return window.TribecaClassroomToggleSubject(this,event)">${s.hidden?'Mostrar materia':'Ocultar materia'}</button>
+        <button type="button" data-t82-delete-subject="${safe(s.id)}" onclick="return window.TribecaClassroomDeleteSubject(this,event)">Eliminar materia</button>
+      </div>
+      <form class="classroom-unit-form classroom-unit-form-v91" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
         <input type="hidden" name="classSubjectId" value="${safe(s.id)}">
-        <input name="title" placeholder="Unidad 1, Module 5, Tema 3..." required>
+        <input name="title" placeholder="Nueva unidad, por ejemplo Module 5" required>
         <button type="submit" class="secondary-btn">Añadir unidad</button>
       </form>
-      <div class="classroom-unit-list">${units.length?units.map(u=>classroomUnitCard(u,s)).join(''):'<div class="empty-state">Sin unidades todavía.</div>'}</div>
-    </article>`;
+      <div class="classroom-unit-list classroom-unit-list-v91">${units.length?units.map(u=>classroomUnitCard(u,s)).join(''):'<div class="empty-state">Sin unidades todavía.</div>'}</div>
+    </details>`;
   }
   function classroomUnitCard(u,s){
     const materials=(State.data.materials||[]).filter(m=>String(m.class_unit_id||'')===String(u.id) || (String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||'')));
-    const chips=materials.slice(0,5).map(m=>`<span>${safe(m.title||'Material sin título')}${m.hidden?' · oculto':''}</span>`).join('');
-    const matRows=materials.length?`<div class="classroom-material-visibility-list">${materials.map(classroomMaterialVisibilityRow).join('')}</div>`:'';
-    return `<article class="classroom-unit-card ${u.hidden?'is-hidden-classroom':''}">
-      <div><strong>${safe(u.title)}</strong><small>${materials.length} material${materials.length===1?'':'es'} · ${u.hidden?'unidad oculta':'unidad visible'}</small></div>
-      <div class="classroom-chip-row">${chips || '<span>Sin materiales vinculados</span>'}${materials.length>5?`<span>+${materials.length-5} más</span>`:''}</div>
-      ${matRows}
-      <div class="inline-actions">
+    const matRows=materials.length?`<div class="classroom-material-visibility-list classroom-material-list-v91">${materials.map(classroomMaterialVisibilityRow).join('')}</div>`:'<div class="empty-state">Sin materiales en esta unidad.</div>';
+    return `<details class="classroom-unit-card classroom-unit-card-v91 ${u.hidden?'is-hidden-classroom':''}">
+      <summary>
+        <div><strong>${safe(u.title)}</strong><small>${materials.length} material${materials.length===1?'':'es'} · ${u.hidden?'oculta':'visible'}</small></div>
+      </summary>
+      <div class="classroom-unit-actions-v91">
         <button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button>
         <button type="button" data-t82-toggle-unit="${safe(u.id)}" onclick="return window.TribecaClassroomToggleUnit(this,event)">${u.hidden?'Mostrar unidad':'Ocultar unidad'}</button>
         <button type="button" data-t82-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar unidad</button>
       </div>
-    </article>`;
+      ${matRows}
+    </details>`;
   }
   function classroomMaterialVisibilityRow(m){
     const meta=materialTypeMeta(m.material_type||m.type||'material');
