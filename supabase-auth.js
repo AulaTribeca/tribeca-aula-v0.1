@@ -2321,6 +2321,32 @@
       </div>
     </article>`;
   }
+  function classroomAssignmentBox(c){
+    const students=(State.data.students||[]).slice().sort((a,b)=>{
+      const aIn=String(studentActiveClass(a.id)?.id||'')===String(c.id), bIn=String(studentActiveClass(b.id)?.id||'')===String(c.id);
+      if(aIn!==bIn) return aIn?-1:1;
+      const stageCmp=String(a.stage||'').localeCompare(String(b.stage||''),'es');
+      if(stageCmp) return stageCmp;
+      const courseCmp=String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true});
+      if(courseCmp) return courseCmp;
+      return displayName(a).localeCompare(displayName(b),'es');
+    });
+    return `<details class="classroom-assignment-box"><summary><span>Asignar o promocionar alumnado</span><em>${classroomStudentsCount(c.id)} asignado${classroomStudentsCount(c.id)===1?'':'s'}</em></summary>
+      <form class="classroom-assignment-form" onsubmit="return false;">
+        <input type="hidden" name="classId" value="${safe(c.id)}">
+        <p class="meta">Selecciona alumnado. “Guardar lista” actualiza solo esta clase. “Asignar/promocionar a esta clase” retira al alumnado seleccionado de otras clases activas y actualiza su centro, etapa y curso al de esta clase.</p>
+        <input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>
+        <div class="classroom-student-select-list">
+          ${students.map(s=>{ const current=studentActiveClass(s.id); const checked=String(current?.id||'')===String(c.id); return `<label data-student-name="${safe((displayName(s)+' '+s.username+' '+academicLine(s)+' '+(current?.name||'')).toLowerCase())}" class="${checked?'is-assigned-here':current?'is-assigned-elsewhere':''}"><input type="checkbox" name="studentIds" value="${safe(s.id)}" ${checked?'checked':''}><span><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}${current?` · Clase actual: ${safe(current.name||classroomAutoName(current.center,current.stage,current.course))}`:' · Sin clase activa'}</small></span></label>`; }).join('')}
+        </div>
+        <div class="inline-actions">
+          <button type="button" class="secondary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'assign')">Guardar lista de esta clase</button>
+          <button type="button" class="primary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'promote')">Asignar/promocionar a esta clase</button>
+        </div>
+      </form>
+    </details>`;
+  }
+
   function classBootstrapGroups(){
     const students=(State.data.students||[]).filter(Boolean);
     const map=new Map();
