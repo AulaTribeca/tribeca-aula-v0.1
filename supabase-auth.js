@@ -1319,14 +1319,23 @@
       const result={score, max_score:10, answers, completed_at:new Date().toISOString()};
       const resultBox=container.querySelector('.native-exam-result');
       resultBox.hidden=false;
-      resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>${score>=5?'Simulacro superado':'Simulacro no superado'}</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas.</p></div>`;
+      resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>${score>=5?'Simulacro superado':'Simulacro no superado'}</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas.</p><button type="button" class="secondary-btn" data-t111-retake-exam>Rehacer simulacro</button></div>`;
       form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);
+      resultBox.querySelector('[data-t111-retake-exam]')?.addEventListener('click',()=>{
+        delete container.dataset.t103Rendered;
+        renderNativeExam(container);
+        container.scrollIntoView?.({behavior:'smooth', block:'start'});
+      });
       await saveExamAttempt(materialId, exam, result);
     });
     container.dataset.t103Rendered='1';
   }
   async function saveExamAttempt(materialId, exam, result){
     if(!materialId || !State.profile?.id) return;
+    if(roleTeacher()){
+      toast(`Modo docente: simulacro corregido (${Number(result.score||0).toFixed(2)}/10). No se guarda nota ni intento.`);
+      return;
+    }
     const material=(State.data.materials||[]).find(m=>String(m.id)===String(materialId)) || {};
     const row={
       user_id:State.profile.id,
@@ -1499,10 +1508,75 @@
     return `<div class="exam-preview"><header><div><strong>${safe(normalized.title)}</strong><p>${safe(normalized.instructions)}</p></div><span>${normalized.questions.length} preguntas · ${per.toFixed(2)} puntos/pregunta</span></header>${groups.map(g=>`<section><h2>${safe(g.name)}</h2>${g.items.map(({q,idx},localIdx)=>renderQ(q,idx,localIdx)).join('')}</section>`).join('')}</div>`;
   }
 
+  function examRunnerHtmlForNewWindow(exam={}){
+    const normalized=normalizeExamPayload(exam);
+    if(!normalized?.questions?.length) return '<!doctype html><html><body><p>No se pudo cargar el simulacro.</p></body></html>';
+    const payload=JSON.stringify(normalized).replace(/</g,'\\u003c');
+    const style=`:root{font-size:12.5px}*{box-sizing:border-box}body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5}.wrap{max-width:980px;margin:0 auto;padding:20px 14px 34px}.teacher-note{border:1px solid #d7ccb5;border-radius:12px;background:#fff8e6;color:#6a4f14;font-weight:850;padding:10px 12px;margin-bottom:12px}.exam-paper-form{background:#fff;border:1px solid #d7ccb5;border-radius:10px;padding:18px 20px;box-shadow:0 10px 24px rgba(34,27,12,.06)}.exam-paper-header{border-bottom:2px solid #1f1e1a;padding-bottom:10px;margin-bottom:14px}.exam-paper-topline{display:flex;justify-content:space-between;gap:12px;color:#1f1e1a;font-size:13px}.exam-paper-header h1{font-family:Georgia,serif;font-size:clamp(26px,2.5vw,38px);line-height:1.08;margin:10px 0 6px;color:#1f1e1a}.exam-paper-header p{margin:0;color:#5d564b;font-weight:750}.exam-paper-section{margin:16px 0}.exam-paper-section>header{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #d7ccb5;margin-bottom:8px}.exam-paper-section h2{font-size:18px;margin:0 0 5px;color:#1f1e1a}.exam-paper-section header span{font-weight:850;color:#6a4f14}.exam-question{border:0;border-bottom:1px solid #eee4d0;margin:0;padding:10px 0 14px}.exam-question-head{display:flex;gap:8px;align-items:center}.exam-question-number{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#f0eadc;font-weight:950}.exam-question-type{font-size:12px;color:#6a6458;font-weight:850}.exam-exercise-title{margin:5px 0 2px;color:#0b3d22;font-weight:900}.exam-question legend{padding:0;font-weight:800;font-size:15px;color:#1f1e1a;line-height:1.45}.exam-passage{margin:8px 0;padding:10px 12px;border-left:4px solid #0b3d22;background:#faf8f1}.exam-question-image{margin:8px 0;padding:8px;border:1px solid #d7ccb5;border-radius:10px;background:#fffdfa}.exam-question-image img{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:8px;background:#fff}.exam-question-image figcaption{text-align:center;margin-top:5px;color:#6a6458;font-weight:750;font-size:12px}.exam-options,.exam-matching,.exam-ordering{display:grid;gap:6px;margin-top:8px}.exam-options label{display:grid;grid-template-columns:auto 1fr;gap:7px;align-items:start}.exam-options input{margin-top:4px}.exam-matching label,.exam-ordering label{display:grid;grid-template-columns:minmax(160px,.8fr) minmax(220px,1.2fr);gap:10px;align-items:center}.exam-question input[type=text],.exam-question textarea,.exam-question select{width:100%;border:1px solid #cfc7b8;border-radius:6px;min-height:38px;padding:7px 9px;background:#fff;color:#1f1e1a;font:inherit}.exam-question textarea{min-height:150px;resize:vertical}.exam-help{color:#6a6458;font-weight:750}.exam-paper-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:2px solid #1f1e1a;margin-top:14px;padding-top:12px}.primary-btn,.secondary-btn{border:0;border-radius:999px;padding:9px 14px;font-weight:950;cursor:pointer}.primary-btn{background:#0b3d22;color:#fff}.secondary-btn{background:#eef4e9;color:#0b3d22;border:1px solid #cfdccf}.exam-score-card{margin:14px 0 0;padding:14px 16px;border-radius:12px;background:#f3eddd;border:1px solid #d4c7a9;display:grid;gap:6px}.exam-score-card strong{font-size:36px;color:#0b3d22}.exam-score-card span{font-weight:950}.exam-score-card p{margin:0;color:#5d564b;font-weight:750}@media(max-width:720px){.exam-paper-form{padding:13px}.exam-paper-topline,.exam-paper-footer,.exam-matching label,.exam-ordering label{display:grid;grid-template-columns:1fr}}`;
+    const script=`
+const EXAM=${payload};
+function esc(v){return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c];});}
+function norm(v,caseSensitive){var s=String(v==null?'':v).trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' '); return caseSensitive?s:s.toLowerCase();}
+function textOk(v,accepted,caseSensitive){accepted=accepted||[]; var n=norm(v,caseSensitive); return accepted.some(function(a){return norm(a,caseSensitive)===n;})?1:0;}
+function writingScore(v,q){var words=String(v||'').trim().split(/\\s+/).filter(Boolean); if(q.acceptedAnswers&&q.acceptedAnswers.length&&textOk(v,q.acceptedAnswers,q.caseSensitive)) return 1; if(q.minWords&&words.length<q.minWords) return 0; var keys=q.keywords||q.requiredKeywords||[]; if(keys.length){var t=norm(v,false); var ok=keys.filter(function(k){return t.indexOf(norm(k,false))>-1;}).length; return ok/keys.length;} return 0;}
+function qLabel(q){return {single_choice:'Elige la respuesta correcta',multiple_choice:'Selecciona todas las correctas',true_false:'Verdadero o falso',short_text:'Completa',writing:'Writing',matching:'Relaciona',ordering:'Ordena'}[q.type]||'Ejercicio';}
+function sectionName(q){return String(q.section||'Simulacro').trim()||'Simulacro';}
+function optsForPairs(q){return (q.pairs||[]).map(function(p){return p.right;}).slice().sort(function(a,b){return String(a).localeCompare(String(b),'es',{numeric:true});});}
+function questionHtml(q,idx,localIdx){
+  var display=q.originalNumber||q.questionNumber||String(localIdx+1);
+  var passage=q.passage?'<blockquote class="exam-passage">'+esc(q.passage)+'</blockquote>':'';
+  var image=q.image?'<figure class="exam-question-image"><img src="'+esc(q.image)+'" alt="'+esc(q.imageAlt||q.imageCaption||q.exerciseTitle||q.prompt)+'">'+(q.imageCaption?'<figcaption>'+esc(q.imageCaption)+'</figcaption>':'')+'</figure>':'';
+  var title=q.exerciseTitle?'<p class="exam-exercise-title">'+esc(q.exerciseTitle)+'</p>':'';
+  var head='<div class="exam-question-head"><span class="exam-question-number">'+esc(display)+'</span><span class="exam-question-type">'+esc(qLabel(q))+'</span></div>';
+  var legend='<legend>'+esc(q.prompt||q.question||'Pregunta')+'</legend>';
+  if(q.type==='matching'){
+    var pairOpts=optsForPairs(q);
+    return '<fieldset class="exam-question" data-q="'+idx+'" data-type="matching">'+head+title+legend+passage+image+'<div class="exam-matching">'+(q.pairs||[]).map(function(p,i){return '<label><span>'+esc(p.left)+'</span><select name="q'+idx+'_'+i+'"><option value="">Seleccionar</option>'+pairOpts.map(function(o){return '<option value="'+esc(o)+'">'+esc(o)+'</option>';}).join('')+'</select></label>';}).join('')+'</div></fieldset>';
+  }
+  if(q.type==='ordering'){
+    return '<fieldset class="exam-question" data-q="'+idx+'" data-type="ordering">'+head+title+legend+passage+image+'<div class="exam-ordering">'+(q.items||[]).map(function(_,i){return '<label><span>'+(i+1)+'.</span><select name="q'+idx+'_'+i+'"><option value="">Seleccionar</option>'+(q.items||[]).map(function(o){return '<option value="'+esc(o)+'">'+esc(o)+'</option>';}).join('')+'</select></label>';}).join('')+'</div></fieldset>';
+  }
+  if(q.type==='short_text') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="short_text">'+head+title+legend+passage+image+'<input name="q'+idx+'" type="text" placeholder="Escribe tu respuesta"></fieldset>';
+  if(q.type==='writing') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="writing">'+head+title+legend+passage+image+'<textarea name="q'+idx+'" rows="7" placeholder="Escribe tu respuesta"></textarea>'+((q.keywords||q.requiredKeywords||[]).length?'<small class="exam-help">Se autocorrige por criterios configurados.</small>':'')+'</fieldset>';
+  var multiple=q.type==='multiple_choice';
+  var typ=multiple?'checkbox':'radio';
+  return '<fieldset class="exam-question" data-q="'+idx+'" data-type="'+esc(q.type)+'">'+head+title+legend+passage+image+'<div class="exam-options">'+(q.options||[]).map(function(o,i){return '<label><input type="'+typ+'" name="q'+idx+(multiple?'[]':'')+'" value="'+i+'"><span>'+esc(o.text||o.t||'')+'</span></label>';}).join('')+'</div></fieldset>';
+}
+function render(){
+  var total=EXAM.questions.length, per=total?10/total:0, groups=[];
+  EXAM.questions.forEach(function(q,idx){var name=sectionName(q), g=groups[groups.length-1]; if(!g||g.name!==name){g={name:name,items:[]}; groups.push(g);} g.items.push({q:q,idx:idx});});
+  var sections=groups.map(function(g){return '<section class="exam-paper-section"><header><h2>'+esc(g.name)+'</h2><span>'+(g.items.length*per).toFixed(2)+' / 10</span></header>'+g.items.map(function(it,localIdx){return questionHtml(it.q,it.idx,localIdx);}).join('')+'</section>';}).join('');
+  document.getElementById('app').innerHTML='<div class="teacher-note">Modo docente de prueba. Puedes realizar el simulacro todas las veces que quieras. No se guarda ninguna nota.</div><form id="examForm" class="exam-paper-form"><header class="exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h1>'+esc(EXAM.title||'Simulacro de examen')+'</h1><p>'+esc(EXAM.instructions||'Responde y finaliza para corregir.')+'</p></header>'+sections+'<footer class="exam-paper-footer"><button type="submit" class="primary-btn">Finalizar y corregir</button><span>'+total+' preguntas · corrección automática sobre 10</span></footer></form><div id="result"></div>';
+  document.getElementById('examForm').addEventListener('submit', score);
+}
+function score(ev){
+  ev.preventDefault();
+  var form=ev.currentTarget, total=EXAM.questions.length, per=total?10/total:0, raw=0, answers=[];
+  EXAM.questions.forEach(function(q,idx){
+    var fraction=0,value=null,correct=null;
+    if(q.type==='matching'){var vals=(q.pairs||[]).map(function(p,i){return (form.elements['q'+idx+'_'+i]||{}).value||'';}); var ok=vals.filter(function(v,i){return v===(q.pairs||[])[i].right;}).length; fraction=(q.pairs||[]).length?ok/(q.pairs||[]).length:0; value=vals; correct=(q.pairs||[]).map(function(p){return p.right;});}
+    else if(q.type==='ordering'){var vals=(q.items||[]).map(function(_,i){return (form.elements['q'+idx+'_'+i]||{}).value||'';}); var ok=vals.filter(function(v,i){return v===(q.items||[])[i];}).length; fraction=(q.items||[]).length?ok/(q.items||[]).length:0; value=vals; correct=q.items||[];}
+    else if(q.type==='multiple_choice'){var selected=[].slice.call(form.querySelectorAll('[name="q'+idx+'[]"]:checked')).map(function(x){return Number(x.value);}).sort(function(a,b){return a-b;}); var expected=(q.options||[]).map(function(o,i){return (o.correct||o.c)?i:null;}).filter(function(x){return x!==null;}).sort(function(a,b){return a-b;}); fraction=selected.length===expected.length&&selected.every(function(v,i){return v===expected[i];})?1:0; value=selected; correct=expected;}
+    else if(q.type==='short_text'){value=(form.elements['q'+idx]||{}).value||''; fraction=textOk(value,q.acceptedAnswers||[],q.caseSensitive); correct=q.acceptedAnswers||[];}
+    else if(q.type==='writing'){value=(form.elements['q'+idx]||{}).value||''; fraction=writingScore(value,q); correct=(q.acceptedAnswers&&q.acceptedAnswers.length)?q.acceptedAnswers:(q.keywords||q.requiredKeywords||[]);}
+    else {var selected=form.querySelector('[name="q'+idx+'"]:checked'); value=selected?Number(selected.value):null; var expected=(q.options||[]).findIndex(function(o){return o.correct||o.c;}); fraction=value===expected?1:0; correct=expected;}
+    raw+=fraction*per; answers.push({question:q.prompt||q.question,type:q.type,value:value,correct:correct,fraction:fraction});
+  });
+  var finalScore=Math.max(0,Math.min(10,Number(raw.toFixed(2))));
+  document.getElementById('result').innerHTML='<div class="exam-score-card"><strong>'+finalScore.toFixed(2)+'/10</strong><span>'+(finalScore>=5?'Simulacro superado':'Simulacro no superado')+'</span><p>'+answers.filter(function(a){return a.fraction===1;}).length+'/'+answers.length+' preguntas completamente correctas.</p><button type="button" class="secondary-btn" id="retake">Rehacer simulacro</button></div>';
+  form.querySelectorAll('input,textarea,select,button').forEach(function(el){el.disabled=true;});
+  document.getElementById('retake').addEventListener('click',function(){render(); window.scrollTo({top:0,behavior:'smooth'});});
+}
+render();
+`;
+    return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(normalized.title||'Simulacro de examen')}</title><style>${style}</style></head><body><main class="wrap"><div id="app">Cargando simulacro…</div></main><script>${script.replace(/<\/script/gi,'<\\/script')}<\/script></body></html>`;
+  }
+
   function materialEmbedMarkupForNewWindow(m={}){
     const source=materialEmbedSource(m);
     if(source.mode==='exam'){
-      return `<section class="material-embed-block exam-preview-shell"><div><strong>Simulacro de examen</strong><small>Vista docente previa. El alumnado lo realiza y lo corrige dentro del aula virtual.</small></div>${examPreviewMarkupForNewWindow(source.exam)}</section>`;
+      const runner=examRunnerHtmlForNewWindow(source.exam);
+      return `<section class="material-embed-block exam-preview-shell"><div><strong>Simulacro de examen</strong><small>Modo docente interactivo: puedes realizarlo, corregirlo y repetirlo sin guardar nota.</small></div><iframe title="Simulacro de examen en modo docente" sandbox="allow-scripts allow-forms allow-same-origin" srcdoc="${safe(runner)}" style="min-height:920px"></iframe></section>`;
     }
     if(source.mode==='quiz'){
       const encoded=encodeBase64Utf8(JSON.stringify(source.quiz));
