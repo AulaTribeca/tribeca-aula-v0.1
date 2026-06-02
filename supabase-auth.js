@@ -40,7 +40,8 @@
     selectedSubjectCourse: localStorage.getItem('tribeca-teacher-subject-course') || '1.º ESO',
     loadedAt: 0,
     activitySince: null,
-    selfPause: null
+    selfPause: null,
+    profilePanel: 'profile'
   };
   window.TribecaAuth = State;
   const TRIBECA_TEACHER_PROFILE_IMAGE = 'assets/patricia-trillo-perfil.webp';
@@ -113,8 +114,59 @@
     const set = new Set(courses);
     (State.data.subjects||[]).forEach(s => { if(s.course) set.add(s.course); });
     (State.data.students||[]).forEach(s => { if(s.course) set.add(s.course); });
+    (State.data.materialRepository||[]).forEach(s => { if(s.course) set.add(s.course); });
     if(State.profile?.course) set.add(State.profile.course);
     return [...set].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
+  }
+  function stageCoursePairs(){
+    const pairs=[];
+    Object.keys(subjectCatalog||{}).forEach(key=>{
+      const [stage,...courseParts]=String(key).split('-');
+      const course=courseParts.join('-');
+      if(stage && course) pairs.push({stage,course});
+    });
+    (State.data.subjects||[]).forEach(x=>{ if(x?.stage&&x?.course) pairs.push({stage:x.stage,course:x.course}); });
+    (State.data.students||[]).forEach(x=>{ if(x?.stage&&x?.course) pairs.push({stage:x.stage,course:x.course}); });
+    (State.data.materialRepository||[]).forEach(x=>{ if(x?.stage&&x?.course) pairs.push({stage:x.stage,course:x.course}); });
+    if(State.profile?.stage && State.profile?.course) pairs.push({stage:State.profile.stage,course:State.profile.course});
+    const seen=new Set();
+    return pairs.filter(p=>{ const k=`${p.stage}::${p.course}`; if(seen.has(k)) return false; seen.add(k); return true; });
+  }
+  function inferredStageForCourse(course=''){
+    const c=String(course||'').toLowerCase();
+    if(!c) return '';
+    if(c.includes('primaria')) return 'Primaria';
+    if(c.includes('eso') || c.includes('pdc')) return 'ESO';
+    if(c.includes('bachiller')) return 'Bachillerato';
+    if(c.includes('fp') || c.includes('ciclo')) return 'FP';
+    if(c.includes('infantil')) return 'Infantil';
+    if(c.includes('adult')) return 'Adultos';
+    if(c.includes('profesora') || c.includes('profesor')) return 'Profesorado';
+    const pair=stageCoursePairs().find(p=>p.course===course);
+    return pair?.stage || '';
+  }
+  function coursesForStage(stage=''){
+    const all=dynamicCourses();
+    if(!stage) return all;
+    const pairCourses=stageCoursePairs().filter(p=>p.stage===stage).map(p=>p.course);
+    return [...new Set([...pairCourses, ...all.filter(c=>inferredStageForCourse(c)===stage)])].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
+  }
+  function stagesForCourse(course=''){
+    if(!course) return stages;
+    const pairStages=stageCoursePairs().filter(p=>p.course===course).map(p=>p.stage);
+    const inferred=inferredStageForCourse(course);
+    const values=[...new Set([...(inferred?[inferred]:[]), ...pairStages])].filter(Boolean);
+    return values.length ? values : stages;
+  }
+  function courseOptionsForStage(stage='', selected=''){
+    const values=coursesForStage(stage);
+    const arr=selected && !values.includes(selected) ? [selected, ...values] : values;
+    return options(arr, selected);
+  }
+  function stageOptionsForCourse(course='', selected=''){
+    const values=stagesForCourse(course);
+    const arr=selected && !values.includes(selected) ? [selected, ...values] : values;
+    return options(arr, selected);
   }
   function subjectListFor(stage,course){
     const overrides = (State.data.subjects||[]).filter(x=>x.stage===stage && x.course===course);
@@ -481,8 +533,28 @@
         avatar.textContent=p.avatar_icon || '💡';
       }
     }
-    const name=$('.profile-name'); if(name) name.textContent = 'Mi perfil';
-    $('#profileMenu')?.setAttribute('hidden','');
+    const name=$('.profile-name'); if(name) textSet(name, 'Mi cuenta');
+    const menu=$('#profileMenu');
+    if(menu){
+      menu.innerHTML=accountMenuMarkup();
+      menu.setAttribute('hidden','');
+      menu.setAttribute('aria-hidden','true');
+    }
+  }
+  function accountMenuMarkup(){
+    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button>`;
+  }
+  function toggleAccountMenu(){
+    const menu=$('#profileMenu');
+    if(!menu) return;
+    if(!menu.innerHTML.trim()) menu.innerHTML=accountMenuMarkup();
+    const hidden=menu.hasAttribute('hidden');
+    if(hidden){ menu.removeAttribute('hidden'); menu.setAttribute('aria-hidden','false'); }
+    else { menu.setAttribute('hidden',''); menu.setAttribute('aria-hidden','true'); }
+  }
+  function closeAccountMenu(){
+    const menu=$('#profileMenu');
+    if(menu){ menu.setAttribute('hidden',''); menu.setAttribute('aria-hidden','true'); }
   }
   function ensureMainNavHomeButton() {
     const nav = document.querySelector('.main-nav');
@@ -520,7 +592,7 @@
     const calCount=relevantEvents().filter(e=>{const d=parseIso(e.date); return d>=new Date(now.getFullYear(),now.getMonth(),now.getDate()) && d<=seven;}).length;
     setBadge('#calendarBadge', calCount);
     const unreadMsg=(State.data.messages||[]).filter(m=>m.recipient_id===State.profile?.id && !m.read_at && !m.archived && !m.deleted_by_recipient).length; setBadge('#messagesBadge', unreadMsg);
-    const annUnread=visibleAnnouncements().filter(a=>!localStorage.getItem(`tribeca-ann-seen-${a.id}`)).length; setBadge('#announcementsBadge', annUnread);
+    const annUnread=visibleAnnouncements().filter(a=>!announcementIsRead(a)).length; setBadge('#announcementsBadge', annUnread);
     if(roleTeacher()){
       const alertCount = teacherAlertCount();
       const seen = Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0);
@@ -1411,10 +1483,29 @@
     if(scope === 'center') return a.center || 'Centro concreto';
     return 'Anuncio general';
   }
+  function announcementSeenKey(id){ return `tribeca-ann-seen-${State.profile?.id||'anon'}-${id}`; }
+  function announcementOldSeenKey(id){ return `tribeca-ann-seen-${id}`; }
+  function announcementIsRead(a){ return !!(a?.id && (localStorage.getItem(announcementSeenKey(a.id)) || localStorage.getItem(announcementOldSeenKey(a.id)))); }
+  function markAnnouncementRead(id){
+    if(!id) return;
+    localStorage.setItem(announcementSeenKey(id), new Date().toISOString());
+    localStorage.setItem(announcementOldSeenKey(id), new Date().toISOString());
+    updateBadges();
+  }
+  function markAllAnnouncementsRead(){
+    visibleAnnouncements().forEach(a=>markAnnouncementRead(a.id));
+    toast('Anuncios marcados como leídos.');
+    rerender();
+  }
   function announcementsContent(){
     const rows=visibleAnnouncements();
-    return `<section class="window-panel"><h3>Anuncios, avisos y noticias</h3>${rows.length?rows.map(a=>`<article class="t16-publication ${a.hidden?'is-hidden-item':''}"><small>${safe(announcementScopeLabel(a))}${a.created_at?` · ${fmtDT(a.created_at)}`:''}${a.hidden?' · Oculto':''}</small><h3>${safe(a.title || 'Anuncio sin título')}</h3>${a.image_url?`<img src="${safe(a.image_url)}" alt="">`:''}<p style="font-size:${Number(a.font_size||16)}px">${safe(a.body||a.description||a.content||'')}</p>${a.link_url?`<a href="${safe(a.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(a)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-ann="${safe(a.id)}">Editar</button><button type="button" data-t16-toggle-ann="${safe(a.id)}">${a.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-ann="${safe(a.id)}">Eliminar</button></div>`:''}</article>`).join(''):'<div class="empty-state">Todavía no hay anuncios publicados.</div>'}</section>`;
+    const unread=rows.filter(a=>!announcementIsRead(a));
+    const head=`<div class="announcements-head"><div><h3>Anuncios, avisos y noticias</h3><p class="meta">${unread.length?`${unread.length} anuncio${unread.length===1?'':'s'} nuevo${unread.length===1?'':'s'}.`:'No hay anuncios nuevos pendientes de lectura.'}</p></div>${rows.length?`<button type="button" class="secondary-btn" onclick="return window.TribecaMarkAllAnnouncementsRead(event)">Marcar todos como leídos</button>`:''}</div>`;
+    return `<section class="window-panel announcements-panel">${head}${rows.length?rows.map(a=>{ const isNew=!announcementIsRead(a); return `<article class="t16-publication announcement-card ${a.hidden?'is-hidden-item':''} ${isNew?'is-new-announcement':''}"><small>${isNew?'<span class="new-announcement-tag">Nuevo anuncio</span> ':''}${safe(announcementScopeLabel(a))}${a.created_at?` · ${fmtDT(a.created_at)}`:''}${a.hidden?' · Oculto':''}</small><h3>${safe(a.title || 'Anuncio sin título')}</h3>${a.image_url?`<img src="${safe(a.image_url)}" alt="">`:''}<p style="font-size:${Number(a.font_size||16)}px">${safe(a.body||a.description||a.content||'')}</p>${a.link_url?`<a href="${safe(a.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(a)}<div class="inline-actions"><button type="button" data-t73-read-ann="${safe(a.id)}" onclick="return window.TribecaMarkAnnouncementReadDirect(this,event)" ${isNew?'':'disabled'}>${isNew?'Marcar como leído':'Leído'}</button>${roleTeacher()?`<button type="button" data-t32-edit-ann="${safe(a.id)}">Editar</button><button type="button" data-t16-toggle-ann="${safe(a.id)}">${a.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-ann="${safe(a.id)}">Eliminar</button>`:''}</div></article>`; }).join(''):'<div class="empty-state">Todavía no hay anuncios publicados.</div>'}</section>`;
   }
+  window.TribecaMarkAnnouncementReadDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAnnouncementRead(btn?.dataset?.t73ReadAnn); toast('Anuncio marcado como leído.'); rerender(); return false; };
+  window.TribecaMarkAllAnnouncementsRead=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAllAnnouncementsRead(); return false; };
+
   function subjectDetailContent(subject){
     const mats=visibleMaterials(subject);
     const byUnit=new Map();
@@ -1462,59 +1553,82 @@
   function setRepositoryFilter(key, value){
     if(!['center','stage','course','subject'].includes(key)) return;
     localStorage.setItem(`tribeca-repo-${key}`, String(value||''));
+    if(key==='stage'){
+      const valid=coursesForStage(value);
+      const current=localStorage.getItem('tribeca-repo-course') || '';
+      if(current && valid.length && !valid.includes(current)) localStorage.setItem('tribeca-repo-course', valid[0] || '');
+    }
+    if(key==='course'){
+      const validStages=stagesForCourse(value);
+      const current=localStorage.getItem('tribeca-repo-stage') || '';
+      if(value && validStages.length && (!current || !validStages.includes(current))) localStorage.setItem('tribeca-repo-stage', validStages[0] || '');
+    }
     rerender();
   }
   function repoUnique(values){
-    return [...new Set((values||[]).map(v=>String(v||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    return [...new Set((values||[]).map(v=>String(v||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
   }
-  function repoOptions(values, selected=''){
+  function repoOptions(values, selected='', includeAll=true){
     const opts = repoUnique(values);
-    return `<option value="">Todos</option>${opts.map(v=>`<option value="${safe(v)}" ${String(selected)===String(v)?'selected':''}>${safe(v)}</option>`).join('')}`;
+    return `${includeAll?'<option value="">Todos</option>':''}${opts.map(v=>`<option value="${safe(v)}" ${String(selected)===String(v)?'selected':''}>${safe(v)}</option>`).join('')}`;
   }
-  function materialRepositoryContent(){
-    if(!roleTeacher()) return '<div class="empty-state">Solo la profesora puede acceder al repositorio docente.</div>';
-    const rows=(State.data.materialRepository||[]).filter(x=>x && x.active!==false);
-    const f=repositoryFilters();
-    const filtered=rows.filter(r=>
+  function repoFilteredRows(rows, f){
+    return rows.filter(r=>
       (!f.center || r.center===f.center) &&
       (!f.stage || r.stage===f.stage) &&
       (!f.course || r.course===f.course) &&
       (!f.subject || r.subject===f.subject)
     );
+  }
+  function materialRepositoryContent(){
+    if(!roleTeacher()) return '<div class="empty-state">Solo la profesora puede acceder al repositorio docente.</div>';
+    const rows=(State.data.materialRepository||[]).filter(x=>x && x.active!==false);
+    const f=repositoryFilters();
+    const visibleRows=repoFilteredRows(rows,f);
+    const stageChoices = f.course ? stagesForCourse(f.course) : repoUnique([...stages, ...rows.map(r=>r.stage)]);
+    const courseChoices = f.stage ? coursesForStage(f.stage) : repoUnique([...dynamicCourses(), ...rows.map(r=>r.course)]);
+    const subjectsForFilters = rows.filter(r=>(!f.stage || r.stage===f.stage) && (!f.course || r.course===f.course)).map(r=>r.subject);
     const centers = repoUnique([...centersFromStudents(), ...rows.map(r=>r.center)]);
-    const stageValues = repoUnique([...stages, ...rows.map(r=>r.stage)]);
-    const courseValues = repoUnique([...dynamicCourses(), ...rows.map(r=>r.course)]);
-    const subjectValues = repoUnique([...rows.map(r=>r.subject), ...teacherSubjectList(f.stage || State.selectedSubjectStage, f.course || State.selectedSubjectCourse)]);
-    const grouped = new Map();
-    filtered.forEach(r=>{
-      const key=[r.center||'Sin centro', r.stage||'Sin etapa', r.course||'Sin curso', r.subject||'Sin materia'].join(' · ');
-      if(!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key).push(r);
-    });
-    const list=[...grouped.entries()].map(([label,items])=>`<details class="repo-group" open><summary><span>${safe(label)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="repo-card-grid">${items.map(repositoryMaterialCard).join('')}</div></details>`).join('');
+    const list = repositoryGroupedList(visibleRows);
     return `<section class="repository-tool">
-      <div class="repository-hero window-panel">
+      <button type="button" class="repository-hero window-panel" onclick="return window.TribecaRepositoryShowAll(event)">
         <div>
           <p class="eyebrow">Repositorio privado docente</p>
           <h3>Materiales conservados para reutilizar entre cursos</h3>
-          <p class="meta">Este espacio no es visible para el alumnado. Guarda aquí publicaciones de materias y repúblícalas cuando vuelvas a necesitarlas, visibles u ocultas.</p>
+          <p class="meta">Pulsa aquí para ver todos los materiales guardados. También puedes filtrar por centro, etapa, curso o materia.</p>
         </div>
         <div class="repo-stats"><strong>${rows.length}</strong><span>material${rows.length===1?'':'es'} guardado${rows.length===1?'':'s'}</span></div>
-      </div>
+      </button>
       <section class="window-panel repository-filters">
         <h3>Filtrar repositorio</h3>
         <div class="window-grid">
           <label>Centro<select onchange="window.TribecaRepositorySetFilter('center',this.value)">${repoOptions(centers, f.center)}</select></label>
-          <label>Etapa<select onchange="window.TribecaRepositorySetFilter('stage',this.value)">${repoOptions(stageValues, f.stage)}</select></label>
-          <label>Curso<select onchange="window.TribecaRepositorySetFilter('course',this.value)">${repoOptions(courseValues, f.course)}</select></label>
-          <label>Materia<select onchange="window.TribecaRepositorySetFilter('subject',this.value)">${repoOptions(subjectValues, f.subject)}</select></label>
+          <label>Etapa<select onchange="window.TribecaRepositorySetFilter('stage',this.value)">${repoOptions(stageChoices, f.stage)}</select></label>
+          <label>Curso<select onchange="window.TribecaRepositorySetFilter('course',this.value)">${repoOptions(courseChoices, f.course)}</select></label>
+          <label>Materia<select onchange="window.TribecaRepositorySetFilter('subject',this.value)">${repoOptions(subjectsForFilters.length?subjectsForFilters:rows.map(r=>r.subject), f.subject)}</select></label>
         </div>
-        <div class="inline-actions"><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryClearFilters(event)">Limpiar filtros</button></div>
+        <div class="inline-actions"><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryShowAll(event)">Ver todos los materiales guardados</button><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryClearFilters(event)">Limpiar filtros</button></div>
       </section>
       <section class="repository-results">
-        ${list || '<div class="empty-state">Aún no hay materiales guardados en el repositorio con estos filtros. Entra en una materia y pulsa “Guardar en repositorio” en los materiales que quieras conservar.</div>'}
+        <div class="repository-result-count">${visibleRows.length} material${visibleRows.length===1?'':'es'} mostrado${visibleRows.length===1?'':'s'}${rows.length!==visibleRows.length?` de ${rows.length}`:''}</div>
+        ${list || '<div class="empty-state">No hay materiales guardados con estos filtros. Pulsa “Ver todos los materiales guardados” para retirar los filtros.</div>'}
       </section>
     </section>`;
+  }
+  function repositoryGroupedList(rows){
+    if(!rows.length) return '';
+    const byCourse=new Map();
+    rows.forEach(r=>{
+      const courseKey=[r.center||'Sin centro', r.stage||'Sin etapa', r.course||'Sin curso'].join(' · ');
+      if(!byCourse.has(courseKey)) byCourse.set(courseKey, []);
+      byCourse.get(courseKey).push(r);
+    });
+    return [...byCourse.entries()].map(([courseLabel,courseRows])=>{
+      const bySubject=new Map();
+      courseRows.forEach(r=>{ const s=r.subject||'Sin materia'; if(!bySubject.has(s)) bySubject.set(s, []); bySubject.get(s).push(r); });
+      const subjectsHtml=[...bySubject.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([subject,items])=>`<details class="repo-subject-group" open><summary><span>${safe(subject)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="repo-card-grid">${items.map(repositoryMaterialCard).join('')}</div></details>`).join('');
+      return `<details class="repo-group" open><summary><span>${safe(courseLabel)}</span><em>${courseRows.length} material${courseRows.length===1?'':'es'}</em></summary><div class="repo-subject-list">${subjectsHtml}</div></details>`;
+    }).join('');
   }
   function centersFromStudents(){ return (State.data.students||[]).map(s=>s.center); }
   function repositoryMaterialCard(r){
@@ -1525,10 +1639,10 @@
       <div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span><small>${safe(r.unit_title||r.unit||'Unidad 1')}</small></div>
       <h3>${safe(r.title||'Material sin título')}</h3>
       <p>${safe(snippet)}${snippet.length>=240?'…':''}</p>
-      <small>${safe([r.center,r.stage,r.course,r.subject].filter(Boolean).join(' · '))}${r.created_at?` · Guardado ${fmtDate(String(r.created_at).slice(0,10))}`:''}${att.length?` · ${att.length} adjunto${att.length===1?'':'s'}`:''}</small>
+      <small>${safe([r.center,r.stage,r.course].filter(Boolean).join(' · '))}${r.created_at?` · Guardado ${fmtDate(String(r.created_at).slice(0,10))}`:''}${att.length?` · ${att.length} adjunto${att.length===1?'':'s'}`:''}</small>
       <div class="inline-actions repo-actions">
-        <button type="button" class="primary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,true)">Republicar visible</button>
-        <button type="button" class="secondary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,false)">Republicar oculto</button>
+        <button type="button" class="primary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,true)">Publicar visible en la materia</button>
+        <button type="button" class="secondary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,false)">Publicar oculto</button>
         <button type="button" data-t70-repo-delete="${safe(r.id)}" onclick="return window.TribecaRepositoryDeleteDirect(this,event)">Eliminar del repositorio</button>
       </div>
     </article>`;
@@ -1537,33 +1651,9 @@
     if(!roleTeacher()) return toast('Solo la profesora puede guardar materiales en el repositorio.');
     const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
     if(!m) return toast('No se encontró el material.');
-    const payload={
-      source_material_id:m.id || null,
-      title:m.title || 'Material sin título',
-      body:m.body || m.description || m.content || '',
-      description:m.description || m.body || m.content || '',
-      content:m.content || m.body || m.description || '',
-      image_url:m.image_url || null,
-      link_url:m.link_url || null,
-      font_size:Number(m.font_size||16),
-      center:m.center || State.profile?.center || null,
-      stage:m.stage || State.profile?.stage || null,
-      course:m.course || State.profile?.course || null,
-      subject:m.subject || 'Apoyo personalizado',
-      unit_title:m.unit_title || m.unit || 'Unidad 1',
-      unit:m.unit || m.unit_title || 'Unidad 1',
-      material_type:m.material_type || m.type || 'material',
-      attachments:normalizeAttachments(m),
-      created_by:State.profile.id,
-      active:true,
-      notes:''
-    };
-    const existing=await maybe(table('teacher_material_repository').select('id').eq('source_material_id',m.id).limit(1), []);
-    if(existing?.[0]?.id) await persistSupabaseRecord('teacher_material_repository', payload, existing[0].id);
-    else await persistSupabaseRecord('teacher_material_repository', payload, null);
-    await log('repository','Material guardado en repositorio',{title:payload.title,subject:payload.subject});
+    const repositorySaved=await autoSaveMaterialPayloadToRepository(m, m.id || null);
     await loadData(true);
-    toast('Material guardado en el repositorio docente.');
+    toast(repositorySaved?'Material guardado en el repositorio docente.':'No se pudo guardar en el repositorio docente.');
     rerender();
   }
   async function publishRepositoryMaterial(repoId, visible=true){
@@ -1595,7 +1685,7 @@
     await persistSupabaseRecord('subject_materials', payload, null);
     await log('repository', visible?'Material republicado visible':'Material republicado oculto',{title:payload.title,subject:payload.subject});
     await loadData(true);
-    toast(visible?'Material republicado y visible para el grupo.':'Material republicado como oculto. Podrás mostrarlo cuando lo necesites.');
+    toast(visible?'Material publicado y visible en la materia.':'Material publicado como oculto. Podrás mostrarlo cuando lo necesites.');
     rerender();
   }
   async function deleteRepositoryMaterial(repoId){
@@ -1609,6 +1699,7 @@
     rerender();
   }
   window.TribecaRepositorySetFilter=function(key,value){ setRepositoryFilter(key,value); return false; };
+  window.TribecaRepositoryShowAll=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); ['center','stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); State.profilePanel='profile'; rerender(); return false; };
   window.TribecaRepositoryClearFilters=function(ev){ ev?.preventDefault?.(); ['center','stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); rerender(); return false; };
   window.TribecaRepositorySaveMaterialDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoSave; saveMaterialToRepository(id).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar en el repositorio.'); }); return false; };
   window.TribecaRepositoryPublishDirect=function(btn,ev,visible=true){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoPublish; publishRepositoryMaterial(id, !!visible).catch(e=>{ console.error(e); toast(e.message||'No se pudo republicar el material.'); }); return false; };
@@ -1621,7 +1712,7 @@
     const custom=(State.data.subjects||[]).filter(x=>x.stage===stage&&x.course===course);
     const edit = State.pendingSubjectEdit || {};
     const editStage = edit.stage || stage, editCourse = edit.course || course, editSubject = edit.subject || '', editId = edit.id || '';
-    return `<div class="teacher-subjects-layout v34-teacher-subjects"><section class="window-panel teacher-subjects-main"><h3>Materias vistas como alumnado</h3><p class="meta">Selecciona etapa y curso para revisar materias, publicaciones y visibilidad. Las materias ocultas aparecen atenuadas y marcadas con la etiqueta “Oculta”.</p><div class="window-grid teacher-subject-filters"><label>Etapa<select data-t18-subject-stage>${options(stages,stage)}</select></label><label>Curso<select data-t18-subject-course>${options(dynamicCourses(),course)}</select></label></div><div class="subjects-grid teacher-subject-preview v34-subject-preview">${subjects.map((sub,i)=>subjectCardFor(sub,i,course)).join('')||'<div class="empty-state">Selecciona un curso con materias cargadas.</div>'}</div></section><section class="window-panel subject-editor-panel v34-subject-editor"><h3>${editSubject?'Editar materia':'Crear curso o materia'}</h3><p class="meta">Cambia etapa, curso, nombre o visibilidad. Para cursos nuevos, escribe el curso y guarda una materia.</p><form id="t27SubjectForm" class="form-grid" method="post" action="javascript:void(0)"><input type="hidden" name="id" value="${safe(editId)}"><label>Etapa<select name="stage">${options(stages,editStage)}</select></label><label>Curso<select name="course">${options(dynamicCourses(),editCourse)}</select></label><label>O escribir curso nuevo<input name="courseCustom" placeholder="Ej.: FP Medio Higiene Bucodental"></label><label>Nombre de la materia<input name="subject" required maxlength="120" value="${safe(editSubject)}" placeholder="Ej.: Cultura Clásica"></label><label class="check-line"><input type="checkbox" name="active" ${edit.active===false?'':'checked'}> Visible para el alumnado</label><div class="inline-actions"><button class="primary-btn" type="button" data-t27-save-subject>Guardar materia</button><button class="secondary-btn" type="button" data-t31-clear-subject-editor>Limpiar editor</button></div><span class="form-status" data-t31-subject-status></span></form><hr><h3>Materias añadidas o modificadas</h3>${custom.map(x=>`<article class="list-item ${x.active===false?'is-hidden-item':''}"><strong>${safe(x.subject)}</strong><p>${safe(x.stage)} · ${safe(x.course)} · ${x.active===false?'oculta':'visible'}</p><div class="inline-actions"><button type="button" data-t27-edit-subject="${safe(x.id)}">Editar</button><button type="button" data-t33-toggle-subject="${safe(x.subject)}">${x.active===false?'Mostrar':'Ocultar'}</button><button type="button" data-t27-delete-subject="${safe(x.id)}">Eliminar</button></div></article>`).join('')||'<div class="empty-state">Todavía no hay materias personalizadas para este curso.</div>'}</section></div>`;
+    return `<div class="teacher-subjects-layout v34-teacher-subjects"><section class="window-panel teacher-subjects-main"><h3>Materias vistas como alumnado</h3><p class="meta">Selecciona etapa y curso para revisar materias, publicaciones y visibilidad. Las materias ocultas aparecen atenuadas y marcadas con la etiqueta “Oculta”.</p><div class="window-grid teacher-subject-filters"><label>Etapa<select data-t18-subject-stage>${stageOptionsForCourse(course,stage)}</select></label><label>Curso<select data-t18-subject-course>${courseOptionsForStage(stage,course)}</select></label></div><div class="subjects-grid teacher-subject-preview v34-subject-preview">${subjects.map((sub,i)=>subjectCardFor(sub,i,course)).join('')||'<div class="empty-state">Selecciona un curso con materias cargadas.</div>'}</div></section><section class="window-panel subject-editor-panel v34-subject-editor"><h3>${editSubject?'Editar materia':'Crear curso o materia'}</h3><p class="meta">Cambia etapa, curso, nombre o visibilidad. Para cursos nuevos, escribe el curso y guarda una materia.</p><form id="t27SubjectForm" class="form-grid" method="post" action="javascript:void(0)"><input type="hidden" name="id" value="${safe(editId)}"><label>Etapa<select name="stage">${stageOptionsForCourse(editCourse,editStage)}</select></label><label>Curso<select name="course">${courseOptionsForStage(editStage,editCourse)}</select></label><label>O escribir curso nuevo<input name="courseCustom" placeholder="Ej.: FP Medio Higiene Bucodental"></label><label>Nombre de la materia<input name="subject" required maxlength="120" value="${safe(editSubject)}" placeholder="Ej.: Cultura Clásica"></label><label class="check-line"><input type="checkbox" name="active" ${edit.active===false?'':'checked'}> Visible para el alumnado</label><div class="inline-actions"><button class="primary-btn" type="button" data-t27-save-subject>Guardar materia</button><button class="secondary-btn" type="button" data-t31-clear-subject-editor>Limpiar editor</button></div><span class="form-status" data-t31-subject-status></span></form><hr><h3>Materias añadidas o modificadas</h3>${custom.map(x=>`<article class="list-item ${x.active===false?'is-hidden-item':''}"><strong>${safe(x.subject)}</strong><p>${safe(x.stage)} · ${safe(x.course)} · ${x.active===false?'oculta':'visible'}</p><div class="inline-actions"><button type="button" data-t27-edit-subject="${safe(x.id)}">Editar</button><button type="button" data-t33-toggle-subject="${safe(x.subject)}">${x.active===false?'Mostrar':'Ocultar'}</button><button type="button" data-t27-delete-subject="${safe(x.id)}">Eliminar</button></div></article>`).join('')||'<div class="empty-state">Todavía no hay materias personalizadas para este curso.</div>'}</section></div>`;
   }
   function subjectCardFor(subject, i, course){
     const mats=visibleMaterials(subject);
@@ -1705,21 +1796,21 @@
     const currentIcon = p.avatar_icon || '💡';
     const photo = teacherProfileImageUrl(p);
     const academic = academicLine(p);
-    return `<div class="profile-hub">
-      <section class="profile-summary-card">
+    const panel = State.profilePanel || 'profile';
+    const summary = `<section class="profile-summary-card">
         <div class="profile-summary-avatar">${photo ? `<img src="${safe(photo)}" alt="Retrato de perfil">` : safe(currentIcon)}</div>
         <div>
-          <p class="eyebrow">Panel personal</p>
+          <p class="eyebrow">Mi cuenta</p>
           <h2>${safe(displayName(p))}</h2>
           <p>${safe(p.role === 'teacher' ? 'Profesora' : academic)}</p>
         </div>
-      </section>
-
-      <section class="profile-tool-card profile-avatar-card">
+      </section>`;
+    const tabs = `<div class="profile-account-tabs"><button type="button" class="${panel==='profile'?'is-active':''}" onclick="State.profilePanel='profile'; rerender(); return false;">Mi perfil</button><button type="button" class="${panel==='password'?'is-active':''}" onclick="State.profilePanel='password'; rerender(); return false;">Ajustes de contraseña</button><button type="button" class="${panel==='notifications'?'is-active':''}" onclick="State.profilePanel='notifications'; rerender(); return false;">Ajustes de notificaciones</button></div>`;
+    const profileCard = `<section class="profile-tool-card profile-avatar-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🎨</span>
           <div>
-            <h3>Cambiar icono de perfil</h3>
+            <h3>Mi perfil</h3>
             <p>Elige uno de los iconos disponibles para que sea tu nueva imagen de perfil.</p>
           </div>
         </header>
@@ -1727,15 +1818,14 @@
           <div class="icon-grid t16-icon-grid profile-icon-grid" aria-label="Iconos de perfil">${icon100.map(ic=>`<button type="button" class="icon-choice ${(currentIcon)===ic?'is-selected':''}" data-t16-avatar="${safe(ic)}" title="Icono ${safe(ic)}">${safe(ic)}</button>`).join('')}</div>
           <input type="hidden" name="avatarIcon" value="${safe(currentIcon)}">
           ${roleTeacher()?`<div class="teacher-profile-image-box"><label>Imagen de perfil de profesora<input name="profileImage" type="file" accept="image/png,image/jpeg,image/webp"></label><input type="hidden" name="avatarImageUrl" value="${safe(photo||'')}"><span id="profileImagePreview" class="profile-preview-avatar">${photo?`<img src="${safe(photo)}" alt="Retrato de perfil">`:safe(currentIcon)}</span></div>`:''}
-          <button class="primary-btn" type="submit">Guardar icono</button>
+          <button class="primary-btn" type="submit">Guardar perfil</button>
         </form>
-      </section>
-
-      <section class="profile-tool-card">
+      </section>`;
+    const notificationsCard = `<section class="profile-tool-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">✉️</span>
           <div>
-            <h3>Notificaciones por email</h3>
+            <h3>Ajustes de notificaciones</h3>
             <p>Indica un correo personal y marca qué avisos quieres recibir. Para que los emails salgan de verdad, debe estar activo el servicio de envío de Supabase.</p>
           </div>
         </header>
@@ -1749,13 +1839,12 @@
           </div>
           <button class="secondary-btn" type="submit">Guardar notificaciones</button>
         </form>
-      </section>
-
-      <section class="profile-tool-card">
+      </section>`;
+    const passwordCard = `<section class="profile-tool-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🔐</span>
           <div>
-            <h3>Modificar contraseña</h3>
+            <h3>Ajustes de contraseña</h3>
             <p>Cambia tu contraseña de acceso o solicita recuperación si no recuerdas la actual.</p>
           </div>
         </header>
@@ -1767,9 +1856,8 @@
         <form id="t16OwnResetForm" class="profile-reset-form">
           <button class="link-button" type="submit">Solicitar recuperación de contraseña</button>
         </form>
-      </section>
-
-      ${!roleTeacher()?`<section class="profile-tool-card profile-academic-card">
+      </section>`;
+    const academicCard = !roleTeacher()?`<section class="profile-tool-card profile-academic-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🎓</span>
           <div>
@@ -1778,8 +1866,9 @@
           </div>
         </header>
         <p class="meta">Estos datos solo puede modificarlos la profesora.</p>
-      </section>`:''}
-    </div>`;
+      </section>`:'';
+    const selected = panel==='password' ? passwordCard : panel==='notifications' ? notificationsCard : profileCard + academicCard;
+    return `<div class="profile-hub">${summary}${tabs}${selected}</div>`;
   }
 
   async function saveProfileIcon(form){ const fd=new FormData(form); const patch={avatar_icon:fd.get('avatarIcon')||'💡'}; if(roleTeacher()) patch.avatar_image_url=fd.get('avatarImageUrl') || TRIBECA_TEACHER_PROFILE_IMAGE; const {error}=await table('profiles').update(patch).eq('id',State.profile.id); if(error) throw error; Object.assign(State.profile,patch); updateTopProfile(); await updatePresence(); toast('Perfil actualizado correctamente.'); }
@@ -1937,20 +2026,22 @@
       const mailTab=ev.target.closest?.('[data-mail-box]'); if(mailTab){ const box=mailTab.dataset.mailBox; const root=mailTab.closest('.mail-app'); root?.querySelectorAll('.mail-tab').forEach(b=>b.classList.toggle('is-active', b===mailTab)); root?.querySelectorAll('[data-mail-box-view]').forEach(v=>v.hidden=v.dataset.mailBoxView!==box); return; }
       const monthNav=ev.target.closest?.('[data-t51-month-nav]'); if(monthNav){ ev.preventDefault(); ev.stopPropagation(); State.billingMonth=monthNav.dataset.t51MonthNav; rerender(); return; }
       const logout=ev.target.closest?.('#logoutButton,[data-action="logout"]'); if(logout){ ev.preventDefault(); ev.stopImmediatePropagation(); signOut(); return; }
-      const prof=ev.target.closest?.('#profileButton'); if(prof){ ev.preventDefault(); ev.stopImmediatePropagation(); openTool('profile'); return; }
+      const accountPanel=ev.target.closest?.('[data-t73-account-panel]'); if(accountPanel){ ev.preventDefault(); ev.stopImmediatePropagation(); State.profilePanel=accountPanel.dataset.t73AccountPanel || 'profile'; closeAccountMenu(); openTool('profile'); return; }
+      const prof=ev.target.closest?.('#profileButton'); if(prof){ ev.preventDefault(); ev.stopImmediatePropagation(); toggleAccountMenu(); return; }
       const navBtn=ev.target.closest?.('.main-nav .nav-btn');
       if(navBtn){
         if(navBtn.matches('[data-public-tool-link]')) return;
         const target = navBtn.dataset.tool || navBtn.dataset.route || 'subjects';
         ev.preventDefault();
         ev.stopImmediatePropagation();
+        closeAccountMenu();
         if(target === 'home') showHomePage();
         else renderInlineSection(target);
         return;
       }
       const publicToolLink=ev.target.closest?.('[data-public-tool-link]'); if(publicToolLink){ return; }
       const inlineHome=ev.target.closest?.('[data-t52-go-home]'); if(inlineHome){ ev.preventDefault(); ev.stopImmediatePropagation(); showHomePage(); return; }
-      const dataTool=ev.target.closest?.('[data-tool]'); if(dataTool){ ev.preventDefault(); ev.stopImmediatePropagation(); openTool(dataTool.dataset.tool); return; }
+      const dataTool=ev.target.closest?.('[data-tool]'); if(dataTool){ ev.preventDefault(); ev.stopImmediatePropagation(); closeAccountMenu(); openTool(dataTool.dataset.tool); return; }
       const undoBtn=ev.target.closest?.('[data-t30-undo]'); if(undoBtn){ ev.preventDefault(); ev.stopPropagation(); await undoLast(); return; } const teacherTool=ev.target.closest?.('[data-t16-tool]'); if(teacherTool){ ev.preventDefault(); openTool(teacherTool.dataset.t16Tool); return; }
       if(ev.target.closest?.('[data-t44-mobile-back],[data-t16-close]')){ const w=ev.target.closest('.tool-window'); State.windows.delete(w?.dataset.window); w?.remove(); return; }
       if(ev.target.closest?.('[data-t16-min]')){ ev.target.closest('.tool-window')?.classList.add('is-hidden'); return; }
@@ -2016,7 +2107,7 @@
     }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; localStorage.setItem('tribeca-teacher-subject-stage', ev.target.value); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; localStorage.setItem('tribeca-teacher-subject-course', ev.target.value); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 

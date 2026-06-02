@@ -6603,3 +6603,156 @@ body.is-dark .subject-unit-card > summary em {
     font-size: 1.85rem;
   }
 }
+
+
+/* Tribeca Aula · versión 73
+   Anuncios leídos/nuevos, Mi cuenta desplegable y repositorio más claro. */
+.announcements-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.announcement-card {
+  position: relative;
+}
+
+.announcement-card.is-new-announcement {
+  border-color: rgba(16, 63, 36, .30) !important;
+  box-shadow: 0 1rem 2.2rem rgba(16, 63, 36, .10) !important;
+  background:
+    linear-gradient(90deg, rgba(16, 63, 36, .055), transparent 55%),
+    var(--panel-solid) !important;
+}
+
+.new-announcement-tag {
+  display: inline-block;
+  margin-right: .45rem;
+  padding: .26rem .55rem;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fffdf8;
+  font-weight: 950;
+  letter-spacing: .02em;
+}
+
+.profile-menu {
+  min-width: 22rem;
+  padding: .55rem;
+}
+
+.profile-menu button {
+  display: block;
+  margin: .1rem 0;
+  border: 1px solid transparent;
+}
+
+.profile-menu button:hover,
+.profile-menu button:focus-visible {
+  background: rgba(16, 63, 36, .08);
+  border-color: rgba(16, 63, 36, .12);
+}
+
+.profile-account-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  padding: .8rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, .72);
+}
+
+.profile-account-tabs button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  padding: .75rem 1rem;
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.profile-account-tabs button.is-active {
+  background: var(--green);
+  color: #fffdf8;
+  border-color: var(--green);
+}
+
+.repository-hero {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.repository-hero:hover {
+  transform: translateY(-1px);
+  border-color: rgba(16, 63, 36, .28);
+}
+
+.repository-result-count {
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(168, 135, 45, .08);
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.repo-subject-list {
+  display: grid;
+  gap: .9rem;
+  padding: 1rem;
+}
+
+.repo-subject-group {
+  border: 1px solid rgba(55, 49, 34, .10);
+  border-radius: 16px;
+  background: rgba(255,255,255,.38);
+  overflow: hidden;
+}
+
+.repo-subject-group > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  background: rgba(16, 63, 36, .055);
+  font-weight: 950;
+}
+
+.repo-subject-group > summary em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+body.is-dark .announcement-card.is-new-announcement {
+  background:
+    linear-gradient(90deg, rgba(212, 175, 55, .10), transparent 55%),
+    var(--panel-solid) !important;
+  border-color: rgba(212, 175, 55, .30) !important;
+}
+
+body.is-dark .profile-account-tabs,
+body.is-dark .repo-subject-group {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .18);
+}
+
+@media (max-width: 760px) {
+  .announcements-head {
+    flex-direction: column;
+  }
+
+  .announcements-head .secondary-btn {
+    width: 100%;
+  }
+
+  .profile-account-tabs {
+    display: grid;
+  }
+}
