@@ -1655,63 +1655,112 @@
     const visibleRows=repoFilteredRows(rows,f);
     const stageChoices = f.course ? stagesForCourse(f.course) : repoUnique([...stages, ...rows.map(r=>r.stage)]);
     const courseChoices = f.stage ? coursesForStage(f.stage) : repoUnique([...dynamicCourses(), ...rows.map(r=>r.course)]);
-    const subjectsForFilters = rows.filter(r=>(!f.stage || r.stage===f.stage) && (!f.course || r.course===f.course)).map(r=>r.subject);
+    const subjectsForFilters = rows.filter(r=>
+      (!f.center || r.center===f.center) &&
+      (!f.stage || r.stage===f.stage) &&
+      (!f.course || r.course===f.course)
+    ).map(r=>r.subject);
     const centers = repoUnique([...centersFromStudents(), ...rows.map(r=>r.center)]);
     const list = repositoryGroupedList(visibleRows);
-    return `<section class="repository-tool">
-      <button type="button" class="repository-hero window-panel" onclick="return window.TribecaRepositoryShowAll(event)">
+    const summary = repositoryCenterOverview(rows, f);
+    return `<section class="repository-tool repository-tool-v77">
+      <section class="repository-hero window-panel">
         <div>
           <p class="eyebrow">Repositorio privado docente</p>
-          <h3>Materiales conservados para reutilizar entre cursos</h3>
-          <p class="meta">Pulsa aquí para ver todos los materiales guardados. También puedes filtrar por centro, etapa, curso o materia.</p>
+          <h3>Materiales organizados por centros, cursos y materias</h3>
+          <p class="meta">Todo material publicado en una materia queda conservado aquí. Desde este repositorio puedes localizarlo por centro, curso, materia y unidad, y republicarlo visible u oculto cuando lo necesites.</p>
         </div>
-        <div class="repo-stats"><strong>${rows.length}</strong><span>material${rows.length===1?'':'es'} guardado${rows.length===1?'':'s'}</span></div>
-      </button>
+        <button type="button" class="repo-stats repo-stats-button" onclick="return window.TribecaRepositoryShowAll(event)" title="Ver todos los materiales guardados"><strong>${rows.length}</strong><span>material${rows.length===1?'':'es'} guardado${rows.length===1?'':'s'}</span></button>
+      </section>
+      ${summary}
       <section class="window-panel repository-filters">
-        <h3>Filtrar repositorio</h3>
+        <div class="repo-filter-head">
+          <div>
+            <h3>Filtrar repositorio</h3>
+            <p class="meta">Los filtros son acumulativos. También puedes pulsar una tarjeta de centro para ir directamente a sus cursos.</p>
+          </div>
+          <div class="inline-actions"><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryShowAll(event)">Ver todo</button><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryClearFilters(event)">Limpiar filtros</button></div>
+        </div>
         <div class="window-grid">
           <label>Centro<select onchange="window.TribecaRepositorySetFilter('center',this.value)">${repoOptions(centers, f.center)}</select></label>
           <label>Etapa<select onchange="window.TribecaRepositorySetFilter('stage',this.value)">${repoOptions(stageChoices, f.stage)}</select></label>
           <label>Curso<select onchange="window.TribecaRepositorySetFilter('course',this.value)">${repoOptions(courseChoices, f.course)}</select></label>
           <label>Materia<select onchange="window.TribecaRepositorySetFilter('subject',this.value)">${repoOptions(subjectsForFilters.length?subjectsForFilters:rows.map(r=>r.subject), f.subject)}</select></label>
         </div>
-        <div class="inline-actions"><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryShowAll(event)">Ver todos los materiales guardados</button><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryClearFilters(event)">Limpiar filtros</button></div>
       </section>
       <section class="repository-results">
         <div class="repository-result-count">${visibleRows.length} material${visibleRows.length===1?'':'es'} mostrado${visibleRows.length===1?'':'s'}${rows.length!==visibleRows.length?` de ${rows.length}`:''}</div>
-        ${list || '<div class="empty-state">No hay materiales guardados con estos filtros. Pulsa “Ver todos los materiales guardados” para retirar los filtros.</div>'}
+        ${list || '<div class="empty-state">No hay materiales guardados con estos filtros. Pulsa “Ver todo” para retirar los filtros.</div>'}
       </section>
     </section>`;
   }
+  function repositoryCenterOverview(rows=[], f={}){
+    if(!rows.length) return `<section class="window-panel repo-empty-guide"><h3>El repositorio todavía está vacío</h3><p>Publica materiales dentro de cualquier materia y se guardarán automáticamente aquí.</p></section>`;
+    const byCenter=new Map();
+    rows.forEach(r=>{
+      const center=r.center||'Sin centro educativo';
+      if(!byCenter.has(center)) byCenter.set(center, []);
+      byCenter.get(center).push(r);
+    });
+    const cards=[...byCenter.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([center,items])=>{
+      const byCourse=new Map();
+      items.forEach(r=>{
+        const key=[r.stage||'Sin etapa', r.course||'Sin curso'].join(' · ');
+        if(!byCourse.has(key)) byCourse.set(key, 0);
+        byCourse.set(key, byCourse.get(key)+1);
+      });
+      const chips=[...byCourse.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es',{numeric:true})).slice(0,6).map(([label,count])=>`<span>${safe(label)} · ${count}</span>`).join('');
+      return `<button type="button" class="repo-center-summary-card ${f.center===center?'is-active':''}" data-t77-repo-center="${safe(center)}" onclick="return window.TribecaRepositoryFilterCenter(this,event)">
+        <strong>${safe(center)}</strong>
+        <em>${items.length} material${items.length===1?'':'es'}</em>
+        <div class="repo-course-chips">${chips || '<span>Sin cursos asignados</span>'}</div>
+      </button>`;
+    }).join('');
+    return `<section class="window-panel repo-center-overview"><div class="repo-filter-head"><div><h3>Centros y cursos guardados</h3><p class="meta">Pulsa un centro para ver sus materiales organizados por curso y materia.</p></div></div><div class="repo-center-summary-grid">${cards}</div></section>`;
+  }
   function repositoryGroupedList(rows){
     if(!rows.length) return '';
-    const byCourse=new Map();
+    const byCenter=new Map();
     rows.forEach(r=>{
-      const courseKey=[r.center||'Sin centro', r.stage||'Sin etapa', r.course||'Sin curso'].join(' · ');
-      if(!byCourse.has(courseKey)) byCourse.set(courseKey, []);
-      byCourse.get(courseKey).push(r);
+      const center=r.center||'Sin centro educativo';
+      if(!byCenter.has(center)) byCenter.set(center, []);
+      byCenter.get(center).push(r);
     });
-    return [...byCourse.entries()].map(([courseLabel,courseRows])=>{
-      const bySubject=new Map();
-      courseRows.forEach(r=>{ const s=r.subject||'Sin materia'; if(!bySubject.has(s)) bySubject.set(s, []); bySubject.get(s).push(r); });
-      const subjectsHtml=[...bySubject.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([subject,items])=>`<details class="repo-subject-group" open><summary><span>${safe(subject)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="repo-card-grid">${items.map(repositoryMaterialCard).join('')}</div></details>`).join('');
-      return `<details class="repo-group" open><summary><span>${safe(courseLabel)}</span><em>${courseRows.length} material${courseRows.length===1?'':'es'}</em></summary><div class="repo-subject-list">${subjectsHtml}</div></details>`;
+    return [...byCenter.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([center,centerRows])=>{
+      const byCourse=new Map();
+      centerRows.forEach(r=>{
+        const key=[r.stage||'Sin etapa', r.course||'Sin curso'].join(' · ');
+        if(!byCourse.has(key)) byCourse.set(key, []);
+        byCourse.get(key).push(r);
+      });
+      const courseHtml=[...byCourse.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es',{numeric:true})).map(([courseLabel,courseRows])=>{
+        const bySubject=new Map();
+        courseRows.forEach(r=>{ const s=r.subject||'Sin materia'; if(!bySubject.has(s)) bySubject.set(s, []); bySubject.get(s).push(r); });
+        const subjectHtml=[...bySubject.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([subject,items])=>{
+          const byUnit=new Map();
+          items.forEach(r=>{ const unit=r.unit_title||r.unit||'Unidad 1'; if(!byUnit.has(unit)) byUnit.set(unit, []); byUnit.get(unit).push(r); });
+          const unitHtml=[...byUnit.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es',{numeric:true})).map(([unit,unitItems])=>`<details class="repo-unit-group" open><summary><span>${safe(unit)}</span><em>${unitItems.length} material${unitItems.length===1?'':'es'}</em></summary><div class="repo-card-grid">${unitItems.map(repositoryMaterialCard).join('')}</div></details>`).join('');
+          return `<details class="repo-subject-group" open><summary><span>${safe(subject)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="repo-unit-list">${unitHtml}</div></details>`;
+        }).join('');
+        return `<article class="repo-course-card"><header><div><p class="eyebrow">Curso</p><h3>${safe(courseLabel)}</h3></div><strong>${courseRows.length}</strong></header><div class="repo-subject-list">${subjectHtml}</div></article>`;
+      }).join('');
+      return `<details class="repo-center-section" open><summary><span>${safe(center)}</span><em>${centerRows.length} material${centerRows.length===1?'':'es'} · ${byCourse.size} curso${byCourse.size===1?'':'s'}</em></summary><div class="repo-course-list">${courseHtml}</div></details>`;
     }).join('');
   }
   function centersFromStudents(){ return (State.data.students||[]).map(s=>s.center); }
   function repositoryMaterialCard(r){
     const meta=materialTypeMeta(r.material_type||r.type||'material');
     const att=normalizeAttachments(r);
-    const snippet=String(r.body||r.description||r.content||'').replace(/\s+/g,' ').slice(0,240);
+    const snippet=String(r.body||r.description||r.content||'').replace(/\s+/g,' ').slice(0,210);
     return `<article class="repo-material-card">
-      <div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span><small>${safe(r.unit_title||r.unit||'Unidad 1')}</small></div>
+      <div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span><small>${r.created_at?`Guardado ${fmtDate(String(r.created_at).slice(0,10))}`:'Guardado'}</small></div>
       <h3>${safe(r.title||'Material sin título')}</h3>
-      <p>${safe(snippet)}${snippet.length>=240?'…':''}</p>
-      <small>${safe([r.center,r.stage,r.course].filter(Boolean).join(' · '))}${r.created_at?` · Guardado ${fmtDate(String(r.created_at).slice(0,10))}`:''}${att.length?` · ${att.length} adjunto${att.length===1?'':'s'}`:''}</small>
+      <p>${safe(snippet)}${snippet.length>=210?'…':''}</p>
+      <small>${att.length?`${att.length} adjunto${att.length===1?'':'s'}`:'Sin adjuntos'}${r.link_url?' · enlace':''}</small>
       <div class="inline-actions repo-actions">
-        <button type="button" class="primary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,true)">Publicar visible en la materia</button>
+        <button type="button" class="primary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,true)">Publicar visible</button>
         <button type="button" class="secondary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,false)">Publicar oculto</button>
-        <button type="button" data-t70-repo-delete="${safe(r.id)}" onclick="return window.TribecaRepositoryDeleteDirect(this,event)">Eliminar del repositorio</button>
+        <button type="button" data-t70-repo-delete="${safe(r.id)}" onclick="return window.TribecaRepositoryDeleteDirect(this,event)">Eliminar</button>
       </div>
     </article>`;
   }
@@ -1767,6 +1816,7 @@
     rerender();
   }
   window.TribecaRepositorySetFilter=function(key,value){ setRepositoryFilter(key,value); return false; };
+  window.TribecaRepositoryFilterCenter=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const center=btn?.dataset?.t77RepoCenter || ''; localStorage.setItem('tribeca-repo-center', center); ['stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); rerender(); return false; };
   window.TribecaRepositoryShowAll=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); ['center','stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); State.profilePanel='profile'; rerender(); return false; };
   window.TribecaRepositoryClearFilters=function(ev){ ev?.preventDefault?.(); ['center','stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); rerender(); return false; };
   window.TribecaRepositorySaveMaterialDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoSave; saveMaterialToRepository(id).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar en el repositorio.'); }); return false; };

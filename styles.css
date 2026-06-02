@@ -6827,3 +6827,286 @@ body.is-dark .repo-subject-group {
 body.is-dark .ignore-alert-check {
   background: rgba(212, 175, 55, .10);
 }
+
+
+/* Tribeca Aula · versión 77
+   Repositorio docente más visual, jerárquico e intuitivo por centros, cursos, materias y unidades. */
+.repository-tool-v77 {
+  gap: 1.15rem;
+}
+
+.repository-tool-v77 .repository-hero {
+  cursor: default;
+}
+
+.repo-stats-button {
+  border: 1px solid rgba(16, 63, 36, .18);
+  cursor: pointer;
+}
+
+.repo-stats-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 .8rem 1.7rem rgba(16, 63, 36, .10);
+}
+
+.repo-filter-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .9rem;
+}
+
+.repo-filter-head h3,
+.repo-center-overview h3 {
+  margin: 0 0 .2rem;
+}
+
+.repo-center-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: .9rem;
+}
+
+.repo-center-summary-card {
+  display: grid;
+  gap: .55rem;
+  min-height: 12rem;
+  padding: 1rem;
+  text-align: left;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top right, rgba(168, 135, 45, .13), transparent 44%),
+    var(--panel-solid);
+  border: 1px solid rgba(55, 49, 34, .12);
+  border-left: .45rem solid var(--green);
+  border-radius: 18px;
+  box-shadow: 0 .7rem 1.5rem rgba(38, 32, 19, .055);
+  cursor: pointer;
+}
+
+.repo-center-summary-card:hover,
+.repo-center-summary-card.is-active {
+  border-left-color: var(--gold);
+  transform: translateY(-1px);
+  box-shadow: 0 1rem 2.1rem rgba(16, 63, 36, .10);
+}
+
+.repo-center-summary-card strong {
+  font-size: 1.28rem;
+  line-height: 1.2;
+}
+
+.repo-center-summary-card em {
+  color: var(--green);
+  font-style: normal;
+  font-weight: 950;
+}
+
+.repo-course-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+
+.repo-course-chips span {
+  display: inline-flex;
+  align-items: center;
+  padding: .28rem .5rem;
+  border-radius: 999px;
+  background: rgba(16, 63, 36, .075);
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 850;
+}
+
+.repo-center-section {
+  border: 1px solid rgba(55, 49, 34, .13);
+  border-radius: 22px;
+  background: rgba(255, 253, 248, .78);
+  overflow: hidden;
+  box-shadow: 0 .8rem 1.8rem rgba(38, 32, 19, .045);
+}
+
+.repo-center-section > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  cursor: pointer;
+  background:
+    linear-gradient(90deg, rgba(16, 63, 36, .10), rgba(168, 135, 45, .07)),
+    var(--panel-solid);
+  border-bottom: 1px solid rgba(55, 49, 34, .10);
+}
+
+.repo-center-section > summary span {
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.75rem, 2vw, 2.4rem);
+  font-weight: 950;
+}
+
+.repo-center-section > summary em {
+  color: var(--green);
+  font-style: normal;
+  font-weight: 950;
+}
+
+.repo-course-list {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.repo-course-card {
+  border: 1px solid rgba(55, 49, 34, .12);
+  border-radius: 20px;
+  background: var(--panel-solid);
+  overflow: hidden;
+}
+
+.repo-course-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  background: rgba(168, 135, 45, .08);
+  border-bottom: 1px solid rgba(55, 49, 34, .10);
+}
+
+.repo-course-card > header h3 {
+  margin: .12rem 0 0;
+  font-size: 1.65rem;
+}
+
+.repo-course-card > header strong {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fffdf8;
+  font-size: 1.2rem;
+}
+
+.repo-subject-list {
+  display: grid;
+  gap: .85rem;
+  padding: 1rem;
+}
+
+.repo-subject-group {
+  border: 1px solid rgba(55, 49, 34, .10);
+  border-radius: 16px;
+  background: rgba(255,255,255,.42);
+  overflow: hidden;
+}
+
+.repo-subject-group > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1rem;
+  cursor: pointer;
+  background: rgba(16, 63, 36, .055);
+  font-weight: 950;
+}
+
+.repo-subject-group > summary span {
+  font-size: 1.16rem;
+}
+
+.repo-subject-group > summary em,
+.repo-unit-group > summary em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.repo-unit-list {
+  display: grid;
+  gap: .75rem;
+  padding: .85rem;
+}
+
+.repo-unit-group {
+  border: 1px dashed rgba(55, 49, 34, .13);
+  border-radius: 14px;
+  background: rgba(251, 250, 247, .72);
+  overflow: hidden;
+}
+
+.repo-unit-group > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem .85rem;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 900;
+  background: rgba(168, 135, 45, .06);
+}
+
+.repo-unit-group .repo-card-grid {
+  padding: .8rem;
+}
+
+.repository-tool-v77 .repo-material-card {
+  border-left: .32rem solid var(--gold);
+}
+
+.repository-tool-v77 .repo-material-card h3 {
+  font-size: 1.35rem;
+}
+
+.repository-tool-v77 .repo-actions {
+  gap: .45rem;
+}
+
+.repository-tool-v77 .repo-actions button {
+  flex: 1 1 12rem;
+}
+
+body.is-dark .repo-center-section,
+body.is-dark .repo-course-card,
+body.is-dark .repo-subject-group,
+body.is-dark .repo-unit-group,
+body.is-dark .repo-center-summary-card {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .18);
+}
+
+body.is-dark .repo-center-section > summary,
+body.is-dark .repo-course-card > header,
+body.is-dark .repo-subject-group > summary,
+body.is-dark .repo-unit-group > summary {
+  background: rgba(212, 175, 55, .10);
+}
+
+body.is-dark .repo-course-chips span {
+  background: rgba(212, 175, 55, .12);
+}
+
+@media (max-width: 760px) {
+  .repo-filter-head,
+  .repo-center-section > summary,
+  .repo-course-card > header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .repo-center-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .repo-center-section > summary span {
+    font-size: 1.7rem;
+  }
+
+  .repository-tool-v77 .repo-actions button {
+    flex-basis: 100%;
+  }
+}
