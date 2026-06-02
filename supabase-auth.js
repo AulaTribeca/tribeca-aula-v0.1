@@ -341,6 +341,7 @@
       common.push(maybe(table('student_schedules').select('*').order('weekday').order('start_time'), []).then(d=>State.data.schedules=d||[]));
       common.push(maybe(table('attendance_records').select('*').order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]));
       common.push(maybe(table('payment_months').select('*').order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]));
+      common.push(maybe(table('teacher_material_repository').select('*').order('stage').order('course').order('subject').order('unit_title').order('created_at',{ascending:false}), []).then(d=>State.data.materialRepository=d||[]));
     } else {
       common.push(maybe(table('grades').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
       common.push(maybe(table('difficult_subjects').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
@@ -661,6 +662,7 @@
       ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
       ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
       ['teacherSubjects','📚','Materias y materiales','Ver, crear, editar, ocultar o eliminar materias y revisar materiales por curso.'],
+      ['materialRepository','🗄️','Repositorio docente','Conservar materiales de cursos anteriores y republicarlos cuando los necesites.'],
       ['guidance','🧭','Orientación académica','Subir, editar, ocultar o eliminar tests, documentos, enlaces y presentaciones de orientación.'],
       ['payments','💶','Pagos','Tarifas, mensualidades, meses pagados, recibís e histórico económico.'],
       ['attendance','📅','Asistencia y pausas','Registro de asistencia, faltas justificadas y pausas temporales de acceso.']
@@ -899,7 +901,7 @@
   window.rerenderOpenWindows = rerender;
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -1402,7 +1404,172 @@
       </div>
     </section>`;
   }
-  function materialCard(m){ const meta=materialTypeMeta(m.material_type||m.type); const done=isMaterialCompleted(m.id); return `<article class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}"><div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>${m.hidden?'<small>Oculto</small>':''}${done&&!roleTeacher()?'<small class="completed-chip">Hecha</small>':''}</div><h3>${safe(m.title)}</h3>${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}<p style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(m)}<div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div></article>`; }
+  function materialCard(m){ const meta=materialTypeMeta(m.material_type||m.type); const done=isMaterialCompleted(m.id); return `<article class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}"><div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>${m.hidden?'<small>Oculto</small>':''}${done&&!roleTeacher()?'<small class="completed-chip">Hecha</small>':''}</div><h3>${safe(m.title)}</h3>${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}<p style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(m)}<div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t70-repo-save="${safe(m.id)}" onclick="return window.TribecaRepositorySaveMaterialDirect(this,event)">Guardar en repositorio</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div></article>`; }
+
+
+
+  function repositoryFilters(){
+    return {
+      center: localStorage.getItem('tribeca-repo-center') || '',
+      stage: localStorage.getItem('tribeca-repo-stage') || '',
+      course: localStorage.getItem('tribeca-repo-course') || '',
+      subject: localStorage.getItem('tribeca-repo-subject') || ''
+    };
+  }
+  function setRepositoryFilter(key, value){
+    if(!['center','stage','course','subject'].includes(key)) return;
+    localStorage.setItem(`tribeca-repo-${key}`, String(value||''));
+    rerender();
+  }
+  function repoUnique(values){
+    return [...new Set((values||[]).map(v=>String(v||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  }
+  function repoOptions(values, selected=''){
+    const opts = repoUnique(values);
+    return `<option value="">Todos</option>${opts.map(v=>`<option value="${safe(v)}" ${String(selected)===String(v)?'selected':''}>${safe(v)}</option>`).join('')}`;
+  }
+  function materialRepositoryContent(){
+    if(!roleTeacher()) return '<div class="empty-state">Solo la profesora puede acceder al repositorio docente.</div>';
+    const rows=(State.data.materialRepository||[]).filter(x=>x && x.active!==false);
+    const f=repositoryFilters();
+    const filtered=rows.filter(r=>
+      (!f.center || r.center===f.center) &&
+      (!f.stage || r.stage===f.stage) &&
+      (!f.course || r.course===f.course) &&
+      (!f.subject || r.subject===f.subject)
+    );
+    const centers = repoUnique([...centersFromStudents(), ...rows.map(r=>r.center)]);
+    const stageValues = repoUnique([...stages, ...rows.map(r=>r.stage)]);
+    const courseValues = repoUnique([...dynamicCourses(), ...rows.map(r=>r.course)]);
+    const subjectValues = repoUnique([...rows.map(r=>r.subject), ...teacherSubjectList(f.stage || State.selectedSubjectStage, f.course || State.selectedSubjectCourse)]);
+    const grouped = new Map();
+    filtered.forEach(r=>{
+      const key=[r.center||'Sin centro', r.stage||'Sin etapa', r.course||'Sin curso', r.subject||'Sin materia'].join(' · ');
+      if(!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(r);
+    });
+    const list=[...grouped.entries()].map(([label,items])=>`<details class="repo-group" open><summary><span>${safe(label)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="repo-card-grid">${items.map(repositoryMaterialCard).join('')}</div></details>`).join('');
+    return `<section class="repository-tool">
+      <div class="repository-hero window-panel">
+        <div>
+          <p class="eyebrow">Repositorio privado docente</p>
+          <h3>Materiales conservados para reutilizar entre cursos</h3>
+          <p class="meta">Este espacio no es visible para el alumnado. Guarda aquí publicaciones de materias y repúblícalas cuando vuelvas a necesitarlas, visibles u ocultas.</p>
+        </div>
+        <div class="repo-stats"><strong>${rows.length}</strong><span>material${rows.length===1?'':'es'} guardado${rows.length===1?'':'s'}</span></div>
+      </div>
+      <section class="window-panel repository-filters">
+        <h3>Filtrar repositorio</h3>
+        <div class="window-grid">
+          <label>Centro<select onchange="window.TribecaRepositorySetFilter('center',this.value)">${repoOptions(centers, f.center)}</select></label>
+          <label>Etapa<select onchange="window.TribecaRepositorySetFilter('stage',this.value)">${repoOptions(stageValues, f.stage)}</select></label>
+          <label>Curso<select onchange="window.TribecaRepositorySetFilter('course',this.value)">${repoOptions(courseValues, f.course)}</select></label>
+          <label>Materia<select onchange="window.TribecaRepositorySetFilter('subject',this.value)">${repoOptions(subjectValues, f.subject)}</select></label>
+        </div>
+        <div class="inline-actions"><button type="button" class="secondary-btn" onclick="return window.TribecaRepositoryClearFilters(event)">Limpiar filtros</button></div>
+      </section>
+      <section class="repository-results">
+        ${list || '<div class="empty-state">Aún no hay materiales guardados en el repositorio con estos filtros. Entra en una materia y pulsa “Guardar en repositorio” en los materiales que quieras conservar.</div>'}
+      </section>
+    </section>`;
+  }
+  function centersFromStudents(){ return (State.data.students||[]).map(s=>s.center); }
+  function repositoryMaterialCard(r){
+    const meta=materialTypeMeta(r.material_type||r.type||'material');
+    const att=normalizeAttachments(r);
+    const snippet=String(r.body||r.description||r.content||'').replace(/\s+/g,' ').slice(0,240);
+    return `<article class="repo-material-card">
+      <div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span><small>${safe(r.unit_title||r.unit||'Unidad 1')}</small></div>
+      <h3>${safe(r.title||'Material sin título')}</h3>
+      <p>${safe(snippet)}${snippet.length>=240?'…':''}</p>
+      <small>${safe([r.center,r.stage,r.course,r.subject].filter(Boolean).join(' · '))}${r.created_at?` · Guardado ${fmtDate(String(r.created_at).slice(0,10))}`:''}${att.length?` · ${att.length} adjunto${att.length===1?'':'s'}`:''}</small>
+      <div class="inline-actions repo-actions">
+        <button type="button" class="primary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,true)">Republicar visible</button>
+        <button type="button" class="secondary-btn" data-t70-repo-publish="${safe(r.id)}" onclick="return window.TribecaRepositoryPublishDirect(this,event,false)">Republicar oculto</button>
+        <button type="button" data-t70-repo-delete="${safe(r.id)}" onclick="return window.TribecaRepositoryDeleteDirect(this,event)">Eliminar del repositorio</button>
+      </div>
+    </article>`;
+  }
+  async function saveMaterialToRepository(materialId){
+    if(!roleTeacher()) return toast('Solo la profesora puede guardar materiales en el repositorio.');
+    const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
+    if(!m) return toast('No se encontró el material.');
+    const payload={
+      source_material_id:m.id || null,
+      title:m.title || 'Material sin título',
+      body:m.body || m.description || m.content || '',
+      description:m.description || m.body || m.content || '',
+      content:m.content || m.body || m.description || '',
+      image_url:m.image_url || null,
+      link_url:m.link_url || null,
+      font_size:Number(m.font_size||16),
+      center:m.center || State.profile?.center || null,
+      stage:m.stage || State.profile?.stage || null,
+      course:m.course || State.profile?.course || null,
+      subject:m.subject || 'Apoyo personalizado',
+      unit_title:m.unit_title || m.unit || 'Unidad 1',
+      unit:m.unit || m.unit_title || 'Unidad 1',
+      material_type:m.material_type || m.type || 'material',
+      attachments:normalizeAttachments(m),
+      created_by:State.profile.id,
+      active:true,
+      notes:''
+    };
+    const existing=await maybe(table('teacher_material_repository').select('id').eq('source_material_id',m.id).limit(1), []);
+    if(existing?.[0]?.id) await persistSupabaseRecord('teacher_material_repository', payload, existing[0].id);
+    else await persistSupabaseRecord('teacher_material_repository', payload, null);
+    await log('repository','Material guardado en repositorio',{title:payload.title,subject:payload.subject});
+    await loadData(true);
+    toast('Material guardado en el repositorio docente.');
+    rerender();
+  }
+  async function publishRepositoryMaterial(repoId, visible=true){
+    if(!roleTeacher()) return toast('Solo la profesora puede republicar materiales.');
+    const r=(State.data.materialRepository||[]).find(x=>String(x.id)===String(repoId));
+    if(!r) return toast('No se encontró el material del repositorio.');
+    const payload={
+      title:r.title || 'Material sin título',
+      body:r.body || r.description || r.content || '',
+      description:r.description || r.body || r.content || '',
+      content:r.content || r.body || r.description || '',
+      image_url:r.image_url || null,
+      link_url:r.link_url || null,
+      font_size:Number(r.font_size||16),
+      target_scope:'class',
+      target_user_ids:[],
+      center:r.center || State.profile?.center || null,
+      stage:r.stage || State.profile?.stage || null,
+      course:r.course || State.profile?.course || null,
+      created_by:State.profile.id,
+      hidden:!visible,
+      subject:r.subject || 'Apoyo personalizado',
+      unit_title:r.unit_title || r.unit || 'Unidad 1',
+      unit:r.unit || r.unit_title || 'Unidad 1',
+      material_type:r.material_type || 'material',
+      badge_codes:[],
+      attachments:normalizeAttachments(r)
+    };
+    await persistSupabaseRecord('subject_materials', payload, null);
+    await log('repository', visible?'Material republicado visible':'Material republicado oculto',{title:payload.title,subject:payload.subject});
+    await loadData(true);
+    toast(visible?'Material republicado y visible para el grupo.':'Material republicado como oculto. Podrás mostrarlo cuando lo necesites.');
+    rerender();
+  }
+  async function deleteRepositoryMaterial(repoId){
+    if(!roleTeacher()) return;
+    if(!confirm('¿Eliminar este material del repositorio docente? Esta acción no elimina publicaciones ya republicadas.')) return;
+    const {error}=await table('teacher_material_repository').delete().eq('id',repoId);
+    if(error) throw error;
+    await log('repository','Material eliminado del repositorio',{id:repoId});
+    await loadData(true);
+    toast('Material eliminado del repositorio.');
+    rerender();
+  }
+  window.TribecaRepositorySetFilter=function(key,value){ setRepositoryFilter(key,value); return false; };
+  window.TribecaRepositoryClearFilters=function(ev){ ev?.preventDefault?.(); ['center','stage','course','subject'].forEach(k=>localStorage.removeItem(`tribeca-repo-${k}`)); rerender(); return false; };
+  window.TribecaRepositorySaveMaterialDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoSave; saveMaterialToRepository(id).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar en el repositorio.'); }); return false; };
+  window.TribecaRepositoryPublishDirect=function(btn,ev,visible=true){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoPublish; publishRepositoryMaterial(id, !!visible).catch(e=>{ console.error(e); toast(e.message||'No se pudo republicar el material.'); }); return false; };
+  window.TribecaRepositoryDeleteDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t70RepoDelete; deleteRepositoryMaterial(id).catch(e=>{ console.error(e); toast(e.message||'No se pudo eliminar del repositorio.'); }); return false; };
 
 
 

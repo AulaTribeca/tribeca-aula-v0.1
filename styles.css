@@ -6309,3 +6309,156 @@ body[data-theme="dark"] .t16-calendar-layout .calendar-side-panel .list-item sma
 body.is-teacher .main-nav [data-route="subjects"] {
   display: none !important;
 }
+
+
+/* Tribeca Aula · versión 70
+   Repositorio privado docente de materiales reutilizables. */
+.repository-tool {
+  display: grid;
+  gap: 1rem;
+}
+
+.repository-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-left: .45rem solid var(--green);
+}
+
+.repository-hero h3 {
+  margin: .15rem 0 .35rem;
+  font-size: clamp(1.8rem, 2.2vw, 2.6rem);
+}
+
+.repo-stats {
+  min-width: 12rem;
+  padding: 1rem;
+  border-radius: 18px;
+  text-align: center;
+  background: rgba(16, 63, 36, .08);
+  border: 1px solid rgba(16, 63, 36, .14);
+}
+
+.repo-stats strong {
+  display: block;
+  color: var(--green);
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.repo-stats span {
+  display: block;
+  margin-top: .35rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.repository-filters {
+  position: sticky;
+  top: calc(var(--header-h) + 1rem);
+  z-index: 2;
+}
+
+.repository-results {
+  display: grid;
+  gap: 1rem;
+}
+
+.repo-group {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,253,248,.72);
+  overflow: hidden;
+}
+
+.repo-group summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  font-weight: 950;
+  color: var(--text);
+  background: rgba(168,135,45,.07);
+}
+
+.repo-group summary em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.repo-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(27rem, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.repo-material-card {
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  min-height: 100%;
+  padding: 1rem;
+  border: 1px solid rgba(55,49,34,.12);
+  border-radius: 18px;
+  background: var(--panel-solid);
+  box-shadow: 0 .7rem 1.5rem rgba(38,32,19,.055);
+}
+
+.repo-material-card h3 {
+  margin: 0;
+  font-size: 1.55rem;
+}
+
+.repo-material-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.repo-material-card small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.repo-actions {
+  margin-top: auto;
+}
+
+.repo-actions .primary-btn,
+.repo-actions .secondary-btn,
+.repo-actions button {
+  min-height: 3.3rem;
+}
+
+body.is-dark .repo-group,
+body.is-dark .repo-material-card {
+  background: var(--panel-solid);
+  border-color: rgba(212,175,55,.18);
+}
+
+body.is-dark .repo-stats {
+  background: rgba(212,175,55,.10);
+  border-color: rgba(212,175,55,.22);
+}
+
+body.is-dark .repo-stats strong {
+  color: var(--gold);
+}
+
+@media (max-width: 760px) {
+  .repository-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .repository-filters {
+    position: static;
+  }
+
+  .repo-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
