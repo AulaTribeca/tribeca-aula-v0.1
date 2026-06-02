@@ -802,7 +802,6 @@
       ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
       ['classrooms','🏫','Clases','Crear aulas permanentes por centro y curso, al estilo Google Classroom.'],
       ['teacherSubjects','📚','Materias y materiales','Ver, crear, editar, ocultar o eliminar materias y revisar materiales por curso.'],
-      ['materialRepository','🗄️','Repositorio docente','Conservar materiales de cursos anteriores y republicarlos cuando los necesites.'],
       ['guidance','🧭','Orientación académica','Subir, editar, ocultar o eliminar tests, documentos, enlaces y presentaciones de orientación.'],
       ['payments','💶','Pagos','Tarifas, mensualidades, meses pagados, recibís e histórico económico.'],
       ['attendance','📅','Asistencia y pausas','Registro de asistencia, faltas justificadas y pausas temporales de acceso.']
@@ -2226,7 +2225,7 @@
           <li><strong>Fase 1</strong>: crear clases permanentes por centro, etapa y curso.</li>
           <li><strong>Fase 2</strong>: asignar y promocionar alumnado manualmente a clases.</li>
           <li><strong>Fase 3</strong>: vincular materias, unidades y materiales a cada clase.</li>
-          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li>
+          <li><strong>Fase 4</strong>: ocultar o mostrar clase, materia, unidad y material, con efecto real sobre el panel del alumnado.</li><li><strong>Fase 5</strong>: panel del alumnado basado en clases.</li><li><strong>Fase 6</strong>: migración de materiales antiguos al nuevo modelo y retirada del repositorio del panel principal.</li>
         </ol>
       </section>
 
@@ -2249,6 +2248,7 @@
       <div class="classroom-chip-row classroom-roster-preview">${rosterPreview || '<span>Sin alumnado asignado</span>'}${assigned.length>8?`<span>+${assigned.length-8} más</span>`:''}</div>
       <div class="classroom-chip-row">${subjects.length?subjectPreview:'<span>Materias pendientes de crear</span>'}</div>
       ${classroomSubjectsBox(c)}
+      ${classroomLegacyMigrationBox(c)}
       ${classroomAssignmentBox(c)}
       <div class="inline-actions">
         <button type="button" class="secondary-btn" data-t80-edit-class="${safe(c.id)}" onclick="return window.TribecaClassroomEditDirect(this,event)">Editar</button>
@@ -2303,8 +2303,42 @@
     const meta=materialTypeMeta(m.material_type||m.type||'material');
     return `<article class="classroom-material-row ${m.hidden?'is-hidden-material':''}">
       <div><strong>${safe(m.title||'Material sin título')}</strong><small>${safe(meta.label)} · ${m.hidden?'oculto para alumnado':'visible para alumnado'}</small></div>
-      <div class="inline-actions"><button type="button" data-t83-toggle-material="${safe(m.id)}" onclick="return window.TribecaClassroomToggleMaterial(this,event)">${m.hidden?'Mostrar material':'Ocultar material'}</button></div>
+      <div class="inline-actions"><button type="button" data-t83-toggle-material="${safe(m.id)}" onclick="return window.TribecaClassroomToggleMaterial(this,event)">${m.hidden?'Mostrar material':'Ocultar material'}</button><button type="button" data-t85-unlink-material="${safe(m.id)}" onclick="return window.TribecaClassroomUnlinkMaterial(this,event)">Quitar vínculo</button></div>
     </article>`;
+  }
+  function legacyMaterialsForClass(c){
+    return (State.data.materials||[])
+      .filter(m=>m && !m.class_id && m.hidden!==true)
+      .filter(m=>{
+        const sameCenter = !m.center || String(m.center)===String(c.center);
+        const sameStage = !m.stage || String(m.stage)===String(c.stage);
+        const sameCourse = !m.course || String(m.course)===String(c.course);
+        return sameCenter && sameStage && sameCourse;
+      })
+      .sort((a,b)=>String(a.subject||'').localeCompare(String(b.subject||''),'es') || String(a.unit_title||a.unit||'').localeCompare(String(b.unit_title||b.unit||''),'es',{numeric:true}) || String(a.title||'').localeCompare(String(b.title||''),'es'));
+  }
+  function classroomLegacyMigrationBox(c){
+    const legacy=legacyMaterialsForClass(c);
+    if(!legacy.length) return `<details class="classroom-migration-box is-empty"><summary><span>Migración desde el sistema anterior</span><em>0 pendientes</em></summary><div class="empty-state">No hay materiales antiguos coincidentes pendientes de vincular a esta clase.</div></details>`;
+    const bySubject=new Map();
+    legacy.forEach(m=>{ const s=m.subject||'Sin materia'; if(!bySubject.has(s)) bySubject.set(s, []); bySubject.get(s).push(m); });
+    const rows=[...bySubject.entries()].map(([subject,items])=>{
+      const byUnit=new Map();
+      items.forEach(m=>{ const u=m.unit_title||m.unit||'Unidad 1'; if(!byUnit.has(u)) byUnit.set(u, []); byUnit.get(u).push(m); });
+      return `<details class="migration-subject-group" open><summary>${safe(subject)} <em>${items.length}</em></summary>${[...byUnit.entries()].map(([unit,mats])=>`<div class="migration-unit-group"><strong>${safe(unit)}</strong>${mats.map(m=>`<label><input type="checkbox" name="materialIds" value="${safe(m.id)}" checked><span>${safe(m.title||'Material sin título')}<small>${safe([m.center,m.stage,m.course].filter(Boolean).join(' · '))}</small></span></label>`).join('')}</div>`).join('')}</details>`;
+    }).join('');
+    return `<details class="classroom-migration-box"><summary><span>Migración desde el sistema anterior</span><em>${legacy.length} pendiente${legacy.length===1?'':'s'}</em></summary>
+      <form class="classroom-migration-form" onsubmit="return window.TribecaClassroomMigrateMaterials(this,event)">
+        <input type="hidden" name="classId" value="${safe(c.id)}">
+        <p class="meta">Estos materiales antiguos coinciden con el centro, etapa y curso de esta clase, pero todavía no están vinculados al nuevo modelo. Al migrarlos quedarán dentro de sus materias y unidades correspondientes.</p>
+        <div class="migration-list">${rows}</div>
+        <div class="inline-actions">
+          <button type="button" class="secondary-btn" onclick="this.closest('form').querySelectorAll('input[name=materialIds]').forEach(x=>x.checked=true); return false;">Seleccionar todo</button>
+          <button type="button" class="secondary-btn" onclick="this.closest('form').querySelectorAll('input[name=materialIds]').forEach(x=>x.checked=false); return false;">Deseleccionar todo</button>
+          <button type="submit" class="primary-btn">Migrar seleccionados a esta clase</button>
+        </div>
+      </form>
+    </details>`;
   }
   async function addClassSubject(form){
     const fd=new FormData(form);
@@ -2327,6 +2361,49 @@
     await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true});
     await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
     await loadData(true); toast('Unidad añadida.'); rerender();
+  }
+  async function migrateLegacyMaterialsToClass(form){
+    if(!roleTeacher()) throw new Error('Solo la profesora puede migrar materiales.');
+    const fd=new FormData(form);
+    const classId=String(fd.get('classId')||'').trim();
+    const classroom=(State.data.classrooms||[]).find(c=>String(c.id)===String(classId));
+    if(!classroom) throw new Error('No se encontró la clase.');
+    const ids=fd.getAll('materialIds').map(String).filter(Boolean);
+    if(!ids.length) throw new Error('Selecciona al menos un material para migrar.');
+    let count=0;
+    for(const id of ids){
+      const m=(State.data.materials||[]).find(x=>String(x.id)===String(id));
+      if(!m) continue;
+      const subject=m.subject || 'Apoyo personalizado';
+      const unit=m.unit_title || m.unit || 'Unidad 1';
+      const linked=await ensureClassSubjectAndUnit(classId, subject, unit);
+      const payload={
+        class_id:classId,
+        class_subject_id:linked.classSubjectId,
+        class_unit_id:linked.classUnitId,
+        center:classroom.center || m.center || null,
+        stage:classroom.stage || m.stage || null,
+        course:classroom.course || m.course || null,
+        target_scope:'class',
+        updated_at:new Date().toISOString()
+      };
+      await persistSupabaseRecord('subject_materials', payload, id);
+      count++;
+    }
+    await log('classroom','Materiales antiguos migrados a clase',{class_id:classId,classroom:classroomLabel(classroom),count});
+    await loadData(true);
+    toast(`${count} material${count===1?'':'es'} migrado${count===1?'':'s'} a la clase.`);
+    rerender();
+  }
+  async function unlinkMaterialFromClass(materialId){
+    const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
+    if(!m) return toast('No se encontró el material.');
+    if(!confirm('¿Quitar el vínculo de este material con la clase? El material no se elimina, solo vuelve a quedar fuera del nuevo modelo.')) return;
+    await persistSupabaseRecord('subject_materials',{class_id:null,class_subject_id:null,class_unit_id:null,updated_at:new Date().toISOString()},materialId);
+    await log('classroom','Material desvinculado de clase',{id:materialId,title:m.title});
+    await loadData(true);
+    toast('Material desvinculado de la clase.');
+    rerender();
   }
   async function saveClassroom(form){
     if(!roleTeacher()) throw new Error('Solo la profesora puede gestionar clases.');
@@ -2415,6 +2492,8 @@
   window.TribecaClassroomToggleSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleSubject; const s=(State.data.classSubjects||[]).find(x=>String(x.id)===String(id)); if(!s) return false; persistSupabaseRecord('tribeca_class_subjects',{hidden:!s.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(s.hidden?'Materia visible.':'Materia oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la materia.')); return false; };
   window.TribecaClassroomToggleUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleUnit; const u=(State.data.classUnits||[]).find(x=>String(x.id)===String(id)); if(!u) return false; persistSupabaseRecord('tribeca_class_units',{hidden:!u.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(u.hidden?'Unidad visible.':'Unidad oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la unidad.')); return false; };
   window.TribecaClassroomToggleMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t83ToggleMaterial; const m=(State.data.materials||[]).find(x=>String(x.id)===String(id)); if(!m) return false; persistSupabaseRecord('subject_materials',{hidden:!m.hidden},id).then(()=>loadData(true)).then(()=>{toast(m.hidden?'Material visible para el alumnado.':'Material oculto para el alumnado.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar el material.')); return false; };
+  window.TribecaClassroomMigrateMaterials=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); migrateLegacyMaterialsToClass(form).catch(e=>{ console.error(e); toast(e.message||'No se pudieron migrar los materiales.'); }); return false; };
+  window.TribecaClassroomUnlinkMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); unlinkMaterialFromClass(btn?.dataset?.t85UnlinkMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo desvincular el material.'); }); return false; };
   window.TribecaClassroomDeleteSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteSubject; if(!confirm('¿Eliminar esta materia de la clase? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de materia de clase.')) return false; table('tribeca_class_subjects').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Materia eliminada de la clase.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la materia.')); return false; };
   window.TribecaClassroomDeleteUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteUnit; if(!confirm('¿Eliminar esta unidad? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de unidad de clase.')) return false; table('tribeca_class_units').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Unidad eliminada.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la unidad.')); return false; };
 

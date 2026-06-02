@@ -7862,3 +7862,130 @@ body.is-dark .student-classroom-card > header strong {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tribeca Aula · versión 85
+   Fase 6: migración de materiales antiguos y retirada del repositorio del panel principal. */
+.classroom-migration-box {
+  border: 1px solid rgba(168, 135, 45, .22);
+  border-radius: 16px;
+  background: rgba(168, 135, 45, .065);
+  overflow: hidden;
+}
+
+.classroom-migration-box.is-empty {
+  opacity: .75;
+}
+
+.classroom-migration-box > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  background: rgba(168, 135, 45, .10);
+  font-weight: 950;
+}
+
+.classroom-migration-box > summary em,
+.migration-subject-group > summary em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.classroom-migration-form {
+  display: grid;
+  gap: .85rem;
+  padding: 1rem;
+}
+
+.migration-list {
+  display: grid;
+  gap: .65rem;
+  max-height: 32rem;
+  overflow: auto;
+  padding-right: .25rem;
+}
+
+.migration-subject-group {
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 14px;
+  background: var(--panel-solid);
+  overflow: hidden;
+}
+
+.migration-subject-group > summary {
+  display: flex;
+  justify-content: space-between;
+  padding: .65rem .8rem;
+  cursor: pointer;
+  font-weight: 950;
+  background: rgba(16, 63, 36, .055);
+}
+
+.migration-unit-group {
+  display: grid;
+  gap: .4rem;
+  padding: .7rem .8rem;
+  border-top: 1px solid rgba(55,49,34,.08);
+}
+
+.migration-unit-group > strong {
+  color: var(--green);
+  font-size: .92rem;
+}
+
+.migration-unit-group label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .55rem;
+  align-items: start;
+  padding: .55rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,.48);
+}
+
+.migration-unit-group label span {
+  font-weight: 850;
+}
+
+.migration-unit-group label small {
+  display: block;
+  color: var(--muted);
+  font-size: .76rem;
+  margin-top: .1rem;
+}
+
+.classroom-material-row .inline-actions {
+  justify-content: flex-end;
+}
+
+body.is-dark .classroom-migration-box,
+body.is-dark .migration-subject-group {
+  background: var(--panel-solid);
+  border-color: rgba(212, 175, 55, .20);
+}
+
+body.is-dark .classroom-migration-box > summary,
+body.is-dark .migration-subject-group > summary {
+  background: rgba(212, 175, 55, .10);
+}
+
+body.is-dark .migration-unit-group label {
+  background: rgba(255,255,255,.04);
+}
+
+@media (max-width: 760px) {
+  .classroom-migration-box > summary,
+  .migration-subject-group > summary {
+    flex-direction: column;
+  }
+
+  .classroom-migration-form .inline-actions {
+    display: grid;
+  }
+
+  .classroom-migration-form .inline-actions button {
+    width: 100%;
+  }
+}
