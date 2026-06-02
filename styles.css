@@ -9435,3 +9435,142 @@ body.is-dark .classroom-unit-form-v92 {
     width: 100%;
   }
 }
+
+
+/* Tribeca Aula · versión 94
+   Publicaciones del nuevo modelo: sin destinatarios ni repositorio, adjuntos premium e inserción de juegos/tests. */
+.t94-publication-wizard {
+  max-width: 76rem;
+}
+
+.t94-publication-wizard .recipient-panel,
+.t94-publication-wizard .repo-classification-panel {
+  display: none !important;
+}
+
+.publication-files-panel-v94 {
+  border-left: .45rem solid var(--green);
+}
+
+.publication-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: .85rem;
+  margin: .9rem 0 1rem;
+}
+
+.publication-upload-card {
+  display: grid;
+  gap: .35rem;
+  min-height: 11rem;
+  padding: 1rem;
+  border: 1px dashed rgba(16,63,36,.28);
+  border-radius: 18px;
+  background: rgba(16,63,36,.045);
+}
+
+.publication-upload-card strong {
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.publication-upload-card small {
+  color: var(--muted);
+  font-weight: 820;
+}
+
+.publication-upload-card input[type="file"] {
+  margin-top: .45rem;
+  padding: .65rem;
+  border-radius: 12px;
+  background: var(--panel-solid);
+  border: 1px solid rgba(55,49,34,.10);
+}
+
+.publication-upload-card .t16-image-preview,
+.attachment-preview-pill {
+  display: block;
+  margin-top: .35rem;
+  padding: .55rem .65rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,.62);
+  color: var(--muted);
+  font-weight: 820;
+  font-size: .84rem;
+}
+
+.publication-upload-card .t16-image-preview img {
+  max-width: 100%;
+  max-height: 11rem;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.interactive-embed-panel {
+  display: grid;
+  gap: .75rem;
+  padding: 1rem;
+  border: 1px solid rgba(168,135,45,.18);
+  border-radius: 18px;
+  background: rgba(168,135,45,.055);
+}
+
+.interactive-embed-panel h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.15rem;
+}
+
+.interactive-embed-panel textarea {
+  min-height: 9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .88rem;
+}
+
+.material-embed-block {
+  display: grid;
+  gap: .7rem;
+  margin: .8rem 0;
+  padding: .85rem;
+  border: 1px solid rgba(16,63,36,.12);
+  border-radius: 16px;
+  background: rgba(16,63,36,.045);
+}
+
+.material-embed-block strong,
+.material-embed-block small {
+  display: block;
+}
+
+.material-embed-block small {
+  color: var(--muted);
+  font-weight: 820;
+  margin-top: .1rem;
+}
+
+.material-embed-block iframe {
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid rgba(55,49,34,.12);
+  border-radius: 14px;
+  background: #fff;
+}
+
+body.is-dark .publication-upload-card,
+body.is-dark .interactive-embed-panel,
+body.is-dark .material-embed-block,
+body.is-dark .publication-upload-card .t16-image-preview,
+body.is-dark .attachment-preview-pill {
+  background: var(--panel-solid);
+  border-color: rgba(212,175,55,.18);
+}
+
+@media (max-width: 760px) {
+  .publication-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .material-embed-block iframe {
+    min-height: 340px;
+  }
+}

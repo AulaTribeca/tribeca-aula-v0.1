@@ -934,6 +934,20 @@
   function materialOpenButton(m){
     return `<button type="button" class="secondary-btn material-open-btn" data-t33-open-mat="${safe(m.id)}">Abrir publicación</button>`;
   }
+  function materialEmbedValue(m={}, key='url'){
+    if(key==='url') return String(m.embed_url || m.interactive_url || m.game_url || '').trim();
+    return String(m.embed_code || m.interactive_embed || m.game_embed || '').trim();
+  }
+  function materialEmbedMarkup(m={}){
+    const url=materialEmbedValue(m,'url');
+    const code=materialEmbedValue(m,'code');
+    if(!url && !code) return '';
+    const frame = code
+      ? `<iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" srcdoc="${safe(code)}"></iframe>`
+      : `<iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="${safe(url)}"></iframe>`;
+    return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>Test, juego o actividad embebida</small></div>${frame}</section>`;
+  }
+
   function openMaterialInNewWindow(materialId){
     const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
     if(!m) return toast('No se encontró la publicación.');
@@ -943,8 +957,9 @@
     const w=window.open('', '_blank');
     if(!w) return toast('El navegador ha bloqueado la ventana emergente.');
     const attachmentHtml=attachments.length?`<section class="files"><h2>Archivos adjuntos</h2>${attachments.map((att,i)=>{ const url=att.url||att.href||att.path||att.publicUrl||att.public_url||''; const name=att.name||att.filename||att.file_name||`Archivo ${i+1}`; const type=String(att.type||att.mime_type||'').toLowerCase(); return url?`<a class="attachment" href="${safe(url)}" target="_blank" rel="noopener">${/^image\//.test(type)?`<img src="${safe(url)}" alt="">`:''}<span>📎 ${safe(name)}</span></a>`:`<p>📎 ${safe(name)}</p>`; }).join('')}</section>`:'';
+    const embedHtml=materialEmbedMarkup(m);
     const fontSize = 12.5;
-    w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(m.title||'Publicación')}</title><style>:root{font-size:12.5px}*{box-sizing:border-box}body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5}.back-btn{position:fixed;top:16px;left:16px;z-index:20;display:inline-flex;align-items:center;gap:7px;border:1px solid #d7ccb5;border-radius:999px;background:#fffdf7;color:#0b3d22;text-decoration:none;font-weight:900;padding:8px 13px;box-shadow:0 8px 20px rgba(34,27,12,.09);font-size:13px}.back-btn:hover{background:#eef4e9}.wrap{max-width:620px;margin:0 auto;padding:64px 16px 28px}.head{border-left:4px solid #0b3d22;background:#fffdf7;border-radius:13px;padding:13px 16px;box-shadow:0 10px 26px rgba(35,28,12,.075)}.tag{display:inline-flex;border-radius:999px;background:#fff1df;color:#7b3c00;border:1px solid #f0c894;padding:4px 9px;font-weight:900;font-size:12px}h1{font-family:Georgia,serif;font-size:clamp(19px,1.55vw,24px);line-height:1.12;margin:12px 0 7px;letter-spacing:.01em}.meta{color:#6a6458;font-weight:750;font-size:13px;margin:0}.body,.files{background:#fffdf7;border:1px solid #e0d7c0;border-radius:13px;padding:13px 16px;margin-top:12px}.body{font-size:${fontSize}px}.body p{margin:0 0 12px}.image{display:block;max-width:100%;max-height:240px;object-fit:contain;border-radius:12px;margin:12px 0}.link,.attachment{display:flex;align-items:center;gap:8px;width:fit-content;margin:9px 0 0;padding:7px 11px;border-radius:999px;background:#eef4e9;color:#0b3d22;font-weight:900;text-decoration:none;font-size:13px}.files h2{font-size:16px;margin:0 0 10px}.attachment img{width:64px;height:48px;object-fit:cover;border-radius:8px}@media (max-width:680px){.wrap{padding:66px 12px 24px}.back-btn{top:10px;left:10px}.body,.files,.head{padding:14px}}@media print{.back-btn,.link{display:none}}</style></head><body><a class="back-btn" href="#" onclick="if(history.length>1){history.back();}else{window.close();}return false;">← Atrás</a><main class="wrap"><header class="head"><span class="tag">${safe(meta.icon)} ${safe(meta.label)}</span><h1>${safe(m.title||'Publicación')}</h1><p class="meta">${safe(m.subject||'Materia')} · ${safe(m.unit_title||m.unit||'Unidad 1')}</p></header><section class="body">${m.image_url?`<img class="image" src="${safe(m.image_url)}" alt="">`:''}<p>${safe(body).replace(/\n/g,'<br>')}</p>${m.link_url?`<a class="link" href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace externo</a>`:''}</section>${attachmentHtml}</main></body></html>`);
+    w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(m.title||'Publicación')}</title><style>:root{font-size:12.5px}*{box-sizing:border-box}body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5}.back-btn{position:fixed;top:16px;left:16px;z-index:20;display:inline-flex;align-items:center;gap:7px;border:1px solid #d7ccb5;border-radius:999px;background:#fffdf7;color:#0b3d22;text-decoration:none;font-weight:900;padding:8px 13px;box-shadow:0 8px 20px rgba(34,27,12,.09);font-size:13px}.back-btn:hover{background:#eef4e9}.wrap{max-width:620px;margin:0 auto;padding:64px 16px 28px}.head{border-left:4px solid #0b3d22;background:#fffdf7;border-radius:13px;padding:13px 16px;box-shadow:0 10px 26px rgba(35,28,12,.075)}.tag{display:inline-flex;border-radius:999px;background:#fff1df;color:#7b3c00;border:1px solid #f0c894;padding:4px 9px;font-weight:900;font-size:12px}h1{font-family:Georgia,serif;font-size:clamp(19px,1.55vw,24px);line-height:1.12;margin:12px 0 7px;letter-spacing:.01em}.meta{color:#6a6458;font-weight:750;font-size:13px;margin:0}.body,.files{background:#fffdf7;border:1px solid #e0d7c0;border-radius:13px;padding:13px 16px;margin-top:12px}.body{font-size:${fontSize}px}.body p{margin:0 0 12px}.image{display:block;max-width:100%;max-height:240px;object-fit:contain;border-radius:12px;margin:12px 0}.link,.attachment{display:flex;align-items:center;gap:8px;width:fit-content;margin:9px 0 0;padding:7px 11px;border-radius:999px;background:#eef4e9;color:#0b3d22;font-weight:900;text-decoration:none;font-size:13px}.files h2{font-size:16px;margin:0 0 10px}.material-embed-block{background:#fffdf7;border:1px solid #e0d7c0;border-radius:13px;padding:13px 16px;margin-top:12px}.material-embed-block strong,.material-embed-block small{display:block}.material-embed-block small{color:#6a6458;font-weight:750}.material-embed-block iframe{width:100%;min-height:420px;border:1px solid #d7ccb5;border-radius:12px;background:#fff;margin-top:10px}.attachment img{width:64px;height:48px;object-fit:cover;border-radius:8px}@media (max-width:680px){.wrap{padding:66px 12px 24px}.back-btn{top:10px;left:10px}.body,.files,.head{padding:14px}}@media print{.back-btn,.link{display:none}}</style></head><body><a class="back-btn" href="#" onclick="if(history.length>1){history.back();}else{window.close();}return false;">← Atrás</a><main class="wrap"><header class="head"><span class="tag">${safe(meta.icon)} ${safe(meta.label)}</span><h1>${safe(m.title||'Publicación')}</h1><p class="meta">${safe(m.subject||'Materia')} · ${safe(m.unit_title||m.unit||'Unidad 1')}</p></header><section class="body">${m.image_url?`<img class="image" src="${safe(m.image_url)}" alt="">`:''}<p>${safe(body).replace(/\n/g,'<br>')}</p>${m.link_url?`<a class="link" href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace externo</a>`:''}</section>${attachmentHtml}</main></body></html>`);
     w.document.close();
   }
 
@@ -1234,7 +1249,7 @@
     const edit = State.pendingPublicationEdit || null;
     const item = edit?.item || {};
     const editing = !!edit?.id;
-    const kind = editing ? (edit.kind || (edit.table === 'announcements' ? 'announcement' : normalizeMaterialKind(item.material_type || item.type))) : 'announcement';
+    const kind = editing ? (edit.kind || (edit.table === 'announcements' ? 'announcement' : normalizeMaterialKind(item.material_type || item.type))) : 'material';
     const subjectValue = State.prefillPublicationSubject || item.subject || '';
     const dynamic = (State.data.subjects || []).map(s => s.subject).filter(Boolean);
     const classDynamic = (State.data.classSubjects || []).map(s => s.subject).filter(Boolean);
@@ -1242,9 +1257,57 @@
     const unitValue = State.prefillPublicationUnit || item.unit_title || item.unit || '';
     const attachments = normalizeAttachments(item);
     const attachmentsJson = JSON.stringify(attachments).replace(/"/g, '&quot;');
-    const repoCtx = repositoryContextFromItem(item);
     const typeCard = (value, icon, title, desc) => `<label><input type="radio" name="publicationKind" value="${value}" ${normalizeMaterialKind(kind)===normalizeMaterialKind(value)?'checked':''}><span>${icon} ${title}<small>${desc}</small></span></label>`;
-    return `<form id="t16PublicationForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="t18-publication-wizard"><input type="hidden" name="editId" value="${safe(edit?.id||'')}"><input type="hidden" name="editTable" value="${safe(edit?.table||'')}"><section class="window-panel t18-publish-main"><h3>${editing?'Editar publicación':'1. Qué vas a publicar'}</h3>${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}<div class="t18-type-cards">${typeCard('announcement','📣','Anuncio, aviso o noticia','Se verá en Anuncios, no dentro de una materia.')}${typeCard('material','📄','Material de materia','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Las insignias se asignan manualmente desde el panel docente.')}${typeCard('test','🧪','Test externo','Usa el enlace para el test interactivo.')}${typeCard('game','🎮','Juego','Actividad lúdica o enlace a juego.')}</div>${publicationClassroomSelector(item)}<div class="window-grid"><label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label><label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label></div><label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label><label>Cuerpo<textarea name="body" rows="7" maxlength="1800" placeholder="Escribe el contenido de la publicación con instrucciones claras.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label><div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div><div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div></section><section class="window-panel publication-files-panel"><h3>2. Archivos adjuntos</h3><p class="meta">Añade una imagen visible o documentos para que el alumnado los consulte desde la publicación.</p><label>Imagen visible en la publicación<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"><input type="hidden" name="imageUrl" value="${safe(item.image_url||'')}"><span id="t16ImagePreview" class="t16-image-preview">${item.image_url?`<img src="${safe(item.image_url)}" alt="">`:''}</span></label><label>Documentos adjuntos PDF, Word o imágenes<input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple><input type="hidden" name="attachmentsJson" value="${attachmentsJson}"><span class="meta" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span></label></section>${repositoryClassificationFields(repoCtx, 'repo')}${recipientSelector()}<footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer></form>`;
+    const embedUrl = item.embed_url || item.interactive_url || item.game_url || '';
+    const embedCode = item.embed_code || item.interactive_embed || item.game_embed || '';
+    return `<form id="t16PublicationForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="t18-publication-wizard t94-publication-wizard">
+      <input type="hidden" name="editId" value="${safe(edit?.id||'')}">
+      <input type="hidden" name="editTable" value="${safe(edit?.table||'')}">
+      <section class="window-panel t18-publish-main">
+        <h3>${editing?'Editar publicación':'1. Contenido'}</h3>
+        ${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}
+        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
+        ${publicationClassroomSelector(item)}
+        <div class="window-grid">
+          <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
+          <label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label>
+        </div>
+        <label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label>
+        <label>Indicaciones para el alumnado<textarea name="body" rows="6" maxlength="1800" placeholder="Explica qué debe hacer el alumnado, qué debe leer o cómo debe usar el recurso.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label>
+        <div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div>
+        <div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div>
+      </section>
+      <section class="window-panel publication-files-panel publication-files-panel-v94">
+        <h3>2. Archivos y recursos interactivos</h3>
+        <p class="meta">Adjunta documentos o inserta un test/juego interactivo. Para juegos creados con IA, lo más estable es publicarlos en una URL y pegarla aquí.</p>
+        <div class="publication-upload-grid">
+          <label class="publication-upload-card">
+            <strong>Imagen de portada</strong>
+            <small>Se verá dentro de la publicación.</small>
+            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp">
+            <input type="hidden" name="imageUrl" value="${safe(item.image_url||'')}">
+            <span id="t16ImagePreview" class="t16-image-preview">${item.image_url?`<img src="${safe(item.image_url)}" alt="">`:'Sin imagen seleccionada'}</span>
+          </label>
+          <label class="publication-upload-card">
+            <strong>Archivos adjuntos</strong>
+            <small>PDF, Word, imágenes, HTML o ZIP.</small>
+            <input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,.html,.htm,.zip,.js,.css,image/png,image/jpeg,image/webp" multiple>
+            <input type="hidden" name="attachmentsJson" value="${attachmentsJson}">
+            <span class="attachment-preview-pill" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span>
+          </label>
+        </div>
+        <div class="interactive-embed-panel">
+          <h4>Insertar test o juego interactivo</h4>
+          <div class="window-grid">
+            <label>URL embebible<input name="embedUrl" type="url" placeholder="https://..." value="${safe(embedUrl)}"></label>
+            <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1200" value="${safe(item.embed_height||520)}"></label>
+          </div>
+          <label>Código HTML o iframe<textarea name="embedCode" rows="5" maxlength="20000" placeholder="Pega aquí un iframe o el HTML del test/juego si lo tienes.">${safe(embedCode)}</textarea></label>
+          <p class="meta">Prioridad: si pegas código HTML, se usará ese código. Si no, se usará la URL embebible.</p>
+        </div>
+      </section>
+      <footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer>
+    </form>`;
   }
 
   async function autoSaveMaterialPayloadToRepository(payload={}, sourceId=null){
@@ -1284,53 +1347,55 @@
   }
 
   async function savePublication(form) {
-    const fd=new FormData(form); const rawKind=fd.get('publicationKind'); const kind=normalizeMaterialKind(rawKind); let scope=fd.get('targetScope')||'all'; const ids=fd.getAll('targetUserIds'); const editId=String(fd.get('editId')||'').trim(); const editTable=String(fd.get('editTable')||'').trim();
+    const fd=new FormData(form);
+    const rawKind=fd.get('publicationKind');
+    const kind=normalizeMaterialKind(rawKind);
+    const editId=String(fd.get('editId')||'').trim();
+    const editTable=String(fd.get('editTable')||'').trim();
     const classId=String(fd.get('classId')||'').trim();
     const selectedClass=classId ? (State.data.classrooms||[]).find(c=>String(c.id)===String(classId)) : null;
-    const repoCenter=String(fd.get('repoCenter')||'').trim();
-    const repoStage=String(fd.get('repoStage')||'').trim();
-    const repoCourse=String(fd.get('repoCourse')||'').trim();
     const isAnnouncement = kind === 'announcement' || editTable === 'announcements';
     const hasClassModel = (State.data.classrooms||[]).some(c=>c && c.active!==false);
-    if(!isAnnouncement && hasClassModel && !classId) throw new Error('Selecciona una clase del nuevo modelo antes de publicar materiales. Los materiales sueltos quedan bloqueados para evitar desorden.');
-    if(classId && !isAnnouncement) scope='class';
-    const rec={ title:fd.get('title'), body:fd.get('body')||'', description:fd.get('body')||'', content:fd.get('body')||'', image_url:fd.get('imageUrl')||null, link_url:fd.get('linkUrl')||null, font_size:Number(fd.get('fontSize')||16), target_scope:scope, target_user_ids:ids, center:selectedClass?.center || fd.get('center')||null, stage:selectedClass?.stage || fd.get('stage')||null, course:selectedClass?.course || fd.get('course')||null, created_by:State.profile.id, hidden:false };
+    if(!isAnnouncement && hasClassModel && !classId) throw new Error('Selecciona una clase antes de publicar materiales.');
+    const scope = (!isAnnouncement && classId) ? 'class' : 'all';
+    const rec={
+      title:fd.get('title'),
+      body:fd.get('body')||'',
+      description:fd.get('body')||'',
+      content:fd.get('body')||'',
+      image_url:fd.get('imageUrl')||null,
+      link_url:fd.get('linkUrl')||null,
+      font_size:Number(fd.get('fontSize')||16),
+      target_scope:scope,
+      target_user_ids:[],
+      center:selectedClass?.center || null,
+      stage:selectedClass?.stage || null,
+      course:selectedClass?.course || null,
+      created_by:State.profile.id,
+      hidden:false
+    };
     let attachments = [];
     try { attachments = JSON.parse(fd.get('attachmentsJson')||'[]'); } catch(_e) { attachments = []; }
     const tableName = isAnnouncement ? 'announcements' : 'subject_materials';
     const subject=fd.get('subject')||'Apoyo personalizado';
     const unit=fd.get('unit')||'Unidad 1';
-    const payload = isAnnouncement ? {...rec, announcement_type:'announcement', attachments} : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), badge_codes:[], attachments};
-    if(!isAnnouncement){
-      if(classId){
-        const linked=await ensureClassSubjectAndUnit(classId, subject, unit);
-        payload.class_id=classId;
-        payload.class_subject_id=linked.classSubjectId;
-        payload.class_unit_id=linked.classUnitId;
-      }
-      payload.repository_center = repoCenter || selectedClass?.center || null;
-      payload.repository_stage = repoStage || selectedClass?.stage || null;
-      payload.repository_course = repoCourse || selectedClass?.course || null;
+    const payload = isAnnouncement
+      ? {...rec, announcement_type:'announcement', attachments}
+      : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), badge_codes:[], attachments, embed_url:String(fd.get('embedUrl')||'').trim()||null, embed_code:String(fd.get('embedCode')||'').trim()||null, embed_height:Number(fd.get('embedHeight')||520)};
+    if(!isAnnouncement && classId){
+      const linked=await ensureClassSubjectAndUnit(classId, subject, unit);
+      payload.class_id=classId;
+      payload.class_subject_id=linked.classSubjectId;
+      payload.class_unit_id=linked.classUnitId;
     }
     if(editId) { delete payload.created_by; delete payload.hidden; }
-    const savePayload = {...payload};
-    delete savePayload.repository_center; delete savePayload.repository_stage; delete savePayload.repository_course;
-    const saveResult = await persistSupabaseRecord(tableName, savePayload, editId || null);
-    let repositorySaved=false;
-    if(!isAnnouncement) {
-      let savedId = editId || saveResult?.data?.[0]?.id || saveResult?.data?.id || null;
-      if(!savedId && !editId) {
-        const found = await maybe(table('subject_materials').select('id').eq('created_by', State.profile.id).eq('title', payload.title).eq('subject', payload.subject).order('created_at',{ascending:false}).limit(1), []);
-        savedId = found?.[0]?.id || null;
-      }
-      const repoPayload = {...payload, center:(repoCenter || selectedClass?.center || null), stage:(repoStage || selectedClass?.stage || null), course:(repoCourse || selectedClass?.course || null)};
-      repositorySaved = await autoSaveMaterialPayloadToRepository(repoPayload, savedId);
-    }
+    await persistSupabaseRecord(tableName, payload, editId || null);
     await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName, class_id:classId||null});
     State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationUnit=null; State.prefillPublicationClassId=null; State.prefillPublicationClassSubjectId=null; State.prefillPublicationClassUnitId=null;
     await loadData(true);
-    const msg = isAnnouncement ? (editId?'Publicación modificada.':'Publicación guardada.') : (repositorySaved ? (editId?'Material modificado y actualizado en el repositorio.':'Material publicado, vinculado a su clase y guardado automáticamente en el repositorio.') : (editId?'Material modificado. No se pudo actualizar el repositorio.':'Material publicado y vinculado a su clase. No se pudo guardar automáticamente en el repositorio.'));
-    toast(msg); form.reset(); rerender();
+    toast(isAnnouncement ? (editId?'Anuncio modificado.':'Anuncio publicado.') : (editId?'Material modificado.':'Material publicado en la clase.'));
+    form.reset();
+    rerender();
   }
 
   function eventColorType(e){ return e.event_type || e.type || 'personal'; }
@@ -1845,7 +1910,7 @@
       </div>
     </section>`;
   }
-  function materialCard(m){ const meta=materialTypeMeta(m.material_type||m.type); const done=isMaterialCompleted(m.id); return `<article class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}"><div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>${m.hidden?'<small>Oculto</small>':''}${done&&!roleTeacher()?'<small class="completed-chip">Hecha</small>':''}</div><h3>${safe(m.title)}</h3>${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}<p style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${attachmentList(m)}<div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div></article>`; }
+  function materialCard(m){ const meta=materialTypeMeta(m.material_type||m.type); const done=isMaterialCompleted(m.id); return `<article class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}"><div class="publication-card-top"><span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>${m.hidden?'<small>Oculto</small>':''}${done&&!roleTeacher()?'<small class="completed-chip">Hecha</small>':''}</div><h3>${safe(m.title)}</h3>${m.image_url?`<img src="${safe(m.image_url)}" alt="">`:''}<p style="font-size:${Number(m.font_size||16)}px">${safe(m.body||m.description||m.content||m.text||'')}</p>${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}${materialEmbedMarkup(m)}${attachmentList(m)}<div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div></article>`; }
 
 
 
@@ -2560,12 +2625,27 @@ function classroomCard(c,i=0){
     const classSubjectId=String(fd.get('classSubjectId')||'').trim();
     const title=String(fd.get('title')||'').trim();
     if(!classSubjectId || !title){ toast('Escribe el título de la unidad.'); return; }
+    const s=classSubjectById(classSubjectId);
+    if(!s){ toast('No se encontró la materia.'); return; }
     const existing=(State.data.classUnits||[]).find(u=>String(u.class_subject_id)===String(classSubjectId) && String(u.title||'').toLowerCase()===title.toLowerCase());
-    if(existing){ toast('La unidad ya existe en esta materia.'); return; }
-    const {error}=await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true});
-    if(error) throw error;
+    if(existing){
+      State.prefillPublicationClassId=s.class_id;
+      State.prefillPublicationSubject=s.subject;
+      State.prefillPublicationUnit=existing.title || title;
+      toast('La unidad ya existe. Abriendo publicación para añadir material.');
+      openTool('newPublication');
+      return;
+    }
+    const inserted=await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true}).select('*').single();
+    if(inserted.error) throw inserted.error;
     await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
-    await loadData(true); toast(`Unidad “${title}” añadida correctamente.`); rerender();
+    await loadData(true);
+    State.pendingPublicationEdit=null;
+    State.prefillPublicationClassId=s.class_id;
+    State.prefillPublicationSubject=s.subject;
+    State.prefillPublicationUnit=title;
+    toast(`Unidad “${title}” añadida. Ahora puedes publicar el primer material.`);
+    openTool('newPublication');
   }
   async function bootstrapClassesFromStudents(){
     if(!roleTeacher()) return toast('Solo la profesora puede crear clases desde alumnado.');
@@ -2647,7 +2727,10 @@ function classroomCard(c,i=0){
       attachments:normalizeAttachments(m),
       class_id:m.class_id || null,
       class_subject_id:m.class_subject_id || null,
-      class_unit_id:m.class_unit_id || null
+      class_unit_id:m.class_unit_id || null,
+      embed_url:m.embed_url || null,
+      embed_code:m.embed_code || null,
+      embed_height:Number(m.embed_height||520)
     };
     await persistSupabaseRecord('subject_materials', payload, null);
     await log('classroom','Material duplicado dentro de clase',{source:m.id,title:payload.title,class_id:payload.class_id});
