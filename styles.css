@@ -9736,3 +9736,23 @@ body.is-dark .t16-publication .material-title-prominent {
 .material-embed-block-v97 {
   overflow: hidden;
 }
+
+
+/* Tribeca Aula · versión 98
+   Embebidos HTML cargados como Blob URL para que los scripts del test se ejecuten correctamente. */
+.material-embed-block-v98 iframe {
+  display: block;
+  width: 100%;
+  min-height: 620px;
+  border: 1px solid rgba(55,49,34,.14);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.material-embed-block-v98 iframe[data-t98-ready="error"] {
+  border-color: rgba(141,36,36,.28);
+}
+
+.material-embed-block-v98 {
+  overflow: hidden;
+}

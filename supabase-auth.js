@@ -980,7 +980,7 @@
     if(code){
       const iframeSrc=extractIframeSrc(code);
       if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:''};
-      return {src:'about:blank', mode:'html', html:normalizeEmbeddedHtml(code)};
+      return {src:'', mode:'html', html:normalizeEmbeddedHtml(code)};
     }
     if(url) return {src:url, mode:'url', html:''};
     return {src:'', mode:'', html:''};
@@ -988,38 +988,39 @@
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
     if(!source.src && !source.html) return '';
-    const height=Math.max(360, Math.min(Number(m.embed_height||560), 1400));
+    const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const encoded=source.html ? encodeBase64Utf8(source.html) : '';
-    return `<section class="material-embed-block material-embed-block-v97"><div><strong>Recurso interactivo</strong><small>${source.mode==='html'?'Código HTML insertado':source.mode==='iframe'?'Iframe insertado':'URL embebida'}</small></div><iframe title="Recurso interactivo" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="${safe(source.src||'about:blank')}" data-t97-embed-html="${safe(encoded)}" style="min-height:${height}px"></iframe><a class="embed-open-link" href="${safe(source.src||'#')}" target="_blank" rel="noopener">Abrir recurso en pestaña nueva</a></section>`;
+    const srcAttr = source.src ? ` src="${safe(source.src)}"` : ' src="about:blank"';
+    return `<section class="material-embed-block material-embed-block-v98"><div><strong>Recurso interactivo</strong><small>${source.mode==='html'?'Código HTML insertado':source.mode==='iframe'?'Iframe insertado':'URL embebida'}</small></div><iframe title="Recurso interactivo" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads"${srcAttr} data-t98-embed-html="${safe(encoded)}" style="min-height:${height}px"></iframe>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir recurso en pestaña nueva</a>`:''}</section>`;
   }
   function hydrateInteractiveEmbeds(root=document){
     const scope=root && root.querySelectorAll ? root : document;
-    scope.querySelectorAll('iframe[data-t97-embed-html]:not([data-t97-ready])').forEach(frame=>{
-      const encoded=frame.getAttribute('data-t97-embed-html')||'';
-      if(!encoded){ frame.dataset.t97Ready='1'; return; }
+    scope.querySelectorAll('iframe[data-t98-embed-html]:not([data-t98-ready])').forEach(frame=>{
+      const encoded=frame.getAttribute('data-t98-embed-html')||'';
+      if(!encoded){ frame.dataset.t98Ready='1'; return; }
       const html=decodeBase64Utf8(encoded);
-      if(!html){ frame.dataset.t97Ready='error'; return; }
+      if(!html){ frame.dataset.t98Ready='error'; return; }
       try{
-        frame.dataset.t97Ready='1';
-        const doc=frame.contentWindow?.document || frame.contentDocument;
-        doc.open();
-        doc.write(html);
-        doc.close();
+        if(frame.dataset.t98ObjectUrl) URL.revokeObjectURL(frame.dataset.t98ObjectUrl);
+        const blob=new Blob([html], {type:'text/html;charset=utf-8'});
+        const blobUrl=URL.createObjectURL(blob);
+        frame.dataset.t98ObjectUrl=blobUrl;
+        frame.dataset.t98Ready='1';
+        frame.src=blobUrl;
       }catch(error){
-        console.error('[Tribeca Aula] No se pudo escribir el recurso interactivo:', error);
-        frame.dataset.t97Ready='error';
+        console.error('[Tribeca Aula] No se pudo cargar el recurso interactivo:', error);
+        frame.dataset.t98Ready='error';
       }
     });
   }
-
-
   function ensureEmbedHydrationObserver(){
     if(window.__tribecaEmbedHydrationObserver) return;
     try{
       const observer=new MutationObserver(()=>hydrateInteractiveEmbeds(document));
       observer.observe(document.body,{childList:true,subtree:true});
       window.__tribecaEmbedHydrationObserver=observer;
-      setTimeout(()=>hydrateInteractiveEmbeds(document),120);
+      setTimeout(()=>hydrateInteractiveEmbeds(document),80);
+      setTimeout(()=>hydrateInteractiveEmbeds(document),600);
     }catch(_e){}
   }
   ensureEmbedHydrationObserver();
@@ -1027,13 +1028,14 @@
   function materialEmbedMarkupForNewWindow(m={}){
     const source=materialEmbedSource(m);
     if(!source.src && !source.html) return '';
-    const height=Math.max(360, Math.min(Number(m.embed_height||560), 1400));
+    const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     if(source.html){
       const encoded=encodeBase64Utf8(source.html);
       return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>Código HTML insertado</small></div><iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="data:text/html;charset=utf-8;base64,${encoded}" style="min-height:${height}px"></iframe></section>`;
     }
     return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>URL embebida</small></div><iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="${safe(source.src)}" style="min-height:${height}px"></iframe></section>`;
   }
+
 
   function openMaterialInNewWindow(materialId){
     const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
@@ -1107,6 +1109,7 @@
     }
     updateBadges();
     applyTranslations();
+    hydrateInteractiveEmbeds(main);
   }
   function renderInlineSection(target, opts={}) {
     const main = $('#inicio');
@@ -1166,6 +1169,7 @@
     window.scrollTo({top: 0, behavior: 'smooth'});
     updateBadges();
     applyTranslations();
+    hydrateInteractiveEmbeds(main);
       hydrateInteractiveEmbeds(main);
   }
   window.TribecaRenderInlineSection = renderInlineSection;
