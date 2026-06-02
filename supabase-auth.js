@@ -1346,16 +1346,18 @@
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
     const clean=stripEmbedCodeFence(code);
+    const exam=parseExamFromInteractiveCode(clean);
+    if(exam) return {src:'', mode:'exam', html:'', quiz:null, exam};
     const quiz=parseQuizFromInteractiveCode(clean);
-    if(quiz) return {src:'', mode:'quiz', html:'', quiz};
+    if(quiz) return {src:'', mode:'quiz', html:'', quiz, exam:null};
     if(clean){
-      if(/^\s*[\[{]/.test(clean)) return {src:'', mode:'quizError', html:'', quiz:null};
+      if(/^\s*[\[{]/.test(clean) || clean.startsWith('tribeca-exam-json::')) return {src:'', mode:'quizError', html:'', quiz:null, exam:null};
       const iframeSrc=extractIframeSrc(clean);
-      if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:'', quiz:null};
-      return {src:'', mode:'html', html:normalizeEmbeddedHtml(clean), quiz:null};
+      if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:'', quiz:null, exam:null};
+      return {src:'', mode:'html', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null};
     }
-    if(url) return {src:url, mode:'url', html:'', quiz:null};
-    return {src:'', mode:'', html:'', quiz:null};
+    if(url) return {src:url, mode:'url', html:'', quiz:null, exam:null};
+    return {src:'', mode:'', html:'', quiz:null, exam:null};
   }
   function nativeQuizMarkup(quiz){
     if(!quiz?.questions?.length) return '';
@@ -1365,7 +1367,7 @@
     const source=materialEmbedSource(m);
     if(source.mode==='exam') return nativeExamMarkup(source.exam, m);
     if(source.mode==='quiz') return nativeQuizMarkup(source.quiz);
-    if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test. Comprueba que contiene <code>questions</code> y opciones en <code>answerOptions</code>, <code>options</code> u <code>opts</code>.</p></section>`;
+    if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test o simulacro. Comprueba que contiene <code>type: "tribeca-exam"</code> o <code>questions</code> con ejercicios compatibles.</p></section>`;
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const encoded=source.html ? encodeBase64Utf8(source.html) : '';
