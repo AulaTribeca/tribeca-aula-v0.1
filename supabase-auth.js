@@ -1136,6 +1136,9 @@
       type,
       prompt,
       passage,
+      image:String(q.image || q.imageUrl || q.image_url || q.img || '').trim(),
+      imageAlt:String(q.imageAlt || q.image_alt || q.alt || '').trim(),
+      imageCaption:String(q.imageCaption || q.image_caption || q.caption || '').trim(),
       section:String(q.section || q.skill || q.category || q.bloque || q.apartado || '').trim(),
       exerciseTitle:String(q.exerciseTitle || q.exercise_title || q.title || '').trim(),
       points:q.points || q.puntos || null,
@@ -1261,16 +1264,17 @@
       const globalNumber=idx+1;
       const displayNumber=q.originalNumber || number;
       const passage=q.passage?`<blockquote class="exam-passage">${safe(q.passage)}</blockquote>`:'';
+      const imageHtml=q.image?`<figure class="exam-question-image"><img src="${safe(q.image)}" alt="${safe(q.imageAlt||q.imageCaption||q.exerciseTitle||q.prompt)}">${q.imageCaption?`<figcaption>${safe(q.imageCaption)}</figcaption>`:''}</figure>`:'';
       const title=q.exerciseTitle?`<p class="exam-exercise-title">${safe(q.exerciseTitle)}</p>`:'';
       const head=`<div class="exam-question-head"><span class="exam-question-number">${displayNumber}</span><span class="exam-question-type">${safe(questionTypeLabel(q))}</span></div>`;
       const legend=`<legend>${safe(q.prompt)}</legend>`;
-      if(q.type==='matching') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="matching">${head}${title}${legend}${passage}<div class="exam-matching">${q.pairs.map((p,i)=>`<label><span>${safe(p.left)}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${optionsForPairs(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
-      if(q.type==='ordering') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="ordering">${head}${title}${legend}${passage}<div class="exam-ordering">${q.items.map((_,i)=>`<label><span>${i+1}.</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${q.items.map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
-      if(q.type==='short_text') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="short_text">${head}${title}${legend}${passage}<input name="q${idx}" type="text" placeholder="Escribe tu respuesta"></fieldset>`;
-      if(q.type==='writing') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="writing">${head}${title}${legend}${passage}<textarea name="q${idx}" rows="7" placeholder="Escribe tu respuesta"></textarea>${q.keywords?.length?`<small class="exam-help">Se autocorrige por criterios configurados.</small>`:''}</fieldset>`;
+      if(q.type==='matching') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="matching">${head}${title}${legend}${passage}${imageHtml}<div class="exam-matching">${q.pairs.map((p,i)=>`<label><span>${safe(p.left)}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${optionsForPairs(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
+      if(q.type==='ordering') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="ordering">${head}${title}${legend}${passage}${imageHtml}<div class="exam-ordering">${q.items.map((_,i)=>`<label><span>${i+1}.</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${q.items.map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
+      if(q.type==='short_text') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="short_text">${head}${title}${legend}${passage}${imageHtml}<input name="q${idx}" type="text" placeholder="Escribe tu respuesta"></fieldset>`;
+      if(q.type==='writing') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="writing">${head}${title}${legend}${passage}${imageHtml}<textarea name="q${idx}" rows="7" placeholder="Escribe tu respuesta"></textarea>${q.keywords?.length?`<small class="exam-help">Se autocorrige por criterios configurados.</small>`:''}</fieldset>`;
       const multiple=q.type==='multiple_choice';
       const type=multiple?'checkbox':'radio';
-      return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="${safe(q.type)}">${head}${title}${legend}${passage}<div class="exam-options">${q.options.map((o,i)=>`<label><input type="${type}" name="q${idx}${multiple?'[]':''}" value="${i}"><span>${safe(o.text)}</span></label>`).join('')}</div></fieldset>`;
+      return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="${safe(q.type)}">${head}${title}${legend}${passage}${imageHtml}<div class="exam-options">${q.options.map((o,i)=>`<label><input type="${type}" name="q${idx}${multiple?'[]':''}" value="${i}"><span>${safe(o.text)}</span></label>`).join('')}</div></fieldset>`;
     };
     const sectionsHtml=grouped.map(group=>{
       const pts=group.items.length*perQuestion;

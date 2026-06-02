@@ -10858,3 +10858,40 @@ body.is-dark .payment-status-paused {
     display: grid;
   }
 }
+
+
+/* Tribeca Aula · versión 109
+   Soporte visual para imágenes dentro de simulacros de examen. */
+.exam-question-image {
+  margin: .35rem 0 .55rem;
+  padding: .55rem;
+  border: 1px solid rgba(55,49,34,.14);
+  border-radius: 10px;
+  background: #fffdfa;
+}
+
+.exam-question-image img {
+  display: block;
+  width: 100%;
+  max-height: 28rem;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.exam-question-image figcaption {
+  margin-top: .35rem;
+  color: #6b6354;
+  font-size: .86rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+body.is-dark .exam-question-image {
+  background: rgba(212,175,55,.06);
+  border-color: rgba(212,175,55,.18);
+}
+
+body.is-dark .exam-question-image figcaption {
+  color: #cfc5a8;
+}
