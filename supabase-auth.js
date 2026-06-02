@@ -968,6 +968,42 @@
     const typeCard = (value, icon, title, desc) => `<label><input type="radio" name="publicationKind" value="${value}" ${normalizeMaterialKind(kind)===normalizeMaterialKind(value)?'checked':''}><span>${icon} ${title}<small>${desc}</small></span></label>`;
     return `<form id="t16PublicationForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="t18-publication-wizard"><input type="hidden" name="editId" value="${safe(edit?.id||'')}"><input type="hidden" name="editTable" value="${safe(edit?.table||'')}"><section class="window-panel t18-publish-main"><h3>${editing?'Editar publicación':'1. Qué vas a publicar'}</h3>${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}<div class="t18-type-cards">${typeCard('announcement','📣','Anuncio, aviso o noticia','Se verá en Anuncios, no dentro de una materia.')}${typeCard('material','📄','Material de materia','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Las insignias se asignan manualmente desde el panel docente.')}${typeCard('test','🧪','Test externo','Usa el enlace para el test interactivo.')}${typeCard('game','🎮','Juego','Actividad lúdica o enlace a juego.')}</div><div class="window-grid"><label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label><label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label></div><label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label><label>Cuerpo<textarea name="body" rows="7" maxlength="1800" placeholder="Escribe el contenido de la publicación con instrucciones claras.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label><div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div><div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div></section><section class="window-panel publication-files-panel"><h3>2. Archivos adjuntos</h3><p class="meta">Añade una imagen visible o documentos para que el alumnado los consulte desde la publicación.</p><label>Imagen visible en la publicación<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp"><input type="hidden" name="imageUrl" value="${safe(item.image_url||'')}"><span id="t16ImagePreview" class="t16-image-preview">${item.image_url?`<img src="${safe(item.image_url)}" alt="">`:''}</span></label><label>Documentos adjuntos PDF, Word o imágenes<input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple><input type="hidden" name="attachmentsJson" value="${attachmentsJson}"><span class="meta" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span></label></section>${recipientSelector()}<footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer></form>`;
   }
+  async function autoSaveMaterialPayloadToRepository(payload={}, sourceId=null){
+    if(!roleTeacher()) return false;
+    try {
+      const repositoryPayload={
+        source_material_id:sourceId || null,
+        title:payload.title || 'Material sin título',
+        body:payload.body || payload.description || payload.content || '',
+        description:payload.description || payload.body || payload.content || '',
+        content:payload.content || payload.body || payload.description || '',
+        image_url:payload.image_url || null,
+        link_url:payload.link_url || null,
+        font_size:Number(payload.font_size||16),
+        center:payload.center || State.profile?.center || null,
+        stage:payload.stage || State.profile?.stage || null,
+        course:payload.course || State.profile?.course || null,
+        subject:payload.subject || 'Apoyo personalizado',
+        unit_title:payload.unit_title || payload.unit || 'Unidad 1',
+        unit:payload.unit || payload.unit_title || 'Unidad 1',
+        material_type:payload.material_type || payload.type || 'material',
+        attachments:normalizeAttachments(payload),
+        created_by:State.profile.id,
+        active:true,
+        notes:'Guardado automáticamente al publicar o modificar el material.'
+      };
+      let existing=[];
+      if(sourceId) existing = await maybe(table('teacher_material_repository').select('id').eq('source_material_id',sourceId).limit(1), []);
+      if(existing?.[0]?.id) await persistSupabaseRecord('teacher_material_repository', repositoryPayload, existing[0].id);
+      else await persistSupabaseRecord('teacher_material_repository', repositoryPayload, null);
+      await log('repository','Material guardado automáticamente en repositorio',{title:repositoryPayload.title,subject:repositoryPayload.subject});
+      return true;
+    } catch(error) {
+      console.warn('[Tribeca Aula] No se pudo guardar automáticamente en el repositorio docente:', error);
+      return false;
+    }
+  }
+
   async function savePublication(form) {
     const fd=new FormData(form); const rawKind=fd.get('publicationKind'); const kind=normalizeMaterialKind(rawKind); const scope=fd.get('targetScope')||'all'; const ids=fd.getAll('targetUserIds'); const editId=String(fd.get('editId')||'').trim(); const editTable=String(fd.get('editTable')||'').trim();
     const rec={ title:fd.get('title'), body:fd.get('body')||'', description:fd.get('body')||'', content:fd.get('body')||'', image_url:fd.get('imageUrl')||null, link_url:fd.get('linkUrl')||null, font_size:Number(fd.get('fontSize')||16), target_scope:scope, target_user_ids:ids, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, created_by:State.profile.id, hidden:false };
@@ -977,10 +1013,17 @@
     const tableName = isAnnouncement ? 'announcements' : 'subject_materials';
     const payload = isAnnouncement ? {...rec, announcement_type:'announcement', attachments} : {...rec, subject:fd.get('subject')||'Apoyo personalizado', unit_title:fd.get('unit')||'Unidad 1', unit:fd.get('unit')||'Unidad 1', material_type:dbMaterialType(kind), badge_codes:[], attachments};
     if(editId) { delete payload.created_by; delete payload.hidden; }
-    await persistSupabaseRecord(tableName, payload, editId || null);
+    const saveResult = await persistSupabaseRecord(tableName, payload, editId || null);
+    let repositorySaved=false;
+    if(!isAnnouncement) {
+      const savedId = editId || saveResult?.data?.[0]?.id || saveResult?.data?.id || null;
+      repositorySaved = await autoSaveMaterialPayloadToRepository(payload, savedId);
+    }
     await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName});
     State.pendingPublicationEdit=null; State.prefillPublicationSubject=null;
-    await loadData(true); toast(editId?'Publicación modificada.':'Publicación guardada.'); form.reset(); rerender();
+    await loadData(true);
+    const msg = isAnnouncement ? (editId?'Publicación modificada.':'Publicación guardada.') : (repositorySaved ? (editId?'Material modificado y actualizado en el repositorio.':'Material publicado y guardado automáticamente en el repositorio.') : (editId?'Material modificado. No se pudo actualizar el repositorio.':'Material publicado. No se pudo guardar automáticamente en el repositorio.'));
+    toast(msg); form.reset(); rerender();
   }
 
   function eventColorType(e){ return e.event_type || e.type || 'personal'; }
