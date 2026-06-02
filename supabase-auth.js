@@ -496,28 +496,34 @@
     try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
     if(!State.profile) { showLogin(); return; }
     const p=State.profile;
-    $$('[data-tool="chat"], #chatBadge').forEach(el=>el.closest?.('button')?.remove?.() || el.remove());
-    updateTopProfile();
-    const main = $('#inicio'); if(!main) return;
-    document.body.classList.toggle('is-teacher', roleTeacher());
-    document.body.classList.toggle('is-student', !roleTeacher());
-    ensureMainNavHomeButton();
-    const pause = !roleTeacher() ? activePauseFor(p.id) : null;
-    document.body.classList.toggle('is-paused-student', !!pause);
-    if(pause){
-      document.body.classList.remove('is-inline-section','is-standalone-page');
-      State.activeInlineSection = null;
-      State.activeInlineOptions = {};
-      State.windows.forEach(w=>w?.remove?.());
-      State.windows.clear();
-      main.innerHTML = pauseLockContent(pause);
-      updateBadges();
-      setActiveMainNav('home');
-      applyTranslations();
-      return;
+    const main = $('#inicio');
+    try {
+      $$('[data-tool="chat"], #chatBadge').forEach(el=>el.closest?.('button')?.remove?.() || el.remove());
+      updateTopProfile();
+      if(!main) return;
+      document.body.classList.toggle('is-teacher', roleTeacher());
+      document.body.classList.toggle('is-student', !roleTeacher());
+      ensureMainNavHomeButton();
+      const pause = !roleTeacher() ? activePauseFor(p.id) : null;
+      document.body.classList.toggle('is-paused-student', !!pause);
+      if(pause){
+        document.body.classList.remove('is-inline-section','is-standalone-page');
+        State.activeInlineSection = null;
+        State.activeInlineOptions = {};
+        State.windows.forEach(w=>w?.remove?.());
+        State.windows.clear();
+        main.innerHTML = pauseLockContent(pause);
+        updateBadges();
+        setActiveMainNav('home');
+        applyTranslations();
+        return;
+      }
+      if(roleTeacher()) main.innerHTML = teacherHome(); else main.innerHTML = studentHome();
+      bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations();
+    } catch(error) {
+      console.error('[Tribeca Aula] Error al renderizar la aplicación:', error);
+      if(main) main.innerHTML = `<section class="panel app-error-panel"><p class="eyebrow">Tribeca Aula</p><h1>No se pudo cargar correctamente el panel</h1><p>${safe(error?.message || 'Error de interfaz')}</p><button type="button" class="primary-btn" onclick="location.reload()">Recargar aula</button></section>`;
     }
-    if(roleTeacher()) main.innerHTML = teacherHome(); else main.innerHTML = studentHome();
-    bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations();
   }
   function updateTopProfile() {
     const p=State.profile || {}; const avatar=$('#profileAvatar');
@@ -533,7 +539,7 @@
         avatar.textContent=p.avatar_icon || '💡';
       }
     }
-    const name=$('.profile-name'); if(name) textSet(name, 'Mi cuenta');
+    const name=$('.profile-name'); if(name) name.textContent = 'Mi cuenta';
     const menu=$('#profileMenu');
     if(menu){
       menu.innerHTML=accountMenuMarkup();
