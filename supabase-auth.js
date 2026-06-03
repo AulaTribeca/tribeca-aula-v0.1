@@ -1053,12 +1053,12 @@
     const formDate=editing ? String(editing.task_date||today).slice(0,10) : today;
     const formNotes=editing ? (editing.notes||'') : '';
     return `<section class="teacher-tasks-manager window-panel" id="teacherTasksManager"><header><div><p class="eyebrow">Tareas pendientes</p><h2>Agenda personal de Patricia</h2><p class="meta">Tareas personales y de Tribeca. Puedes añadir, editar, eliminar y marcar tareas como hechas. No se muestra en el panel del alumnado.</p></div><button type="button" class="secondary-btn" data-t114-close-tasks>Cerrar</button></header>
-      <form class="teacher-task-form" onsubmit="return window.TribecaSaveTeacherTask(this,event)">
+      <form class="teacher-task-form" data-t117-task-form onsubmit="return window.TribecaSaveTeacherTask(this,event)">
         <input type="hidden" name="id" value="${safe(editing?.id||'')}">
         <label>Tarea<input name="title" required maxlength="220" value="${safe(formTitle)}" placeholder="Ejemplo: preparar simulacro de Historia"></label>
         <label>Fecha<input name="taskDate" type="date" value="${safe(formDate)}" required></label>
         <label class="full-row">Notas<textarea name="notes" rows="2" maxlength="800" placeholder="Detalles opcionales">${safe(formNotes)}</textarea></label>
-        <div class="teacher-task-form-actions"><button type="submit" class="primary-btn">${editing?'Guardar cambios':'Añadir tarea'}</button>${editing?'<button type="button" class="secondary-btn" data-t116-cancel-task-edit>Cancelar edición</button>':''}</div>
+        <div class="teacher-task-form-actions"><button type="button" class="primary-btn" data-t117-save-task>${editing?'Guardar cambios':'Añadir tarea'}</button>${editing?'<button type="button" class="secondary-btn" data-t116-cancel-task-edit>Cancelar edición</button>':''}<span class="form-status teacher-task-status" data-t117-task-status></span></div>
       </form>
       <div class="teacher-task-list">${rows.length?rows.map(t=>`<article class="teacher-task-row ${t.done?'is-done':''}"><label><input type="checkbox" data-t114-toggle-task="${safe(t.id)}" ${t.done?'checked':''}><span><strong>${safe(t.title||'Tarea sin título')}</strong><small>${safe(fmtDate(t.task_date||today))}${t.notes?` · ${safe(t.notes)}`:''}</small></span></label><div class="teacher-task-row-actions"><button type="button" class="secondary-btn compact-btn" data-t116-edit-task="${safe(t.id)}">Editar</button><button type="button" class="secondary-btn compact-btn" data-t114-delete-task="${safe(t.id)}">Eliminar</button></div></article>`).join(''):'<div class="empty-state">No hay tareas pendientes anotadas.</div>'}</div>
     </section>`;
@@ -1073,7 +1073,7 @@
     events.forEach(e=>{ if(!byDay.has(e.date)) byDay.set(e.date, []); byDay.get(e.date).push(e); });
     const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state teacher-week-empty">No hay eventos previstos esta semana.</div>';
     const pending=todayTeacherTasks().length;
-    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span></div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><button type="button" class="teacher-tasks-summary" data-t114-open-tasks><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</button></section>`;
+    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span></div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><article class="teacher-tasks-summary" data-t114-open-tasks role="button" tabindex="0" aria-label="Abrir tareas pendientes"><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</article></section>`;
   }
   function activeClassroomsQuickAccess(){
     const rows=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
@@ -3904,24 +3904,47 @@ function classroomCard(c,i=0){
     toast('Clase eliminada.');
     rerender();
   }
-  window.TribecaSaveTeacherTask=function(form,ev){
-    ev?.preventDefault?.(); ev?.stopPropagation?.();
+  window.TribecaSaveTeacherTask=async function(form,ev){
+    ev?.preventDefault?.();
+    ev?.stopPropagation?.();
+    if(ev?.stopImmediatePropagation) ev.stopImmediatePropagation();
     if(!roleTeacher()) return false;
-    const fd=new FormData(form);
-    const id=String(fd.get('id')||'').trim();
-    const existing=id ? teacherTaskById(id) : null;
-    const title=String(fd.get('title')||'').trim();
-    const task_date=String(fd.get('taskDate')||todayIso()).slice(0,10);
-    const notes=String(fd.get('notes')||'').trim()||null;
-    if(!title){ toast('Escribe la tarea pendiente.'); return false; }
-    const payload={title, task_date, notes, done:!!existing?.done, active:true, updated_at:new Date().toISOString()};
-    if(!id) payload.created_by=State.profile.id;
-    persistSupabaseRecord('teacher_tasks', payload, id||null).then(()=>loadData(true)).then(()=>{
+    if(!form) return false;
+    const status=form.querySelector('[data-t117-task-status]');
+    const btn=form.querySelector('[data-t117-save-task]');
+    try{
+      const fd=new FormData(form);
+      const id=String(fd.get('id')||'').trim();
+      const existing=id ? teacherTaskById(id) : null;
+      const title=String(fd.get('title')||'').trim();
+      const task_date=String(fd.get('taskDate')||todayIso()).slice(0,10);
+      const notes=String(fd.get('notes')||'').trim()||null;
+      if(!title){
+        if(status){ status.textContent='Escribe la tarea pendiente.'; status.className='form-status teacher-task-status is-error'; }
+        toast('Escribe la tarea pendiente.');
+        form.elements.title?.focus?.();
+        return false;
+      }
+      if(status){ status.textContent=id?'Guardando cambios…':'Añadiendo tarea…'; status.className='form-status teacher-task-status is-info'; }
+      if(btn) btn.disabled=true;
+      const payload={title, task_date, notes, done:!!existing?.done, active:true, updated_at:new Date().toISOString()};
+      if(!id) payload.created_by=State.profile.id;
+      await persistSupabaseRecord('teacher_tasks', payload, id||null);
+      await loadData(true);
       State.teacherTasksOpen=true;
       State.pendingTeacherTaskEdit=null;
       toast(id?'Tarea actualizada.':'Tarea guardada.');
       refreshTeacherTasksArea(true);
-    }).catch(e=>toast(e.message||'No se pudo guardar la tarea.'));
+    } catch(e){
+      console.error('[Tribeca Aula] No se pudo guardar la tarea:', e);
+      const msg=String(e?.message||'No se pudo guardar la tarea.');
+      const friendly=/teacher_tasks|relation .* does not exist|schema cache|column/i.test(msg)
+        ? 'No se pudo guardar la tarea. Comprueba que el SQL de la v114 está ejecutado en Supabase.'
+        : msg;
+      if(status){ status.textContent=friendly; status.className='form-status teacher-task-status is-error'; }
+      toast(friendly);
+      if(btn) btn.disabled=false;
+    }
     return false;
   };
   window.TribecaToggleTeacherTask=function(id,done){
@@ -4284,7 +4307,12 @@ function classroomCard(c,i=0){
     } catch(e){ console.error(e); toast(e.message || 'No se pudo completar la acción.'); }
     finally { setTimeout(()=>{ if(form) form.dataset.tribecaSubmitting = ''; }, 250); }
   }
-  window.TribecaSubmitForm = function(form, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } handleManagedSubmit(form); return false; };
+  window.TribecaSubmitForm = function(form, ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    if(form?.matches?.('[data-t117-task-form], .teacher-task-form')) return window.TribecaSaveTeacherTask(form, ev);
+    handleManagedSubmit(form);
+    return false;
+  };
   window.TribecaSaveStudentProfileDirect = function(btn, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } const form = btn?.closest?.('form') || (document.getElementById('t24StudentProfileForm') || document.getElementById('t16StudentProfileForm')); if(!form){ toast('No se encontró el formulario de perfil. Cierra y vuelve a abrir Perfiles del alumnado.'); return false; } saveStudentProfile(form); return false; };
   window.TribecaSaveCalendarEventDirect = function(btn, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } const form = btn?.closest?.('form') || document.getElementById('t16EventForm'); if(!form){ toast('No se encontró el formulario del calendario.'); return false; } saveEvent(form); return false; };
   window.TribecaSaveGuidanceDirect = function(btn, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } const form = btn?.closest?.('form') || document.getElementById('t24GuidanceForm') || document.getElementById('t18GuidanceForm'); if(!form){ toast('No se encontró el formulario de orientación.'); return false; } saveGuidance(form); return false; };
@@ -4340,6 +4368,7 @@ function classroomCard(c,i=0){
       const dataTool=ev.target.closest?.('[data-tool]'); if(dataTool){ ev.preventDefault(); ev.stopImmediatePropagation(); closeAccountMenu(); openTool(dataTool.dataset.tool); return; }
       const undoBtn=ev.target.closest?.('[data-t30-undo]'); if(undoBtn){ ev.preventDefault(); ev.stopPropagation(); await undoLast(); return; } const teacherTool=ev.target.closest?.('[data-t16-tool]'); if(teacherTool){ ev.preventDefault(); openTool(teacherTool.dataset.t16Tool); return; }
       const taskOpen=ev.target.closest?.('[data-t114-open-tasks]'); if(taskOpen){ ev.preventDefault(); ev.stopPropagation(); State.pendingTeacherTaskEdit=null; renderTeacherHomeWithTasks(true); return; }
+      const taskSave=ev.target.closest?.('[data-t117-save-task]'); if(taskSave){ ev.preventDefault(); ev.stopPropagation(); const f=taskSave.closest('form'); if(f) window.TribecaSaveTeacherTask(f, ev); return; }
       const taskClose=ev.target.closest?.('[data-t114-close-tasks]'); if(taskClose){ ev.preventDefault(); ev.stopPropagation(); State.teacherTasksOpen=false; State.pendingTeacherTaskEdit=null; renderApp(); return; }
       const taskEdit=ev.target.closest?.('[data-t116-edit-task]'); if(taskEdit){ ev.preventDefault(); ev.stopPropagation(); State.pendingTeacherTaskEdit=taskEdit.dataset.t116EditTask; renderTeacherHomeWithTasks(true); return; }
       const taskCancelEdit=ev.target.closest?.('[data-t116-cancel-task-edit]'); if(taskCancelEdit){ ev.preventDefault(); ev.stopPropagation(); State.pendingTeacherTaskEdit=null; renderTeacherHomeWithTasks(true); return; }

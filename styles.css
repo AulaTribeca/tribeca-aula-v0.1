@@ -11770,3 +11770,46 @@ body.is-dark .teacher-tasks-summary::after {
     flex: 1 1 auto;
   }
 }
+
+
+/* Tribeca Aula · versión 117
+   Tareas pendientes: apertura por clic en la tarjeta y guardado directo fiable. */
+.teacher-tasks-summary::after {
+  content: none !important;
+  display: none !important;
+}
+
+.teacher-tasks-summary[role="button"] {
+  appearance: none;
+  border: 1px solid rgba(55,49,34,.10);
+  font: inherit;
+}
+
+.teacher-tasks-summary[role="button"]:focus-visible {
+  outline: 3px solid rgba(168,135,45,.38);
+  outline-offset: 4px;
+}
+
+.teacher-task-form[data-t117-task-form] {
+  align-items: end;
+}
+
+.teacher-task-status {
+  align-self: center;
+  min-width: min(22rem, 100%);
+  font-weight: 850;
+}
+
+.teacher-task-status.is-info {
+  color: var(--green);
+}
+
+.teacher-task-status.is-error {
+  color: #8d2424;
+}
+
+@media (max-width: 760px) {
+  .teacher-task-status {
+    width: 100%;
+  }
+}
