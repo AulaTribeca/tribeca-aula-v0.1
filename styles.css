@@ -11714,3 +11714,59 @@ body.is-dark .tribeca-a11y-grid article {
     flex-wrap: wrap;
   }
 }
+
+
+/* Tribeca Aula · versión 116
+   Gestión completa y navegación correcta de tareas pendientes docentes. */
+.teacher-task-form-actions,
+.teacher-task-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  align-items: center;
+}
+
+.teacher-task-form-actions {
+  align-self: end;
+}
+
+.teacher-task-row-actions {
+  justify-content: flex-end;
+}
+
+.teacher-task-row .compact-btn {
+  padding-inline: .7rem;
+}
+
+.teacher-tasks-summary {
+  position: relative;
+}
+
+.teacher-tasks-summary::after {
+  content: 'Abrir agenda';
+  display: inline-flex;
+  width: fit-content;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  background: rgba(16,63,36,.08);
+  color: var(--green);
+  font-size: .78rem;
+  font-weight: 950;
+}
+
+body.is-dark .teacher-tasks-summary::after {
+  background: rgba(212,175,55,.12);
+  color: #f2d37c;
+}
+
+@media (max-width: 760px) {
+  .teacher-task-form-actions,
+  .teacher-task-row-actions {
+    width: 100%;
+  }
+
+  .teacher-task-form-actions > *,
+  .teacher-task-row-actions > * {
+    flex: 1 1 auto;
+  }
+}
