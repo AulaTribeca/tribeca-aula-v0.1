@@ -10895,3 +10895,204 @@ body.is-dark .exam-question-image {
 body.is-dark .exam-question-image figcaption {
   color: #cfc5a8;
 }
+
+
+/* Tribeca Aula · versión 112
+   Bienvenida docente, eventos semanales, acceso rápido a clases y tipos de evento de alumnado. */
+.teacher-dashboard-v112 {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.teacher-welcome-panel {
+  display: grid;
+  grid-template-columns: minmax(0, .95fr) minmax(18rem, 1.15fr);
+  gap: 1rem;
+  align-items: stretch;
+  background:
+    radial-gradient(circle at top right, rgba(168,135,45,.14), transparent 36%),
+    linear-gradient(135deg, rgba(16,63,36,.08), rgba(255,255,255,.82));
+  border: 1px solid rgba(55,49,34,.10);
+}
+
+.teacher-welcome-copy {
+  display: grid;
+  align-content: center;
+  gap: .35rem;
+  padding: .35rem;
+}
+
+.teacher-welcome-copy h2 {
+  margin: 0;
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 3vw, 3.4rem);
+  line-height: 1.05;
+}
+
+.teacher-welcome-copy p,
+.teacher-welcome-copy span {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.teacher-week-summary {
+  display: grid;
+  gap: .55rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(55,49,34,.08);
+}
+
+.teacher-week-summary h3 {
+  margin: 0;
+  color: var(--text);
+}
+
+.teacher-week-day {
+  display: grid;
+  gap: .3rem;
+  padding: .7rem .75rem;
+  border-radius: 14px;
+  background: rgba(250,248,243,.86);
+  border: 1px solid rgba(55,49,34,.07);
+}
+
+.teacher-week-day strong {
+  color: var(--green);
+  font-weight: 950;
+}
+
+.teacher-week-day span,
+.teacher-week-day em {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: var(--text);
+  font-style: normal;
+  font-weight: 780;
+  line-height: 1.3;
+}
+
+.teacher-quick-classes {
+  display: grid;
+  gap: .85rem;
+}
+
+.teacher-quick-class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr));
+  gap: .85rem;
+}
+
+.teacher-quick-class-card {
+  display: grid;
+  gap: .85rem;
+  min-height: 11rem;
+  padding: 1rem;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(16,63,36,.92), rgba(16,63,36,.72)),
+    var(--panel-solid);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 .75rem 1.7rem rgba(31,28,17,.08);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.teacher-quick-class-card:hover,
+.teacher-quick-class-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 1rem 2rem rgba(31,28,17,.12);
+  outline: none;
+}
+
+.teacher-quick-class-card p,
+.teacher-quick-class-card h3,
+.teacher-quick-class-card small {
+  margin: 0;
+}
+
+.teacher-quick-class-card p {
+  opacity: .78;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: .75rem;
+}
+
+.teacher-quick-class-card h3 {
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.teacher-quick-class-card small {
+  opacity: .85;
+  font-weight: 780;
+}
+
+.teacher-quick-class-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  align-self: end;
+}
+
+.teacher-quick-class-card footer span {
+  display: inline-flex;
+  padding: .24rem .55rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
+  font-weight: 850;
+  font-size: .8rem;
+}
+
+.event-form-v112 .event-student-note {
+  margin: -.25rem 0 .25rem;
+}
+
+.event-presentation,
+.day-event-dot.event-presentation { background: #9b5de5 !important; }
+.event-excursion,
+.day-event-dot.event-excursion { background: #2a9d8f !important; }
+.event-student_absence,
+.day-event-dot.event-student_absence { background: #8d2424 !important; }
+.event-delivery,
+.day-event-dot.event-delivery { background: #a8872d !important; }
+.event-exam,
+.day-event-dot.event-exam { background: #0b3d22 !important; }
+
+.event-legend .event-presentation,
+.event-legend .event-excursion,
+.event-legend .event-student_absence {
+  display: inline-block;
+  width: .7rem;
+  height: .7rem;
+  border-radius: 999px;
+}
+
+body.is-dark .teacher-welcome-panel,
+body.is-dark .teacher-week-summary,
+body.is-dark .teacher-week-day {
+  background: var(--panel-solid);
+  border-color: rgba(212,175,55,.16);
+}
+
+body.is-dark .teacher-welcome-copy h2,
+body.is-dark .teacher-week-day strong {
+  color: #f2d37c;
+}
+
+@media (max-width: 900px) {
+  .teacher-welcome-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .teacher-quick-class-grid {
+    grid-template-columns: 1fr;
+  }
+}

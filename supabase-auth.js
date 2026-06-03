@@ -833,6 +833,32 @@
     return { text:q[key] || q.es, author:q.author };
   }
 
+  function teacherWeekBounds(date=new Date()){
+    const d=new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diff=(d.getDay()+6)%7;
+    const start=addDays(d,-diff);
+    const end=addDays(start,6);
+    return {start:toIso(start), end:toIso(end)};
+  }
+  function weekEventsForTeacher(){
+    const {start,end}=teacherWeekBounds(new Date());
+    return relevantEvents().filter(e=>e.date>=start && e.date<=end).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')) || String(a.title||'').localeCompare(String(b.title||''),'es'));
+  }
+  function teacherWelcomePanel(){
+    const today=new Date();
+    const dateText=today.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const {start,end}=teacherWeekBounds(today);
+    const events=weekEventsForTeacher();
+    const byDay=new Map();
+    events.forEach(e=>{ if(!byDay.has(e.date)) byDay.set(e.date, []); byDay.get(e.date).push(e); });
+    const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state">No hay eventos previstos esta semana.</div>';
+    return `<section class="teacher-welcome-panel window-panel"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span></div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div></section>`;
+  }
+  function activeClassroomsQuickAccess(){
+    const rows=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
+    if(!rows.length) return `<section class="teacher-quick-classes window-panel"><div class="section-heading"><h2>Clases activas</h2><span>0 clases</span></div><div class="empty-state">Todavía no hay clases activas.</div></section>`;
+    return `<section class="teacher-quick-classes window-panel"><div class="section-heading"><h2>Clases activas</h2><span>${rows.length} clase${rows.length===1?'':'s'}</span></div><div class="teacher-quick-class-grid">${rows.map((c,i)=>{ const assigned=classroomStudents(c.id); const subjects=classroomSubjects(c.id); const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id))); const mats=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)); return `<article class="teacher-quick-class-card classroom-theme-${i%6}" tabindex="0" role="button" data-t90-open-class="${safe(c.id)}"><div><p>${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></div><footer><span>${assigned.length} alumno${assigned.length===1?'':'s'}</span><span>${subjects.length} materia${subjects.length===1?'':'s'}</span><span>${units.length} unidad${units.length===1?'':'es'}</span><span>${mats.length} pub.</span></footer></article>`; }).join('')}</div></section>`;
+  }
   function teacherHome() {
     const students=State.data.students||[]; const assignedBadges=(State.data.userBadges||[]).length; const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
     const tools=[
@@ -849,8 +875,9 @@
     ];
     const alertCount = teacherAlertCount();
     const unseenAlerts = Math.max(0, alertCount - Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
-    return `<section class="teacher-dashboard t16-dashboard"><div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${assignedBadges} insignias asignadas</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div></section>`;
+    return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${assignedBadges} insignias asignadas</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${activeClassroomsQuickAccess()}</section>`;
   }
+
   function studentAssignedClasses(studentId=State.profile?.id){
     const assignments=(State.data.classStudents||[]).filter(a=>String(a.user_id)===String(studentId) && a.active!==false);
     const ids=new Set(assignments.map(a=>String(a.class_id)));
@@ -2059,7 +2086,7 @@ render();
   function isClosedEvent(e){ const t=eventColorType(e); return ['national','galicia','local','closed'].includes(t) || /no abre|cerrad/i.test(String(e.body||e.description||e.title||'')); }
   function calendarGrid() {
     const month=State.calendarMonth; const first=startMonth(month); const start=addDays(first,-((first.getDay()+6)%7)); const events=relevantEvents(); const weekdays=['L','M','X','J','V','S','D'];
-    let html=`<div class="t16-calendar-head"><button type="button" data-t16-cal-prev aria-label="Mes anterior">‹</button><button type="button" class="t40-calendar-month-button" data-t40-cal-jump title="Elegir una fecha concreta">${month.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}</button><button type="button" data-t16-cal-next aria-label="Mes siguiente">›</button></div><div class="event-legend"><span><i class="event-national"></i>Nacional</span><span><i class="event-galicia"></i>Galicia</span><span><i class="event-local"></i>Corcubión</span><span><i class="event-school"></i>Escolar</span><span><i class="event-exam"></i>Examen</span><span><i class="event-delivery"></i>Entrega</span><span><i class="event-personal"></i>Personal</span></div><div class="t16-calendar-grid">${weekdays.map(d=>`<div class="calendar-weekday">${d}</div>`).join('')}`;
+    let html=`<div class="t16-calendar-head"><button type="button" data-t16-cal-prev aria-label="Mes anterior">‹</button><button type="button" class="t40-calendar-month-button" data-t40-cal-jump title="Elegir una fecha concreta">${month.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}</button><button type="button" data-t16-cal-next aria-label="Mes siguiente">›</button></div><div class="event-legend"><span><i class="event-national"></i>Nacional</span><span><i class="event-galicia"></i>Galicia</span><span><i class="event-local"></i>Corcubión</span><span><i class="event-school"></i>Escolar</span><span><i class="event-exam"></i>Examen</span><span><i class="event-delivery"></i>Entrega</span><span><i class="event-presentation"></i>Presentación</span><span><i class="event-excursion"></i>Excursión</span><span><i class="event-student_absence"></i>No asistencia</span><span><i class="event-personal"></i>Personal</span></div><div class="t16-calendar-grid">${weekdays.map(d=>`<div class="calendar-weekday">${d}</div>`).join('')}`;
     for(let i=0;i<42;i++){ const d=addDays(start,i); const iso=toIso(d); const evs=events.filter(e=>e.date===iso); html+=`<button type="button" class="calendar-day ${d.getMonth()!==month.getMonth()?'is-other':''} ${iso===todayIso()?'is-today':''} ${iso===State.selectedDate?'is-selected':''} ${evs.some(isClosedEvent)?'is-closed-day':''}" data-t16-day="${iso}"><span class="day-number">${d.getDate()}</span>${evs.slice(0,4).map(e=>`<span class="day-event-label"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}</button>`; }
     return html+'</div>';
   }
@@ -2072,21 +2099,26 @@ render();
     const edit=State.selectedEventId ? events.find(e=>e.id===State.selectedEventId) : null; const closed=selected.filter(isClosedEvent);
     return `<div class="t16-calendar-layout premium-calendar calendar-clean-v107"><section class="window-panel calendar-main-panel">${calendarGrid()}</section><section class="window-panel calendar-side-panel">${closed.length?`<div class="closed-alert"><strong>Tribeca Academia no abre este día</strong><p>${closed.map(e=>safe(e.title)).join(' · ')}</p></div>`:''}<h3>Eventos del día · ${fmtDate(State.selectedDate)}</h3><div class="item-list">${selected.length?selected.map(e=>eventCard(e)).join(''):'<div class="empty-state">No hay eventos este día.</div>'}</div><details class="teacher-option-drawer calendar-form-drawer" ${forceCreate||edit?'open':''}><summary><span>${edit?'Editar fecha':'Añadir fecha'}</span><em>${safe(State.selectedDate)}</em></summary>${eventForm(edit)}</details></section><section class="window-panel upcoming-panel"><h3>Próximas fechas <span class="meta">7 días</span></h3><div class="item-list">${upcoming.map(e=>`<article class="list-item event-${safe(eventColorType(e))}" data-t16-event="${safe(e.id)}"><strong>${fmtDate(e.date)} · ${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))}</small></article>`).join('')||'<div class="empty-state">Sin próximas fechas en los próximos 7 días.</div>'}</div></section></div>`;
   }
-  function eventLabel(e){ const t=eventColorType(e); return ({national:'Nacional',galicia:'Galicia',corcubion:'Corcubión',school:'Escolar',exam:'Examen',delivery:'Entrega',personal:'Personal',teacher:'Profesora',closed:'Tribeca cerrado',class:'Grupo-clase',student_absence:'No asistiré a clases','school-proposal':'Escolar'}[t] || t || 'Evento'); }
+  function eventLabel(e){ const t=eventColorType(e); return ({national:'Nacional',galicia:'Galicia',corcubion:'Corcubión',local:'Local',school:'Escolar',exam:'Examen',delivery:'Entrega de trabajo',presentation:'Presentación',excursion:'Excursión',personal:'Personal',teacher:'Profesora',closed:'Tribeca cerrado',class:'Grupo-clase',student_absence:'No asistiré este día a clases','school-proposal':'Escolar'}[t] || t || 'Evento'); }
   function eventCard(e){ const actions=canEditEvent(e)?`<div class="inline-actions"><button type="button" data-t16-event="${safe(e.id)}">Editar</button><button type="button" data-t16-hide-event="${safe(e.id)}">${e.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-event="${safe(e.id)}">Eliminar</button></div>`:''; return `<article class="list-item event-${safe(eventColorType(e))}"><strong>${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))} · Añadido por ${safe(e.author_name||e.created_by_name||studentName(e.created_by)||'Tribeca Aula')}</small>${actions}</article>`; }
+  function eventDefaultTitle(type='personal'){
+    return ({exam:'Examen',delivery:'Entrega de trabajo',presentation:'Presentación',excursion:'Excursión',student_absence:'No asistiré este día a clases',personal:'Evento personal',class:'Evento de grupo',teacher:'Profesora',closed:'Tribeca cerrado',school:'Escolar'}[String(type||'personal')] || 'Evento');
+  }
   function eventForm(e=null){
     const can=!e||canEditEvent(e);
     const teacher = roleTeacher();
     const typeOptions = teacher
-      ? [['teacher','Profesora'],['closed','Tribeca cerrado'],['personal','Personal'],['class','Clase'],['exam','Examen'],['delivery','Entrega'],['school','Escolar']]
-      : [['student_absence','No asistiré a clases'],['personal','Personal'],['class','Grupo-clase']];
+      ? [['teacher','Profesora'],['closed','Tribeca cerrado'],['personal','Personal'],['class','Clase'],['exam','Examen'],['delivery','Entrega'],['presentation','Presentación'],['excursion','Excursión'],['school','Escolar']]
+      : [['exam','Examen'],['delivery','Entrega de trabajo'],['presentation','Presentación'],['excursion','Excursión'],['student_absence','No asistiré este día a clases']];
     const scopeOptions = teacher
       ? [['all','Todo el alumnado'],['class','Grupo-clase'],['user','Personal']]
       : [['user','Solo para mí'],['class','Mi grupo-clase']];
-    const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'personal');
-    const currentScope = e?.scope || e?.target_scope || 'user';
-    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><label>Título<input name="title" value="${safe(e?.title||'')}" required ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><div class="window-grid"><label>Tipo<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
+    const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'exam');
+    const currentScope = e?.scope || e?.target_scope || (currentType==='student_absence'?'user':'user');
+    const titleRequired = teacher ? 'required' : '';
+    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form event-form-v112"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><div class="window-grid"><label>Tipo de evento<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><label>Título${teacher?'':' opcional'}<input name="title" value="${safe(e?.title||'')}" placeholder="${safe(eventDefaultTitle(currentType))}" ${titleRequired} ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" placeholder="Añade detalles si lo necesitas" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><p class="form-status is-info event-student-note">${teacher?'':'El tipo “No asistiré este día a clases” se guarda como evento personal y avisa a la profesora.'}</p><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
+
   async function triggerEmailOutboxSend(eventType=''){
     try {
       if(!State.client?.functions?.invoke) return null;
@@ -2166,8 +2198,10 @@ render();
   async function saveEvent(form){
     const fd=new FormData(form); const id=String(fd.get('id')||'').trim(); const type=fd.get('eventType')||'personal';
     const rawScope = fd.get('scope') || (roleTeacher() ? 'all' : 'user');
-    const scope = roleTeacher() ? (type==='closed'?'all':rawScope) : (rawScope==='class'?'class':'user');
-    const rec={ id:id||null, event_date:fd.get('eventDate'), title:String(fd.get('title')||'').trim(), body:fd.get('body')||'', event_type:type, scope, center:State.profile.center, stage:State.profile.stage, course:State.profile.course, created_by:State.profile.id, user_id:(scope==='user'?State.profile.id:null), hidden:false };
+    const scope = roleTeacher() ? (type==='closed'?'all':rawScope) : (type==='student_absence'?'user':(rawScope==='class'?'class':'user'));
+    const title=String(fd.get('title')||'').trim() || eventDefaultTitle(type);
+    const body=String(fd.get('body')||'').trim() || (type==='student_absence'?'Aviso creado por el alumnado: no asistirá este día a clases.':'');
+    const rec={ id:id||null, event_date:fd.get('eventDate'), title, body, event_type:type, scope, center:State.profile.center, stage:State.profile.stage, course:State.profile.course, created_by:State.profile.id, user_id:(scope==='user'?State.profile.id:null), hidden:false };
     if(!rec.event_date || !rec.title) throw new Error('Completa la fecha y el título.');
     const rpc=await State.client.rpc('tribeca_save_calendar_event_v27',{p_payload:rec});
     if(rpc.error) throw rpc.error;
