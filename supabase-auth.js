@@ -60,6 +60,142 @@
   async function undoLast(){ const item = UndoStack.pop(); if(!item) return toast('No hay cambios recientes para deshacer.'); if(Date.now() - item.at > UNDO_TTL_MS) return toast('El plazo para deshacer este cambio ha caducado.'); try{ await item.fn(); await loadData(true); renderApp(); rerender(); toast(`Cambio deshecho: ${item.label}`); }catch(e){ console.error(e); toast(e.message || 'No se pudo deshacer el último cambio.'); } }
   window.TribecaUndoLastAction = undoLast;
 
+  const A11Y_STORAGE_KEY = 'tribeca-accessibility-settings-v115';
+  const A11Y_DEFAULTS = {
+    background:'#f8f7f2',
+    text:'#172018',
+    fontFace:'reset',
+    kerning:false,
+    fontSize:1,
+    hideImages:false,
+    letterSpacing:0,
+    lineHeight:1.2,
+    linkHighlight:false
+  };
+  function a11yDefaults(){ return {...A11Y_DEFAULTS}; }
+  function loadAccessibilitySettings(){
+    try {
+      return {...a11yDefaults(), ...(JSON.parse(localStorage.getItem(A11Y_STORAGE_KEY) || '{}') || {})};
+    } catch(_e) {
+      return a11yDefaults();
+    }
+  }
+  function saveAccessibilitySettings(settings={}){
+    const next={...a11yDefaults(), ...settings};
+    localStorage.setItem(A11Y_STORAGE_KEY, JSON.stringify(next));
+    return next;
+  }
+  function a11yDict(){
+    return {
+      es:{accessibility:'Accesibilidad', open:'Abrir opciones de accesibilidad', close:'Cerrar', background:'Color de fondo', text:'Color del texto', fontFace:'Tipo de letra', reset:'Restablecer', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Interletraje', turnOn:'Activar', turnOff:'Desactivar', fontSize:'Tamaño de letra', imageVisibility:'Visibilidad de imágenes', hideImages:'Ocultar imágenes', showImages:'Mostrar imágenes', letterSpacing:'Espaciado entre letras', lineHeight:'Altura de línea', linkHighlight:'Resaltar enlaces', disabled:'Desactivado', enabled:'Activado'},
+      gl:{accessibility:'Accesibilidade', open:'Abrir opcións de accesibilidade', close:'Pechar', background:'Cor de fondo', text:'Cor do texto', fontFace:'Tipo de letra', reset:'Restablecer', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Interletraxe', turnOn:'Activar', turnOff:'Desactivar', fontSize:'Tamaño de letra', imageVisibility:'Visibilidade das imaxes', hideImages:'Ocultar imaxes', showImages:'Mostrar imaxes', letterSpacing:'Espazado entre letras', lineHeight:'Altura de liña', linkHighlight:'Resaltar ligazóns', disabled:'Desactivado', enabled:'Activado'},
+      en:{accessibility:'Accessibility', open:'Open accessibility options', close:'Close', background:'Background Colour', text:'Text Colour', fontFace:'Font Face', reset:'Reset', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexic', kerning:'Font Kerning', turnOn:'Turn on', turnOff:'Turn off', fontSize:'Font Size', imageVisibility:'Image Visibility', hideImages:'Hide Images', showImages:'Show Images', letterSpacing:'Letter Spacing', lineHeight:'Line Height', linkHighlight:'Link Highlight', disabled:'Disabled', enabled:'Enabled'},
+      fr:{accessibility:'Accessibilité', open:'Ouvrir les options d’accessibilité', close:'Fermer', background:'Couleur de fond', text:'Couleur du texte', fontFace:'Police', reset:'Réinitialiser', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexique', kerning:'Crénage', turnOn:'Activer', turnOff:'Désactiver', fontSize:'Taille du texte', imageVisibility:'Visibilité des images', hideImages:'Masquer les images', showImages:'Afficher les images', letterSpacing:'Espacement des lettres', lineHeight:'Hauteur de ligne', linkHighlight:'Surbrillance des liens', disabled:'Désactivé', enabled:'Activé'},
+      pl:{accessibility:'Dostępność', open:'Otwórz opcje dostępności', close:'Zamknij', background:'Kolor tła', text:'Kolor tekstu', fontFace:'Krój pisma', reset:'Reset', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslektyczna', kerning:'Kerning czcionki', turnOn:'Włącz', turnOff:'Wyłącz', fontSize:'Rozmiar tekstu', imageVisibility:'Widoczność obrazów', hideImages:'Ukryj obrazy', showImages:'Pokaż obrazy', letterSpacing:'Odstępy między literami', lineHeight:'Wysokość linii', linkHighlight:'Podświetlanie linków', disabled:'Wyłączone', enabled:'Włączone'},
+      de:{accessibility:'Barrierefreiheit', open:'Optionen für Barrierefreiheit öffnen', close:'Schließen', background:'Hintergrundfarbe', text:'Textfarbe', fontFace:'Schriftart', reset:'Zurücksetzen', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexic', kerning:'Schrift-Kerning', turnOn:'Einschalten', turnOff:'Ausschalten', fontSize:'Schriftgröße', imageVisibility:'Bildsichtbarkeit', hideImages:'Bilder ausblenden', showImages:'Bilder anzeigen', letterSpacing:'Buchstabenabstand', lineHeight:'Zeilenhöhe', linkHighlight:'Links hervorheben', disabled:'Deaktiviert', enabled:'Aktiviert'},
+      pt:{accessibility:'Acessibilidade', open:'Abrir opções de acessibilidade', close:'Fechar', background:'Cor de fundo', text:'Cor do texto', fontFace:'Tipo de letra', reset:'Repor', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Kerning da fonte', turnOn:'Ativar', turnOff:'Desativar', fontSize:'Tamanho da letra', imageVisibility:'Visibilidade das imagens', hideImages:'Ocultar imagens', showImages:'Mostrar imagens', letterSpacing:'Espaçamento entre letras', lineHeight:'Altura da linha', linkHighlight:'Realce de links', disabled:'Desativado', enabled:'Ativado'}
+    };
+  }
+  function a11yText(key){
+    const code = (typeof currentLangCode === 'function' ? currentLangCode() : (localStorage.getItem('tribeca-language') || 'gl'));
+    const dict=a11yDict();
+    return (dict[code] && dict[code][key]) || dict.gl[key] || dict.es[key] || key;
+  }
+  function clampA11y(value, min, max, fallback){
+    const n=Number(value);
+    if(!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  }
+  function applyAccessibilitySettings(){
+    const s=loadAccessibilitySettings();
+    const root=document.documentElement;
+    document.body.classList.toggle('a11y-font-serif', s.fontFace==='serif');
+    document.body.classList.toggle('a11y-font-sans', s.fontFace==='sans');
+    document.body.classList.toggle('a11y-font-dyslexic', s.fontFace==='dyslexic');
+    document.body.classList.toggle('font-opendyslexic', s.fontFace==='dyslexic');
+    document.body.classList.toggle('a11y-kerning', !!s.kerning);
+    document.body.classList.toggle('a11y-hide-images', !!s.hideImages);
+    document.body.classList.toggle('a11y-link-highlight', !!s.linkHighlight);
+    document.body.classList.toggle('a11y-custom-bg', s.background && s.background!==A11Y_DEFAULTS.background);
+    document.body.classList.toggle('a11y-custom-text', s.text && s.text!==A11Y_DEFAULTS.text);
+    root.style.setProperty('--a11y-bg', s.background || A11Y_DEFAULTS.background);
+    root.style.setProperty('--a11y-text', s.text || A11Y_DEFAULTS.text);
+    root.style.setProperty('--a11y-font-scale', String(clampA11y(s.fontSize, .75, 1.8, 1)));
+    root.style.setProperty('--a11y-letter-spacing', `${clampA11y(s.letterSpacing, 0, .18, 0).toFixed(3)}em`);
+    root.style.setProperty('--a11y-line-height', String(clampA11y(s.lineHeight, 1, 2.2, 1.2)));
+  }
+  function accessibilityWidgetMarkup(){
+    const s=loadAccessibilitySettings();
+    const activeFont=s.fontFace||'reset';
+    const button=(value,label)=>`<button type="button" class="${activeFont===value?'is-active':''}" data-a11y-font="${value}">${safe(label)}</button>`;
+    return `<button type="button" class="tribeca-a11y-button" data-a11y-toggle aria-label="${safe(a11yText('open'))}" title="${safe(a11yText('accessibility'))}">♿</button>
+      <section class="tribeca-a11y-panel" data-a11y-panel hidden aria-label="${safe(a11yText('accessibility'))}">
+        <header><strong>♿ ${safe(a11yText('accessibility'))}</strong><button type="button" data-a11y-close aria-label="${safe(a11yText('close'))}">×</button></header>
+        <div class="tribeca-a11y-grid">
+          <article><h3>⌁ ${safe(a11yText('background'))}</h3><div class="a11y-control-row"><input type="color" value="${safe(s.background||A11Y_DEFAULTS.background)}" data-a11y-field="background"><button type="button" data-a11y-reset="background">${safe(a11yText('reset'))}</button></div></article>
+          <article><h3>A ${safe(a11yText('fontFace'))}</h3><div class="a11y-button-stack">${button('reset',a11yText('reset'))}${button('serif',a11yText('serif'))}${button('sans',a11yText('sans'))}${button('dyslexic',a11yText('dyslexic'))}</div></article>
+          <article><h3>V/A ${safe(a11yText('kerning'))}</h3><button type="button" data-a11y-toggle-setting="kerning">${safe(s.kerning?a11yText('turnOff'):a11yText('turnOn'))}</button></article>
+          <article><h3>Aa ${safe(a11yText('fontSize'))}</h3><div class="a11y-slider-row"><button type="button" data-a11y-step="fontSize" data-step="-0.1">−</button><input type="range" min=".75" max="1.8" step=".05" value="${safe(s.fontSize||1)}" data-a11y-range="fontSize"><output>${safe(Number(s.fontSize||1).toFixed(2).replace(/\.00$/,''))}</output><button type="button" data-a11y-step="fontSize" data-step="0.1">+</button></div><button type="button" data-a11y-reset="fontSize">${safe(a11yText('reset'))}</button></article>
+          <article><h3>▧ ${safe(a11yText('imageVisibility'))}</h3><button type="button" data-a11y-toggle-setting="hideImages">${safe(s.hideImages?a11yText('showImages'):a11yText('hideImages'))}</button></article>
+          <article><h3>↔ ${safe(a11yText('letterSpacing'))}</h3><div class="a11y-slider-row"><button type="button" data-a11y-step="letterSpacing" data-step="-0.01">−</button><input type="range" min="0" max=".18" step=".01" value="${safe(s.letterSpacing||0)}" data-a11y-range="letterSpacing"><output>${safe(Number(s.letterSpacing||0).toFixed(2))}</output><button type="button" data-a11y-step="letterSpacing" data-step="0.01">+</button></div><button type="button" data-a11y-reset="letterSpacing">${safe(a11yText('reset'))}</button></article>
+          <article><h3>↕ ${safe(a11yText('lineHeight'))}</h3><div class="a11y-slider-row"><button type="button" data-a11y-step="lineHeight" data-step="-0.1">−</button><input type="range" min="1" max="2.2" step=".05" value="${safe(s.lineHeight||1.2)}" data-a11y-range="lineHeight"><output>${safe(Number(s.lineHeight||1.2).toFixed(2).replace(/\.00$/,''))}</output><button type="button" data-a11y-step="lineHeight" data-step="0.1">+</button></div><button type="button" data-a11y-reset="lineHeight">${safe(a11yText('reset'))}</button></article>
+          <article><h3>🔗 ${safe(a11yText('linkHighlight'))}</h3><button type="button" data-a11y-toggle-setting="linkHighlight">${safe(s.linkHighlight?a11yText('enabled'):a11yText('disabled'))}</button></article>
+          <article><h3>A ${safe(a11yText('text'))}</h3><div class="a11y-control-row"><input type="color" value="${safe(s.text||A11Y_DEFAULTS.text)}" data-a11y-field="text"><button type="button" data-a11y-reset="text">${safe(a11yText('reset'))}</button></div></article>
+        </div>
+      </section>`;
+  }
+  function updateAccessibilityWidgetText(){
+    const root=document.getElementById('tribecaAccessibilityWidget');
+    if(!root) return;
+    const panel=root.querySelector('[data-a11y-panel]');
+    const wasOpen=panel && !panel.hidden;
+    root.innerHTML=accessibilityWidgetMarkup();
+    const next=root.querySelector('[data-a11y-panel]');
+    if(wasOpen && next) next.hidden=false;
+  }
+  function ensureAccessibilityWidget(){
+    if(!document.body) return;
+    let root=document.getElementById('tribecaAccessibilityWidget');
+    if(!root){
+      root=document.createElement('div');
+      root.id='tribecaAccessibilityWidget';
+      root.className='tribeca-a11y-widget';
+      document.body.appendChild(root);
+    }
+    if(!root.innerHTML.trim()) root.innerHTML=accessibilityWidgetMarkup();
+    applyAccessibilitySettings();
+    if(document.body.dataset.tribecaA11yBound==='1') return;
+    document.body.dataset.tribecaA11yBound='1';
+    document.addEventListener('click', ev=>{
+      const toggle=ev.target.closest?.('[data-a11y-toggle]');
+      if(toggle){ ev.preventDefault(); ev.stopPropagation(); const panel=document.querySelector('[data-a11y-panel]'); if(panel) panel.hidden=!panel.hidden; return; }
+      const close=ev.target.closest?.('[data-a11y-close]');
+      if(close){ ev.preventDefault(); ev.stopPropagation(); const panel=document.querySelector('[data-a11y-panel]'); if(panel) panel.hidden=true; return; }
+      const font=ev.target.closest?.('[data-a11y-font]');
+      if(font){ ev.preventDefault(); const s=saveAccessibilitySettings({...loadAccessibilitySettings(), fontFace:font.dataset.a11yFont||'reset'}); applyAccessibilitySettings(s); updateAccessibilityWidgetText(); return; }
+      const reset=ev.target.closest?.('[data-a11y-reset]');
+      if(reset){ ev.preventDefault(); const key=reset.dataset.a11yReset; const s=loadAccessibilitySettings(); if(key==='fontSize') s.fontSize=A11Y_DEFAULTS.fontSize; else if(key==='letterSpacing') s.letterSpacing=A11Y_DEFAULTS.letterSpacing; else if(key==='lineHeight') s.lineHeight=A11Y_DEFAULTS.lineHeight; else if(key==='background') s.background=A11Y_DEFAULTS.background; else if(key==='text') s.text=A11Y_DEFAULTS.text; saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
+      const toggleSetting=ev.target.closest?.('[data-a11y-toggle-setting]');
+      if(toggleSetting){ ev.preventDefault(); const key=toggleSetting.dataset.a11yToggleSetting; const s=loadAccessibilitySettings(); s[key]=!s[key]; saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
+      const step=ev.target.closest?.('[data-a11y-step]');
+      if(step){ ev.preventDefault(); const key=step.dataset.a11yStep; const inc=Number(step.dataset.step||0); const s=loadAccessibilitySettings(); const ranges={fontSize:[.75,1.8,1],letterSpacing:[0,.18,0],lineHeight:[1,2.2,1.2]}; const r=ranges[key]||[0,1,0]; s[key]=Number(clampA11y((Number(s[key]??r[2])+inc), r[0], r[1], r[2]).toFixed(3)); saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
+    }, true);
+    document.addEventListener('input', ev=>{
+      const field=ev.target.closest?.('[data-a11y-field]');
+      const range=ev.target.closest?.('[data-a11y-range]');
+      if(!field && !range) return;
+      const s=loadAccessibilitySettings();
+      if(field) s[field.dataset.a11yField]=field.value;
+      if(range) s[range.dataset.a11yRange]=Number(range.value);
+      saveAccessibilitySettings(s);
+      applyAccessibilitySettings();
+      const out=range?.closest('.a11y-slider-row')?.querySelector('output');
+      if(out) out.value=String(Number(range.value).toFixed(2).replace(/\.00$/,''));
+    }, true);
+  }
+  window.TribecaApplyAccessibilitySettings = applyAccessibilitySettings;
+  window.TribecaEnsureAccessibilityWidget = ensureAccessibilityWidget;
+
   const icon100 = ['😀', '😃', '😄', '😁', '😊', '🙂', '😉', '😎', '🤓', '🥳', '😇', '😋', '😍', '😌', '🤔', '🤠', '😺', '😸', '😻', '🙌', '💡', '📚', '🧠', '⭐', '🌟', '✨', '🔥', '🌈', '☀️', '🌙', '⚡', '🎯', '🏆', '🥇', '🎓', '🖊️', '✏️', '📝', '📐', '🔬', '🧪', '🧬', '🌍', '🗺️', '🏛️', '🎨', '🎭', '🎵', '🎧', '🎮', '🧩', '♟️', '📣', '🔔', '🧭', '🛡️', '💎', '🔖', '📖', '📌', '📎', '🗂️', '🧮', '🦉', '🐝', '🦋', '🐢', '🐬', '🦊', '🐱', '🐶', '🐼', '🐧', '🐸', '🦁', '🐯', '🐴', '🐳', '🦄', '🐵', '🐻', '🐨', '🐰', '🐹', '🐭', '🐮', '🐷', '🐙', '🦀', '🐠', '🐟', '🐞', '🐌', '🐥', '🦆', '🐔', '🦅', '🍀', '🌻', '🌸', '🌿', '🍄', '🍎', '🍓', '🍉', '🍍', '🍕', '🥐', '🍔', '🍟', '🌮', '🍪', '🍫', '🍯', '🥕', '🌽', '🍒', '🍋', '🍊', '🍌', '🍇', '⚽', '🏀', '🏐', '🎾', '🏓', '🏸', '🥊', '🥋', '🎿', '⛸️', '🚀', '✈️', '🚗', '🚂', '🚌', '🚢', '🏖️', '🏔️', '🏰', '🌊', '⛰️', '🌅', '🌌', '🏡', '🌉', '🏕️', '⛺', '🎁', '🧸'];  const centers = ['CEIP Praia de Quenxe','IES Fernando Blanco','IES Agra de Raíces','CPR Plurilingüe Manuela Rial Mouzo','CPR Ntra. Sra. del Carmen','CEIP Plurilingüe de Ponte do Porto','CEIP O Areal','CEIP de Camelle','IES Pedra da Aguia','CEIP do Pindo','CEIP Plurilingüe de Carnota','IES Lamas de Castelo','EEI da Pereiriña','CEIP de Brens','CEIP Plurilingüe Vila de Cee','CEIP Plurilingüe Santa Eulalia de Dumbría','CEIP Mar de Fóra','CEIP Areouta','IES Fin do Camiño','Tribeca Academia','Centro pendiente de asignar'];
   const stages = ['Infantil','Primaria','ESO','Bachillerato','FP','Adultos','Profesorado','Otros'];
   const courses = ['1.º Primaria','2.º Primaria','3.º Primaria','4.º Primaria','5.º Primaria','6.º Primaria','1.º ESO','2.º ESO','3.º ESO','3.º ESO PDC','4.º ESO','1.º Bachillerato','1.º Bachillerato Sociales','1.º Bachillerato Humanidades','2.º Bachillerato','Profesora','Otros'];
@@ -587,10 +723,11 @@
         updateBadges();
         setActiveMainNav('home');
         applyTranslations();
+        ensureAccessibilityWidget();
         return;
       }
       if(roleTeacher()) main.innerHTML = teacherHome(); else main.innerHTML = studentHome();
-      bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations();
+      bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations(); ensureAccessibilityWidget();
     } catch(error) {
       console.error('[Tribeca Aula] Error al renderizar la aplicación:', error);
       if(main) main.innerHTML = `<section class="panel app-error-panel"><p class="eyebrow">Tribeca Aula</p><h1>No se pudo cargar correctamente el panel</h1><p>${safe(error?.message || 'Error de interfaz')}</p><button type="button" class="primary-btn" onclick="location.reload()">Recargar aula</button></section>`;
@@ -4243,7 +4380,7 @@ function classroomCard(c,i=0){
     }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
@@ -4658,6 +4795,8 @@ function classroomCard(c,i=0){
   }
   async function boot() {
     ensureLanguageDefault();
+    applyAccessibilitySettings();
+    setTimeout(()=>ensureAccessibilityWidget(), 0);
     document.body.classList.remove('is-dark','dark-mode','theme-dark');
     try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
     document.querySelectorAll('.theme-toggle,[data-theme-toggle],#themeToggle,#themeSelect').forEach(el=>{ const wrap=el.closest('label,.select-wrap,.control-field')||el; wrap.remove(); });
