@@ -2371,7 +2371,7 @@ render();
     const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'exam');
     const currentScope = e?.scope || e?.target_scope || (currentType==='student_absence'?'user':'user');
     const titleRequired = teacher ? 'required' : '';
-    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form event-form-v112"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><div class="window-grid"><label>Tipo de evento<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><label>Título${teacher?'':' opcional'}<input name="title" value="${safe(e?.title||'')}" placeholder="${safe(eventDefaultTitle(currentType))}" ${titleRequired} ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" placeholder="Añade detalles si lo necesitas" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><p class="form-status is-info event-student-note">${teacher?'':'El tipo “No asistiré este día a clases” se guarda como evento personal y avisa a la profesora.'}</p><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
+    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form event-form-v112"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><div class="window-grid"><label>Tipo de evento<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><label>Título${teacher?'':' opcional'}<input name="title" value="${safe(e?.title||'')}" placeholder="${safe(eventDefaultTitle(currentType))}" ${titleRequired} ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" placeholder="Añade detalles si lo necesitas" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><p class="form-status is-info event-student-note" data-t121-event-status>${teacher?'':'El tipo “No asistiré este día a clases” se guarda como evento personal y avisa a la profesora.'}</p><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
 
   async function triggerEmailOutboxSend(eventType=''){
@@ -2450,19 +2450,73 @@ render();
       }));
     }
   }
-  async function saveEvent(form){
-    const fd=new FormData(form); const id=String(fd.get('id')||'').trim(); const type=fd.get('eventType')||'personal';
+  function calendarEventPayloadFromForm(form){
+    const fd=new FormData(form);
+    const id=String(fd.get('id')||'').trim();
+    const type=String(fd.get('eventType')||'personal').trim() || 'personal';
     const rawScope = fd.get('scope') || (roleTeacher() ? 'all' : 'user');
     const scope = roleTeacher() ? (type==='closed'?'all':rawScope) : (type==='student_absence'?'user':(rawScope==='class'?'class':'user'));
     const title=String(fd.get('title')||'').trim() || eventDefaultTitle(type);
     const body=String(fd.get('body')||'').trim() || (type==='student_absence'?'Aviso creado por el alumnado: no asistirá este día a clases.':'');
-    const rec={ id:id||null, event_date:fd.get('eventDate'), title, body, event_type:type, scope, center:State.profile.center, stage:State.profile.stage, course:State.profile.course, created_by:State.profile.id, user_id:(scope==='user'?State.profile.id:null), hidden:false };
-    if(!rec.event_date || !rec.title) throw new Error('Completa la fecha y el título.');
+    const event_date=String(fd.get('eventDate')||'').slice(0,10);
+    const payload={ id:id||null, event_date, title, body, event_type:type, scope, center:State.profile.center, stage:State.profile.stage, course:State.profile.course, created_by:State.profile.id, user_id:(scope==='user'?State.profile.id:null), target_user_ids:[], hidden:false };
+    return payload;
+  }
+  async function saveCalendarEventViaRpcOrTable(rec){
     const rpc=await State.client.rpc('tribeca_save_calendar_event_v27',{p_payload:rec});
-    if(rpc.error) throw rpc.error;
-    await log('calendar', id?'Fecha actualizada':'Fecha creada', {title:rec.title,date:rec.event_date});
-    await queueCalendarEmailNotification(rec, !!id);
-    await loadData(true); toast(id?'Fecha actualizada.':'Fecha creada.'); rerender();
+    if(!rpc?.error) return rpc;
+    console.warn('[Tribeca Aula] RPC calendario falló, se intenta guardado directo:', rpc.error?.message || rpc.error);
+    const row={...rec};
+    delete row.id;
+    if(rec.id){
+      delete row.created_by;
+      const direct=await table('calendar_events').update(row).eq('id', rec.id);
+      if(direct.error) throw rpc.error || direct.error;
+      return direct;
+    }
+    const direct=await table('calendar_events').insert(row);
+    if(direct.error) throw rpc.error || direct.error;
+    return direct;
+  }
+  async function saveEvent(form){
+    const btn = form?.querySelector?.('[data-t25-save-event], [type="submit"]');
+    const status = form?.querySelector?.('[data-t121-event-status]') || form?.querySelector?.('.event-student-note');
+    const setStatus=(msg,kind='info')=>{
+      if(status){
+        status.textContent=msg||'';
+        status.classList.remove('is-ok','is-error','is-info');
+        if(msg) status.classList.add(kind==='ok'?'is-ok':kind==='error'?'is-error':'is-info');
+      }
+    };
+    if(!form) return;
+    if(form.dataset.t121Saving==='1') return;
+    form.dataset.t121Saving='1';
+    if(btn){ btn.disabled=true; btn.dataset.originalText=btn.textContent; btn.textContent='Guardando…'; }
+    try{
+      const rec=calendarEventPayloadFromForm(form);
+      if(!rec.event_date || !rec.title) throw new Error('Completa la fecha y el título.');
+      setStatus('Guardando evento…','info');
+      await saveCalendarEventViaRpcOrTable(rec);
+      await log('calendar', rec.id?'Fecha actualizada':'Fecha creada', {title:rec.title,date:rec.event_date});
+      await queueCalendarEmailNotification(rec, !!rec.id);
+      await loadData(true);
+      State.selectedDate=rec.event_date;
+      State.selectedEventId=null;
+      toast(rec.id?'Fecha actualizada.':'Fecha creada.');
+      setStatus(rec.id?'Fecha actualizada.':'Fecha creada.','ok');
+      refreshCalendarAfterNavigation();
+    } catch(e){
+      console.error('[Tribeca Aula] No se pudo guardar el evento:', e);
+      const msg = String(e?.message || e?.details || 'No se pudo guardar el evento.');
+      const friendly = /event_type|calendar_events|tribeca_save_calendar_event_v27|violates check|constraint/i.test(msg)
+        ? 'No se pudo guardar el evento. Ejecuta el SQL de la v121 en Supabase y vuelve a intentarlo.'
+        : msg;
+      setStatus(friendly,'error');
+      toast(friendly);
+    } finally {
+      form.dataset.t121Saving='';
+      if(btn){ btn.disabled=false; btn.textContent=btn.dataset.originalText || 'Añadir evento'; }
+    }
   }
 
   function activityTypeClass(type=''){ const t=String(type||'').toLowerCase(); if(t.includes('login')) return 'activity-login'; if(t.includes('message')) return 'activity-message'; if(t.includes('publication')||t.includes('guidance')) return 'activity-publication'; if(t.includes('calendar')) return 'activity-calendar'; if(t.includes('badge')) return 'activity-badge'; if(t.includes('grade')) return 'activity-grade'; if(t.includes('difficulty')) return 'activity-difficulty'; if(t.includes('profile')) return 'activity-profile'; return 'activity-generic'; }
@@ -4393,7 +4447,13 @@ function classroomCard(c,i=0){
     return false;
   };
   window.TribecaSaveStudentProfileDirect = function(btn, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } const form = btn?.closest?.('form') || (document.getElementById('t24StudentProfileForm') || document.getElementById('t16StudentProfileForm')); if(!form){ toast('No se encontró el formulario de perfil. Cierra y vuelve a abrir Perfiles del alumnado.'); return false; } saveStudentProfile(form); return false; };
-  window.TribecaSaveCalendarEventDirect = function(btn, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } const form = btn?.closest?.('form') || document.getElementById('t16EventForm'); if(!form){ toast('No se encontró el formulario del calendario.'); return false; } saveEvent(form); return false; };
+  window.TribecaSaveCalendarEventDirect = async function(btn, ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    const form = btn?.closest?.('form') || document.getElementById('t16EventForm');
+    if(!form){ toast('No se encontró el formulario del calendario.'); return false; }
+    await saveEvent(form);
+    return false;
+  };
   window.TribecaSaveGuidanceDirect = function(btn, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } const form = btn?.closest?.('form') || document.getElementById('t24GuidanceForm') || document.getElementById('t18GuidanceForm'); if(!form){ toast('No se encontró el formulario de orientación.'); return false; } saveGuidance(form); return false; };
   window.TribecaSaveGradeDirect = function(btn, ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } const form = btn?.closest?.('form') || document.getElementById('t16GradeForm'); if(!form){ toast('No se encontró el formulario de calificaciones.'); return false; } saveGrade(form); return false; };
   function receiptVerificationCode(userId, month, amount){ return `TRB-${String(month).replace('-','')}-${String(hashText(`${userId}-${month}-${amount}-${new Date().toISOString().slice(0,10)}`)).slice(0,8).toUpperCase()}`; }
