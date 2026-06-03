@@ -2112,7 +2112,7 @@ render();
       : [['exam','Examen'],['delivery','Entrega de trabajo'],['presentation','Presentación'],['excursion','Excursión'],['student_absence','No asistiré este día a clases']];
     const scopeOptions = teacher
       ? [['all','Todo el alumnado'],['class','Grupo-clase'],['user','Personal']]
-      : [['user','Solo para mí'],['class','Mi grupo-clase']];
+      : [['user','solo para mí'],['class','toda mi clase']];
     const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'exam');
     const currentScope = e?.scope || e?.target_scope || (currentType==='student_absence'?'user':'user');
     const titleRequired = teacher ? 'required' : '';
@@ -4295,6 +4295,8 @@ function classroomCard(c,i=0){
     'Tipo':{Galego:'Tipo',English:'Type',Français:'Type',Polski:'Typ',Deutsch:'Typ',Português:'Tipo'},
     'Visibilidad':{Galego:'Visibilidade',English:'Visibility',Français:'Visibilité',Polski:'Widoczność',Deutsch:'Sichtbarkeit',Português:'Visibilidade'},
     'Solo para mí':{Galego:'Só para min',English:'Only me',Français:'Seulement pour moi',Polski:'Tylko dla mnie',Deutsch:'Nur für mich',Português:'Só para mim'},
+    'solo para mí':{Galego:'só para min',English:'only me',Français:'seulement pour moi',Polski:'tylko dla mnie',Deutsch:'nur für mich',Português:'só para mim'},
+    'toda mi clase':{Galego:'toda a miña clase',English:'my whole class',Français:'toute ma classe',Polski:'cała moja klasa',Deutsch:'meine ganze Klasse',Português:'toda a minha turma'},
     'Todo el alumnado':{Galego:'Todo o alumnado',English:'All students',Français:'Tous les élèves',Polski:'Wszyscy uczniowie',Deutsch:'Alle Schülerinnen und Schüler',Português:'Todo o alumnado'},
     'Centro, etapa y curso':{Galego:'Centro, etapa e curso',English:'School, stage and course',Français:'Établissement, niveau et classe',Polski:'Szkoła, etap i klasa',Deutsch:'Schule, Stufe und Kurs',Português:'Centro, etapa e curso'},
     'Alumnos concretos':{Galego:'Alumnado concreto',English:'Specific students',Français:'Élèves précis',Polski:'Wybrani uczniowie',Deutsch:'Bestimmte Lernende',Português:'Alunos concretos'},
