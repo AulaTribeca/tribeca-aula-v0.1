@@ -11813,3 +11813,87 @@ body.is-dark .teacher-tasks-summary::after {
     width: 100%;
   }
 }
+
+
+/* Tribeca Aula · versión 119
+   Seguimiento discreto de clics en enlaces de orientación educativa. */
+.guidance-access-box {
+  margin: .45rem 0 .65rem;
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 14px;
+  background: rgba(16,63,36,.045);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.guidance-access-box > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .7rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.guidance-access-box > summary::-webkit-details-marker {
+  display: none;
+}
+
+.guidance-access-box strong {
+  color: var(--green);
+  font-size: .86rem;
+  font-weight: 950;
+}
+
+.guidance-access-box summary span,
+.guidance-access-box.is-empty span {
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 820;
+}
+
+.guidance-access-box.is-empty {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .55rem .7rem;
+  align-items: center;
+}
+
+.guidance-access-list {
+  display: grid;
+  gap: .35rem;
+  padding: 0 .7rem .65rem;
+}
+
+.guidance-access-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: baseline;
+  padding: .35rem .45rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,.72);
+}
+
+.guidance-access-list span {
+  color: var(--text);
+  font-size: .88rem;
+  font-weight: 900;
+}
+
+.guidance-access-list small {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 760;
+}
+
+body.is-dark .guidance-access-box {
+  background: rgba(212,175,55,.08);
+  border-color: rgba(212,175,55,.16);
+}
+
+body.is-dark .guidance-access-list > div {
+  background: rgba(255,255,255,.06);
+}

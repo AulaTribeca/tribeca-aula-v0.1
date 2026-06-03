@@ -50,6 +50,39 @@
   };
   window.TribecaAuth = State;
   const TRIBECA_TEACHER_PROFILE_IMAGE = 'assets/patricia-trillo-perfil.webp';
+  const TRIBECA_LOGO_DEFAULT = 'assets/logo-tribeca.png';
+  const TRIBECA_SEASONAL_LOGOS = {
+    default: TRIBECA_LOGO_DEFAULT,
+    summer: 'assets/logo-tribeca-verano.png',
+    halloween: 'assets/logo-tribeca-halloween.png',
+    christmas: 'assets/logo-tribeca-navidad.png'
+  };
+  function seasonalLogoVariant(date = new Date()){
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    if(month === 12 || (month === 1 && day <= 6)) return 'christmas';
+    if(month === 10 && (day === 30 || day === 31)) return 'halloween';
+    if((month === 6 && day >= 19) || month === 7 || month === 8) return 'summer';
+    return 'default';
+  }
+  function seasonalLogoPath(){
+    return TRIBECA_SEASONAL_LOGOS[seasonalLogoVariant()] || TRIBECA_LOGO_DEFAULT;
+  }
+  function applySeasonalLogos(root = document){
+    const desired = seasonalLogoPath();
+    const nodes = [];
+    const pushNode = node => { if(node && node.nodeType === 1 && node.tagName === 'IMG') nodes.push(node); };
+    if(root?.nodeType === 1) pushNode(root);
+    (root?.querySelectorAll ? root.querySelectorAll('img') : document.querySelectorAll('img')).forEach(pushNode);
+    nodes.forEach(img => {
+      const current = String(img.getAttribute('src') || '');
+      if(!/assets\/logo-tribeca(?:-(?:verano|halloween|navidad))?\.png(?:[?#].*)?$/i.test(current)) return;
+      if(current !== desired){
+        img.setAttribute('src', desired);
+      }
+      img.dataset.tribecaSeasonalLogo = seasonalLogoVariant();
+    });
+  }
   function teacherProfileImageUrl(profile = State.profile) {
     if(!profile) return '';
     const isTeacher = profile.role === 'teacher' || String(profile.username || '').toLowerCase().includes('profesora');
@@ -532,6 +565,7 @@
       maybe(table('user_presence').select('*').order('last_seen',{ascending:false}), []).then(d=>State.data.presence=d||[]),
       maybe(table('teacher_activity_log').select('*').order('created_at',{ascending:false}).limit(300), []).then(d=>State.data.activity=d||[]),
       maybe(table('guidance_resources').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidance=d||[]),
+      maybe(table('guidance_link_clicks').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidanceLinkClicks=d||[]),
       maybe(table('subject_overrides').select('*').order('stage').order('course').order('subject'), []).then(d=>State.data.subjects=d||[]),
       maybe(table('material_completions').select('*'), []).then(d=>State.data.materialCompletions=d||[]),
       maybe(table('exam_attempts').select('*').order('completed_at',{ascending:false}), []).then(d=>State.data.examAttempts=d||[]),
@@ -4048,11 +4082,56 @@ function classroomCard(c,i=0){
     if(custom) return `<img src="${safe(custom)}" alt="Icono del recurso ${safe(g?.title || 'de orientación')}" loading="lazy">`;
     return `<span aria-hidden="true">${safe(guidanceTypeIcon(g))}</span>`;
   }
+  function guidanceLinkClickRows(guidanceId){
+    return (State.data.guidanceLinkClicks||[]).filter(x=>String(x.guidance_resource_id||'')===String(guidanceId));
+  }
+  function guidanceLinkClickStats(g){
+    const rows=guidanceLinkClickRows(g.id);
+    const map=new Map();
+    rows.forEach(r=>{
+      const key=String(r.user_id || r.username || r.user_display_name || 'sin_usuario');
+      if(!map.has(key)) map.set(key,{user_id:r.user_id, name:r.user_display_name || studentName(r.user_id), username:r.username||'', count:0, last:''});
+      const item=map.get(key);
+      item.count++;
+      const when=String(r.created_at||'');
+      if(!item.last || when>item.last) item.last=when;
+    });
+    return {total:rows.length, people:[...map.values()].sort((a,b)=>b.count-a.count || String(a.name).localeCompare(String(b.name),'es'))};
+  }
+  function guidanceAccessMarkup(g){
+    if(!roleTeacher() || !g.link_url) return '';
+    const stats=guidanceLinkClickStats(g);
+    if(!stats.total) return `<div class="guidance-access-box is-empty"><strong>Acceso al enlace</strong><span>Sin accesos registrados.</span></div>`;
+    return `<details class="guidance-access-box"><summary><strong>Acceso al enlace</strong><span>${stats.people.length} persona${stats.people.length===1?'':'s'} · ${stats.total} clic${stats.total===1?'':'s'}</span></summary><div class="guidance-access-list">${stats.people.map(p=>`<div><span>${safe(p.name||'Usuario')}</span><small>${p.count} clic${p.count===1?'':'s'}${p.last?` · último: ${safe(fmtDT(p.last))}`:''}</small></div>`).join('')}</div></details>`;
+  }
+  async function recordGuidanceLinkClick(guidanceId, linkUrl){
+    if(!guidanceId || !linkUrl || !State.profile || roleTeacher()) return;
+    try{
+      await table('guidance_link_clicks').insert({
+        guidance_resource_id:guidanceId,
+        user_id:State.profile.id,
+        user_display_name:displayName(State.profile),
+        username:State.profile.username || null,
+        link_url:linkUrl,
+        context:{
+          title:(State.data.guidance||[]).find(g=>String(g.id)===String(guidanceId))?.title || '',
+          center:State.profile.center || '',
+          stage:State.profile.stage || '',
+          course:State.profile.course || ''
+        }
+      });
+    }catch(error){
+      console.warn('[Tribeca Aula] No se pudo registrar el acceso al enlace de orientación:', error?.message || error);
+    }
+  }
+
   function guidanceCard(g,teacher=false){
     const a=Array.isArray(g.attachments)?g.attachments[0]:null;
     const typeLabel=guidanceTypeLabel(g);
-    return `<article class="guidance-card-premium ${g.hidden?'is-hidden-item':''}"><div class="guidance-card-icon ${guidanceCustomIconAsset(g)?'has-custom-icon':''}">${guidanceIconMarkup(g)}</div><div class="guidance-card-body"><div class="guidance-card-top"><span>${safe(typeLabel)}</span>${g.hidden?'<em>Oculto</em>':''}</div><h3>${safe(g.title)}</h3><p>${safe(g.body||'')}</p><div class="guidance-actions">${g.link_url?`<a class="secondary-btn" href="${safe(g.link_url)}" target="_blank" rel="noopener">Abrir recurso</a>`:''}${a?attachmentList({attachments:[a]}):''}${teacher?`<button type="button" data-t35-edit-guidance="${safe(g.id)}">Editar</button><button type="button" data-t18-toggle-guidance="${safe(g.id)}">${g.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t18-delete-guidance="${safe(g.id)}">Eliminar</button>`:''}</div></div></article>`;
+    const link=g.link_url?`<a class="secondary-btn" href="${safe(g.link_url)}" target="_blank" rel="noopener" data-t119-guidance-link="${safe(g.id)}" data-t119-guidance-url="${safe(g.link_url)}">Abrir recurso</a>`:'';
+    return `<article class="guidance-card-premium ${g.hidden?'is-hidden-item':''}"><div class="guidance-card-icon ${guidanceCustomIconAsset(g)?'has-custom-icon':''}">${guidanceIconMarkup(g)}</div><div class="guidance-card-body"><div class="guidance-card-top"><span>${safe(typeLabel)}</span>${g.hidden?'<em>Oculto</em>':''}</div><h3>${safe(g.title)}</h3><p>${safe(g.body||'')}</p>${teacher?guidanceAccessMarkup(g):''}<div class="guidance-actions">${link}${a?attachmentList({attachments:[a]}):''}${teacher?`<button type="button" data-t35-edit-guidance="${safe(g.id)}">Editar</button><button type="button" data-t18-toggle-guidance="${safe(g.id)}">${g.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t18-delete-guidance="${safe(g.id)}">Eliminar</button>`:''}</div></div></article>`;
   }
+
   async function saveGuidance(form){
     const fd = new FormData(form); const btn = form.querySelector('[type="submit"]'); const status=form.querySelector('[data-t24-guidance-status]');
     const setStatus=(msg,kind='info')=>{ if(status){ status.textContent=msg||''; status.classList.remove('is-ok','is-error','is-info'); if(msg) status.classList.add(kind==='ok'?'is-ok':kind==='error'?'is-error':'is-info'); } if(msg) toast(msg); };
@@ -4346,6 +4425,7 @@ function classroomCard(c,i=0){
   function bindGlobal() {
     window.addEventListener('click', async ev=>{ const btn=ev.target.closest?.('[data-t24-save-student]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=btn.closest('form'); if(f) await saveStudentProfile(f); } }, true);
     document.addEventListener('click', async ev=>{
+      const guidanceLink=ev.target.closest?.('[data-t119-guidance-link]'); if(guidanceLink){ recordGuidanceLinkClick(guidanceLink.dataset.t119GuidanceLink, guidanceLink.dataset.t119GuidanceUrl || guidanceLink.href); return; }
       const mailTab=ev.target.closest?.('[data-mail-box]'); if(mailTab){ const box=mailTab.dataset.mailBox; const root=mailTab.closest('.mail-app'); root?.querySelectorAll('.mail-tab').forEach(b=>b.classList.toggle('is-active', b===mailTab)); root?.querySelectorAll('[data-mail-box-view]').forEach(v=>v.hidden=v.dataset.mailBoxView!==box); return; }
       const profileTab=ev.target.closest?.('[data-t74-profile-tab]'); if(profileTab){ ev.preventDefault(); ev.stopPropagation(); State.profilePanel=profileTab.dataset.t74ProfileTab || 'profile'; rerender(); return; }
       const monthNav=ev.target.closest?.('[data-t51-month-nav]'); if(monthNav){ ev.preventDefault(); ev.stopPropagation(); State.billingMonth=monthNav.dataset.t51MonthNav; rerender(); return; }
@@ -4871,9 +4951,9 @@ function classroomCard(c,i=0){
     try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
     document.querySelectorAll('.theme-toggle,[data-theme-toggle],#themeToggle,#themeSelect').forEach(el=>{ const wrap=el.closest('label,.select-wrap,.control-field')||el; wrap.remove(); });
     State.client = configured && window.supabase?.createClient ? window.supabase.createClient(cfg.url, cfg.anonKey, { auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true} }) : null;
-    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); } }))).observe(document.body,{childList:true,subtree:true}); if(!State.client){ showLogin(); return; }
+    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); applySeasonalLogos(n); } }))).observe(document.body,{childList:true,subtree:true}); applySeasonalLogos(document); if(!State.client){ showLogin(); applySeasonalLogos(document); return; }
     try { await hydrate(true); ensureLanguageDefault(); } catch(e) { console.warn(e); }
-    if(State.user && State.profile){ hideLogin(); renderApp(); handleInitialOpenRequest(); } else showLogin();
+    if(State.user && State.profile){ hideLogin(); renderApp(); applySeasonalLogos(document); handleInitialOpenRequest(); } else { showLogin(); applySeasonalLogos(document); }
     setInterval(async()=>{ if(!State.profile) return; await updatePresence(); updateBadges(); }, 45000);
   }
   document.addEventListener('DOMContentLoaded', boot);
