@@ -44,7 +44,8 @@
     profilePanel: 'profile',
     prefillPublicationClassId: null,
     prefillPublicationClassSubjectId: null,
-    prefillPublicationClassUnitId: null
+    prefillPublicationClassUnitId: null,
+    teacherTasksOpen: false
   };
   window.TribecaAuth = State;
   const TRIBECA_TEACHER_PROFILE_IMAGE = 'assets/patricia-trillo-perfil.webp';
@@ -401,7 +402,8 @@
       maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]),
       maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]),
       maybe(table('tribeca_class_subjects').select('*').order('sort_order').order('subject'), []).then(d=>State.data.classSubjects=d||[]),
-      maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[])
+      maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[]),
+      maybe(table('teacher_tasks').select('*').order('task_date',{ascending:true}).order('created_at',{ascending:false}), []).then(d=>State.data.teacherTasks=d||[])
     ];
     if(roleTeacher()) {
       common.push(maybe(table('profiles').select('*').eq('role','student').order('center').order('stage').order('course').order('full_name'), []).then(d=>State.data.students=d||[]));
@@ -844,6 +846,63 @@
     const {start,end}=teacherWeekBounds(new Date());
     return relevantEvents().filter(e=>e.date>=start && e.date<=end).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')) || String(a.title||'').localeCompare(String(b.title||''),'es'));
   }
+  function classColorPalette(){
+    return [
+      {key:'forest', label:'Verde Tribeca', primary:'#103f24', secondary:'#2f6848', soft:'#eaf2e7'},
+      {key:'blue', label:'Azul académico', primary:'#1e5a8a', secondary:'#2f74b5', soft:'#e8f1f8'},
+      {key:'violet', label:'Violeta sobrio', primary:'#5b3476', secondary:'#8a59a8', soft:'#f0e8f5'},
+      {key:'teal', label:'Verde agua', primary:'#1f6f68', secondary:'#3f978c', soft:'#e7f3f1'},
+      {key:'amber', label:'Dorado tierra', primary:'#7a5120', secondary:'#b9873f', soft:'#f5edde'},
+      {key:'rose', label:'Rosa arcilla', primary:'#7b3f4a', secondary:'#b76473', soft:'#f5e9ec'},
+      {key:'slate', label:'Gris pizarra', primary:'#3f4b4f', secondary:'#6c7b80', soft:'#edf0f1'},
+      {key:'olive', label:'Oliva clásico', primary:'#556b2f', secondary:'#7f9651', soft:'#eef2e3'}
+    ];
+  }
+  function stableIndexFromString(value='', len=1){
+    const text=String(value||'tribeca');
+    let n=0;
+    for(let i=0;i<text.length;i++) n=(n*31 + text.charCodeAt(i)) >>> 0;
+    return len ? n % len : 0;
+  }
+  function classColorFor(c={}){
+    const palette=classColorPalette();
+    const key=String(c.class_color || c.color || '').trim();
+    return palette.find(x=>x.key===key) || palette[stableIndexFromString(c.id || c.name || classroomLabel(c), palette.length)] || palette[0];
+  }
+  function classroomThemeStyle(c={}){
+    const p=classColorFor(c);
+    return `--class-primary:${p.primary};--class-secondary:${p.secondary};--class-soft:${p.soft};`;
+  }
+  function classroomThemeClass(c={}){
+    return `classroom-color-${safe(classColorFor(c).key)}`;
+  }
+  function teacherTaskRows(){
+    return (State.data.teacherTasks||[]).filter(t=>t && t.active!==false).sort((a,b)=>String(a.task_date||'9999-12-31').localeCompare(String(b.task_date||'9999-12-31')) || Number(a.done||0)-Number(b.done||0) || String(a.title||'').localeCompare(String(b.title||''),'es'));
+  }
+  function todayTeacherTasks(){
+    const today=todayIso();
+    return teacherTaskRows().filter(t=>String(t.task_date||today).slice(0,10)===today && !t.done);
+  }
+  function teacherTasksSummary(){
+    const rows=todayTeacherTasks();
+    if(!rows.length) return '<p class="teacher-task-empty">No tienes tareas pendientes para hoy.</p>';
+    return `<ul class="teacher-task-summary-list">${rows.slice(0,4).map(t=>`<li>${safe(t.title||'Tarea sin título')}</li>`).join('')}${rows.length>4?`<li>+${rows.length-4} más</li>`:''}</ul>`;
+  }
+  function teacherTasksManager(){
+    const rows=teacherTaskRows();
+    const today=todayIso();
+    return `<section class="teacher-tasks-manager window-panel" id="teacherTasksManager"><header><div><p class="eyebrow">Tareas pendientes</p><h2>Agenda personal de Patricia</h2><p class="meta">Tareas personales y de Tribeca. No se muestra en el panel del alumnado.</p></div><button type="button" class="secondary-btn" data-t114-close-tasks>Cerrar</button></header>
+      <form class="teacher-task-form" onsubmit="return window.TribecaSaveTeacherTask(this,event)">
+        <input type="hidden" name="id" value="">
+        <label>Tarea<input name="title" required maxlength="220" placeholder="Ejemplo: preparar simulacro de Historia"></label>
+        <label>Fecha<input name="taskDate" type="date" value="${safe(today)}" required></label>
+        <label class="full-row">Notas<textarea name="notes" rows="2" maxlength="800" placeholder="Detalles opcionales"></textarea></label>
+        <button type="submit" class="primary-btn">Añadir tarea</button>
+      </form>
+      <div class="teacher-task-list">${rows.length?rows.map(t=>`<article class="teacher-task-row ${t.done?'is-done':''}"><label><input type="checkbox" data-t114-toggle-task="${safe(t.id)}" ${t.done?'checked':''}><span><strong>${safe(t.title||'Tarea sin título')}</strong><small>${safe(fmtDate(t.task_date||today))}${t.notes?` · ${safe(t.notes)}`:''}</small></span></label><button type="button" class="secondary-btn compact-btn" data-t114-delete-task="${safe(t.id)}">Eliminar</button></article>`).join(''):'<div class="empty-state">No hay tareas pendientes anotadas.</div>'}</div>
+    </section>`;
+  }
+
   function teacherWelcomePanel(){
     const today=new Date();
     const dateText=today.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -851,13 +910,14 @@
     const events=weekEventsForTeacher();
     const byDay=new Map();
     events.forEach(e=>{ if(!byDay.has(e.date)) byDay.set(e.date, []); byDay.get(e.date).push(e); });
-    const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state">No hay eventos previstos esta semana.</div>';
-    return `<section class="teacher-welcome-panel window-panel"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span></div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div></section>`;
+    const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state teacher-week-empty">No hay eventos previstos esta semana.</div>';
+    const pending=todayTeacherTasks().length;
+    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span></div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><button type="button" class="teacher-tasks-summary" data-t114-open-tasks><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</button></section>`;
   }
   function activeClassroomsQuickAccess(){
     const rows=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
-    if(!rows.length) return `<section class="teacher-quick-classes window-panel"><div class="section-heading"><h2>Clases activas</h2><span>0 clases</span></div><div class="empty-state">Todavía no hay clases activas.</div></section>`;
-    return `<section class="teacher-quick-classes window-panel"><div class="section-heading"><h2>Clases activas</h2><span>${rows.length} clase${rows.length===1?'':'s'}</span></div><div class="teacher-quick-class-grid">${rows.map((c,i)=>{ const assigned=classroomStudents(c.id); const subjects=classroomSubjects(c.id); const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id))); const mats=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)); return `<article class="teacher-quick-class-card classroom-theme-${i%6}" tabindex="0" role="button" data-t90-open-class="${safe(c.id)}"><div><p>${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></div><footer><span>${assigned.length} alumno${assigned.length===1?'':'s'}</span><span>${subjects.length} materia${subjects.length===1?'':'s'}</span><span>${units.length} unidad${units.length===1?'':'es'}</span><span>${mats.length} pub.</span></footer></article>`; }).join('')}</div></section>`;
+    if(!rows.length) return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>0 clases</span></div><div class="empty-state">Todavía no hay clases activas.</div></section>`;
+    return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>${rows.length} clase${rows.length===1?'':'s'}</span></div><div class="teacher-quick-class-grid">${rows.map(c=>{ const assigned=classroomStudents(c.id); const subjects=classroomSubjects(c.id); const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id))); const mats=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)); return `<article class="teacher-quick-class-card ${classroomThemeClass(c)}" style="${safe(classroomThemeStyle(c))}" tabindex="0" role="button" data-t90-open-class="${safe(c.id)}"><div><p>${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></div><footer><span>${assigned.length} alumno${assigned.length===1?'':'s'}</span><span>${subjects.length} materia${subjects.length===1?'':'s'}</span><span>${units.length} unidad${units.length===1?'':'es'}</span><span>${mats.length} pub.</span></footer></article>`; }).join('')}</div></section>`;
   }
   function teacherHome() {
     const students=State.data.students||[]; const assignedBadges=(State.data.userBadges||[]).length; const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
@@ -875,7 +935,7 @@
     ];
     const alertCount = teacherAlertCount();
     const unseenAlerts = Math.max(0, alertCount - Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
-    return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${assignedBadges} insignias asignadas</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${activeClassroomsQuickAccess()}</section>`;
+    return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}${State.teacherTasksOpen?teacherTasksManager():''}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${assignedBadges} insignias asignadas</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${activeClassroomsQuickAccess()}</section>`;
   }
 
   function studentAssignedClasses(studentId=State.profile?.id){
@@ -3048,17 +3108,19 @@ render();
   }
   function classroomPeoplePanel(c){
     const students=classroomStudents(c.id);
+    const assignmentOpen=classroomAssignmentBox(c).replace('<details class="classroom-assignment-box">','<details class="classroom-assignment-box" open>');
     return `<section class="classroom-people-panel classroom-people-panel-v92">
       <header class="classroom-section-title">
         <div><h3>Alumnado</h3><p>${students.length} alumno${students.length===1?'':'s'}</p></div>
       </header>
-      <div class="classroom-people-list classroom-people-list-v92">${students.length?students.map(s=>`<article class="classroom-person-row classroom-person-row-v91"><span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span><div><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small></div></article>`).join(''):'<div class="empty-state">Todavía no hay alumnado asignado.</div>'}</div>
+      <div class="classroom-people-list classroom-people-list-v92">${students.length?students.map(s=>`<button type="button" class="classroom-person-row classroom-person-row-v91 classroom-person-button" data-t114-open-student-profile="${safe(s.id)}"><span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span><div><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small></div></button>`).join(''):'<div class="empty-state">Todavía no hay alumnado asignado.</div>'}</div>
       <details class="classroom-assignment-compact">
         <summary><span>Editar alumnado</span><em>${students.length}</em></summary>
-        ${classroomAssignmentBox(c)}
+        ${assignmentOpen}
       </details>
     </section>`;
   }
+  
   function classroomClassSummary(c){
     const subjects=classroomSubjects(c.id);
     const materials=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id));
@@ -3069,7 +3131,7 @@ render();
     if(!c) return '<div class="empty-state premium-empty">No se encontró esta clase.</div>';
     const label=classroomLabel(c);
     return `<section class="classroom-detail-v92">
-      <header class="classroom-detail-hero classroom-detail-hero-v92 classroom-theme-${Math.abs(String(c.id||'').split('').reduce((a,ch)=>a+ch.charCodeAt(0),0))%6}">
+      <header class="classroom-detail-hero classroom-detail-hero-v92 ${classroomThemeClass(c)}" style="${safe(classroomThemeStyle(c))}">
         <div>
           <p>${safe(c.academic_year||currentAcademicYearLabel())}</p>
           <h2>${safe(label)}</h2>
@@ -3099,6 +3161,8 @@ function classroomsContent(){
     const editCourse=edit?.course || State.selectedSubjectCourse || '1.º ESO';
     const editName=edit?.name || '';
     const editYear=edit?.academic_year || currentAcademicYearLabel();
+    const editColor=(edit?.class_color || edit?.color || classColorFor(edit||{}).key);
+    const colorOptions=classColorPalette();
     const activeRows=rows.filter(c=>c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
     const hiddenRows=rows.filter(c=>c.hidden || c.active===false);
     const assignedCount=new Set(activeClassAssignments().map(x=>String(x.user_id))).size;
@@ -3129,8 +3193,9 @@ function classroomsContent(){
           <label>Curso académico<input name="academicYear" value="${safe(editYear)}" placeholder="2026/27"></label>
           <label class="full-row">Nombre visible<input name="name" maxlength="160" value="${safe(editName)}" placeholder="Ejemplo: 1.º ESO Fernando Blanco"></label>
           <label class="full-row">Descripción interna<textarea name="description" rows="2" maxlength="600">${safe(edit?.description||'')}</textarea></label>
-          <label class="check-line"><input type="checkbox" name="hidden" ${edit?.hidden?'checked':''}> Clase oculta para el alumnado</label>
-          <label class="check-line"><input type="checkbox" name="active" ${editId?(edit?.active!==false?'checked':''):'checked'}> Clase activa</label>
+          <fieldset class="class-color-picker full-row"><legend>Color de la clase</legend><div>${colorOptions.map(o=>`<label class="class-color-option" style="--swatch:${safe(o.primary)}"><input type="radio" name="classColor" value="${safe(o.key)}" ${editColor===o.key?'checked':''}><span></span><em>${safe(o.label)}</em></label>`).join('')}</div></fieldset>
+          <div class="classroom-state-options full-row"><label class="check-line"><input type="checkbox" name="hidden" ${edit?.hidden?'checked':''}> <span>Clase oculta para el alumnado</span></label>
+          <label class="check-line"><input type="checkbox" name="active" ${editId?(edit?.active!==false?'checked':''):'checked'}> <span>Clase activa</span></label></div>
           <div class="inline-actions full-row"><button class="primary-btn" type="submit">${editId?'Guardar cambios':'Crear clase'}</button>${editId?'<button class="secondary-btn" type="button" onclick="window.TribecaClassroomCancelEdit && window.TribecaClassroomCancelEdit(event)">Cancelar edición</button>':''}</div>
         </form>
       </details>
@@ -3213,8 +3278,7 @@ function classroomCard(c,i=0){
     const students=assigned.length;
     const names=assigned.slice(0,4).map(s=>`<li>${safe(displayName(s))}</li>`).join('');
     const label=classroomLabel(c);
-    const theme=i%6;
-    return `<article class="classroom-google-card classroom-google-card-v92 classroom-theme-${theme} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}" data-t90-open-class="${safe(c.id)}" tabindex="0" role="button" aria-label="Abrir clase ${safe(label)}">
+    return `<article class="classroom-google-card classroom-google-card-v92 ${classroomThemeClass(c)} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}" style="${safe(classroomThemeStyle(c))}" data-t90-open-class="${safe(c.id)}" tabindex="0" role="button" aria-label="Abrir clase ${safe(label)}">
       <header class="classroom-google-cover">
         <div>
           <p>${safe(c.academic_year||currentAcademicYearLabel())}</p>
@@ -3616,6 +3680,7 @@ function classroomCard(c,i=0){
       center, stage, course,
       academic_year:String(fd.get('academicYear')||'').trim() || currentAcademicYearLabel(),
       description:String(fd.get('description')||'').trim() || null,
+      class_color:String(fd.get('classColor')||'').trim() || null,
       hidden:!!fd.get('hidden'),
       active:!!fd.get('active'),
       created_by:State.profile.id,
@@ -3678,6 +3743,29 @@ function classroomCard(c,i=0){
     toast('Clase eliminada.');
     rerender();
   }
+  window.TribecaSaveTeacherTask=function(form,ev){
+    ev?.preventDefault?.(); ev?.stopPropagation?.();
+    if(!roleTeacher()) return false;
+    const fd=new FormData(form);
+    const id=String(fd.get('id')||'').trim();
+    const title=String(fd.get('title')||'').trim();
+    const task_date=String(fd.get('taskDate')||todayIso()).slice(0,10);
+    const notes=String(fd.get('notes')||'').trim()||null;
+    if(!title){ toast('Escribe la tarea pendiente.'); return false; }
+    const payload={title, task_date, notes, done:false, active:true, updated_at:new Date().toISOString()};
+    if(!id) payload.created_by=State.profile.id;
+    persistSupabaseRecord('teacher_tasks', payload, id||null).then(()=>loadData(true)).then(()=>{ State.teacherTasksOpen=true; toast('Tarea guardada.'); rerender(); }).catch(e=>toast(e.message||'No se pudo guardar la tarea.'));
+    return false;
+  };
+  window.TribecaToggleTeacherTask=function(id,done){
+    if(!roleTeacher() || !id) return;
+    persistSupabaseRecord('teacher_tasks',{done:!!done, updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{ State.teacherTasksOpen=true; rerender(); }).catch(e=>toast(e.message||'No se pudo actualizar la tarea.'));
+  };
+  window.TribecaDeleteTeacherTask=function(id){
+    if(!roleTeacher() || !id) return;
+    persistSupabaseRecord('teacher_tasks',{active:false, updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{ State.teacherTasksOpen=true; toast('Tarea eliminada.'); rerender(); }).catch(e=>toast(e.message||'No se pudo eliminar la tarea.'));
+  };
+
   window.TribecaClassroomEditDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80EditClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(c){ State.pendingClassroomEdit={...c}; rerender(); } return false; };
   window.TribecaClassroomCancelEdit=function(ev){ ev?.preventDefault?.(); State.pendingClassroomEdit=null; rerender(); return false; };
   window.TribecaClassroomSaveStudents=function(btn,ev,mode='assign'){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const form=btn?.closest?.('form'); if(!form){ toast('No se encontró el formulario de alumnado.'); return false; } saveClassroomStudents(form,mode).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar el alumnado de la clase.'); }); return false; };
@@ -4075,6 +4163,10 @@ function classroomCard(c,i=0){
       const inlineHome=ev.target.closest?.('[data-t52-go-home]'); if(inlineHome){ ev.preventDefault(); ev.stopImmediatePropagation(); showHomePage(); return; }
       const dataTool=ev.target.closest?.('[data-tool]'); if(dataTool){ ev.preventDefault(); ev.stopImmediatePropagation(); closeAccountMenu(); openTool(dataTool.dataset.tool); return; }
       const undoBtn=ev.target.closest?.('[data-t30-undo]'); if(undoBtn){ ev.preventDefault(); ev.stopPropagation(); await undoLast(); return; } const teacherTool=ev.target.closest?.('[data-t16-tool]'); if(teacherTool){ ev.preventDefault(); openTool(teacherTool.dataset.t16Tool); return; }
+      const taskOpen=ev.target.closest?.('[data-t114-open-tasks]'); if(taskOpen){ ev.preventDefault(); ev.stopPropagation(); State.teacherTasksOpen=true; rerender(); setTimeout(()=>document.getElementById('teacherTasksManager')?.scrollIntoView?.({behavior:'smooth',block:'start'}),80); return; }
+      const taskClose=ev.target.closest?.('[data-t114-close-tasks]'); if(taskClose){ ev.preventDefault(); ev.stopPropagation(); State.teacherTasksOpen=false; rerender(); return; }
+      const taskDelete=ev.target.closest?.('[data-t114-delete-task]'); if(taskDelete){ ev.preventDefault(); ev.stopPropagation(); window.TribecaDeleteTeacherTask(taskDelete.dataset.t114DeleteTask); return; }
+      const openStudentProfile=ev.target.closest?.('[data-t114-open-student-profile]'); if(openStudentProfile){ ev.preventDefault(); ev.stopPropagation(); State.selectedStudentId=openStudentProfile.dataset.t114OpenStudentProfile; renderInlineSection('studentProfiles'); return; }
       const openClassBtn=ev.target.closest?.('[data-t90-open-class-button]');
       const openClassCard=ev.target.closest?.('[data-t90-open-class]');
       if(openClassBtn || openClassCard){
@@ -4151,7 +4243,7 @@ function classroomCard(c,i=0){
     }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>applyTranslations(document), 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 

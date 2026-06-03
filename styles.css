@@ -11096,3 +11096,338 @@ body.is-dark .teacher-week-day strong {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tribeca Aula · versión 114
+   Panel docente refinado: contraste semanal, colores persistentes de clase, edición de alumnado y tareas pendientes. */
+.teacher-heading-premium,
+.teacher-quick-classes > .section-heading,
+.teacher-local-heading {
+  justify-content: flex-start !important;
+  justify-items: start !important;
+  grid-template-columns: auto auto !important;
+  text-align: left !important;
+  width: 100%;
+}
+
+.teacher-heading-premium h2,
+.teacher-quick-classes .section-heading h2,
+.teacher-local-heading h2 {
+  justify-self: start !important;
+  text-align: left !important;
+}
+
+.teacher-heading-premium .teacher-stats,
+.teacher-quick-classes .section-heading > span,
+.teacher-local-heading > span {
+  justify-self: start !important;
+}
+
+.teacher-welcome-panel-v114 {
+  grid-template-columns: minmax(18rem,.9fr) minmax(20rem,1.15fr) minmax(18rem,.8fr);
+  align-items: stretch;
+}
+
+.teacher-week-summary,
+.teacher-tasks-summary {
+  background: rgba(255,255,255,.92) !important;
+  color: #1f1e1a !important;
+}
+
+.teacher-week-summary h3,
+.teacher-tasks-summary h3 {
+  color: #103f24 !important;
+}
+
+.teacher-week-day {
+  background: #fffdfa !important;
+  border-color: rgba(55,49,34,.14) !important;
+}
+
+.teacher-week-day strong {
+  color: #103f24 !important;
+}
+
+.teacher-week-day span,
+.teacher-week-day em,
+.teacher-week-empty {
+  color: #1f1e1a !important;
+}
+
+.teacher-week-day span[class*="event-"] {
+  display: inline-flex;
+  width: fit-content;
+  padding: .28rem .55rem;
+  border-radius: 999px;
+  background: #f7f1e2 !important;
+  border: 1px solid rgba(55,49,34,.12);
+  color: #1f1e1a !important;
+}
+
+.teacher-week-day span.event-exam { background: rgba(16,63,36,.12) !important; color:#103f24 !important; }
+.teacher-week-day span.event-delivery { background: rgba(168,135,45,.16) !important; color:#6f5116 !important; }
+.teacher-week-day span.event-presentation { background: rgba(91,52,118,.14) !important; color:#4b2d62 !important; }
+.teacher-week-day span.event-excursion { background: rgba(31,111,104,.14) !important; color:#195d57 !important; }
+.teacher-week-day span.event-student_absence { background: rgba(141,36,36,.12) !important; color:#8d2424 !important; }
+
+.teacher-tasks-summary {
+  display: grid;
+  gap: .6rem;
+  width: 100%;
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 20px;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 .5rem 1.2rem rgba(31,28,17,.035);
+}
+
+.teacher-tasks-summary:hover,
+.teacher-tasks-summary:focus-visible {
+  transform: translateY(-1px);
+  outline: 2px solid rgba(168,135,45,.28);
+}
+
+.teacher-tasks-summary h3,
+.teacher-tasks-summary p {
+  margin: 0;
+}
+
+.teacher-task-empty {
+  margin: 0;
+  color: #6b6354;
+  font-weight: 760;
+}
+
+.teacher-task-summary-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #1f1e1a;
+  font-weight: 780;
+}
+
+.teacher-tasks-manager {
+  display: grid;
+  gap: 1rem;
+}
+
+.teacher-tasks-manager > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.teacher-task-form {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(10rem, .35fr) auto;
+  gap: .8rem;
+  align-items: end;
+}
+
+.teacher-task-form .full-row {
+  grid-column: 1 / -1;
+}
+
+.teacher-task-list {
+  display: grid;
+  gap: .55rem;
+}
+
+.teacher-task-row {
+  display: flex;
+  justify-content: space-between;
+  gap: .8rem;
+  align-items: center;
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 16px;
+  background: rgba(255,255,255,.74);
+  padding: .75rem .85rem;
+}
+
+.teacher-task-row label {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  margin: 0;
+}
+
+.teacher-task-row input[type="checkbox"] {
+  margin-top: .2rem;
+  accent-color: var(--green);
+}
+
+.teacher-task-row strong,
+.teacher-task-row small {
+  display: block;
+}
+
+.teacher-task-row small {
+  color: var(--muted);
+  font-weight: 760;
+}
+
+.teacher-task-row.is-done {
+  opacity: .68;
+  background: rgba(16,63,36,.055);
+}
+
+.teacher-task-row.is-done strong {
+  text-decoration: line-through;
+}
+
+.teacher-quick-class-card,
+.classroom-google-card .classroom-google-cover,
+.classroom-detail-hero {
+  background: linear-gradient(135deg, var(--class-primary, #103f24), var(--class-secondary, #2f6848)) !important;
+}
+
+.teacher-quick-class-card,
+.classroom-detail-hero {
+  color: #fff;
+}
+
+.classroom-google-card {
+  border-top: 4px solid var(--class-primary, #103f24);
+}
+
+.classroom-google-card .classroom-google-cover strong,
+.teacher-quick-class-card footer span {
+  background: rgba(255,255,255,.20) !important;
+}
+
+.class-color-picker {
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 18px;
+  padding: .8rem .9rem;
+  background: rgba(255,255,255,.68);
+}
+
+.class-color-picker legend {
+  padding: 0 .35rem;
+  color: var(--green);
+  font-weight: 950;
+}
+
+.class-color-picker > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: .55rem;
+}
+
+.class-color-option {
+  display: flex !important;
+  align-items: center !important;
+  gap: .45rem !important;
+  margin: 0 !important;
+  padding: .45rem .55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(55,49,34,.10);
+  cursor: pointer;
+}
+
+.class-color-option input {
+  margin: 0 !important;
+}
+
+.class-color-option span {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.10);
+}
+
+.class-color-option em {
+  font-style: normal;
+  font-weight: 820;
+  color: var(--text);
+}
+
+.classroom-state-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .8rem 1.1rem;
+  align-items: center;
+}
+
+.classroom-state-options .check-line,
+.classroom-compact-form .check-line {
+  width: fit-content !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: .45rem !important;
+  margin: 0 !important;
+}
+
+.classroom-state-options .check-line input,
+.classroom-compact-form .check-line input {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0 !important;
+  accent-color: var(--green);
+}
+
+.classroom-state-options .check-line span {
+  display: inline !important;
+  color: var(--text);
+  font-weight: 820;
+}
+
+.classroom-person-button {
+  width: 100%;
+  border: 1px solid rgba(55,49,34,.10);
+  text-align: left;
+  cursor: pointer;
+}
+
+.classroom-person-button:hover,
+.classroom-person-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(16,63,36,.24);
+  box-shadow: 0 .55rem 1.2rem rgba(31,28,17,.055);
+  outline: none;
+}
+
+.classroom-assignment-compact .classroom-assignment-box[open] {
+  margin-top: .65rem;
+}
+
+body.is-dark .teacher-week-summary,
+body.is-dark .teacher-tasks-summary,
+body.is-dark .teacher-week-day,
+body.is-dark .teacher-task-row,
+body.is-dark .class-color-picker {
+  background: var(--panel-solid) !important;
+  border-color: rgba(212,175,55,.16) !important;
+}
+
+body.is-dark .teacher-week-day span[class*="event-"] {
+  background: rgba(212,175,55,.10) !important;
+  color: #f5f0df !important;
+}
+
+body.is-dark .teacher-tasks-summary h3,
+body.is-dark .teacher-week-summary h3,
+body.is-dark .teacher-week-day strong {
+  color: #f2d37c !important;
+}
+
+@media (max-width: 1100px) {
+  .teacher-welcome-panel-v114 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .teacher-task-form {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-tasks-manager > header,
+  .teacher-task-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
