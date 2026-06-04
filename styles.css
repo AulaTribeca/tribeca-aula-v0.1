@@ -11897,3 +11897,111 @@ body.is-dark .guidance-access-box {
 body.is-dark .guidance-access-list > div {
   background: rgba(255,255,255,.06);
 }
+
+
+/* Tribeca Aula · versión 122
+   Feedback detallado en simulacros autocorregibles. */
+.exam-question.is-correct {
+  border-left: .35rem solid #15803d;
+  padding-left: .75rem;
+  background: rgba(21, 128, 61, .045);
+}
+
+.exam-question.is-wrong {
+  border-left: .35rem solid #b42318;
+  padding-left: .75rem;
+  background: rgba(180, 35, 24, .045);
+}
+
+.exam-question.is-partial {
+  border-left: .35rem solid #b78218;
+  padding-left: .75rem;
+  background: rgba(183, 130, 24, .06);
+}
+
+.exam-options label.is-correct,
+.exam-matching label.is-correct,
+.exam-ordering label.is-correct,
+.exam-question input.is-correct,
+.exam-question textarea.is-correct {
+  border-color: rgba(21,128,61,.28);
+  background: rgba(21,128,61,.09);
+  color: #14532d;
+}
+
+.exam-options label.is-wrong,
+.exam-matching label.is-wrong,
+.exam-ordering label.is-wrong,
+.exam-question input.is-wrong,
+.exam-question textarea.is-wrong {
+  border-color: rgba(180,35,24,.30);
+  background: rgba(180,35,24,.08);
+  color: #991b1b;
+}
+
+.exam-question textarea.is-partial {
+  border-color: rgba(183,130,24,.30);
+  background: rgba(183,130,24,.08);
+}
+
+.exam-question-feedback {
+  margin-top: .65rem;
+}
+
+.exam-feedback-card {
+  display: grid;
+  gap: .35rem;
+  padding: .75rem .85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(55,49,34,.12);
+  font-weight: 680;
+}
+
+.exam-feedback-card p {
+  margin: 0;
+}
+
+.exam-feedback-card ul {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.exam-feedback-card li {
+  margin: .2rem 0;
+}
+
+.exam-feedback-card.is-correct {
+  background: rgba(21,128,61,.10);
+  border-color: rgba(21,128,61,.22);
+  color: #14532d;
+}
+
+.exam-feedback-card.is-wrong {
+  background: rgba(180,35,24,.09);
+  border-color: rgba(180,35,24,.24);
+  color: #991b1b;
+}
+
+.exam-feedback-card.is-partial {
+  background: rgba(183,130,24,.10);
+  border-color: rgba(183,130,24,.24);
+  color: #7c4a03;
+}
+
+body.is-dark .exam-feedback-card.is-correct {
+  color: #bff3cf;
+  background: rgba(50,180,96,.14);
+  border-color: rgba(50,180,96,.24);
+}
+
+body.is-dark .exam-feedback-card.is-wrong {
+  color: #ffd4cf;
+  background: rgba(255,132,120,.14);
+  border-color: rgba(255,132,120,.24);
+}
+
+body.is-dark .exam-feedback-card.is-partial {
+  color: #f2d37c;
+  background: rgba(212,175,55,.14);
+  border-color: rgba(212,175,55,.26);
+}

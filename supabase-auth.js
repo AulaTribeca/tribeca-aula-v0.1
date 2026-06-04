@@ -1543,20 +1543,20 @@
     });
     const questionHtml=(q,idx,localIdx)=>{
       const number=localIdx+1;
-      const globalNumber=idx+1;
       const displayNumber=q.originalNumber || number;
       const passage=q.passage?`<blockquote class="exam-passage">${safe(q.passage)}</blockquote>`:'';
       const imageHtml=q.image?`<figure class="exam-question-image"><img src="${safe(q.image)}" alt="${safe(q.imageAlt||q.imageCaption||q.exerciseTitle||q.prompt)}">${q.imageCaption?`<figcaption>${safe(q.imageCaption)}</figcaption>`:''}</figure>`:'';
       const title=q.exerciseTitle?`<p class="exam-exercise-title">${safe(q.exerciseTitle)}</p>`:'';
-      const head=`<div class="exam-question-head"><span class="exam-question-number">${displayNumber}</span><span class="exam-question-type">${safe(questionTypeLabel(q))}</span></div>`;
+      const head=`<div class="exam-question-head"><span class="exam-question-number">${safe(displayNumber)}</span><span class="exam-question-type">${safe(questionTypeLabel(q))}</span></div>`;
       const legend=`<legend>${safe(q.prompt)}</legend>`;
-      if(q.type==='matching') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="matching">${head}${title}${legend}${passage}${imageHtml}<div class="exam-matching">${q.pairs.map((p,i)=>`<label><span>${safe(p.left)}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${optionsForPairs(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
-      if(q.type==='ordering') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="ordering">${head}${title}${legend}${passage}${imageHtml}<div class="exam-ordering">${q.items.map((_,i)=>`<label><span>${i+1}.</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${q.items.map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div></fieldset>`;
-      if(q.type==='short_text') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="short_text">${head}${title}${legend}${passage}${imageHtml}<input name="q${idx}" type="text" placeholder="Escribe tu respuesta"></fieldset>`;
-      if(q.type==='writing') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="writing">${head}${title}${legend}${passage}${imageHtml}<textarea name="q${idx}" rows="7" placeholder="Escribe tu respuesta"></textarea>${q.keywords?.length?`<small class="exam-help">Se autocorrige por criterios configurados.</small>`:''}</fieldset>`;
+      const feedback=`<div class="exam-question-feedback" data-exam-feedback="${idx}" hidden></div>`;
+      if(q.type==='matching') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="matching">${head}${title}${legend}${passage}${imageHtml}<div class="exam-matching">${q.pairs.map((p,i)=>`<label><span>${safe(p.left)}</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${optionsForPairs(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div>${feedback}</fieldset>`;
+      if(q.type==='ordering') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="ordering">${head}${title}${legend}${passage}${imageHtml}<div class="exam-ordering">${q.items.map((_,i)=>`<label><span>${i+1}.</span><select name="q${idx}_${i}"><option value="">Seleccionar</option>${q.items.map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select></label>`).join('')}</div>${feedback}</fieldset>`;
+      if(q.type==='short_text') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="short_text">${head}${title}${legend}${passage}${imageHtml}<input name="q${idx}" type="text" placeholder="Escribe tu respuesta">${feedback}</fieldset>`;
+      if(q.type==='writing') return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="writing">${head}${title}${legend}${passage}${imageHtml}<textarea name="q${idx}" rows="7" placeholder="Escribe tu respuesta"></textarea>${q.keywords?.length?`<small class="exam-help">Se autocorrige por criterios configurados.</small>`:''}${feedback}</fieldset>`;
       const multiple=q.type==='multiple_choice';
       const type=multiple?'checkbox':'radio';
-      return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="${safe(q.type)}">${head}${title}${legend}${passage}${imageHtml}<div class="exam-options">${q.options.map((o,i)=>`<label><input type="${type}" name="q${idx}${multiple?'[]':''}" value="${i}"><span>${safe(o.text)}</span></label>`).join('')}</div></fieldset>`;
+      return `<fieldset class="exam-question" data-exam-q="${idx}" data-type="${safe(q.type)}">${head}${title}${legend}${passage}${imageHtml}<div class="exam-options">${q.options.map((o,i)=>`<label><input type="${type}" name="q${idx}${multiple?'[]':''}" value="${i}"><span>${safe(o.text)}</span></label>`).join('')}</div>${feedback}</fieldset>`;
     };
     const sectionsHtml=grouped.map(group=>{
       const pts=group.items.length*perQuestion;
@@ -1564,44 +1564,105 @@
     }).join('');
     container.innerHTML=`<form class="native-exam-form exam-paper-form"><header class="native-exam-header exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p>${previous?`<strong class="exam-previous-grade">Última nota: ${Number(previous.score||0).toFixed(2)}/10</strong>`:''}</header><div class="native-exam-questions exam-paper-body">${sectionsHtml}</div><footer class="native-exam-footer exam-paper-footer"><button type="submit" class="primary-btn">Finalizar y corregir</button><span>${total} pregunta${total===1?'':'s'} · corrección automática sobre 10</span></footer></form><div class="native-exam-result" hidden></div>`;
     const form=container.querySelector('form');
+    const joinList=arr=>(arr||[]).map(x=>safe(x)).join(', ');
+    const optionText=(q,i)=> q.options?.[i]?.text || '';
+    const optionRationale=(q,i)=> q.options?.[i]?.rationale || '';
+    const statusTitle=fraction=>fraction===1?'Correcto':fraction>0?'Parcialmente correcto':'Incorrecto';
+    const addGeneralFeedback=(q, parts)=> q.feedback ? [...parts, `<p><strong>Explicación:</strong> ${safe(q.feedback)}</p>`] : parts;
+    const markQuestion=(idx,fraction,html)=>{
+      const fs=form.querySelector(`[data-exam-q="${idx}"]`);
+      if(!fs) return;
+      fs.classList.remove('is-correct','is-wrong','is-partial');
+      fs.classList.add(fraction===1?'is-correct':fraction>0?'is-partial':'is-wrong');
+      const box=fs.querySelector('[data-exam-feedback]');
+      if(box){ box.hidden=false; box.innerHTML=html; }
+    };
+    const selectedIndexes=(name)=>[...form.querySelectorAll(`[name="${name}"]:checked`)].map(x=>Number(x.value)).sort((a,b)=>a-b);
     form.addEventListener('submit', async ev=>{
       ev.preventDefault();
       let rawScore=0;
       const answers=[];
+      form.querySelectorAll('.exam-question').forEach(q=>q.classList.remove('is-correct','is-wrong','is-partial'));
+      form.querySelectorAll('.exam-options label,.exam-matching label,.exam-ordering label').forEach(l=>l.classList.remove('is-correct','is-wrong','is-selected','is-expected'));
       exam.questions.forEach((q,idx)=>{
-        let fraction=0, value=null, correct=null;
+        let fraction=0, value=null, correct=null, htmlParts=[];
         if(q.type==='matching'){
           const vals=q.pairs.map((p,i)=>form.elements[`q${idx}_${i}`]?.value || '');
           const ok=vals.filter((v,i)=>v===q.pairs[i].right).length;
           fraction=q.pairs.length?ok/q.pairs.length:0; value=vals; correct=q.pairs.map(p=>p.right);
+          const labels=[...form.querySelectorAll(`[data-exam-q="${idx}"] .exam-matching label`)];
+          htmlParts.push(`<p><strong>${statusTitle(fraction)}.</strong> ${ok}/${q.pairs.length} relaciones correctas.</p>`);
+          htmlParts.push(`<ul>${q.pairs.map((p,i)=>{ const good=vals[i]===p.right; labels[i]?.classList.add(good?'is-correct':'is-wrong'); return `<li class="${good?'ok':'bad'}"><strong>${safe(p.left)}:</strong> ${good?'correcto':`marcaste “${safe(vals[i]||'sin respuesta')}”, debía ser “${safe(p.right)}”`}.</li>`; }).join('')}</ul>`);
+          htmlParts=addGeneralFeedback(q, htmlParts);
         } else if(q.type==='ordering'){
           const vals=q.items.map((_,i)=>form.elements[`q${idx}_${i}`]?.value || '');
           const ok=vals.filter((v,i)=>v===q.items[i]).length;
           fraction=q.items.length?ok/q.items.length:0; value=vals; correct=q.items;
+          const labels=[...form.querySelectorAll(`[data-exam-q="${idx}"] .exam-ordering label`)];
+          htmlParts.push(`<p><strong>${statusTitle(fraction)}.</strong> ${ok}/${q.items.length} posiciones correctas.</p>`);
+          htmlParts.push(`<p><strong>Tu orden:</strong> ${joinList(vals.filter(Boolean)) || 'sin respuesta'}.</p><p><strong>Orden correcto:</strong> ${joinList(q.items)}.</p>`);
+          vals.forEach((v,i)=>labels[i]?.classList.add(v===q.items[i]?'is-correct':'is-wrong'));
+          htmlParts=addGeneralFeedback(q, htmlParts);
         } else if(q.type==='multiple_choice'){
-          const selected=[...form.querySelectorAll(`[name="q${idx}[]"]:checked`)].map(x=>Number(x.value)).sort((a,b)=>a-b);
+          const selected=selectedIndexes(`q${idx}[]`);
           const expected=q.options.map((o,i)=>o.correct?i:null).filter(x=>x!==null).sort((a,b)=>a-b);
           fraction=selected.length===expected.length && selected.every((v,i)=>v===expected[i]) ? 1 : 0; value=selected; correct=expected;
+          const labels=[...form.querySelectorAll(`[data-exam-q="${idx}"] .exam-options label`)];
+          labels.forEach((l,i)=>{
+            if(expected.includes(i)) l.classList.add('is-correct','is-expected');
+            if(selected.includes(i) && !expected.includes(i)) l.classList.add('is-wrong','is-selected');
+            if(selected.includes(i) && expected.includes(i)) l.classList.add('is-selected');
+          });
+          htmlParts.push(`<p><strong>${statusTitle(fraction)}.</strong> En selección múltiple hay que marcar exactamente todas las opciones correctas y ninguna incorrecta.</p>`);
+          htmlParts.push(`<p><strong>Marcaste:</strong> ${joinList(selected.map(i=>optionText(q,i))) || 'sin respuesta'}.</p><p><strong>Respuesta correcta:</strong> ${joinList(expected.map(i=>optionText(q,i)))}.</p>`);
+          selected.filter(i=>optionRationale(q,i)).forEach(i=>htmlParts.push(`<p>${safe(optionRationale(q,i))}</p>`));
+          expected.filter(i=>optionRationale(q,i) && !selected.includes(i)).forEach(i=>htmlParts.push(`<p>${safe(optionRationale(q,i))}</p>`));
+          htmlParts=addGeneralFeedback(q, htmlParts);
         } else if(q.type==='short_text'){
           value=form.elements[`q${idx}`]?.value || '';
           fraction=scoreTextAnswer(value, q.acceptedAnswers, q.caseSensitive); correct=q.acceptedAnswers;
+          const input=form.elements[`q${idx}`]; input?.classList.add(fraction===1?'is-correct':'is-wrong');
+          htmlParts.push(`<p><strong>${statusTitle(fraction)}.</strong> ${fraction===1?'La respuesta coincide con una respuesta aceptada.':'La respuesta no coincide con las respuestas aceptadas.'}</p>`);
+          htmlParts.push(`<p><strong>Tu respuesta:</strong> ${safe(value||'sin respuesta')}.</p><p><strong>Respuesta aceptada:</strong> ${joinList(q.acceptedAnswers)}.</p>`);
+          htmlParts=addGeneralFeedback(q, htmlParts);
         } else if(q.type==='writing'){
           value=form.elements[`q${idx}`]?.value || '';
           fraction=scoreWriting(value, q); correct=q.acceptedAnswers?.length?q.acceptedAnswers:q.keywords;
+          const words=String(value||'').trim().split(/\s+/).filter(Boolean);
+          const missing=(q.keywords||[]).filter(k=>!textNorm(value,false).includes(textNorm(k,false)));
+          const textarea=form.elements[`q${idx}`]; textarea?.classList.add(fraction===1?'is-correct':fraction>0?'is-partial':'is-wrong');
+          htmlParts.push(`<p><strong>${statusTitle(fraction)}.</strong> Corrección objetiva por criterios configurados.</p>`);
+          if(q.minWords) htmlParts.push(`<p><strong>Extensión:</strong> ${words.length}/${q.minWords} palabras mínimas${words.length<q.minWords?' (insuficiente)':' (correcto)'}.</p>`);
+          if(q.acceptedAnswers?.length) htmlParts.push(`<p><strong>Respuesta aceptada:</strong> ${joinList(q.acceptedAnswers)}.</p>`);
+          if(q.keywords?.length) htmlParts.push(`<p><strong>Palabras clave esperadas:</strong> ${joinList(q.keywords)}.${missing.length?` <strong>Faltan:</strong> ${joinList(missing)}.`:' Se han incluido todas.'}</p>`);
+          htmlParts=addGeneralFeedback(q, htmlParts);
         } else {
           const selected=form.querySelector(`[name="q${idx}"]:checked`);
           value=selected?Number(selected.value):null;
           const expected=q.options.findIndex(o=>o.correct);
           fraction=value===expected ? 1 : 0; correct=expected;
+          const labels=[...form.querySelectorAll(`[data-exam-q="${idx}"] .exam-options label`)];
+          labels.forEach((l,i)=>{
+            if(i===expected) l.classList.add('is-correct','is-expected');
+            if(i===value && i!==expected) l.classList.add('is-wrong','is-selected');
+            if(i===value && i===expected) l.classList.add('is-selected');
+          });
+          htmlParts.push(`<p><strong>${statusTitle(fraction)}.</strong> ${fraction===1?'Has elegido la opción correcta.':'La opción seleccionada no es correcta.'}</p>`);
+          htmlParts.push(`<p><strong>Tu respuesta:</strong> ${value===null?'sin respuesta':safe(optionText(q,value))}.</p><p><strong>Respuesta correcta:</strong> ${safe(optionText(q,expected))}.</p>`);
+          if(value!==null && optionRationale(q,value)) htmlParts.push(`<p>${safe(optionRationale(q,value))}</p>`);
+          if(expected>=0 && optionRationale(q,expected) && expected!==value) htmlParts.push(`<p>${safe(optionRationale(q,expected))}</p>`);
+          htmlParts=addGeneralFeedback(q, htmlParts);
         }
         rawScore += fraction*perQuestion;
-        answers.push({question:q.prompt,type:q.type,value,correct,fraction});
+        const feedbackHtml=`<div class="exam-feedback-card ${fraction===1?'is-correct':fraction>0?'is-partial':'is-wrong'}">${htmlParts.join('')}</div>`;
+        markQuestion(idx,fraction,feedbackHtml);
+        answers.push({question:q.prompt,type:q.type,value,correct,fraction,feedback:htmlParts.map(x=>x.replace(/<[^>]+>/g,' ')).join(' ').replace(/\s+/g,' ').trim()});
       });
       const score=Math.max(0, Math.min(10, Number(rawScore.toFixed(2))));
       const result={score, max_score:10, answers, completed_at:new Date().toISOString()};
       const resultBox=container.querySelector('.native-exam-result');
       resultBox.hidden=false;
-      resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>${score>=5?'Simulacro superado':'Simulacro no superado'}</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas.</p><button type="button" class="secondary-btn" data-t111-retake-exam>Rehacer simulacro</button></div>`;
+      resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>${score>=5?'Simulacro superado':'Simulacro no superado'}</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas. Revisa debajo de cada pregunta el feedback en verde, rojo o dorado.</p><button type="button" class="secondary-btn" data-t111-retake-exam>Rehacer simulacro</button></div>`;
       form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);
       resultBox.querySelector('[data-t111-retake-exam]')?.addEventListener('click',()=>{
         delete container.dataset.t103Rendered;
@@ -1794,7 +1855,7 @@
     const normalized=normalizeExamPayload(exam);
     if(!normalized?.questions?.length) return '<!doctype html><html><body><p>No se pudo cargar el simulacro.</p></body></html>';
     const payload=JSON.stringify(normalized).replace(/</g,'\\u003c');
-    const style=`:root{font-size:12.5px}*{box-sizing:border-box}body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5}.wrap{max-width:980px;margin:0 auto;padding:20px 14px 34px}.teacher-note{border:1px solid #d7ccb5;border-radius:12px;background:#fff8e6;color:#6a4f14;font-weight:850;padding:10px 12px;margin-bottom:12px}.exam-paper-form{background:#fff;border:1px solid #d7ccb5;border-radius:10px;padding:18px 20px;box-shadow:0 10px 24px rgba(34,27,12,.06)}.exam-paper-header{border-bottom:2px solid #1f1e1a;padding-bottom:10px;margin-bottom:14px}.exam-paper-topline{display:flex;justify-content:space-between;gap:12px;color:#1f1e1a;font-size:13px}.exam-paper-header h1{font-family:Georgia,serif;font-size:clamp(26px,2.5vw,38px);line-height:1.08;margin:10px 0 6px;color:#1f1e1a}.exam-paper-header p{margin:0;color:#5d564b;font-weight:750}.exam-paper-section{margin:16px 0}.exam-paper-section>header{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #d7ccb5;margin-bottom:8px}.exam-paper-section h2{font-size:18px;margin:0 0 5px;color:#1f1e1a}.exam-paper-section header span{font-weight:850;color:#6a4f14}.exam-question{border:0;border-bottom:1px solid #eee4d0;margin:0;padding:10px 0 14px}.exam-question-head{display:flex;gap:8px;align-items:center}.exam-question-number{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#f0eadc;font-weight:950}.exam-question-type{font-size:12px;color:#6a6458;font-weight:850}.exam-exercise-title{margin:5px 0 2px;color:#0b3d22;font-weight:900}.exam-question legend{padding:0;font-weight:800;font-size:15px;color:#1f1e1a;line-height:1.45}.exam-passage{margin:8px 0;padding:10px 12px;border-left:4px solid #0b3d22;background:#faf8f1}.exam-question-image{margin:8px 0;padding:8px;border:1px solid #d7ccb5;border-radius:10px;background:#fffdfa}.exam-question-image img{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:8px;background:#fff}.exam-question-image figcaption{text-align:center;margin-top:5px;color:#6a6458;font-weight:750;font-size:12px}.exam-options,.exam-matching,.exam-ordering{display:grid;gap:6px;margin-top:8px}.exam-options label{display:grid;grid-template-columns:auto 1fr;gap:7px;align-items:start}.exam-options input{margin-top:4px}.exam-matching label,.exam-ordering label{display:grid;grid-template-columns:minmax(160px,.8fr) minmax(220px,1.2fr);gap:10px;align-items:center}.exam-question input[type=text],.exam-question textarea,.exam-question select{width:100%;border:1px solid #cfc7b8;border-radius:6px;min-height:38px;padding:7px 9px;background:#fff;color:#1f1e1a;font:inherit}.exam-question textarea{min-height:150px;resize:vertical}.exam-help{color:#6a6458;font-weight:750}.exam-paper-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:2px solid #1f1e1a;margin-top:14px;padding-top:12px}.primary-btn,.secondary-btn{border:0;border-radius:999px;padding:9px 14px;font-weight:950;cursor:pointer}.primary-btn{background:#0b3d22;color:#fff}.secondary-btn{background:#eef4e9;color:#0b3d22;border:1px solid #cfdccf}.exam-score-card{margin:14px 0 0;padding:14px 16px;border-radius:12px;background:#f3eddd;border:1px solid #d4c7a9;display:grid;gap:6px}.exam-score-card strong{font-size:36px;color:#0b3d22}.exam-score-card span{font-weight:950}.exam-score-card p{margin:0;color:#5d564b;font-weight:750}@media(max-width:720px){.exam-paper-form{padding:13px}.exam-paper-topline,.exam-paper-footer,.exam-matching label,.exam-ordering label{display:grid;grid-template-columns:1fr}}`;
+    const style=`:root{font-size:12.5px}*{box-sizing:border-box}body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.5}.wrap{max-width:980px;margin:0 auto;padding:20px 14px 34px}.teacher-note{border:1px solid #d7ccb5;border-radius:12px;background:#fff8e6;color:#6a4f14;font-weight:850;padding:10px 12px;margin-bottom:12px}.exam-paper-form{background:#fff;border:1px solid #d7ccb5;border-radius:10px;padding:18px 20px;box-shadow:0 10px 24px rgba(34,27,12,.06)}.exam-paper-header{border-bottom:2px solid #1f1e1a;padding-bottom:10px;margin-bottom:14px}.exam-paper-topline{display:flex;justify-content:space-between;gap:12px;color:#1f1e1a;font-size:13px}.exam-paper-header h1{font-family:Georgia,serif;font-size:clamp(26px,2.5vw,38px);line-height:1.08;margin:10px 0 6px;color:#1f1e1a}.exam-paper-header p{margin:0;color:#5d564b;font-weight:750}.exam-paper-section{margin:16px 0}.exam-paper-section>header{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #d7ccb5;margin-bottom:8px}.exam-paper-section h2{font-size:18px;margin:0 0 5px;color:#1f1e1a}.exam-paper-section header span{font-weight:850;color:#6a4f14}.exam-question{border:0;border-bottom:1px solid #eee4d0;margin:0;padding:10px 0 14px}.exam-question.is-correct{border-left:5px solid #15803d;padding-left:10px;background:#f2fbf5}.exam-question.is-wrong{border-left:5px solid #b42318;padding-left:10px;background:#fff5f4}.exam-question.is-partial{border-left:5px solid #b78218;padding-left:10px;background:#fff9eb}.exam-question-head{display:flex;gap:8px;align-items:center}.exam-question-number{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#f0eadc;font-weight:950}.exam-question-type{font-size:12px;color:#6a6458;font-weight:850}.exam-exercise-title{margin:5px 0 2px;color:#0b3d22;font-weight:900}.exam-question legend{padding:0;font-weight:800;font-size:15px;color:#1f1e1a;line-height:1.45}.exam-passage{margin:8px 0;padding:10px 12px;border-left:4px solid #0b3d22;background:#faf8f1}.exam-question-image{margin:8px 0;padding:8px;border:1px solid #d7ccb5;border-radius:10px;background:#fffdfa}.exam-question-image img{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:8px;background:#fff}.exam-question-image figcaption{text-align:center;margin-top:5px;color:#6a6458;font-weight:750;font-size:12px}.exam-options,.exam-matching,.exam-ordering{display:grid;gap:6px;margin-top:8px}.exam-options label{display:grid;grid-template-columns:auto 1fr;gap:7px;align-items:start}.exam-matching label,.exam-ordering label{display:grid;grid-template-columns:minmax(160px,.8fr) minmax(220px,1.2fr);gap:10px;align-items:center}.exam-options label.is-correct,.exam-matching label.is-correct,.exam-ordering label.is-correct{background:#eaf8ef;border-radius:8px;padding:4px 7px;color:#14532d}.exam-options label.is-wrong,.exam-matching label.is-wrong,.exam-ordering label.is-wrong{background:#fdeceb;border-radius:8px;padding:4px 7px;color:#991b1b}.exam-question input[type=text],.exam-question textarea,.exam-question select{width:100%;border:1px solid #cfc7b8;border-radius:6px;min-height:38px;padding:7px 9px;background:#fff;color:#1f1e1a;font:inherit}.exam-question textarea{min-height:150px;resize:vertical}.exam-feedback-card{margin-top:10px;border-radius:10px;padding:10px 12px;border:1px solid #ddd;display:grid;gap:5px}.exam-feedback-card p{margin:0}.exam-feedback-card ul{margin:0;padding-left:18px}.exam-feedback-card.is-correct{background:#eaf8ef;border-color:#9ad5ac;color:#14532d}.exam-feedback-card.is-wrong{background:#fdeceb;border-color:#f0aaa5;color:#991b1b}.exam-feedback-card.is-partial{background:#fff9eb;border-color:#e8c77e;color:#7c4a03}.exam-paper-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:2px solid #1f1e1a;margin-top:14px;padding-top:12px}.primary-btn,.secondary-btn{border:0;border-radius:999px;padding:9px 14px;font-weight:950;cursor:pointer}.primary-btn{background:#0b3d22;color:#fff}.secondary-btn{background:#eef4e9;color:#0b3d22;border:1px solid #cfdccf}.exam-score-card{margin:14px 0 0;padding:14px 16px;border-radius:12px;background:#f3eddd;border:1px solid #d4c7a9;display:grid;gap:6px}.exam-score-card strong{font-size:36px;color:#0b3d22}.exam-score-card span{font-weight:950}.exam-score-card p{margin:0;color:#5d564b;font-weight:750}@media(max-width:720px){.exam-paper-form{padding:13px}.exam-paper-topline,.exam-paper-footer,.exam-matching label,.exam-ordering label{display:grid;grid-template-columns:1fr}}`;
     const script=`
 const EXAM=${payload};
 function esc(v){return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c];});}
@@ -1804,6 +1865,10 @@ function writingScore(v,q){var words=String(v||'').trim().split(/\\s+/).filter(B
 function qLabel(q){return {single_choice:'Elige la respuesta correcta',multiple_choice:'Selecciona todas las correctas',true_false:'Verdadero o falso',short_text:'Completa',writing:'Writing',matching:'Relaciona',ordering:'Ordena'}[q.type]||'Ejercicio';}
 function sectionName(q){return String(q.section||'Simulacro').trim()||'Simulacro';}
 function optsForPairs(q){return (q.pairs||[]).map(function(p){return p.right;}).slice().sort(function(a,b){return String(a).localeCompare(String(b),'es',{numeric:true});});}
+function join(arr){return (arr||[]).map(esc).join(', ');}
+function optionText(q,i){return ((q.options||[])[i]||{}).text||'';}
+function statusTitle(f){return f===1?'Correcto':f>0?'Parcialmente correcto':'Incorrecto';}
+function addFeedback(q,parts){if(q.feedback) parts.push('<p><strong>Explicación:</strong> '+esc(q.feedback)+'</p>'); return parts;}
 function questionHtml(q,idx,localIdx){
   var display=q.originalNumber||q.questionNumber||String(localIdx+1);
   var passage=q.passage?'<blockquote class="exam-passage">'+esc(q.passage)+'</blockquote>':'';
@@ -1811,18 +1876,13 @@ function questionHtml(q,idx,localIdx){
   var title=q.exerciseTitle?'<p class="exam-exercise-title">'+esc(q.exerciseTitle)+'</p>':'';
   var head='<div class="exam-question-head"><span class="exam-question-number">'+esc(display)+'</span><span class="exam-question-type">'+esc(qLabel(q))+'</span></div>';
   var legend='<legend>'+esc(q.prompt||q.question||'Pregunta')+'</legend>';
-  if(q.type==='matching'){
-    var pairOpts=optsForPairs(q);
-    return '<fieldset class="exam-question" data-q="'+idx+'" data-type="matching">'+head+title+legend+passage+image+'<div class="exam-matching">'+(q.pairs||[]).map(function(p,i){return '<label><span>'+esc(p.left)+'</span><select name="q'+idx+'_'+i+'"><option value="">Seleccionar</option>'+pairOpts.map(function(o){return '<option value="'+esc(o)+'">'+esc(o)+'</option>';}).join('')+'</select></label>';}).join('')+'</div></fieldset>';
-  }
-  if(q.type==='ordering'){
-    return '<fieldset class="exam-question" data-q="'+idx+'" data-type="ordering">'+head+title+legend+passage+image+'<div class="exam-ordering">'+(q.items||[]).map(function(_,i){return '<label><span>'+(i+1)+'.</span><select name="q'+idx+'_'+i+'"><option value="">Seleccionar</option>'+(q.items||[]).map(function(o){return '<option value="'+esc(o)+'">'+esc(o)+'</option>';}).join('')+'</select></label>';}).join('')+'</div></fieldset>';
-  }
-  if(q.type==='short_text') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="short_text">'+head+title+legend+passage+image+'<input name="q'+idx+'" type="text" placeholder="Escribe tu respuesta"></fieldset>';
-  if(q.type==='writing') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="writing">'+head+title+legend+passage+image+'<textarea name="q'+idx+'" rows="7" placeholder="Escribe tu respuesta"></textarea>'+((q.keywords||q.requiredKeywords||[]).length?'<small class="exam-help">Se autocorrige por criterios configurados.</small>':'')+'</fieldset>';
-  var multiple=q.type==='multiple_choice';
-  var typ=multiple?'checkbox':'radio';
-  return '<fieldset class="exam-question" data-q="'+idx+'" data-type="'+esc(q.type)+'">'+head+title+legend+passage+image+'<div class="exam-options">'+(q.options||[]).map(function(o,i){return '<label><input type="'+typ+'" name="q'+idx+(multiple?'[]':'')+'" value="'+i+'"><span>'+esc(o.text||o.t||'')+'</span></label>';}).join('')+'</div></fieldset>';
+  var fb='<div class="exam-question-feedback" data-exam-feedback="'+idx+'" hidden></div>';
+  if(q.type==='matching') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="matching">'+head+title+legend+passage+image+'<div class="exam-matching">'+(q.pairs||[]).map(function(p,i){return '<label><span>'+esc(p.left)+'</span><select name="q'+idx+'_'+i+'"><option value="">Seleccionar</option>'+optsForPairs(q).map(function(o){return '<option value="'+esc(o)+'">'+esc(o)+'</option>';}).join('')+'</select></label>';}).join('')+'</div>'+fb+'</fieldset>';
+  if(q.type==='ordering') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="ordering">'+head+title+legend+passage+image+'<div class="exam-ordering">'+(q.items||[]).map(function(_,i){return '<label><span>'+(i+1)+'.</span><select name="q'+idx+'_'+i+'"><option value="">Seleccionar</option>'+(q.items||[]).map(function(o){return '<option value="'+esc(o)+'">'+esc(o)+'</option>';}).join('')+'</select></label>';}).join('')+'</div>'+fb+'</fieldset>';
+  if(q.type==='short_text') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="short_text">'+head+title+legend+passage+image+'<input name="q'+idx+'" type="text" placeholder="Escribe tu respuesta">'+fb+'</fieldset>';
+  if(q.type==='writing') return '<fieldset class="exam-question" data-q="'+idx+'" data-type="writing">'+head+title+legend+passage+image+'<textarea name="q'+idx+'" rows="7" placeholder="Escribe tu respuesta"></textarea>'+((q.keywords||q.requiredKeywords||[]).length?'<small class="exam-help">Se autocorrige por criterios configurados.</small>':'')+fb+'</fieldset>';
+  var multiple=q.type==='multiple_choice'; var typ=multiple?'checkbox':'radio';
+  return '<fieldset class="exam-question" data-q="'+idx+'" data-type="'+esc(q.type)+'">'+head+title+legend+passage+image+'<div class="exam-options">'+(q.options||[]).map(function(o,i){return '<label><input type="'+typ+'" name="q'+idx+(multiple?'[]':'')+'" value="'+i+'"><span>'+esc(o.text||o.t||'')+'</span></label>';}).join('')+'</div>'+fb+'</fieldset>';
 }
 function render(){
   var total=EXAM.questions.length, per=total?10/total:0, groups=[];
@@ -1831,21 +1891,55 @@ function render(){
   document.getElementById('app').innerHTML='<div class="teacher-note">Modo docente de prueba. Puedes realizar el simulacro todas las veces que quieras. No se guarda ninguna nota.</div><form id="examForm" class="exam-paper-form"><header class="exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h1>'+esc(EXAM.title||'Simulacro de examen')+'</h1><p>'+esc(EXAM.instructions||'Responde y finaliza para corregir.')+'</p></header>'+sections+'<footer class="exam-paper-footer"><button type="submit" class="primary-btn">Finalizar y corregir</button><span>'+total+' preguntas · corrección automática sobre 10</span></footer></form><div id="result"></div>';
   document.getElementById('examForm').addEventListener('submit', score);
 }
+function applyQuestionFeedback(idx,fraction,parts){
+  var fs=document.querySelector('[data-q="'+idx+'"]'); if(!fs) return;
+  fs.classList.add(fraction===1?'is-correct':(fraction>0?'is-partial':'is-wrong'));
+  var box=fs.querySelector('[data-exam-feedback]');
+  if(box){box.hidden=false; box.innerHTML='<div class="exam-feedback-card '+(fraction===1?'is-correct':(fraction>0?'is-partial':'is-wrong'))+'">'+parts.join('')+'</div>';}
+}
 function score(ev){
   ev.preventDefault();
   var form=ev.currentTarget, total=EXAM.questions.length, per=total?10/total:0, raw=0, answers=[];
   EXAM.questions.forEach(function(q,idx){
-    var fraction=0,value=null,correct=null;
-    if(q.type==='matching'){var vals=(q.pairs||[]).map(function(p,i){return (form.elements['q'+idx+'_'+i]||{}).value||'';}); var ok=vals.filter(function(v,i){return v===(q.pairs||[])[i].right;}).length; fraction=(q.pairs||[]).length?ok/(q.pairs||[]).length:0; value=vals; correct=(q.pairs||[]).map(function(p){return p.right;});}
-    else if(q.type==='ordering'){var vals=(q.items||[]).map(function(_,i){return (form.elements['q'+idx+'_'+i]||{}).value||'';}); var ok=vals.filter(function(v,i){return v===(q.items||[])[i];}).length; fraction=(q.items||[]).length?ok/(q.items||[]).length:0; value=vals; correct=q.items||[];}
-    else if(q.type==='multiple_choice'){var selected=[].slice.call(form.querySelectorAll('[name="q'+idx+'[]"]:checked')).map(function(x){return Number(x.value);}).sort(function(a,b){return a-b;}); var expected=(q.options||[]).map(function(o,i){return (o.correct||o.c)?i:null;}).filter(function(x){return x!==null;}).sort(function(a,b){return a-b;}); fraction=selected.length===expected.length&&selected.every(function(v,i){return v===expected[i];})?1:0; value=selected; correct=expected;}
-    else if(q.type==='short_text'){value=(form.elements['q'+idx]||{}).value||''; fraction=textOk(value,q.acceptedAnswers||[],q.caseSensitive); correct=q.acceptedAnswers||[];}
-    else if(q.type==='writing'){value=(form.elements['q'+idx]||{}).value||''; fraction=writingScore(value,q); correct=(q.acceptedAnswers&&q.acceptedAnswers.length)?q.acceptedAnswers:(q.keywords||q.requiredKeywords||[]);}
-    else {var selected=form.querySelector('[name="q'+idx+'"]:checked'); value=selected?Number(selected.value):null; var expected=(q.options||[]).findIndex(function(o){return o.correct||o.c;}); fraction=value===expected?1:0; correct=expected;}
+    var fraction=0,value=null,correct=null,parts=[];
+    var fs=document.querySelector('[data-q="'+idx+'"]');
+    if(q.type==='matching'){
+      var vals=(q.pairs||[]).map(function(p,i){return (form.elements['q'+idx+'_'+i]||{}).value||'';});
+      var ok=vals.filter(function(v,i){return v===(q.pairs||[])[i].right;}).length; fraction=(q.pairs||[]).length?ok/(q.pairs||[]).length:0; value=vals; correct=(q.pairs||[]).map(function(p){return p.right;});
+      parts.push('<p><strong>'+statusTitle(fraction)+'.</strong> '+ok+'/'+(q.pairs||[]).length+' relaciones correctas.</p>');
+      parts.push('<ul>'+(q.pairs||[]).map(function(p,i){var good=vals[i]===p.right; var lab=fs.querySelectorAll('.exam-matching label')[i]; if(lab) lab.classList.add(good?'is-correct':'is-wrong'); return '<li><strong>'+esc(p.left)+':</strong> '+(good?'correcto':'marcaste “'+esc(vals[i]||'sin respuesta')+'”, debía ser “'+esc(p.right)+'”')+'.</li>';}).join('')+'</ul>');
+    } else if(q.type==='ordering'){
+      var vals=(q.items||[]).map(function(_,i){return (form.elements['q'+idx+'_'+i]||{}).value||'';});
+      var ok=vals.filter(function(v,i){return v===(q.items||[])[i];}).length; fraction=(q.items||[]).length?ok/(q.items||[]).length:0; value=vals; correct=q.items||[];
+      parts.push('<p><strong>'+statusTitle(fraction)+'.</strong> '+ok+'/'+(q.items||[]).length+' posiciones correctas.</p><p><strong>Tu orden:</strong> '+(join(vals.filter(Boolean))||'sin respuesta')+'.</p><p><strong>Orden correcto:</strong> '+join(q.items||[])+'.</p>');
+      vals.forEach(function(v,i){var lab=fs.querySelectorAll('.exam-ordering label')[i]; if(lab) lab.classList.add(v===(q.items||[])[i]?'is-correct':'is-wrong');});
+    } else if(q.type==='multiple_choice'){
+      var selected=[].slice.call(form.querySelectorAll('[name="q'+idx+'[]"]:checked')).map(function(x){return Number(x.value);}).sort(function(a,b){return a-b;});
+      var expected=(q.options||[]).map(function(o,i){return (o.correct||o.c)?i:null;}).filter(function(x){return x!==null;}).sort(function(a,b){return a-b;});
+      fraction=selected.length===expected.length&&selected.every(function(v,i){return v===expected[i];})?1:0; value=selected; correct=expected;
+      [].slice.call(fs.querySelectorAll('.exam-options label')).forEach(function(l,i){ if(expected.indexOf(i)>-1) l.classList.add('is-correct'); if(selected.indexOf(i)>-1&&expected.indexOf(i)===-1) l.classList.add('is-wrong'); });
+      parts.push('<p><strong>'+statusTitle(fraction)+'.</strong> Debías marcar exactamente todas las opciones correctas.</p><p><strong>Marcaste:</strong> '+(join(selected.map(function(i){return optionText(q,i);}))||'sin respuesta')+'.</p><p><strong>Respuesta correcta:</strong> '+join(expected.map(function(i){return optionText(q,i);}))+'.</p>');
+    } else if(q.type==='short_text'){
+      value=(form.elements['q'+idx]||{}).value||''; fraction=textOk(value,q.acceptedAnswers||[],q.caseSensitive); correct=q.acceptedAnswers||[];
+      parts.push('<p><strong>'+statusTitle(fraction)+'.</strong> '+(fraction===1?'La respuesta coincide con una respuesta aceptada.':'La respuesta no coincide con las respuestas aceptadas.')+'</p><p><strong>Tu respuesta:</strong> '+esc(value||'sin respuesta')+'.</p><p><strong>Respuesta aceptada:</strong> '+join(q.acceptedAnswers||[])+'.</p>');
+    } else if(q.type==='writing'){
+      value=(form.elements['q'+idx]||{}).value||''; fraction=writingScore(value,q); correct=(q.acceptedAnswers&&q.acceptedAnswers.length)?q.acceptedAnswers:(q.keywords||q.requiredKeywords||[]);
+      var words=String(value||'').trim().split(/\\s+/).filter(Boolean); var keys=q.keywords||q.requiredKeywords||[]; var missing=keys.filter(function(k){return norm(value,false).indexOf(norm(k,false))<0;});
+      parts.push('<p><strong>'+statusTitle(fraction)+'.</strong> Corrección objetiva por criterios configurados.</p>');
+      if(q.minWords) parts.push('<p><strong>Extensión:</strong> '+words.length+'/'+q.minWords+' palabras mínimas'+(words.length<q.minWords?' (insuficiente)':' (correcto)')+'.</p>');
+      if(keys.length) parts.push('<p><strong>Palabras clave esperadas:</strong> '+join(keys)+(missing.length?' <strong>Faltan:</strong> '+join(missing):' Se han incluido todas.')+'.</p>');
+      if(q.acceptedAnswers&&q.acceptedAnswers.length) parts.push('<p><strong>Respuesta aceptada:</strong> '+join(q.acceptedAnswers)+'.</p>');
+    } else {
+      var selected=form.querySelector('[name="q'+idx+'"]:checked'); value=selected?Number(selected.value):null; var expected=(q.options||[]).findIndex(function(o){return o.correct||o.c;}); fraction=value===expected?1:0; correct=expected;
+      [].slice.call(fs.querySelectorAll('.exam-options label')).forEach(function(l,i){ if(i===expected) l.classList.add('is-correct'); if(i===value&&i!==expected) l.classList.add('is-wrong'); });
+      parts.push('<p><strong>'+statusTitle(fraction)+'.</strong> '+(fraction===1?'Has elegido la opción correcta.':'La opción seleccionada no es correcta.')+'</p><p><strong>Tu respuesta:</strong> '+(value===null?'sin respuesta':esc(optionText(q,value)))+'.</p><p><strong>Respuesta correcta:</strong> '+esc(optionText(q,expected))+'.</p>');
+    }
+    parts=addFeedback(q,parts);
+    applyQuestionFeedback(idx,fraction,parts);
     raw+=fraction*per; answers.push({question:q.prompt||q.question,type:q.type,value:value,correct:correct,fraction:fraction});
   });
   var finalScore=Math.max(0,Math.min(10,Number(raw.toFixed(2))));
-  document.getElementById('result').innerHTML='<div class="exam-score-card"><strong>'+finalScore.toFixed(2)+'/10</strong><span>'+(finalScore>=5?'Simulacro superado':'Simulacro no superado')+'</span><p>'+answers.filter(function(a){return a.fraction===1;}).length+'/'+answers.length+' preguntas completamente correctas.</p><button type="button" class="secondary-btn" id="retake">Rehacer simulacro</button></div>';
+  document.getElementById('result').innerHTML='<div class="exam-score-card"><strong>'+finalScore.toFixed(2)+'/10</strong><span>'+(finalScore>=5?'Simulacro superado':'Simulacro no superado')+'</span><p>'+answers.filter(function(a){return a.fraction===1;}).length+'/'+answers.length+' preguntas completamente correctas. Revisa debajo de cada pregunta el feedback.</p><button type="button" class="secondary-btn" id="retake">Rehacer simulacro</button></div>';
   form.querySelectorAll('input,textarea,select,button').forEach(function(el){el.disabled=true;});
   document.getElementById('retake').addEventListener('click',function(){render(); window.scrollTo({top:0,behavior:'smooth'});});
 }
