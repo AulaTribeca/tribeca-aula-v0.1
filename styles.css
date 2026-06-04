@@ -12005,3 +12005,258 @@ body.is-dark .exam-feedback-card.is-partial {
   background: rgba(212,175,55,.14);
   border-color: rgba(212,175,55,.26);
 }
+
+
+/* Tribeca Aula · versión 123
+   Calculadora flotante para materiales de Matemáticas. */
+.math-calc-widget[hidden] {
+  display: none !important;
+}
+
+.math-calc-widget {
+  position: fixed;
+  left: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 39000;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.math-calc-fab {
+  width: 3.35rem;
+  height: 3.35rem;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  background: #103f24;
+  color: #f5d77f;
+  display: grid;
+  place-items: center;
+  font-size: 1.45rem;
+  font-weight: 950;
+  box-shadow: 0 14px 36px rgba(0,0,0,.22);
+  cursor: pointer;
+}
+
+.math-calc-fab:hover,
+.math-calc-fab:focus-visible {
+  outline: 3px solid rgba(168,135,45,.45);
+  outline-offset: 3px;
+}
+
+.math-calc-panel {
+  position: fixed;
+  left: 1.25rem;
+  bottom: 5.25rem;
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: min(78vh, 46rem);
+  overflow: auto;
+  border-radius: 22px;
+  background: #202329;
+  color: #f6f4ee;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 26px 80px rgba(0,0,0,.32);
+  padding: .95rem;
+}
+
+.math-calc-panel[hidden] {
+  display: none !important;
+}
+
+.math-calc-panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .8rem;
+  margin-bottom: .75rem;
+}
+
+.math-calc-panel header strong {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.math-calc-panel header span {
+  display: block;
+  color: rgba(255,255,255,.64);
+  font-size: .78rem;
+  font-weight: 760;
+}
+
+.math-calc-panel header button,
+.math-calc-keypad button,
+.math-calc-actions button,
+.math-calc-display-wrap button,
+.math-calc-mode-tabs button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.math-calc-panel header button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.math-calc-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .35rem;
+  border-bottom: 1px solid rgba(255,255,255,.16);
+  margin-bottom: .65rem;
+}
+
+.math-calc-mode-tabs button {
+  background: transparent;
+  color: rgba(255,255,255,.72);
+  padding: .55rem .35rem;
+  border-radius: 10px 10px 0 0;
+  font-weight: 850;
+}
+
+.math-calc-mode-tabs button.is-active {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+  border-bottom: 2px solid #f5d77f;
+}
+
+.math-calc-display-wrap {
+  display: grid;
+  grid-template-columns: 1fr 3.2rem;
+  gap: .45rem;
+  margin-bottom: .5rem;
+}
+
+.math-calc-display {
+  width: 100%;
+  min-height: 3.6rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: #1b1d22;
+  color: #fff;
+  padding: .7rem .85rem;
+  font-size: 1.18rem;
+  font-weight: 760;
+}
+
+.math-calc-display-wrap button {
+  border-radius: 14px;
+  background: #30333a;
+  color: #fff;
+  font-weight: 950;
+}
+
+.math-calc-status {
+  min-height: 1.5rem;
+  margin: .25rem 0 .55rem;
+  color: rgba(255,255,255,.66);
+  font-size: .8rem;
+  font-weight: 760;
+}
+
+.math-calc-status.is-error {
+  color: #ffb4ad;
+}
+
+.math-calc-status.is-ok {
+  color: #b7f0c5;
+}
+
+.math-calc-keypad {
+  display: grid;
+  gap: .5rem;
+}
+
+.math-calc-special,
+.math-calc-numbers {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: .35rem;
+}
+
+.math-calc-numbers {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.math-calc-keypad button {
+  min-height: 2.85rem;
+  border-radius: 18px;
+  background: #2e3037;
+  color: #fff;
+  font-weight: 900;
+  box-shadow: inset 0 -1px rgba(0,0,0,.18);
+}
+
+.math-calc-special button {
+  background: #273121;
+}
+
+.math-calc-special[data-math-calc-special="trig"] button {
+  background: #1f3427;
+}
+
+.math-calc-special[data-math-calc-special="calculus"] button {
+  background: #3a2428;
+}
+
+.math-calc-keypad button:hover,
+.math-calc-actions button:hover,
+.math-calc-display-wrap button:hover {
+  filter: brightness(1.14);
+}
+
+.math-calc-actions {
+  display: grid;
+  grid-template-columns: .7fr .7fr 1.35fr 1.35fr;
+  gap: .45rem;
+  margin-top: .55rem;
+}
+
+.math-calc-actions button {
+  min-height: 2.6rem;
+  border-radius: 999px;
+  background: #30333a;
+  color: #fff;
+  font-weight: 900;
+}
+
+.math-calc-actions button[data-math-calc-action="equals"],
+.math-calc-actions button[data-math-calc-action="insert-result"] {
+  background: #8fb89a;
+  color: #10231a;
+}
+
+.math-calc-actions button[data-math-calc-action="insert-expression"] {
+  background: #f0d285;
+  color: #34270a;
+}
+
+body.is-dark .math-calc-panel {
+  border-color: rgba(212,175,55,.22);
+}
+
+@media (max-width: 760px) {
+  .math-calc-widget {
+    left: .9rem;
+    bottom: .9rem;
+  }
+
+  .math-calc-panel {
+    left: .75rem;
+    right: .75rem;
+    bottom: 4.7rem;
+    width: auto;
+  }
+
+  .math-calc-special {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .math-calc-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -762,7 +762,7 @@
         return;
       }
       if(roleTeacher()) main.innerHTML = teacherHome(); else main.innerHTML = studentHome();
-      bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations(); ensureAccessibilityWidget();
+      bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations(); ensureAccessibilityWidget(); ensureMathCalculatorWidget();
     } catch(error) {
       console.error('[Tribeca Aula] Error al renderizar la aplicación:', error);
       if(main) main.innerHTML = `<section class="panel app-error-panel"><p class="eyebrow">Tribeca Aula</p><h1>No se pudo cargar correctamente el panel</h1><p>${safe(error?.message || 'Error de interfaz')}</p><button type="button" class="primary-btn" onclick="location.reload()">Recargar aula</button></section>`;
@@ -1248,6 +1248,199 @@
   function materialOpenButton(m){
     return `<button type="button" class="secondary-btn material-open-btn" data-t33-open-mat="${safe(m.id)}">Abrir publicación</button>`;
   }
+
+  function isMathSubjectValue(value=''){
+    const v=String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    return /\bmatematicas\b|\bmathematics\b|\bmaths\b|\bmath\b|algebra|trigonometria|calculo|aritmetica|geometria/.test(v);
+  }
+  function materialIsMath(m={}){
+    return isMathSubjectValue(m.subject || m.subject_name || m.area || '');
+  }
+  function currentMathCalculatorContext(){
+    if(document.querySelector('[data-math-material="1"]')) return true;
+    if(isMathSubjectValue(State.currentSubject)) return true;
+    const classSubject=(State.data.classSubjects||[]).find(s=>String(s.id)===String(State.currentClassSubjectId||''));
+    if(classSubject && isMathSubjectValue(classSubject.subject)) return true;
+    return false;
+  }
+  function mathCalculatorMarkup(){
+    return `<button type="button" class="math-calc-fab" data-math-calc-toggle aria-label="Abrir calculadora">∑</button>
+      <section class="math-calc-panel" data-math-calc-panel hidden>
+        <header><div><strong>Calculadora</strong><span>Para materiales de Matemáticas</span></div><button type="button" data-math-calc-close aria-label="Cerrar">×</button></header>
+        <div class="math-calc-mode-tabs" role="tablist">
+          <button type="button" class="is-active" data-math-calc-tab="algebra">Álgebra</button>
+          <button type="button" data-math-calc-tab="trig">Trigonometría</button>
+          <button type="button" data-math-calc-tab="calculus">Cálculo</button>
+        </div>
+        <div class="math-calc-display-wrap">
+          <input class="math-calc-display" data-math-calc-display aria-label="Expresión de la calculadora" autocomplete="off">
+          <button type="button" data-math-calc-action="back">⌫</button>
+        </div>
+        <div class="math-calc-status" data-math-calc-status>Selecciona un cuadro de respuesta y usa “Insertar”.</div>
+        <div class="math-calc-keypad">
+          <div class="math-calc-special" data-math-calc-special="algebra">
+            ${[
+              ['√','sqrt('],['x²','^2'],['<','<'],['(', '('],[')', ')'],
+              ['log','log('],['!','!'],['>','>'],['≤','<='],['≥','>='],
+              ['x','x'],['y','y'],['=','=']
+            ].map(([l,v])=>`<button type="button" data-math-calc-value="${safe(v)}">${safe(l)}</button>`).join('')}
+          </div>
+          <div class="math-calc-special" data-math-calc-special="trig" hidden>
+            ${[
+              ['sin','sin('],['cos','cos('],['tan','tan('],['(', '('],[')', ')'],
+              ['csc','1/sin('],['sec','1/cos('],['cot','1/tan('],
+              ['arcsin','asin('],['arccos','acos('],['arctan','atan('],
+              ['π','pi'],['x','x'],['y','y'],['=','=']
+            ].map(([l,v])=>`<button type="button" data-math-calc-value="${safe(v)}">${safe(l)}</button>`).join('')}
+          </div>
+          <div class="math-calc-special" data-math-calc-special="calculus" hidden>
+            ${[
+              ['d/dx','d/dx '],['∞','∞'],['∛','cbrt('],['(', '('],[')', ')'],
+              ['lim','lim '],['lim +','lim → +∞ '],['lim −','lim → -∞ '],
+              ['log','log('],['C(n,k)','C(n,k)'],['P(n,k)','P(n,k)'],
+              ['Σ','Σ('],['∫','∫('],['e','e']
+            ].map(([l,v])=>`<button type="button" data-math-calc-value="${safe(v)}">${safe(l)}</button>`).join('')}
+          </div>
+          <div class="math-calc-numbers">
+            ${['7','8','9','÷','4','5','6','×','1','2','3','−','0',',','.','+'].map(v=>`<button type="button" data-math-calc-value="${safe(v)}">${safe(v)}</button>`).join('')}
+          </div>
+        </div>
+        <div class="math-calc-actions">
+          <button type="button" data-math-calc-action="clear">AC</button>
+          <button type="button" data-math-calc-action="equals">=</button>
+          <button type="button" data-math-calc-action="insert-expression">Insertar expresión</button>
+          <button type="button" data-math-calc-action="insert-result">Insertar resultado</button>
+        </div>
+      </section>`;
+  }
+  function ensureMathCalculatorWidget(){
+    let root=document.getElementById('tribecaMathCalculator');
+    if(!root){
+      root=document.createElement('div');
+      root.id='tribecaMathCalculator';
+      root.className='math-calc-widget';
+      root.innerHTML=mathCalculatorMarkup();
+      document.body.appendChild(root);
+    }
+    const active=currentMathCalculatorContext();
+    root.hidden=!active;
+    document.body.classList.toggle('has-math-calculator', active);
+    if(!document.body.dataset.tribecaMathCalcBound){
+      document.body.dataset.tribecaMathCalcBound='1';
+      document.addEventListener('focusin', ev=>{
+        const el=ev.target;
+        if(!el || root.contains(el)) return;
+        if(el.matches?.('input[type="text"], input:not([type]), textarea, [contenteditable="true"]')){
+          window.__tribecaMathCalcTarget=el;
+          const status=document.querySelector('[data-math-calc-status]');
+          if(status) status.textContent='Cuadro de respuesta seleccionado. Puedes insertar expresión o resultado.';
+        }
+      }, true);
+      document.addEventListener('mousedown', ev=>{
+        if(ev.target.closest?.('#tribecaMathCalculator button')) ev.preventDefault();
+      }, true);
+      document.addEventListener('click', ev=>{
+        const toggle=ev.target.closest?.('[data-math-calc-toggle]');
+        if(toggle){ ev.preventDefault(); const panel=document.querySelector('[data-math-calc-panel]'); if(panel) panel.hidden=!panel.hidden; return; }
+        const close=ev.target.closest?.('[data-math-calc-close]');
+        if(close){ ev.preventDefault(); document.querySelector('[data-math-calc-panel]')?.setAttribute('hidden',''); return; }
+        const tab=ev.target.closest?.('[data-math-calc-tab]');
+        if(tab){ ev.preventDefault(); switchMathCalculatorTab(tab.dataset.mathCalcTab); return; }
+        const valueBtn=ev.target.closest?.('[data-math-calc-value]');
+        if(valueBtn){ ev.preventDefault(); appendMathCalculatorValue(valueBtn.dataset.mathCalcValue||''); return; }
+        const action=ev.target.closest?.('[data-math-calc-action]');
+        if(action){ ev.preventDefault(); runMathCalculatorAction(action.dataset.mathCalcAction); return; }
+      }, true);
+      document.addEventListener('keydown', ev=>{
+        if(ev.key==='Escape') document.querySelector('[data-math-calc-panel]')?.setAttribute('hidden','');
+      });
+    }
+  }
+  function switchMathCalculatorTab(tab='algebra'){
+    document.querySelectorAll('[data-math-calc-tab]').forEach(b=>b.classList.toggle('is-active', b.dataset.mathCalcTab===tab));
+    document.querySelectorAll('[data-math-calc-special]').forEach(p=>p.hidden=p.dataset.mathCalcSpecial!==tab);
+  }
+  function mathCalcDisplay(){
+    return document.querySelector('[data-math-calc-display]');
+  }
+  function setMathCalcStatus(message='', type=''){
+    const box=document.querySelector('[data-math-calc-status]');
+    if(!box) return;
+    box.textContent=message;
+    box.classList.remove('is-error','is-ok');
+    if(type) box.classList.add(type);
+  }
+  function appendMathCalculatorValue(value=''){
+    const d=mathCalcDisplay();
+    if(!d) return;
+    const map={'×':'*','÷':'/','−':'-'};
+    const insert=map[value]||value;
+    if(insert==='='){ runMathCalculatorAction('equals'); return; }
+    const start=d.selectionStart ?? d.value.length;
+    const end=d.selectionEnd ?? d.value.length;
+    d.value=d.value.slice(0,start)+insert+d.value.slice(end);
+    const pos=start+insert.length;
+    d.focus();
+    d.setSelectionRange?.(pos,pos);
+  }
+  function normalizeMathExpression(expr=''){
+    let e=String(expr||'').trim();
+    e=e.replace(/,/g,'.').replace(/π/g,'pi').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/√\s*\(/g,'sqrt(');
+    e=e.replace(/\^/g,'**');
+    e=e.replace(/\bpi\b/gi,'Math.PI').replace(/\be\b/g,'Math.E');
+    e=e.replace(/\bsqrt\s*\(/gi,'Math.sqrt(').replace(/\bcbrt\s*\(/gi,'Math.cbrt(');
+    e=e.replace(/\bsin\s*\(/gi,'Math.sin(').replace(/\bcos\s*\(/gi,'Math.cos(').replace(/\btan\s*\(/gi,'Math.tan(');
+    e=e.replace(/\basin\s*\(/gi,'Math.asin(').replace(/\bacos\s*\(/gi,'Math.acos(').replace(/\batan\s*\(/gi,'Math.atan(');
+    e=e.replace(/\blog\s*\(/gi,'Math.log10(').replace(/\bln\s*\(/gi,'Math.log(');
+    return e;
+  }
+  function evaluateMathExpression(expr=''){
+    const normalized=normalizeMathExpression(expr);
+    if(/[A-Z_a-z]/.test(normalized.replace(/Math\.(PI|E|sqrt|cbrt|sin|cos|tan|asin|acos|atan|log10|log)/g,''))) throw new Error('La expresión contiene símbolos que no se pueden calcular automáticamente.');
+    if(!/^[0-9+\-*/().,\s%MathPIEsqrtcbrtinosaglg]*$/.test(normalized)) throw new Error('Expresión no válida.');
+    const result=Function(`"use strict"; return (${normalized});`)();
+    if(!Number.isFinite(result)) throw new Error('El resultado no es un número finito.');
+    return Number.isInteger(result) ? String(result) : String(Number(result.toPrecision(12))).replace(/\.0+$/,'');
+  }
+  function insertIntoMathTarget(text=''){
+    const target=window.__tribecaMathCalcTarget;
+    if(!target){ setMathCalcStatus('Selecciona primero un cuadro de respuesta.', 'is-error'); return false; }
+    const value=String(text||'');
+    if(target.isContentEditable){
+      target.focus();
+      document.execCommand?.('insertText', false, value);
+      setMathCalcStatus('Insertado en la respuesta.', 'is-ok');
+      return true;
+    }
+    if(!('value' in target)){ setMathCalcStatus('El campo seleccionado no admite texto.', 'is-error'); return false; }
+    const start=target.selectionStart ?? target.value.length;
+    const end=target.selectionEnd ?? target.value.length;
+    target.value=target.value.slice(0,start)+value+target.value.slice(end);
+    const pos=start+value.length;
+    target.focus();
+    target.setSelectionRange?.(pos,pos);
+    target.dispatchEvent(new Event('input',{bubbles:true}));
+    target.dispatchEvent(new Event('change',{bubbles:true}));
+    setMathCalcStatus('Insertado en la respuesta.', 'is-ok');
+    return true;
+  }
+  function runMathCalculatorAction(action=''){
+    const d=mathCalcDisplay();
+    if(!d) return;
+    if(action==='clear'){ d.value=''; d.dataset.result=''; setMathCalcStatus('Calculadora limpia.'); d.focus(); return; }
+    if(action==='back'){ const s=d.selectionStart ?? d.value.length; const e=d.selectionEnd ?? d.value.length; if(s!==e) d.value=d.value.slice(0,s)+d.value.slice(e); else if(s>0) d.value=d.value.slice(0,s-1)+d.value.slice(s); const p=Math.max(0,s-1); d.focus(); d.setSelectionRange?.(p,p); return; }
+    if(action==='equals' || action==='insert-result'){
+      try{
+        const result=evaluateMathExpression(d.value);
+        d.dataset.result=result;
+        if(action==='equals'){ d.value=result; setMathCalcStatus('Resultado calculado.', 'is-ok'); d.focus(); d.select?.(); return; }
+        insertIntoMathTarget(result);
+      }catch(error){ setMathCalcStatus(error.message || 'No se pudo calcular la expresión.', 'is-error'); }
+      return;
+    }
+    if(action==='insert-expression') insertIntoMathTarget(d.value);
+  }
+  window.TribecaEnsureMathCalculatorWidget = ensureMathCalculatorWidget;
   function materialEmbedValue(m={}, key='url'){
     if(key==='url') return String(m.embed_url || m.interactive_url || m.game_url || '').trim();
     return String(m.embed_code || m.interactive_embed || m.game_embed || '').trim();
@@ -1794,6 +1987,7 @@
     const scope=root && root.querySelectorAll ? root : document;
     hydrateNativeQuizzes(scope);
     hydrateNativeExams(scope);
+    ensureMathCalculatorWidget();
     scope.querySelectorAll('iframe[data-t98-embed-html]:not([data-t98-ready])').forEach(frame=>{
       const encoded=frame.getAttribute('data-t98-embed-html')||'';
       if(!encoded){ frame.dataset.t98Ready='1'; return; }
@@ -3105,7 +3299,7 @@ render();
     const meta=materialTypeMeta(m.material_type||m.type);
     const done=isMaterialCompleted(m.id);
     const dateLabel=m.created_at ? new Date(m.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
-    return `<details class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} material-collapse-card ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}">
+    return `<details class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} material-collapse-card ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}" ${materialIsMath(m)?'data-math-material="1"':''}>
       <summary class="material-collapse-summary">
         <div class="material-summary-main">
           <span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>
