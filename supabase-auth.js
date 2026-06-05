@@ -45,6 +45,7 @@
     prefillPublicationClassId: null,
     prefillPublicationClassSubjectId: null,
     prefillPublicationClassUnitId: null,
+    prefillPublicationKind: null,
     teacherTasksOpen: false,
     pendingTeacherTaskEdit: null,
     historyNavigating: false,
@@ -1459,6 +1460,57 @@
     const m=raw.match(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/i);
     return m ? m[1].trim() : '';
   }
+  function normalizeVideoUrl(url=''){
+    const raw=String(url||'').trim();
+    if(!raw) return {src:'', direct:false, provider:''};
+    let parsed=null;
+    try{ parsed=new URL(raw, location.href); }catch(_e){ parsed=null; }
+    if(/\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(raw)) return {src:raw, direct:true, provider:'video'};
+    if(!parsed) return {src:raw, direct:false, provider:''};
+    const host=parsed.hostname.replace(/^www\./,'').toLowerCase();
+    let id='';
+    if(host==='youtu.be'){
+      id=parsed.pathname.split('/').filter(Boolean)[0]||'';
+      return id ? {src:`https://www.youtube.com/embed/${encodeURIComponent(id)}`, direct:false, provider:'youtube'} : {src:raw,direct:false,provider:''};
+    }
+    if(/youtube\.com$/.test(host)){
+      if(parsed.pathname.startsWith('/embed/')) return {src:parsed.href, direct:false, provider:'youtube'};
+      if(parsed.pathname.startsWith('/shorts/')) id=parsed.pathname.split('/').filter(Boolean)[1]||'';
+      if(!id) id=parsed.searchParams.get('v')||'';
+      return id ? {src:`https://www.youtube.com/embed/${encodeURIComponent(id)}`, direct:false, provider:'youtube'} : {src:raw,direct:false,provider:'youtube'};
+    }
+    if(/vimeo\.com$/.test(host)){
+      if(host.startsWith('player.')) return {src:parsed.href, direct:false, provider:'vimeo'};
+      id=parsed.pathname.split('/').filter(Boolean).pop()||'';
+      return id ? {src:`https://player.vimeo.com/video/${encodeURIComponent(id)}`, direct:false, provider:'vimeo'} : {src:raw,direct:false,provider:'vimeo'};
+    }
+    if(/drive\.google\.com$/.test(host)){
+      const parts=parsed.pathname.split('/').filter(Boolean);
+      const fileIndex=parts.indexOf('d');
+      id=fileIndex>=0 ? parts[fileIndex+1] : '';
+      if(id) return {src:`https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`, direct:false, provider:'drive'};
+      return {src:parsed.href, direct:false, provider:'drive'};
+    }
+    if(/streamable\.com$/.test(host)){
+      id=parsed.pathname.split('/').filter(Boolean).pop()||'';
+      return id ? {src:`https://streamable.com/e/${encodeURIComponent(id)}`, direct:false, provider:'streamable'} : {src:raw,direct:false,provider:'streamable'};
+    }
+    return {src:raw, direct:false, provider:''};
+  }
+  function isVideoEmbedSource(value=''){
+    const raw=String(value||'').trim();
+    if(!raw) return false;
+    if(/\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(raw)) return true;
+    return /(youtube\.com|youtu\.be|vimeo\.com|drive\.google\.com|streamable\.com)/i.test(raw);
+  }
+  function isVideoMaterial(m={}){
+    if(normalizeMaterialKind(m.material_type || m.type)==='video') return true;
+    const url=materialEmbedValue(m,'url');
+    const code=materialEmbedValue(m,'code');
+    const clean=stripEmbedCodeFence(code);
+    return isVideoEmbedSource(url) || isVideoEmbedSource(extractIframeSrc(clean)) || /<video[\s>]/i.test(clean);
+  }
+
   function encodeBase64Utf8(value=''){
     try{
       const bytes = new TextEncoder().encode(String(value||''));
@@ -1694,6 +1746,7 @@
   }
   function materialVisualKind(m={}){
     if(isExamMaterial(m)) return 'exam';
+    if(isVideoMaterial(m)) return 'video';
     return m.material_type || m.type || 'material';
   }
   function nativeExamMarkup(exam, m={}){
@@ -1920,6 +1973,7 @@
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
     const clean=stripEmbedCodeFence(code);
+    const videoKind=normalizeMaterialKind(m.material_type || m.type)==='video';
     const exam=parseExamFromInteractiveCode(clean);
     if(exam) return {src:'', mode:'exam', html:'', quiz:null, exam};
     const quiz=parseQuizFromInteractiveCode(clean);
@@ -1927,11 +1981,33 @@
     if(clean){
       if(/^\s*[\[{]/.test(clean) || clean.startsWith('tribeca-exam-json::')) return {src:'', mode:'quizError', html:'', quiz:null, exam:null};
       const iframeSrc=extractIframeSrc(clean);
+      if(iframeSrc && (videoKind || isVideoEmbedSource(iframeSrc))){
+        const v=normalizeVideoUrl(iframeSrc);
+        return {src:v.src || iframeSrc, mode:'video', html:'', quiz:null, exam:null, direct:!!v.direct, provider:v.provider};
+      }
+      if(/<video[\s>]/i.test(clean)) return {src:'', mode:'videoHtml', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null, direct:false, provider:'html'};
       if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:'', quiz:null, exam:null};
       return {src:'', mode:'html', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null};
     }
-    if(url) return {src:url, mode:'url', html:'', quiz:null, exam:null};
+    if(url){
+      const v=normalizeVideoUrl(url);
+      if(videoKind || isVideoEmbedSource(url)) return {src:v.src || url, mode:'video', html:'', quiz:null, exam:null, direct:!!v.direct, provider:v.provider};
+      return {src:url, mode:'url', html:'', quiz:null, exam:null};
+    }
     return {src:'', mode:'', html:'', quiz:null, exam:null};
+  }
+  function videoEmbedMarkup(source={}, m={}, standalone=false){
+    const height=Math.max(300, Math.min(Number(m.embed_height||540), 1600));
+    const title=safe(m.title||'Vídeo');
+    const header=`<div><strong>Vídeo</strong><small>${source.provider?`Vídeo embebido · ${safe(source.provider)}`:'Vídeo embebido en la publicación'}</small></div>`;
+    if(source.mode==='videoHtml'){
+      const encoded=encodeBase64Utf8(source.html||'');
+      return `<section class="material-embed-block material-video-block"><div><strong>Vídeo</strong><small>Código de vídeo insertado</small></div><iframe title="${title}" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="data:text/html;charset=utf-8;base64,${encoded}" style="min-height:${height}px"></iframe></section>`;
+    }
+    if(source.direct){
+      return `<section class="material-embed-block material-video-block">${header}<video class="material-video-player" controls preload="metadata" src="${safe(source.src)}" style="min-height:${Math.min(height,720)}px"></video>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir vídeo en pestaña nueva</a>`:''}</section>`;
+    }
+    return `<section class="material-embed-block material-video-block">${header}<iframe title="${title}" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen src="${safe(source.src)}" style="min-height:${height}px"></iframe>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir vídeo en pestaña nueva</a>`:''}</section>`;
   }
   function nativeQuizMarkup(quiz){
     if(!quiz?.questions?.length) return '';
@@ -1942,6 +2018,7 @@
     if(source.mode==='exam') return nativeExamMarkup(source.exam, m);
     if(source.mode==='quiz') return nativeQuizMarkup(source.quiz);
     if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test o simulacro. Comprueba que contiene <code>type: "tribeca-exam"</code> o <code>questions</code> con ejercicios compatibles.</p></section>`;
+    if(source.mode==='video' || source.mode==='videoHtml') return videoEmbedMarkup(source, m);
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const encoded=source.html ? encodeBase64Utf8(source.html) : '';
@@ -2156,6 +2233,7 @@ render();
       const encoded=encodeBase64Utf8(JSON.stringify(source.quiz));
       return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>Test nativo de Tribeca Aula</small></div><div class="native-quiz-block" data-t99-quiz="${safe(encoded)}"><p>Cargando test…</p></div></section><script>(${renderNativeQuiz.toString()})(document.querySelector('.native-quiz-block'))<\/script>`;
     }
+    if(source.mode==='video' || source.mode==='videoHtml') return videoEmbedMarkup(source, m, true);
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     if(source.html){
@@ -2274,6 +2352,7 @@ render();
     if(!main || !State.profile) return;
     if(!roleTeacher() && activePauseFor(State.profile.id)) { renderApp(); return; }
     const id = String(target || 'home');
+    if(id && id !== 'home') setTribecaHistory(id, opts || {});
     State.activeInlineSection = id;
     State.activeInlineOptions = opts || {};
     if(opts.subject) State.currentSubject = opts.subject;
@@ -2391,6 +2470,7 @@ render();
     const v = String(value || '').trim().toLowerCase();
     if(!v) return 'material';
     if(['announcement','notice','news','anuncio','aviso','noticia'].includes(v)) return 'announcement';
+    if(['video','vídeo','videoclase','video_clase','clase_video','clase en vídeo','clase en video'].includes(v) || /v[ií]deo|video|videoclase/.test(v)) return 'video';
     if(['game','juego','jocs','play','gamified','ludico','lúdico'].includes(v) || /juego|game|l[uú]dic/.test(v)) return 'game';
     if(['exam','simulacro','mock_exam','simulacro_examen','mock','examen'].includes(v) || /simulacro|mock.?exam|examen/.test(v)) return 'exam';
     if(['test','quiz','external_test','prueba','cuestionario','daypo'].includes(v) || /test|quiz|cuestionario|prueba/.test(v)) return 'test';
@@ -2400,7 +2480,7 @@ render();
   }
   function dbMaterialType(kind='material') {
     const k = normalizeMaterialKind(kind);
-    return ({ material:'apuntes', task:'tarea', test:'test', exam:'simulacro', game:'juego' }[k] || 'apuntes');
+    return ({ material:'apuntes', task:'tarea', test:'test', exam:'simulacro', game:'juego', video:'video' }[k] || 'apuntes');
   }
   function materialTypeMeta(value='material') {
     const k = normalizeMaterialKind(value);
@@ -2410,6 +2490,7 @@ render();
       test: { key:'test', label:'Test externo', icon:'🧪' },
       exam: { key:'exam', label:'Simulacro de examen', icon:'📝' },
       game: { key:'game', label:'Juego', icon:'🎮' },
+      video: { key:'video', label:'Vídeo', icon:'🎥' },
       announcement: { key:'announcement', label:'Anuncio', icon:'📣' }
     };
     return map[k] || map.material;
@@ -2417,7 +2498,7 @@ render();
   function selectedAttr(a,b){ return String(a||'')===String(b||'') ? 'selected' : ''; }
   async function persistSupabaseRecord(tableName, payload, id=null) {
     let current = {...payload};
-    const materialFallbacks = ['simulacro','test','apuntes','tarea','juego','actividad','recurso','documento','document','link','material'];
+    const materialFallbacks = ['apuntes','tarea','test','simulacro','juego','video','actividad','recurso','documento','document','link','material'];
     for(let attempt=0; attempt<12; attempt++) {
       const res = id ? await table(tableName).update(current).eq('id', id) : await table(tableName).insert(current);
       if(!res.error) return res;
@@ -2502,7 +2583,7 @@ render();
     const edit = State.pendingPublicationEdit || null;
     const item = edit?.item || {};
     const editing = !!edit?.id;
-    const kind = editing ? (edit.kind || (edit.table === 'announcements' ? 'announcement' : normalizeMaterialKind(item.material_type || item.type))) : 'material';
+    const kind = editing ? (edit.kind || (edit.table === 'announcements' ? 'announcement' : normalizeMaterialKind(item.material_type || item.type))) : (State.prefillPublicationKind || 'material');
     const subjectValue = State.prefillPublicationSubject || item.subject || '';
     const dynamic = (State.data.subjects || []).map(s => s.subject).filter(Boolean);
     const classDynamic = (State.data.classSubjects || []).map(s => s.subject).filter(Boolean);
@@ -2519,7 +2600,7 @@ render();
       <section class="window-panel t18-publish-main">
         <h3>${editing?'Editar publicación':'1. Contenido'}</h3>
         ${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}
-        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con nota sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
+        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('video','🎥','Vídeo','Vídeo embebido de YouTube, Vimeo, Drive o URL directa.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con nota sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
         ${publicationClassroomSelector(item)}
         <div class="window-grid">
           <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
@@ -2550,8 +2631,8 @@ render();
           </label>
         </div>
         <div class="interactive-embed-panel interactive-embed-panel-v99">
-          <h4>Test o juego interactivo</h4>
-          <p class="meta">Opción recomendada: sube un archivo JSON o HTML. Si el HTML contiene <code>quizData</code>, Tribeca Aula lo convierte en un test nativo, más estable que un iframe.</p>
+          <h4>Recurso embebido: vídeo, test o juego</h4>
+          <p class="meta">Para vídeos, pega la URL de YouTube, Vimeo, Google Drive, Streamable o un iframe. Para tests, sube JSON o HTML.</p>
           <label class="publication-upload-card interactive-file-card">
             <strong>Subir recurso interactivo</strong>
             <small>JSON, HTML, HTM o TXT. El JSON es la opción más limpia para tests.</small>
@@ -2559,11 +2640,11 @@ render();
             <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún recurso interactivo seleccionado.</span>
           </label>
           <div class="window-grid">
-            <label>URL embebible<input name="embedUrl" type="url" placeholder="https://..." value="${safe(embedUrl)}"></label>
+            <label>URL embebible o vídeo<input name="embedUrl" type="url" placeholder="https://youtube.com/... · https://vimeo.com/... · https://drive.google.com/..." value="${safe(embedUrl)}"></label>
             <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
           </div>
-          <label>Código HTML, JSON o iframe<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo o iframe. Para tests, se recomienda JSON o HTML con quizData.">${safe(embedCode)}</textarea></label>
-          <p class="meta">Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo. El simulacro se corrige automáticamente sobre 10 y guarda la nota del alumno.</p>
+          <label>Código HTML, JSON, iframe o vídeo<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo, iframe de vídeo o etiqueta video. Para vídeos, también puedes pegar solo la URL arriba.">${safe(embedCode)}</textarea></label>
+          <p class="meta">Si eliges Vídeo, se mostrará embebido dentro de la publicación. Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo.</p>
         </div>
       </section>
       <footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer>
@@ -2651,7 +2732,7 @@ render();
     if(editId) { delete payload.created_by; delete payload.hidden; }
     await persistSupabaseRecord(tableName, payload, editId || null);
     await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName, class_id:classId||null});
-    State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationUnit=null; State.prefillPublicationClassId=null; State.prefillPublicationClassSubjectId=null; State.prefillPublicationClassUnitId=null;
+    State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationUnit=null; State.prefillPublicationClassId=null; State.prefillPublicationClassSubjectId=null; State.prefillPublicationClassUnitId=null; State.prefillPublicationKind=null;
     await loadData(true);
     toast(isAnnouncement ? (editId?'Anuncio modificado.':'Anuncio publicado.') : (editId?'Material modificado.':'Material publicado en la clase.'));
     form.reset();
@@ -3271,22 +3352,22 @@ render();
     if(!roleTeacher()) return '';
     return `<details class="class-unit-edit-drawer">
       <summary>Editar unidad</summary>
-      <form class="class-unit-edit-form" onsubmit="return window.TribecaClassroomSaveUnit(this,event)">
+      <form class="class-unit-edit-form" data-t126-unit-edit-form method="post" action="javascript:void(0)" onsubmit="return window.TribecaClassroomSaveUnit(this,event)">
         <input type="hidden" name="unitId" value="${safe(u.id)}">
         <input type="hidden" name="classSubjectId" value="${safe(s.id||u.class_subject_id||'')}">
         <label><span>Título</span><input name="title" value="${safe(u.title||'')}" required></label>
         <label><span>Orden</span><input name="sortOrder" type="number" min="1" step="1" value="${safe(Number(u.sort_order||0)||'')}"></label>
         <label class="compact-check"><input type="checkbox" name="hidden" ${u.hidden?'checked':''}> <span>Unidad oculta para el alumnado</span></label>
-        <div class="inline-actions"><button type="submit" class="primary-btn">Guardar unidad</button><button type="button" data-t124-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar unidad</button></div>
+        <div class="inline-actions"><button type="button" class="primary-btn" data-t126-save-unit onclick="return window.TribecaClassroomSaveUnit(this.closest('form'),event)">Guardar unidad</button><button type="button" data-t124-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar unidad</button><span class="form-status class-unit-status" data-t126-unit-status></span></div>
       </form>
     </details>`;
   }
   function classUnitCreateForm(classSubjectId=''){
     if(!roleTeacher()) return '';
-    return `<form class="class-unit-create-form window-panel" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
+    return `<form class="class-unit-create-form window-panel" data-t126-unit-create-form method="post" action="javascript:void(0)" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
       <input type="hidden" name="classSubjectId" value="${safe(classSubjectId)}">
       <label><span>Nueva unidad didáctica</span><input name="title" placeholder="Ejemplo: Unidad 3, Álgebra, Module 5..." required></label>
-      <button type="submit" class="primary-btn">Añadir unidad</button>
+      <div class="inline-actions"><button type="button" class="primary-btn" data-t126-add-unit onclick="return window.TribecaClassroomAddUnit(this.closest('form'),event)">Añadir unidad</button><span class="form-status class-unit-status" data-t126-unit-status></span></div>
       <p class="meta">La unidad se añade sin sacarte de la materia.</p>
     </form>`;
   }
@@ -3308,7 +3389,7 @@ render();
     const orphanMaterials=sortMaterialsAsc(materialsForClassSubject(s.id).filter(m=>!m.class_unit_id && !units.some(u=>String(m.unit_title||m.unit||'')===String(u.title||''))));
     const vis=subjectVisual(s.subject);
     const pr=classSubjectProgress(s.id);
-    const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card ${u.hidden?'is-hidden-classroom':''}" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} material${items.length===1?'':'es'}${u.hidden?' · oculta':''}</em></summary>${roleTeacher()?`<div class="class-unit-teacher-actions"><button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button>${classUnitEditDrawer(u,s)}</div>`:''}<div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidad todavía no tiene materiales visibles.</div>'}</div></details>`; }).join('');
+    const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card ${u.hidden?'is-hidden-classroom':''}" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} material${items.length===1?'':'es'}${u.hidden?' · oculta':''}</em></summary>${roleTeacher()?`<div class="class-unit-teacher-actions"><button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button><button type="button" class="secondary-btn" data-t127-new-video data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewVideo(this,event)">Crear vídeo</button>${classUnitEditDrawer(u,s)}</div>`:''}<div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidad todavía no tiene materiales visibles.</div>'}</div></details>`; }).join('');
     const orphanHtml=orphanMaterials.length?`<details class="subject-unit-card" open><summary><span>Otros materiales</span><em>${orphanMaterials.length}</em></summary><div class="subject-material-list">${orphanMaterials.map(m=>materialCard(m)).join('')}</div></details>`:'';
     return `<section class="t16-subject-detail subject-detail-premium class-subject-detail">
       <header class="subject-detail-head subject-0" style="--subject-color:${vis.color}">
@@ -4099,56 +4180,109 @@ function classroomCard(c,i=0){
     setStatus(`Materia “${subject}” añadida correctamente.`, 'ok');
     rerender();
   }
+  function classUnitFormStatus(form, message='', kind='info'){
+    const box=form?.querySelector?.('[data-t126-unit-status]');
+    if(!box) return;
+    box.textContent=message||'';
+    box.classList.remove('is-ok','is-error','is-info');
+    if(message) box.classList.add(kind==='ok'?'is-ok':kind==='error'?'is-error':'is-info');
+  }
   async function addClassUnit(form){
-    const fd=new FormData(form);
-    const classSubjectId=String(fd.get('classSubjectId')||'').trim();
-    const title=String(fd.get('title')||'').trim();
-    if(!classSubjectId || !title){ toast('Escribe el título de la unidad.'); return; }
-    const s=classSubjectById(classSubjectId);
-    if(!s){ toast('No se encontró la materia.'); return; }
-    const existing=(State.data.classUnits||[]).find(u=>String(u.class_subject_id)===String(classSubjectId) && String(u.title||'').toLowerCase()===title.toLowerCase());
-    if(existing){
-      toast('La unidad ya existe en esta materia.');
+    if(!form || form.dataset.t126Saving==='1') return false;
+    const btn=form.querySelector('[data-t126-add-unit], .primary-btn');
+    form.dataset.t126Saving='1';
+    if(btn){ btn.disabled=true; btn.dataset.originalText=btn.textContent; btn.textContent='Añadiendo…'; }
+    try{
+      const fd=new FormData(form);
+      const classSubjectId=String(fd.get('classSubjectId')||'').trim();
+      const title=String(fd.get('title')||'').trim();
+      if(!classSubjectId || !title){ classUnitFormStatus(form,'Escribe el título de la unidad.','error'); toast('Escribe el título de la unidad.'); return false; }
+      const s=classSubjectById(classSubjectId);
+      if(!s){ classUnitFormStatus(form,'No se encontró la materia.','error'); toast('No se encontró la materia.'); return false; }
+      const existing=(State.data.classUnits||[]).find(u=>String(u.class_subject_id)===String(classSubjectId) && String(u.title||'').toLowerCase()===title.toLowerCase());
+      if(existing){ classUnitFormStatus(form,'La unidad ya existe en esta materia.','error'); toast('La unidad ya existe en esta materia.'); return false; }
+      classUnitFormStatus(form,'Guardando unidad…','info');
+      const payload={class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true};
+      const inserted=await table('tribeca_class_units').insert(payload).select('*').single();
+      if(inserted.error) throw inserted.error;
+      await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
+      await loadData(true);
+      State.currentClassSubjectId=classSubjectId;
+      State.currentClassId=s.class_id;
+      State.currentSubject=s.subject;
+      State.activeInlineSection='classSubjectDetail';
+      State.activeInlineOptions={classSubjectId, classId:s.class_id, subject:s.subject};
+      toast(`Unidad “${title}” añadida.`);
+      classUnitFormStatus(form,'Unidad añadida.','ok');
       renderCurrentClassroomContext();
-      return;
+    }catch(e){
+      console.error('[Tribeca Aula] No se pudo añadir la unidad:', e);
+      classUnitFormStatus(form, e.message || 'No se pudo añadir la unidad.','error');
+      toast(e.message || 'No se pudo añadir la unidad.');
+    }finally{
+      form.dataset.t126Saving='';
+      if(btn){ btn.disabled=false; btn.textContent=btn.dataset.originalText || 'Añadir unidad'; }
     }
-    const inserted=await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true}).select('*').single();
-    if(inserted.error) throw inserted.error;
-    await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
-    await loadData(true);
-    State.currentClassSubjectId=classSubjectId;
-    State.currentClassId=s.class_id;
-    State.currentSubject=s.subject;
-    toast(`Unidad “${title}” añadida.`);
-    renderCurrentClassroomContext();
+    return false;
   }
   async function saveClassUnit(form){
-    const fd=new FormData(form);
-    const unitId=String(fd.get('unitId')||'').trim();
-    const classSubjectId=String(fd.get('classSubjectId')||'').trim();
-    const title=String(fd.get('title')||'').trim();
-    const sortOrderRaw=String(fd.get('sortOrder')||'').trim();
-    if(!unitId || !title) return toast('Escribe el título de la unidad.');
-    const current=(State.data.classUnits||[]).find(u=>String(u.id)===String(unitId));
-    if(!current) return toast('No se encontró la unidad.');
-    const subject=classSubjectById(classSubjectId || current.class_subject_id);
-    const payload={title, hidden:!!fd.get('hidden'), updated_at:new Date().toISOString()};
-    const sortNumber=Number(sortOrderRaw);
-    if(Number.isFinite(sortNumber) && sortNumber>0) payload.sort_order=sortNumber;
-    await persistSupabaseRecord('tribeca_class_units', payload, unitId);
-    if(title!==current.title){
-      await maybe(table('subject_materials').update({unit_title:title, unit:title}).eq('class_unit_id', unitId), null);
+    if(!form || form.dataset.t126Saving==='1') return false;
+    const btn=form.querySelector('[data-t126-save-unit], .primary-btn');
+    form.dataset.t126Saving='1';
+    if(btn){ btn.disabled=true; btn.dataset.originalText=btn.textContent; btn.textContent='Guardando…'; }
+    try{
+      const fd=new FormData(form);
+      const unitId=String(fd.get('unitId')||'').trim();
+      const classSubjectId=String(fd.get('classSubjectId')||'').trim();
+      const title=String(fd.get('title')||'').trim();
+      const sortOrderRaw=String(fd.get('sortOrder')||'').trim();
+      if(!unitId || !title){ classUnitFormStatus(form,'Escribe el título de la unidad.','error'); toast('Escribe el título de la unidad.'); return false; }
+      const current=(State.data.classUnits||[]).find(u=>String(u.id)===String(unitId));
+      if(!current){ classUnitFormStatus(form,'No se encontró la unidad. Recarga el aula e inténtalo de nuevo.','error'); toast('No se encontró la unidad.'); return false; }
+      const subject=classSubjectById(classSubjectId || current.class_subject_id);
+      const parentSubjectId=String(current.class_subject_id || classSubjectId || '');
+      const duplicate=(State.data.classUnits||[]).find(u=>String(u.id)!==String(unitId) && String(u.class_subject_id||'')===parentSubjectId && String(u.title||'').trim().toLowerCase()===title.toLowerCase());
+      if(duplicate){ classUnitFormStatus(form,'Ya existe otra unidad con ese título.','error'); toast('Ya existe otra unidad con ese título.'); return false; }
+      const payload={title, hidden:!!fd.get('hidden')};
+      const sortNumber=Number(sortOrderRaw);
+      if(Number.isFinite(sortNumber) && sortNumber>0) payload.sort_order=sortNumber;
+      classUnitFormStatus(form,'Guardando cambios…','info');
+      let res=await table('tribeca_class_units').update({...payload, updated_at:new Date().toISOString()}).eq('id', unitId).select('*').maybeSingle();
+      const msg=String(res?.error?.message || res?.error?.details || '');
+      if(res.error && /updated_at|schema cache|column/i.test(msg)){
+        res=await table('tribeca_class_units').update(payload).eq('id', unitId).select('*').maybeSingle();
+      }
+      if(res.error) throw res.error;
+      if(!res.data) throw new Error('Supabase no ha devuelto la unidad actualizada. Revisa permisos RLS de tribeca_class_units o recarga la sesión.');
+      const saved=res.data;
+      State.data.classUnits=(State.data.classUnits||[]).map(u=>String(u.id)===String(unitId)?{...u,...saved}:u);
+      if(title!==current.title){
+        await maybe(table('subject_materials').update({unit_title:title, unit:title}).eq('class_unit_id', unitId), null);
+      }
+      await log('classroom','Unidad editada',{unit_id:unitId,title});
+      await loadData(true);
+      if(subject){
+        State.currentClassSubjectId=subject.id;
+        State.currentClassId=subject.class_id;
+        State.currentSubject=subject.subject;
+        State.activeInlineSection='classSubjectDetail';
+        State.activeInlineOptions={classSubjectId:subject.id, classId:subject.class_id, subject:subject.subject};
+      }
+      toast('Unidad actualizada.');
+      classUnitFormStatus(form,'Unidad actualizada.','ok');
+      renderCurrentClassroomContext();
+    }catch(e){
+      console.error('[Tribeca Aula] No se pudo editar la unidad:', e);
+      const msg=e.message || 'No se pudo editar la unidad.';
+      classUnitFormStatus(form, msg, 'error');
+      toast(msg);
+    }finally{
+      form.dataset.t126Saving='';
+      if(btn){ btn.disabled=false; btn.textContent=btn.dataset.originalText || 'Guardar unidad'; }
     }
-    await log('classroom','Unidad editada',{unit_id:unitId,title});
-    await loadData(true);
-    if(subject){
-      State.currentClassSubjectId=subject.id;
-      State.currentClassId=subject.class_id;
-      State.currentSubject=subject.subject;
-    }
-    toast('Unidad actualizada.');
-    renderCurrentClassroomContext();
+    return false;
   }
+
 
   async function bootstrapClassesFromStudents(){
     if(!roleTeacher()) return toast('Solo la profesora puede crear clases desde alumnado.');
@@ -4440,9 +4574,10 @@ function classroomCard(c,i=0){
   window.TribecaClassroomDeleteDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassroom(btn?.dataset?.t80DeleteClass).catch(e=>toast(e.message||'No se pudo eliminar la clase.')); return false; };
 
   window.TribecaClassroomAddSubject=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); addClassSubject(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo añadir la materia.'); }); return false; };
-  window.TribecaClassroomAddUnit=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); addClassUnit(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo añadir la unidad.'); }); return false; };
-  window.TribecaClassroomSaveUnit=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); saveClassUnit(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo editar la unidad.'); }); return false; };
-  window.TribecaClassroomNewMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); State.pendingPublicationEdit=null; State.prefillPublicationClassId=btn?.dataset?.classId||null; State.prefillPublicationSubject=btn?.dataset?.subject||''; State.prefillPublicationUnit=btn?.dataset?.unit||'Unidad 1'; openTool('newPublication'); return false; };
+  window.TribecaClassroomAddUnit=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); if(ev?.stopImmediatePropagation) ev.stopImmediatePropagation(); addClassUnit(form); return false; };
+  window.TribecaClassroomSaveUnit=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); if(ev?.stopImmediatePropagation) ev.stopImmediatePropagation(); saveClassUnit(form); return false; };
+  window.TribecaClassroomNewMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); State.pendingPublicationEdit=null; State.prefillPublicationKind='material'; State.prefillPublicationClassId=btn?.dataset?.classId||null; State.prefillPublicationSubject=btn?.dataset?.subject||''; State.prefillPublicationUnit=btn?.dataset?.unit||'Unidad 1'; openTool('newPublication'); return false; };
+  window.TribecaClassroomNewVideo=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); State.pendingPublicationEdit=null; State.prefillPublicationKind='video'; State.prefillPublicationClassId=btn?.dataset?.classId||null; State.prefillPublicationSubject=btn?.dataset?.subject||''; State.prefillPublicationUnit=btn?.dataset?.unit||'Unidad 1'; openTool('newPublication'); return false; };
   window.TribecaClassroomToggleSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleSubject; const s=(State.data.classSubjects||[]).find(x=>String(x.id)===String(id)); if(!s) return false; persistSupabaseRecord('tribeca_class_subjects',{hidden:!s.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(s.hidden?'Materia visible.':'Materia oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la materia.')); return false; };
   window.TribecaClassroomToggleUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleUnit; const u=(State.data.classUnits||[]).find(x=>String(x.id)===String(id)); if(!u) return false; persistSupabaseRecord('tribeca_class_units',{hidden:!u.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(u.hidden?'Unidad visible.':'Unidad oculta.'); renderCurrentClassroomContext();}).catch(e=>toast(e.message||'No se pudo modificar la unidad.')); return false; };
   window.TribecaClassroomToggleMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t83ToggleMaterial; const m=(State.data.materials||[]).find(x=>String(x.id)===String(id)); if(!m) return false; persistSupabaseRecord('subject_materials',{hidden:!m.hidden},id).then(()=>loadData(true)).then(()=>{toast(m.hidden?'Material visible para el alumnado.':'Material oculto para el alumnado.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar el material.')); return false; };
@@ -4823,6 +4958,8 @@ function classroomCard(c,i=0){
   }
   window.TribecaSubmitForm = function(form, ev){
     if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    if(form?.matches?.('[data-t126-unit-edit-form], .class-unit-edit-form')) return window.TribecaClassroomSaveUnit(form, ev);
+    if(form?.matches?.('[data-t126-unit-create-form], .class-unit-create-form')) return window.TribecaClassroomAddUnit(form, ev);
     if(form?.matches?.('[data-t117-task-form], .teacher-task-form')) return window.TribecaSaveTeacherTask(form, ev);
     handleManagedSubmit(form);
     return false;
@@ -4866,6 +5003,8 @@ function classroomCard(c,i=0){
   function bindGlobal() {
     window.addEventListener('click', async ev=>{ const btn=ev.target.closest?.('[data-t24-save-student]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=btn.closest('form'); if(f) await saveStudentProfile(f); } }, true);
     document.addEventListener('click', async ev=>{
+      const unitSave=ev.target.closest?.('[data-t126-save-unit]'); if(unitSave){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitSave.closest('form'); if(f) await saveClassUnit(f); return; }
+      const unitAdd=ev.target.closest?.('[data-t126-add-unit]'); if(unitAdd){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitAdd.closest('form'); if(f) await addClassUnit(f); return; }
       const guidanceLink=ev.target.closest?.('[data-t119-guidance-link]'); if(guidanceLink){ recordGuidanceLinkClick(guidanceLink.dataset.t119GuidanceLink, guidanceLink.dataset.t119GuidanceUrl || guidanceLink.href); return; }
       const mailTab=ev.target.closest?.('[data-mail-box]'); if(mailTab){ const box=mailTab.dataset.mailBox; const root=mailTab.closest('.mail-app'); root?.querySelectorAll('.mail-tab').forEach(b=>b.classList.toggle('is-active', b===mailTab)); root?.querySelectorAll('[data-mail-box-view]').forEach(v=>v.hidden=v.dataset.mailBoxView!==box); return; }
       const profileTab=ev.target.closest?.('[data-t74-profile-tab]'); if(profileTab){ ev.preventDefault(); ev.stopPropagation(); State.profilePanel=profileTab.dataset.t74ProfileTab || 'profile'; rerender(); return; }
@@ -4941,7 +5080,7 @@ function classroomCard(c,i=0){
       const delMat=ev.target.closest?.('[data-t16-delete-mat]'); if(delMat){ await maybe(table('subject_materials').delete().eq('id',delMat.dataset.t16DeleteMat)); await loadData(true); rerender(); return; }
       const editAnn=ev.target.closest?.('[data-t32-edit-ann]'); if(editAnn){ ev.preventDefault(); ev.stopPropagation(); const a=(State.data.announcements||[]).find(x=>String(x.id)===String(editAnn.dataset.t32EditAnn)); if(a){ State.pendingPublicationEdit={table:'announcements', id:a.id, item:{...a}, kind:'announcement'}; openTool('newPublication'); } return; }
       const editMat=ev.target.closest?.('[data-t32-edit-mat]'); if(editMat){ ev.preventDefault(); ev.stopPropagation(); const m=(State.data.materials||[]).find(x=>String(x.id)===String(editMat.dataset.t32EditMat)); if(m){ State.pendingPublicationEdit={table:'subject_materials', id:m.id, item:{...m}, kind:normalizeMaterialKind(m.material_type||m.type)}; State.currentSubject=m.subject || State.currentSubject; openTool('newPublication'); } return; }
-      if(ev.target.closest?.('[data-t32-cancel-publication-edit]')){ ev.preventDefault(); ev.stopPropagation(); State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; openTool('newPublication'); return; }
+      if(ev.target.closest?.('[data-t32-cancel-publication-edit]')){ ev.preventDefault(); ev.stopPropagation(); State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationKind=null; openTool('newPublication'); return; }
       const selectVisible=ev.target.closest?.('[data-t32-select-visible]'); if(selectVisible){ ev.preventDefault(); const form=selectVisible.closest('form'); form?.querySelectorAll('.t32-badge-student:not([hidden]) input[name="userIds"]').forEach(i=>{ i.checked=true; }); return; }
       const clearAll=ev.target.closest?.('[data-t32-clear-all]'); if(clearAll){ ev.preventDefault(); clearAll.closest('form')?.querySelectorAll('input[name="userIds"]').forEach(i=>{ i.checked=false; }); return; }
       const selectGroup=ev.target.closest?.('[data-t32-select-group]'); if(selectGroup){ ev.preventDefault(); selectGroup.closest('details')?.querySelectorAll('.t32-badge-student:not([hidden]) input[name="userIds"]').forEach(i=>{ i.checked=true; }); return; }
