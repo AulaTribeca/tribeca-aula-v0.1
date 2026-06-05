@@ -46,7 +46,9 @@
     prefillPublicationClassSubjectId: null,
     prefillPublicationClassUnitId: null,
     teacherTasksOpen: false,
-    pendingTeacherTaskEdit: null
+    pendingTeacherTaskEdit: null,
+    historyNavigating: false,
+    suppressHistoryPush: false
   };
   window.TribecaAuth = State;
   const TRIBECA_TEACHER_PROFILE_IMAGE = 'assets/patricia-trillo-perfil.webp';
@@ -831,7 +833,9 @@
     State.windows.forEach(win => win?.remove?.());
     State.windows.clear();
     if(openedPageTarget()) {
-      history.replaceState(null, '', baseAppUrl());
+      history.replaceState({tribeca:true,id:'home',opts:{}}, '', baseAppUrl());
+    } else {
+      setTribecaHistory('home', {}, history.state?.tribeca ? 'push' : 'replace');
     }
     renderApp();
     window.scrollTo({top:0, behavior:'smooth'});
@@ -2181,12 +2185,41 @@ render();
   function openTool(id, opts={}) {
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     $('#profileMenu')?.setAttribute('hidden','');
+    setTribecaHistory(id, opts || {});
     renderInlineSection(id, opts || {});
   }
   window.openTool = openTool;
   function baseAppUrl(){ return location.href.split('?')[0].split('#')[0]; }
+  function tribecaHistoryUrl(id='home', opts={}){
+    if(id==='home') return baseAppUrl();
+    const params=new URLSearchParams();
+    params.set('ta_section', String(id||'home'));
+    Object.entries(opts||{}).forEach(([k,v])=>{ if(v!==undefined && v!==null && v!=='') params.set(`ta_${k}`, String(v)); });
+    return `${baseAppUrl()}#${params.toString()}`;
+  }
+  function tribecaStateFromUrl(){
+    const hash=String(location.hash||'').replace(/^#/,'');
+    const params=new URLSearchParams(hash);
+    const id=params.get('ta_section') || '';
+    if(!id) return {id:'home', opts:{}};
+    const opts={};
+    params.forEach((v,k)=>{ if(k.startsWith('ta_') && k!=='ta_section') opts[k.slice(3)]=v; });
+    return {id, opts};
+  }
+  function setTribecaHistory(id='home', opts={}, mode='push'){
+    if(State.historyNavigating || State.suppressHistoryPush) return;
+    const state={tribeca:true, id:String(id||'home'), opts:opts||{}};
+    const url=tribecaHistoryUrl(state.id, state.opts);
+    const current=history.state;
+    const same=current?.tribeca && current.id===state.id && JSON.stringify(current.opts||{})===JSON.stringify(state.opts||{});
+    if(same && mode!=='replace') return;
+    try{ history[mode==='replace'?'replaceState':'pushState'](state,'',url); }catch(_e){}
+  }
+  function ensureTribecaHistoryState(id='home', opts={}){
+    if(!history.state?.tribeca) setTribecaHistory(id, opts, 'replace');
+  }
   function openAppSectionInNewTab(section){
-    renderInlineSection(String(section || 'subjects'));
+    openTool(String(section || 'subjects'));
   }
   function openedPageTarget(){
     const params = new URLSearchParams(location.search);
@@ -3234,6 +3267,39 @@ render();
   window.TribecaMarkAnnouncementReadDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAnnouncementRead(btn?.dataset?.t73ReadAnn); toast('Anuncio marcado como leído.'); rerender(); return false; };
   window.TribecaMarkAllAnnouncementsRead=function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); markAllAnnouncementsRead(); return false; };
 
+  function classUnitEditDrawer(u={}, s={}){
+    if(!roleTeacher()) return '';
+    return `<details class="class-unit-edit-drawer">
+      <summary>Editar unidad</summary>
+      <form class="class-unit-edit-form" onsubmit="return window.TribecaClassroomSaveUnit(this,event)">
+        <input type="hidden" name="unitId" value="${safe(u.id)}">
+        <input type="hidden" name="classSubjectId" value="${safe(s.id||u.class_subject_id||'')}">
+        <label><span>Título</span><input name="title" value="${safe(u.title||'')}" required></label>
+        <label><span>Orden</span><input name="sortOrder" type="number" min="1" step="1" value="${safe(Number(u.sort_order||0)||'')}"></label>
+        <label class="compact-check"><input type="checkbox" name="hidden" ${u.hidden?'checked':''}> <span>Unidad oculta para el alumnado</span></label>
+        <div class="inline-actions"><button type="submit" class="primary-btn">Guardar unidad</button><button type="button" data-t124-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar unidad</button></div>
+      </form>
+    </details>`;
+  }
+  function classUnitCreateForm(classSubjectId=''){
+    if(!roleTeacher()) return '';
+    return `<form class="class-unit-create-form window-panel" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
+      <input type="hidden" name="classSubjectId" value="${safe(classSubjectId)}">
+      <label><span>Nueva unidad didáctica</span><input name="title" placeholder="Ejemplo: Unidad 3, Álgebra, Module 5..." required></label>
+      <button type="submit" class="primary-btn">Añadir unidad</button>
+      <p class="meta">La unidad se añade sin sacarte de la materia.</p>
+    </form>`;
+  }
+  function renderCurrentClassroomContext(){
+    const opts=State.activeInlineOptions || {};
+    if(State.activeInlineSection){
+      renderInlineSection(State.activeInlineSection, opts);
+      return;
+    }
+    if(State.currentClassSubjectId) renderInlineSection('classSubjectDetail', {classSubjectId:State.currentClassSubjectId, classId:State.currentClassId||'', subject:State.currentSubject||''});
+    else rerender();
+  }
+
   function classSubjectDetailContent(classSubjectId){
     const s=classSubjectById(classSubjectId || State.currentClassSubjectId);
     if(!s) return '<div class="empty-state premium-empty">No se encontró esta materia de clase.</div>';
@@ -3242,7 +3308,7 @@ render();
     const orphanMaterials=sortMaterialsAsc(materialsForClassSubject(s.id).filter(m=>!m.class_unit_id && !units.some(u=>String(m.unit_title||m.unit||'')===String(u.title||''))));
     const vis=subjectVisual(s.subject);
     const pr=classSubjectProgress(s.id);
-    const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} material${items.length===1?'':'es'}</em></summary><div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidad todavía no tiene materiales visibles.</div>'}</div></details>`; }).join('');
+    const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card ${u.hidden?'is-hidden-classroom':''}" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} material${items.length===1?'':'es'}${u.hidden?' · oculta':''}</em></summary>${roleTeacher()?`<div class="class-unit-teacher-actions"><button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button>${classUnitEditDrawer(u,s)}</div>`:''}<div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidad todavía no tiene materiales visibles.</div>'}</div></details>`; }).join('');
     const orphanHtml=orphanMaterials.length?`<details class="subject-unit-card" open><summary><span>Otros materiales</span><em>${orphanMaterials.length}</em></summary><div class="subject-material-list">${orphanMaterials.map(m=>materialCard(m)).join('')}</div></details>`:'';
     return `<section class="t16-subject-detail subject-detail-premium class-subject-detail">
       <header class="subject-detail-head subject-0" style="--subject-color:${vis.color}">
@@ -3258,6 +3324,7 @@ render();
         <strong>Materiales organizados por unidades didácticas</strong>
         <p>Las unidades aparecen en orden natural y, dentro de cada unidad, los materiales más recientes quedan al final.</p>
       </div>
+      ${roleTeacher()?classUnitCreateForm(s.id):''}
       <div class="subject-units-list">
         ${unitsHtml}${orphanHtml || (!unitsHtml?'<div class="empty-state premium-empty">Todavía no hay publicaciones visibles en esta materia.</div>':'')}
       </div>
@@ -3896,6 +3963,7 @@ function classroomCard(c,i=0){
         <button type="button" data-t82-toggle-unit="${safe(u.id)}" onclick="return window.TribecaClassroomToggleUnit(this,event)">${u.hidden?'Mostrar unidad':'Ocultar unidad'}</button>
         <button type="button" data-t82-delete-unit="${safe(u.id)}" onclick="return window.TribecaClassroomDeleteUnit(this,event)">Eliminar unidad</button>
       </div>
+      ${classUnitEditDrawer(u,s)}
       ${matRows}
     </details>`;
   }
@@ -4040,24 +4108,48 @@ function classroomCard(c,i=0){
     if(!s){ toast('No se encontró la materia.'); return; }
     const existing=(State.data.classUnits||[]).find(u=>String(u.class_subject_id)===String(classSubjectId) && String(u.title||'').toLowerCase()===title.toLowerCase());
     if(existing){
-      State.prefillPublicationClassId=s.class_id;
-      State.prefillPublicationSubject=s.subject;
-      State.prefillPublicationUnit=existing.title || title;
-      toast('La unidad ya existe. Abriendo publicación para añadir material.');
-      openTool('newPublication');
+      toast('La unidad ya existe en esta materia.');
+      renderCurrentClassroomContext();
       return;
     }
     const inserted=await table('tribeca_class_units').insert({class_subject_id:classSubjectId, title, sort_order:(State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId)).length+1, hidden:false, active:true}).select('*').single();
     if(inserted.error) throw inserted.error;
     await log('classroom','Unidad añadida a materia de clase',{class_subject_id:classSubjectId,title});
     await loadData(true);
-    State.pendingPublicationEdit=null;
-    State.prefillPublicationClassId=s.class_id;
-    State.prefillPublicationSubject=s.subject;
-    State.prefillPublicationUnit=title;
-    toast(`Unidad “${title}” añadida. Ahora puedes publicar el primer material.`);
-    openTool('newPublication');
+    State.currentClassSubjectId=classSubjectId;
+    State.currentClassId=s.class_id;
+    State.currentSubject=s.subject;
+    toast(`Unidad “${title}” añadida.`);
+    renderCurrentClassroomContext();
   }
+  async function saveClassUnit(form){
+    const fd=new FormData(form);
+    const unitId=String(fd.get('unitId')||'').trim();
+    const classSubjectId=String(fd.get('classSubjectId')||'').trim();
+    const title=String(fd.get('title')||'').trim();
+    const sortOrderRaw=String(fd.get('sortOrder')||'').trim();
+    if(!unitId || !title) return toast('Escribe el título de la unidad.');
+    const current=(State.data.classUnits||[]).find(u=>String(u.id)===String(unitId));
+    if(!current) return toast('No se encontró la unidad.');
+    const subject=classSubjectById(classSubjectId || current.class_subject_id);
+    const payload={title, hidden:!!fd.get('hidden'), updated_at:new Date().toISOString()};
+    const sortNumber=Number(sortOrderRaw);
+    if(Number.isFinite(sortNumber) && sortNumber>0) payload.sort_order=sortNumber;
+    await persistSupabaseRecord('tribeca_class_units', payload, unitId);
+    if(title!==current.title){
+      await maybe(table('subject_materials').update({unit_title:title, unit:title}).eq('class_unit_id', unitId), null);
+    }
+    await log('classroom','Unidad editada',{unit_id:unitId,title});
+    await loadData(true);
+    if(subject){
+      State.currentClassSubjectId=subject.id;
+      State.currentClassId=subject.class_id;
+      State.currentSubject=subject.subject;
+    }
+    toast('Unidad actualizada.');
+    renderCurrentClassroomContext();
+  }
+
   async function bootstrapClassesFromStudents(){
     if(!roleTeacher()) return toast('Solo la profesora puede crear clases desde alumnado.');
     const groups=classBootstrapGroups();
@@ -4349,9 +4441,10 @@ function classroomCard(c,i=0){
 
   window.TribecaClassroomAddSubject=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); addClassSubject(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo añadir la materia.'); }); return false; };
   window.TribecaClassroomAddUnit=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); addClassUnit(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo añadir la unidad.'); }); return false; };
+  window.TribecaClassroomSaveUnit=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); saveClassUnit(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo editar la unidad.'); }); return false; };
   window.TribecaClassroomNewMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); State.pendingPublicationEdit=null; State.prefillPublicationClassId=btn?.dataset?.classId||null; State.prefillPublicationSubject=btn?.dataset?.subject||''; State.prefillPublicationUnit=btn?.dataset?.unit||'Unidad 1'; openTool('newPublication'); return false; };
   window.TribecaClassroomToggleSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleSubject; const s=(State.data.classSubjects||[]).find(x=>String(x.id)===String(id)); if(!s) return false; persistSupabaseRecord('tribeca_class_subjects',{hidden:!s.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(s.hidden?'Materia visible.':'Materia oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la materia.')); return false; };
-  window.TribecaClassroomToggleUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleUnit; const u=(State.data.classUnits||[]).find(x=>String(x.id)===String(id)); if(!u) return false; persistSupabaseRecord('tribeca_class_units',{hidden:!u.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(u.hidden?'Unidad visible.':'Unidad oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la unidad.')); return false; };
+  window.TribecaClassroomToggleUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82ToggleUnit; const u=(State.data.classUnits||[]).find(x=>String(x.id)===String(id)); if(!u) return false; persistSupabaseRecord('tribeca_class_units',{hidden:!u.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(u.hidden?'Unidad visible.':'Unidad oculta.'); renderCurrentClassroomContext();}).catch(e=>toast(e.message||'No se pudo modificar la unidad.')); return false; };
   window.TribecaClassroomToggleMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t83ToggleMaterial; const m=(State.data.materials||[]).find(x=>String(x.id)===String(id)); if(!m) return false; persistSupabaseRecord('subject_materials',{hidden:!m.hidden},id).then(()=>loadData(true)).then(()=>{toast(m.hidden?'Material visible para el alumnado.':'Material oculto para el alumnado.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar el material.')); return false; };
   window.TribecaClassroomMigrateMaterials=function(form,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); migrateLegacyMaterialsToClass(form).catch(e=>{ console.error(e); toast(e.message||'No se pudieron migrar los materiales.'); }); return false; };
   window.TribecaClassroomUnlinkMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); unlinkMaterialFromClass(btn?.dataset?.t85UnlinkMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo desvincular el material.'); }); return false; };
@@ -4359,7 +4452,7 @@ function classroomCard(c,i=0){
   window.TribecaClassroomDuplicateMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); duplicateClassMaterial(btn?.dataset?.t86DuplicateMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo duplicar el material.'); }); return false; };
   window.TribecaClassroomDeleteMaterial=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassMaterial(btn?.dataset?.t86DeleteClassMaterial).catch(e=>{ console.error(e); toast(e.message||'No se pudo eliminar el material.'); }); return false; };
   window.TribecaClassroomDeleteSubject=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteSubject; if(!confirm('¿Eliminar esta materia de la clase? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de materia de clase.')) return false; table('tribeca_class_subjects').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Materia eliminada de la clase.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la materia.')); return false; };
-  window.TribecaClassroomDeleteUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteUnit; if(!confirm('¿Eliminar esta unidad? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de unidad de clase.')) return false; table('tribeca_class_units').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Unidad eliminada.'); rerender();}).catch(e=>toast(e.message||'No se pudo eliminar la unidad.')); return false; };
+  window.TribecaClassroomDeleteUnit=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t82DeleteUnit || btn?.dataset?.t124DeleteUnit; if(!confirm('¿Eliminar esta unidad? Los materiales ya publicados no se borrarán, pero pueden quedar sin vínculo de unidad de clase.')) return false; table('tribeca_class_units').delete().eq('id',id).then(({error})=>{ if(error) throw error; }).then(()=>loadData(true)).then(()=>{toast('Unidad eliminada.'); renderCurrentClassroomContext();}).catch(e=>toast(e.message||'No se pudo eliminar la unidad.')); return false; };
 
 
   function teacherSubjectsContent(){
@@ -5299,9 +5392,32 @@ function classroomCard(c,i=0){
     try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
     document.querySelectorAll('.theme-toggle,[data-theme-toggle],#themeToggle,#themeSelect').forEach(el=>{ const wrap=el.closest('label,.select-wrap,.control-field')||el; wrap.remove(); });
     State.client = configured && window.supabase?.createClient ? window.supabase.createClient(cfg.url, cfg.anonKey, { auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true} }) : null;
-    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); applySeasonalLogos(n); } }))).observe(document.body,{childList:true,subtree:true}); applySeasonalLogos(document); if(!State.client){ showLogin(); applySeasonalLogos(document); return; }
+    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); applySeasonalLogos(n); } }))).observe(document.body,{childList:true,subtree:true}); applySeasonalLogos(document);
+    if(!window.__tribecaHistoryBound){
+      window.__tribecaHistoryBound=true;
+      window.addEventListener('popstate', ev=>{
+        if(!State.profile) return;
+        const st=ev.state?.tribeca ? ev.state : {tribeca:true, ...tribecaStateFromUrl()};
+        State.historyNavigating=true;
+        try{
+          if(!st?.id || st.id==='home') showHomePage();
+          else renderInlineSection(st.id, st.opts||{});
+        } finally {
+          setTimeout(()=>{ State.historyNavigating=false; }, 0);
+        }
+      });
+    }
+    if(!State.client){ showLogin(); applySeasonalLogos(document); return; }
     try { await hydrate(true); ensureLanguageDefault(); } catch(e) { console.warn(e); }
-    if(State.user && State.profile){ hideLogin(); renderApp(); applySeasonalLogos(document); handleInitialOpenRequest(); } else { showLogin(); applySeasonalLogos(document); }
+    if(State.user && State.profile){
+      hideLogin();
+      const initial=tribecaStateFromUrl();
+      ensureTribecaHistoryState(initial.id||'home', initial.opts||{});
+      if(initial.id && initial.id!=='home') renderInlineSection(initial.id, initial.opts||{});
+      else renderApp();
+      applySeasonalLogos(document);
+      handleInitialOpenRequest();
+    } else { showLogin(); applySeasonalLogos(document); }
     setInterval(async()=>{ if(!State.profile) return; await updatePresence(); updateBadges(); }, 45000);
   }
   document.addEventListener('DOMContentLoaded', boot);

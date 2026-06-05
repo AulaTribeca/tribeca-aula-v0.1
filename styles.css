@@ -12260,3 +12260,114 @@ body.is-dark .math-calc-panel {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* Tribeca Aula · versión 124
+   Edición de unidades y navegación interna más cómoda. */
+.class-unit-create-form {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) auto;
+  align-items: end;
+  gap: .85rem;
+  margin: 1rem 0;
+  border-radius: 20px;
+}
+
+.class-unit-create-form label {
+  display: grid;
+  gap: .35rem;
+  font-weight: 850;
+}
+
+.class-unit-teacher-actions {
+  display: grid;
+  gap: .65rem;
+  padding: .8rem .95rem;
+  border-bottom: 1px solid rgba(55,49,34,.08);
+  background: rgba(16,63,36,.035);
+}
+
+.class-unit-edit-drawer {
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 16px;
+  background: rgba(255,255,255,.72);
+  overflow: hidden;
+}
+
+.class-unit-edit-drawer > summary {
+  padding: .62rem .75rem;
+  cursor: pointer;
+  list-style: none;
+  color: var(--green);
+  font-weight: 950;
+}
+
+.class-unit-edit-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.class-unit-edit-drawer[open] > summary {
+  border-bottom: 1px solid rgba(55,49,34,.08);
+  background: rgba(168,135,45,.08);
+}
+
+.class-unit-edit-form {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) 7rem minmax(13rem, auto);
+  gap: .75rem;
+  align-items: end;
+  padding: .8rem;
+}
+
+.class-unit-edit-form label {
+  display: grid;
+  gap: .32rem;
+  font-weight: 820;
+}
+
+.class-unit-edit-form .compact-check {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .65rem .75rem;
+  border: 1px solid rgba(55,49,34,.10);
+  border-radius: 999px;
+  background: rgba(250,248,243,.9);
+}
+
+.class-unit-edit-form .compact-check input {
+  flex: 0 0 auto;
+}
+
+.class-unit-edit-form .inline-actions {
+  grid-column: 1 / -1;
+}
+
+.subject-unit-card.is-hidden-classroom > summary {
+  opacity: .74;
+}
+
+.subject-unit-card.is-hidden-classroom > summary span::after,
+.classroom-unit-card.is-hidden-classroom summary strong::after {
+  content: " · oculta";
+  color: #8d2424;
+  font-size: .82em;
+}
+
+body.is-dark .class-unit-teacher-actions,
+body.is-dark .class-unit-edit-drawer,
+body.is-dark .class-unit-edit-form .compact-check {
+  background: var(--panel-solid);
+  border-color: rgba(212,175,55,.16);
+}
+
+@media (max-width: 760px) {
+  .class-unit-create-form,
+  .class-unit-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .class-unit-edit-form .compact-check {
+    border-radius: 14px;
+  }
+}
