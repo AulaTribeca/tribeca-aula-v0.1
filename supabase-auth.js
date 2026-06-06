@@ -2000,7 +2000,8 @@
         }
       }
     };
-    form.addEventListener('submit', gradeExam);
+    form.dataset.tribecaNativeForm='exam';
+    form.addEventListener('submit', gradeExam, true);
     form.querySelector('[data-t129-grade-exam]')?.addEventListener('click', gradeExam);
     container.dataset.t103Rendered='1';
   }
@@ -2161,8 +2162,9 @@
         result.innerHTML=`<div class="native-quiz-score-card is-error"><h4>No se pudo corregir el test</h4><p>${safe(error?.message||'Error desconocido')}</p></div>`;
       }
     };
+    form.dataset.tribecaNativeForm='quiz';
     form.querySelector('[data-t130-grade-quiz]')?.addEventListener('click', ev=>{ ev.preventDefault(); ev.stopPropagation(); grade(); });
-    form.addEventListener('submit', ev=>{ ev.preventDefault(); grade(); });
+    form.addEventListener('submit', ev=>{ ev.preventDefault(); grade(); }, true);
     container.dataset.t99Rendered='1';
   }
 
@@ -5074,6 +5076,10 @@ function classroomCard(c,i=0){
     finally { setTimeout(()=>{ if(form) form.dataset.tribecaSubmitting = ''; }, 250); }
   }
   window.TribecaSubmitForm = function(form, ev){
+    if(form?.matches?.('.native-exam-form, .native-quiz-form, [data-t130-quiz-form]')){
+      if(ev) ev.preventDefault();
+      return false;
+    }
     if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
     if(form?.matches?.('[data-t126-unit-edit-form], .class-unit-edit-form')) return window.TribecaClassroomSaveUnit(form, ev);
     if(form?.matches?.('[data-t126-unit-create-form], .class-unit-create-form')) return window.TribecaClassroomAddUnit(form, ev);
@@ -5116,7 +5122,16 @@ function classroomCard(c,i=0){
     w.document.write(receiptPrintDocument(`Recibís trimestrales ${displayName(s)}`, html || '<p>No hay recibís disponibles para este trimestre.</p>')); w.document.close();
   };
 
-  function wireManagedForms(root=document){ root.querySelectorAll('form').forEach(form=>{ if(form.dataset.tribecaWired) return; form.dataset.tribecaWired='1'; form.setAttribute('method','post'); form.setAttribute('action','javascript:void(0)'); form.addEventListener('submit', ev=>window.TribecaSubmitForm(form, ev), true); }); }
+  function wireManagedForms(root=document){
+    root.querySelectorAll('form').forEach(form=>{
+      if(form.matches?.('.native-exam-form, .native-quiz-form, [data-t130-quiz-form]')) return;
+      if(form.dataset.tribecaWired) return;
+      form.dataset.tribecaWired='1';
+      form.setAttribute('method','post');
+      form.setAttribute('action','javascript:void(0)');
+      form.addEventListener('submit', ev=>window.TribecaSubmitForm(form, ev), true);
+    });
+  }
   function bindGlobal() {
     window.addEventListener('click', async ev=>{ const btn=ev.target.closest?.('[data-t24-save-student]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=btn.closest('form'); if(f) await saveStudentProfile(f); } }, true);
     document.addEventListener('click', async ev=>{
