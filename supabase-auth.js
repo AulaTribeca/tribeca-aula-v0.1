@@ -1812,7 +1812,7 @@
       const pts=group.items.length*perQuestion;
       return `<section class="exam-paper-section"><header><h5>${safe(group.name)}</h5><span>${pts.toFixed(2)} / 10</span></header>${group.items.map(({q,idx},localIdx)=>questionHtml(q,idx,localIdx)).join('')}</section>`;
     }).join('');
-    container.innerHTML=`<form class="native-exam-form exam-paper-form"><header class="native-exam-header exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p>${previous?`<strong class="exam-previous-grade">Última nota: ${Number(previous.score||0).toFixed(2)}/10</strong>`:''}</header><div class="native-exam-questions exam-paper-body">${sectionsHtml}</div><footer class="native-exam-footer exam-paper-footer"><button type="submit" class="primary-btn">Finalizar y corregir</button><span>${total} pregunta${total===1?'':'s'} · corrección automática sobre 10</span></footer></form><div class="native-exam-result" hidden></div>`;
+    container.innerHTML=`<form class="native-exam-form exam-paper-form"><header class="native-exam-header exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p>${previous?`<strong class="exam-previous-grade">Última nota: ${Number(previous.score||0).toFixed(2)}/10</strong>`:''}</header><div class="native-exam-questions exam-paper-body">${sectionsHtml}</div><footer class="native-exam-footer exam-paper-footer"><button type="button" class="primary-btn" data-t129-grade-exam>Finalizar y corregir</button><span>${total} pregunta${total===1?'':'s'} · corrección automática sobre 10</span></footer></form><div class="native-exam-result" hidden></div>`;
     const form=container.querySelector('form');
     const joinList=arr=>(arr||[]).map(x=>safe(x)).join(', ');
     const optionText=(q,i)=> q.options?.[i]?.text || '';
@@ -1827,9 +1827,17 @@
       const box=fs.querySelector('[data-exam-feedback]');
       if(box){ box.hidden=false; box.innerHTML=html; }
     };
-    const selectedIndexes=(name)=>[...form.querySelectorAll(`[name="${name}"]:checked`)].map(x=>Number(x.value)).sort((a,b)=>a-b);
-    form.addEventListener('submit', async ev=>{
-      ev.preventDefault();
+    const selectedIndexes=(name)=>[...form.elements].filter(el=>el?.name===name && el.checked).map(x=>Number(x.value)).sort((a,b)=>a-b);
+    const gradeExam=async ev=>{
+      ev?.preventDefault?.();
+      ev?.stopPropagation?.();
+      if(form.dataset.t129Grading==='1') return;
+      form.dataset.t129Grading='1';
+      const gradeBtn=form.querySelector('[data-t129-grade-exam]');
+      const oldGradeText=gradeBtn?.textContent||'Finalizar y corregir';
+      if(gradeBtn){ gradeBtn.disabled=true; gradeBtn.textContent='Corrigiendo…'; }
+      const resultBox=container.querySelector('.native-exam-result');
+      try{
       let rawScore=0;
       const answers=[];
       form.querySelectorAll('.exam-question').forEach(q=>q.classList.remove('is-correct','is-wrong','is-partial'));
@@ -1913,6 +1921,7 @@
       const resultBox=container.querySelector('.native-exam-result');
       resultBox.hidden=false;
       resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>${score>=5?'Simulacro superado':'Simulacro no superado'}</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas. Revisa debajo de cada pregunta el feedback en verde, rojo o dorado.</p><button type="button" class="secondary-btn" data-t111-retake-exam>Rehacer simulacro</button></div>`;
+      form.dataset.t103Finished='1';
       form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);
       resultBox.querySelector('[data-t111-retake-exam]')?.addEventListener('click',()=>{
         delete container.dataset.t103Rendered;
@@ -1920,7 +1929,25 @@
         container.scrollIntoView?.({behavior:'smooth', block:'start'});
       });
       await saveExamAttempt(materialId, exam, result);
-    });
+      } catch(error){
+        console.error('[Tribeca Aula] No se pudo corregir el simulacro:', error);
+        const box=container.querySelector('.native-exam-result');
+        if(box){
+          box.hidden=false;
+          box.innerHTML=`<div class="exam-score-card exam-score-error"><strong>No se pudo corregir</strong><span>Ha ocurrido un error al procesar el cuestionario.</span><p>${safe(error?.message || 'Error de corrección')}</p><button type="button" class="secondary-btn" data-t129-retry-exam>Intentar de nuevo</button></div>`;
+          box.querySelector('[data-t129-retry-exam]')?.addEventListener('click',()=>{ box.hidden=true; box.innerHTML=''; form.dataset.t129Grading=''; const btn=form.querySelector('[data-t129-grade-exam]'); if(btn){ btn.disabled=false; btn.textContent=oldGradeText; } });
+        }
+        toast('No se pudo corregir el cuestionario. Revisa la publicación o inténtalo de nuevo.');
+      } finally {
+        if(form.dataset.t103Finished!=='1'){
+          form.dataset.t129Grading='';
+          const btn=form.querySelector('[data-t129-grade-exam]');
+          if(btn){ btn.disabled=false; btn.textContent=oldGradeText; }
+        }
+      }
+    };
+    form.addEventListener('submit', gradeExam);
+    form.querySelector('[data-t129-grade-exam]')?.addEventListener('click', gradeExam);
     container.dataset.t103Rendered='1';
   }
   async function saveExamAttempt(materialId, exam, result){
@@ -2163,8 +2190,9 @@ function render(){
   var total=EXAM.questions.length, per=total?10/total:0, groups=[];
   EXAM.questions.forEach(function(q,idx){var name=sectionName(q), g=groups[groups.length-1]; if(!g||g.name!==name){g={name:name,items:[]}; groups.push(g);} g.items.push({q:q,idx:idx});});
   var sections=groups.map(function(g){return '<section class="exam-paper-section"><header><h2>'+esc(g.name)+'</h2><span>'+(g.items.length*per).toFixed(2)+' / 10</span></header>'+g.items.map(function(it,localIdx){return questionHtml(it.q,it.idx,localIdx);}).join('')+'</section>';}).join('');
-  document.getElementById('app').innerHTML='<div class="teacher-note">Modo docente de prueba. Puedes realizar el simulacro todas las veces que quieras. No se guarda ninguna nota.</div><form id="examForm" class="exam-paper-form"><header class="exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h1>'+esc(EXAM.title||'Simulacro de examen')+'</h1><p>'+esc(EXAM.instructions||'Responde y finaliza para corregir.')+'</p></header>'+sections+'<footer class="exam-paper-footer"><button type="submit" class="primary-btn">Finalizar y corregir</button><span>'+total+' preguntas · corrección automática sobre 10</span></footer></form><div id="result"></div>';
+  document.getElementById('app').innerHTML='<div class="teacher-note">Modo docente de prueba. Puedes realizar el simulacro todas las veces que quieras. No se guarda ninguna nota.</div><form id="examForm" class="exam-paper-form"><header class="exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h1>'+esc(EXAM.title||'Simulacro de examen')+'</h1><p>'+esc(EXAM.instructions||'Responde y finaliza para corregir.')+'</p></header>'+sections+'<footer class="exam-paper-footer"><button type="button" class="primary-btn" id="gradeExamBtn">Finalizar y corregir</button><span>'+total+' preguntas · corrección automática sobre 10</span></footer></form><div id="result"></div>';
   document.getElementById('examForm').addEventListener('submit', score);
+  document.getElementById('gradeExamBtn').addEventListener('click', function(ev){ score(ev); });
 }
 function applyQuestionFeedback(idx,fraction,parts){
   var fs=document.querySelector('[data-q="'+idx+'"]'); if(!fs) return;
@@ -2173,8 +2201,12 @@ function applyQuestionFeedback(idx,fraction,parts){
   if(box){box.hidden=false; box.innerHTML='<div class="exam-feedback-card '+(fraction===1?'is-correct':(fraction>0?'is-partial':'is-wrong'))+'">'+parts.join('')+'</div>';}
 }
 function score(ev){
-  ev.preventDefault();
-  var form=ev.currentTarget, total=EXAM.questions.length, per=total?10/total:0, raw=0, answers=[];
+  if(ev&&ev.preventDefault) ev.preventDefault();
+  var form=document.getElementById('examForm');
+  if(!form || form.dataset.grading==='1') return;
+  form.dataset.grading='1';
+  try{
+  var total=EXAM.questions.length, per=total?10/total:0, raw=0, answers=[];
   EXAM.questions.forEach(function(q,idx){
     var fraction=0,value=null,correct=null,parts=[];
     var fs=document.querySelector('[data-q="'+idx+'"]');
@@ -2189,7 +2221,7 @@ function score(ev){
       parts.push('<p><strong>'+statusTitle(fraction)+'.</strong> '+ok+'/'+(q.items||[]).length+' posiciones correctas.</p><p><strong>Tu orden:</strong> '+(join(vals.filter(Boolean))||'sin respuesta')+'.</p><p><strong>Orden correcto:</strong> '+join(q.items||[])+'.</p>');
       vals.forEach(function(v,i){var lab=fs.querySelectorAll('.exam-ordering label')[i]; if(lab) lab.classList.add(v===(q.items||[])[i]?'is-correct':'is-wrong');});
     } else if(q.type==='multiple_choice'){
-      var selected=[].slice.call(form.querySelectorAll('[name="q'+idx+'[]"]:checked')).map(function(x){return Number(x.value);}).sort(function(a,b){return a-b;});
+      var selected=[].slice.call(form.elements).filter(function(el){return el.name==='q'+idx+'[]' && el.checked;}).map(function(x){return Number(x.value);}).sort(function(a,b){return a-b;});
       var expected=(q.options||[]).map(function(o,i){return (o.correct||o.c)?i:null;}).filter(function(x){return x!==null;}).sort(function(a,b){return a-b;});
       fraction=selected.length===expected.length&&selected.every(function(v,i){return v===expected[i];})?1:0; value=selected; correct=expected;
       [].slice.call(fs.querySelectorAll('.exam-options label')).forEach(function(l,i){ if(expected.indexOf(i)>-1) l.classList.add('is-correct'); if(selected.indexOf(i)>-1&&expected.indexOf(i)===-1) l.classList.add('is-wrong'); });
@@ -2217,6 +2249,12 @@ function score(ev){
   document.getElementById('result').innerHTML='<div class="exam-score-card"><strong>'+finalScore.toFixed(2)+'/10</strong><span>'+(finalScore>=5?'Simulacro superado':'Simulacro no superado')+'</span><p>'+answers.filter(function(a){return a.fraction===1;}).length+'/'+answers.length+' preguntas completamente correctas. Revisa debajo de cada pregunta el feedback.</p><button type="button" class="secondary-btn" id="retake">Rehacer simulacro</button></div>';
   form.querySelectorAll('input,textarea,select,button').forEach(function(el){el.disabled=true;});
   document.getElementById('retake').addEventListener('click',function(){render(); window.scrollTo({top:0,behavior:'smooth'});});
+  }catch(error){
+    console.error(error);
+    document.getElementById('result').innerHTML='<div class="exam-score-card"><strong>No se pudo corregir</strong><span>Ha ocurrido un error al procesar el cuestionario.</span><p>'+esc(error&&error.message?error.message:'Error de corrección')+'</p><button type="button" class="secondary-btn" id="retryGrade">Intentar de nuevo</button></div>';
+    var retry=document.getElementById('retryGrade');
+    if(retry) retry.addEventListener('click',function(){ form.dataset.grading=''; document.getElementById('result').innerHTML=''; });
+  }
 }
 render();
 `;
@@ -5108,6 +5146,7 @@ function classroomCard(c,i=0){
       if(ev.target.closest?.('[data-t16-forgot]')){ $('#t16LoginForm').hidden=true; $('#t16ResetForm').hidden=false; return; }
       if(ev.target.closest?.('[data-t16-login]')){ $('#t16ResetForm').hidden=true; $('#t16LoginForm').hidden=false; return; }
     }, true);
+    document.addEventListener('click', ev=>{ const btn=ev.target.closest?.('.native-exam-form [data-t129-grade-exam]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); const form=btn.closest('form'); form?.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); } }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
     document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
