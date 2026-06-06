@@ -12460,3 +12460,100 @@ body.is-dark .material-video-block {
 .native-quiz-score-card { display: grid; gap: .35rem; padding: 1rem; border-radius: 16px; background: rgba(16,63,36,.08); border: 1px solid rgba(16,63,36,.16); }
 .native-quiz-score-card strong { font-size: 2.2rem; color: var(--green); }
 .native-quiz-score-card.is-error { background: rgba(180,35,24,.09); border-color: rgba(180,35,24,.24); color: #991b1b; }
+
+
+/* Tribeca Aula v132
+   Historial discreto de intentos, unidades visibles sin materiales y calculadora arrastrable con plantillas de polinomios. */
+.exam-attempt-history {
+  margin-top: .65rem;
+  border: 1px solid rgba(16,63,36,.14);
+  border-radius: 14px;
+  background: rgba(16,63,36,.045);
+  overflow: hidden;
+}
+
+.exam-attempt-history summary {
+  cursor: pointer;
+  padding: .55rem .75rem;
+  font-weight: 850;
+  color: var(--green);
+  list-style-position: inside;
+}
+
+.exam-attempt-history ol,
+.exam-attempt-history p {
+  margin: 0;
+  padding: .45rem .75rem .75rem 2rem;
+}
+
+.exam-attempt-history li {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) auto minmax(8rem, auto);
+  gap: .55rem;
+  align-items: center;
+  padding: .28rem 0;
+  font-size: .9rem;
+}
+
+.exam-attempt-history li strong {
+  color: var(--green);
+}
+
+.exam-attempt-history li small {
+  color: var(--muted);
+  text-align: right;
+}
+
+.math-calc-panel header[data-math-calc-drag-handle] {
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+}
+
+.math-calc-panel.is-dragging {
+  opacity: .96;
+  box-shadow: 0 34px 95px rgba(0,0,0,.42);
+}
+
+.math-calc-mode-tabs {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.math-calc-special[data-math-calc-special="polynomial"] {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.math-calc-special[data-math-calc-special="polynomial"] .math-calc-polynomial-help {
+  grid-column: 1 / -1;
+  margin: 0 0 .25rem;
+  padding: .45rem .6rem;
+  border-radius: 12px;
+  background: rgba(240,210,133,.12);
+  color: rgba(255,255,255,.78);
+  font-size: .78rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.math-calc-special[data-math-calc-special="polynomial"] button {
+  background: #26364a;
+}
+
+@media (max-width: 760px) {
+  .exam-attempt-history li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .exam-attempt-history li small {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .math-calc-mode-tabs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .math-calc-special[data-math-calc-special="polynomial"] {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

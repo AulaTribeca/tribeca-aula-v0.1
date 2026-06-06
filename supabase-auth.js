@@ -1147,7 +1147,8 @@
     return (State.data.classSubjects||[]).filter(s=>String(s.class_id)===String(classId) && s.active!==false && !s.hidden).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.subject||'').localeCompare(String(b.subject||''),'es'));
   }
   function visibleClassUnitsForSubject(classSubjectId){
-    return (State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId) && u.active!==false && !u.hidden).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true}));
+    const teacher = roleTeacher();
+    return (State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId) && u.active!==false && (teacher || !u.hidden)).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true}));
   }
   function materialsForClassSubject(classSubjectId){
     const s=classSubjectById(classSubjectId);
@@ -1271,9 +1272,10 @@
   function mathCalculatorMarkup(){
     return `<button type="button" class="math-calc-fab" data-math-calc-toggle aria-label="Abrir calculadora">∑</button>
       <section class="math-calc-panel" data-math-calc-panel hidden>
-        <header><div><strong>Calculadora</strong><span>Para materiales de Matemáticas</span></div><button type="button" data-math-calc-close aria-label="Cerrar">×</button></header>
+        <header data-math-calc-drag-handle title="Arrastrar calculadora"><div><strong>Calculadora</strong><span>Para materiales de Matemáticas · arrástrame desde aquí</span></div><button type="button" data-math-calc-close aria-label="Cerrar">×</button></header>
         <div class="math-calc-mode-tabs" role="tablist">
           <button type="button" class="is-active" data-math-calc-tab="algebra">Álgebra</button>
+          <button type="button" data-math-calc-tab="polynomial">Polinomios</button>
           <button type="button" data-math-calc-tab="trig">Trigonometría</button>
           <button type="button" data-math-calc-tab="calculus">Cálculo</button>
         </div>
@@ -1288,6 +1290,15 @@
               ['√','sqrt('],['x²','^2'],['<','<'],['(', '('],[')', ')'],
               ['log','log('],['!','!'],['>','>'],['≤','<='],['≥','>='],
               ['x','x'],['y','y'],['=','=']
+            ].map(([l,v])=>`<button type="button" data-math-calc-value="${safe(v)}">${safe(l)}</button>`).join('')}
+          </div>
+          <div class="math-calc-special" data-math-calc-special="polynomial" hidden>
+            <p class="math-calc-polynomial-help">Plantillas para escribir operaciones combinadas con polinomios, fracciones, paréntesis y corchetes. Usa “Insertar expresión” para llevarlas a tu respuesta.</p>
+            ${[
+              ['x','x'],['x²','x^2'],['x³','x^3'],['xⁿ','x^'],['coef.','a'],
+              ['( )','(|)'],['[ ]','[|]'],['{ }','{|}'],['fracción','(|)/()'],['+ fracción',' + (|)/()'],
+              ['P(x)','P(x)'],['Q(x)','Q(x)'],['P+Q','P(x)+Q(x)'],['P−Q','P(x)-Q(x)'],['P·Q','(P(x))*(Q(x))'],
+              ['P÷Q','(P(x))/(Q(x))'],['combinada','[(3x^2-2x+1)/(x-1)] + [2x-(x^2+1)]'],['opuesta','-('],['factor común','x('],['simplificar','simplificar: ']
             ].map(([l,v])=>`<button type="button" data-math-calc-value="${safe(v)}">${safe(l)}</button>`).join('')}
           </div>
           <div class="math-calc-special" data-math-calc-special="trig" hidden>
@@ -1318,6 +1329,40 @@
         </div>
       </section>`;
   }
+  function enableMathCalculatorDrag(root){
+    const panel=root?.querySelector?.('[data-math-calc-panel]');
+    const handle=root?.querySelector?.('[data-math-calc-drag-handle]');
+    if(!panel || !handle || handle.dataset.mathCalcDragReady==='1') return;
+    handle.dataset.mathCalcDragReady='1';
+    handle.addEventListener('pointerdown', ev=>{
+      if(ev.target.closest?.('button')) return;
+      ev.preventDefault();
+      const rect=panel.getBoundingClientRect();
+      const offsetX=ev.clientX-rect.left;
+      const offsetY=ev.clientY-rect.top;
+      panel.classList.add('is-dragging');
+      panel.hidden=false;
+      try{ handle.setPointerCapture?.(ev.pointerId); }catch(_e){}
+      const move=e=>{
+        const maxLeft=Math.max(8, window.innerWidth-panel.offsetWidth-8);
+        const maxTop=Math.max(8, window.innerHeight-panel.offsetHeight-8);
+        const left=Math.max(8, Math.min(maxLeft, e.clientX-offsetX));
+        const top=Math.max(8, Math.min(maxTop, e.clientY-offsetY));
+        panel.style.left=`${left}px`;
+        panel.style.top=`${top}px`;
+        panel.style.right='auto';
+        panel.style.bottom='auto';
+      };
+      const up=e=>{
+        panel.classList.remove('is-dragging');
+        document.removeEventListener('pointermove', move, true);
+        document.removeEventListener('pointerup', up, true);
+        try{ handle.releasePointerCapture?.(ev.pointerId); }catch(_e){}
+      };
+      document.addEventListener('pointermove', move, true);
+      document.addEventListener('pointerup', up, true);
+    });
+  }
   function ensureMathCalculatorWidget(){
     let root=document.getElementById('tribecaMathCalculator');
     if(!root){
@@ -1327,6 +1372,7 @@
       root.innerHTML=mathCalculatorMarkup();
       document.body.appendChild(root);
     }
+    enableMathCalculatorDrag(root);
     const active=currentMathCalculatorContext();
     root.hidden=!active;
     document.body.classList.toggle('has-math-calculator', active);
@@ -1379,18 +1425,20 @@
     const d=mathCalcDisplay();
     if(!d) return;
     const map={'×':'*','÷':'/','−':'-'};
-    const insert=map[value]||value;
+    let insert=map[value]||value;
     if(insert==='='){ runMathCalculatorAction('equals'); return; }
+    const marker=insert.indexOf('|');
+    if(marker>=0) insert=insert.replace('|','');
     const start=d.selectionStart ?? d.value.length;
     const end=d.selectionEnd ?? d.value.length;
     d.value=d.value.slice(0,start)+insert+d.value.slice(end);
-    const pos=start+insert.length;
+    const pos=start+(marker>=0?marker:insert.length);
     d.focus();
     d.setSelectionRange?.(pos,pos);
   }
   function normalizeMathExpression(expr=''){
     let e=String(expr||'').trim();
-    e=e.replace(/,/g,'.').replace(/π/g,'pi').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/√\s*\(/g,'sqrt(');
+    e=e.replace(/,/g,'.').replace(/π/g,'pi').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/[\[\{]/g,'(').replace(/[\]\}]/g,')').replace(/√\s*\(/g,'sqrt(');
     e=e.replace(/\^/g,'**');
     e=e.replace(/\bpi\b/gi,'Math.PI').replace(/\be\b/g,'Math.E');
     e=e.replace(/\bsqrt\s*\(/gi,'Math.sqrt(').replace(/\bcbrt\s*\(/gi,'Math.cbrt(');
@@ -1807,8 +1855,29 @@
     if(!exam?.questions?.length) return '';
     return `<section class="material-embed-block native-exam-shell"><div><strong>Simulacro de examen</strong><small>Autocorregible · nota sobre 10</small></div><div class="native-exam-block" data-t103-exam="${safe(encodeBase64Utf8(JSON.stringify(exam)))}" data-material-id="${safe(m.id||'')}"><p>Cargando simulacro…</p></div></section>`;
   }
+  function examAttemptsFor(materialId, userId=State.profile?.id){
+    if(!materialId || !userId) return [];
+    return (State.data.examAttempts||[])
+      .filter(a=>String(a.material_id)===String(materialId) && String(a.user_id)===String(userId))
+      .sort((a,b)=>new Date(b.completed_at||b.created_at||0)-new Date(a.completed_at||a.created_at||0));
+  }
   function examAttemptFor(materialId, userId=State.profile?.id){
-    return (State.data.examAttempts||[]).find(a=>String(a.material_id)===String(materialId) && String(a.user_id)===String(userId));
+    return examAttemptsFor(materialId, userId)[0] || null;
+  }
+  function examAttemptHistoryMarkup(materialId, opts={}){
+    if(roleTeacher() || !materialId || !State.profile?.id) return '';
+    const attempts=examAttemptsFor(materialId);
+    const count=attempts.length;
+    if(!count && !opts.showEmpty) return '';
+    const rows=attempts.map((a,i)=>{
+      const when=a.completed_at ? new Date(a.completed_at).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'sin fecha';
+      return `<li><span>Intento ${count-i}</span><strong>${Number(a.score||0).toFixed(2)}/10</strong><small>${safe(when)}</small></li>`;
+    }).join('');
+    return `<details class="exam-attempt-history"><summary>Intentos realizados${count?` (${count})`:''}</summary>${count?`<ol>${rows}</ol>`:'<p>Todavía no hay intentos guardados.</p>'}</details>`;
+  }
+  function updateAttemptHistoryBox(container, materialId){
+    if(!container || !materialId) return;
+    container.querySelectorAll('[data-exam-attempt-history-slot]').forEach(slot=>{ slot.innerHTML=examAttemptHistoryMarkup(materialId); });
   }
   function scoreTextAnswer(value='', accepted=[], caseSensitive=false){
     const v=textNorm(value, caseSensitive);
@@ -1866,7 +1935,7 @@
       const pts=group.items.length*perQuestion;
       return `<section class="exam-paper-section"><header><h5>${safe(group.name)}</h5><span>${pts.toFixed(2)} / 10</span></header>${group.items.map(({q,idx},localIdx)=>questionHtml(q,idx,localIdx)).join('')}</section>`;
     }).join('');
-    container.innerHTML=`<form class="native-exam-form exam-paper-form"><header class="native-exam-header exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p>${previous?`<strong class="exam-previous-grade">Última nota: ${Number(previous.score||0).toFixed(2)}/10</strong>`:''}</header><div class="native-exam-questions exam-paper-body">${sectionsHtml}</div><footer class="native-exam-footer exam-paper-footer"><button type="button" class="primary-btn" data-t129-grade-exam>Finalizar y corregir</button><span>${total} pregunta${total===1?'':'s'} · corrección automática sobre 10</span></footer></form><div class="native-exam-result" hidden></div>`;
+    container.innerHTML=`<form class="native-exam-form exam-paper-form"><header class="native-exam-header exam-paper-header"><div class="exam-paper-topline"><span>Nombre: .....................................................</span><span>Resultado: ............ / 10</span></div><h4>${safe(exam.title)}</h4><p>${safe(exam.instructions)}</p><div data-exam-attempt-history-slot>${examAttemptHistoryMarkup(materialId)}</div></header><div class="native-exam-questions exam-paper-body">${sectionsHtml}</div><footer class="native-exam-footer exam-paper-footer"><button type="button" class="primary-btn" data-t129-grade-exam>Finalizar y corregir</button><span>${total} pregunta${total===1?'':'s'} · corrección automática sobre 10</span></footer></form><div class="native-exam-result" hidden></div>`;
     const form=container.querySelector('form');
     const joinList=arr=>(arr||[]).map(x=>safe(x)).join(', ');
     const optionText=(q,i)=> q.options?.[i]?.text || '';
@@ -1974,7 +2043,7 @@
       const result={score, max_score:10, answers, completed_at:new Date().toISOString()};
       const resultBox=container.querySelector('.native-exam-result');
       resultBox.hidden=false;
-      resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>${score>=5?'Simulacro superado':'Simulacro no superado'}</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas. Revisa debajo de cada pregunta el feedback en verde, rojo o dorado.</p><button type="button" class="secondary-btn" data-t111-retake-exam>Rehacer simulacro</button></div>`;
+      resultBox.innerHTML=`<div class="exam-score-card"><strong>${score.toFixed(2)}/10</strong><span>Ejercicio corregido</span><p>${answers.filter(a=>a.fraction===1).length}/${answers.length} preguntas completamente correctas. Revisa debajo de cada pregunta el feedback en verde, rojo o dorado.</p><button type="button" class="secondary-btn" data-t111-retake-exam>Rehacer ejercicio</button></div>`;
       form.dataset.t103Finished='1';
       form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);
       resultBox.querySelector('[data-t111-retake-exam]')?.addEventListener('click',()=>{
@@ -1983,6 +2052,7 @@
         container.scrollIntoView?.({behavior:'smooth', block:'start'});
       });
       await saveExamAttempt(materialId, exam, result);
+      updateAttemptHistoryBox(container, materialId);
       } catch(error){
         console.error('[Tribeca Aula] No se pudo corregir el simulacro:', error);
         const box=container.querySelector('.native-exam-result');
@@ -2006,10 +2076,10 @@
     container.dataset.t103Rendered='1';
   }
   async function saveExamAttempt(materialId, exam, result){
-    if(!materialId || !State.profile?.id) return;
+    if(!materialId || !State.profile?.id) return null;
     if(roleTeacher()){
-      toast(`Modo docente: simulacro corregido (${Number(result.score||0).toFixed(2)}/10). No se guarda nota ni intento.`);
-      return;
+      toast(`Ejercicio corregido en modo docente (${Number(result.score||0).toFixed(2)}/10). No se guarda en el perfil del alumnado.`);
+      return null;
     }
     const material=(State.data.materials||[]).find(m=>String(m.id)===String(materialId)) || {};
     const row={
@@ -2020,32 +2090,21 @@
       class_unit_id:material.class_unit_id || null,
       subject:material.subject || exam.subject || '',
       unit_title:material.unit_title || material.unit || exam.unit || '',
-      title:material.title || exam.title || 'Simulacro de examen',
+      title:material.title || exam.title || 'Ejercicio autocorregible',
       score:result.score,
       max_score:10,
-      percent:Math.round((result.score/10)*100),
-      answers:result.answers,
+      percent:Math.round((Number(result.score||0)/10)*100),
+      answers:result.answers || [],
       correction:result,
-      completed_at:result.completed_at
+      completed_at:result.completed_at || new Date().toISOString()
     };
-    await maybe(table('exam_attempts').insert(row));
-    await maybe(persistSupabaseRecord('grades',{
-      user_id:State.profile.id,
-      student_id:State.profile.id,
-      subject:row.subject,
-      unit:row.unit_title,
-      didactic_unit:row.unit_title,
-      evaluation:'Simulacro de examen',
-      type:'Simulacro de examen',
-      assessment_type:'Simulacro de examen',
-      test_type:'Simulacro de examen',
-      grade:row.score,
-      weight:null
-    }, null));
-    await maybe(table('material_completions').upsert({user_id:State.profile.id, material_id:materialId, completed_at:result.completed_at},{onConflict:'user_id,material_id'}));
+    const inserted = await maybe(table('exam_attempts').insert(row).select('*').single(), null);
+    await maybe(table('material_completions').upsert({user_id:State.profile.id, material_id:materialId, completed_at:row.completed_at},{onConflict:'user_id,material_id'}));
     await loadData(true);
-    toast(`Simulacro corregido: ${Number(row.score).toFixed(2)}/10.`);
+    toast(`Ejercicio corregido: ${Number(row.score).toFixed(2)}/10. Intento guardado.`);
+    return inserted || row;
   }
+
   function hydrateNativeExams(root=document){
     const scope=root && root.querySelectorAll ? root : document;
     scope.querySelectorAll('.native-exam-block[data-t103-exam]').forEach(renderNativeExam);
@@ -2091,14 +2150,14 @@
     }
     return `<section class="material-embed-block material-video-block">${header}<iframe title="${title}" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen src="${safe(source.src)}" style="min-height:${height}px"></iframe>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir vídeo en pestaña nueva</a>`:''}</section>`;
   }
-  function nativeQuizMarkup(quiz){
+  function nativeQuizMarkup(quiz, m={}){
     if(!quiz?.questions?.length) return '';
-    return `<section class="material-embed-block native-quiz-shell"><div><strong>Recurso interactivo</strong><small>Test nativo de Tribeca Aula</small></div><div class="native-quiz-block" data-t99-quiz="${safe(encodeBase64Utf8(JSON.stringify(quiz)))}"><p>Cargando test…</p></div></section>`;
+    return `<section class="material-embed-block native-quiz-shell"><div><strong>Recurso interactivo</strong><small>Test autocorregible de Tribeca Aula</small></div><div class="native-quiz-block" data-t99-quiz="${safe(encodeBase64Utf8(JSON.stringify(quiz)))}" data-material-id="${safe(m.id||'')}"><p>Cargando test…</p></div></section>`;
   }
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
     if(source.mode==='exam') return nativeExamMarkup(source.exam, m);
-    if(source.mode==='quiz') return nativeQuizMarkup(source.quiz);
+    if(source.mode==='quiz') return nativeQuizMarkup(source.quiz, m);
     if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test o simulacro. Comprueba que contiene <code>type: "tribeca-exam"</code> o <code>questions</code> con ejercicios compatibles.</p></section>`;
     if(source.mode==='video' || source.mode==='videoHtml') return videoEmbedMarkup(source, m);
     if(!source.src && !source.html) return '';
@@ -2114,16 +2173,19 @@
     quiz=normalizeQuizPayload(quiz);
     if(!quiz){ container.innerHTML='<p>No se pudo cargar el test.</p>'; container.dataset.t99Rendered='error'; return; }
     const total=quiz.questions.length;
+    const materialId=container.dataset.materialId||'';
+    const canPersist=typeof State!=='undefined' && typeof saveExamAttempt==='function' && typeof examAttemptHistoryMarkup==='function' && !!materialId;
     const label=(q)=> q.opts.filter(o=>o.c).length>1 ? 'Selecciona todas las correctas' : 'Elige la respuesta correcta';
     const questionHtml=(q,idx)=>{
       const multi=q.opts.filter(o=>o.c).length>1;
       return `<fieldset class="native-quiz-question" data-quiz-q="${idx}"><legend><span>${idx+1}</span>${safe(q.q)}</legend>${q.hint?`<p class="native-quiz-hint">${safe(q.hint)}</p>`:''}<small>${safe(label(q))}</small><div class="native-quiz-options">${q.opts.map((o,i)=>`<label><input type="${multi?'checkbox':'radio'}" name="quiz${idx}${multi?'[]':''}" value="${i}"><span>${safe(o.t)}</span></label>`).join('')}</div><div class="native-quiz-feedback" data-quiz-feedback="${idx}" hidden></div></fieldset>`;
     };
-    container.innerHTML=`<form class="native-quiz-form" data-t130-quiz-form><header><h4>${safe(quiz.title||'Test interactivo')}</h4><p>${total} pregunta${total===1?'':'s'} · corrección automática</p></header>${quiz.questions.map(questionHtml).join('')}<div class="native-quiz-result" hidden></div><footer><button type="button" class="primary-btn" data-t130-grade-quiz>Finalizar y corregir</button></footer></form>`;
+    container.innerHTML=`<form class="native-quiz-form" data-t130-quiz-form><header><h4>${safe(quiz.title||'Test interactivo')}</h4><p>${total} pregunta${total===1?'':'s'} · corrección automática</p><div data-exam-attempt-history-slot>${canPersist?examAttemptHistoryMarkup(materialId):''}</div></header>${quiz.questions.map(questionHtml).join('')}<div class="native-quiz-result" hidden></div><footer><button type="button" class="primary-btn" data-t130-grade-quiz>Finalizar y corregir</button></footer></form>`;
     const form=container.querySelector('[data-t130-quiz-form]');
-    const grade=()=>{
+    const grade=async ()=>{
       try{
         let score=0;
+        const answers=[];
         quiz.questions.forEach((q,idx)=>{
           const expected=q.opts.map((o,i)=>o.c?i:null).filter(x=>x!==null).sort((a,b)=>a-b);
           const multi=expected.length>1;
@@ -2143,6 +2205,7 @@
           const selectedText=selected.map(i=>q.opts[i]?.t).filter(Boolean).join(', ') || 'sin respuesta';
           const expectedText=expected.map(i=>q.opts[i]?.t).filter(Boolean).join(', ') || 'sin respuesta configurada';
           const rationales=[...new Set([...selected,...expected].map(i=>q.opts[i]?.r).filter(Boolean))];
+          answers.push({question:q.q,type:multi?'multiple_choice':'single_choice',value:selected,correct:expected,fraction:ok?1:0,feedback:`Tu respuesta: ${selectedText}. Respuesta correcta: ${expectedText}.`});
           if(feedback){
             feedback.hidden=false;
             feedback.className=`native-quiz-feedback ${ok?'is-correct':'is-incorrect'}`;
@@ -2150,10 +2213,15 @@
           }
         });
         const pct=Math.round((score/total)*100);
+        const score10=total?Number(((score/total)*10).toFixed(2)):0;
         const result=form.querySelector('.native-quiz-result');
         result.hidden=false;
-        result.innerHTML=`<div class="native-quiz-score-card"><h4>Test completado</h4><strong>${score}/${total}</strong><p>${pct}% de aciertos. Revisa cada pregunta: verde correcto, rojo incorrecto.</p><button type="button" class="secondary-btn" data-t130-retake-quiz>Rehacer test</button></div>`;
+        result.innerHTML=`<div class="native-quiz-score-card"><h4>Test completado</h4><strong>${score}/${total}</strong><p>${pct}% de aciertos (${score10.toFixed(2)}/10). Revisa cada pregunta: verde correcto, rojo incorrecto.</p><button type="button" class="secondary-btn" data-t130-retake-quiz>Rehacer test</button></div>`;
         form.querySelectorAll('input,button[data-t130-grade-quiz]').forEach(el=>el.disabled=true);
+        if(canPersist){
+          await saveExamAttempt(materialId, {title:quiz.title||'Test interactivo'}, {score:score10, max_score:10, answers, completed_at:new Date().toISOString(), quiz_score:score, quiz_total:total});
+          if(typeof updateAttemptHistoryBox==='function') updateAttemptHistoryBox(container, materialId);
+        }
         result.querySelector('[data-t130-retake-quiz]')?.addEventListener('click',()=>{ delete container.dataset.t99Rendered; renderNativeQuiz(container); container.scrollIntoView?.({behavior:'smooth',block:'start'}); });
       }catch(error){
         console.error('[Tribeca Aula] Error al corregir test nativo:', error);
@@ -2271,7 +2339,7 @@ function render(){
   var total=EXAM.questions.length, per=total?10/total:0, groups=[];
   EXAM.questions.forEach(function(q,idx){var name=sectionName(q), g=groups[groups.length-1]; if(!g||g.name!==name){g={name:name,items:[]}; groups.push(g);} g.items.push({q:q,idx:idx});});
   var sections=groups.map(function(g){return '<section class="exam-paper-section"><header><h2>'+esc(g.name)+'</h2><span>'+(g.items.length*per).toFixed(2)+' / 10</span></header>'+g.items.map(function(it,localIdx){return questionHtml(it.q,it.idx,localIdx);}).join('')+'</section>';}).join('');
-  document.getElementById('app').innerHTML='<div class="teacher-note">Modo docente de prueba. Puedes realizar el simulacro todas las veces que quieras. No se guarda ninguna nota.</div><form id="examForm" class="exam-paper-form"><header class="exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h1>'+esc(EXAM.title||'Simulacro de examen')+'</h1><p>'+esc(EXAM.instructions||'Responde y finaliza para corregir.')+'</p></header>'+sections+'<footer class="exam-paper-footer"><button type="button" class="primary-btn" id="gradeExamBtn">Finalizar y corregir</button><span>'+total+' preguntas · corrección automática sobre 10</span></footer></form><div id="result"></div>';
+  document.getElementById('app').innerHTML='<div class="teacher-note">Puedes realizar este simulacro todas las veces que quieras.</div><form id="examForm" class="exam-paper-form"><header class="exam-paper-header"><div class="exam-paper-topline"><span>Name: .....................................................</span><span>Mark: ............ / 10</span></div><h1>'+esc(EXAM.title||'Simulacro de examen')+'</h1><p>'+esc(EXAM.instructions||'Responde y finaliza para corregir.')+'</p></header>'+sections+'<footer class="exam-paper-footer"><button type="button" class="primary-btn" id="gradeExamBtn">Finalizar y corregir</button><span>'+total+' preguntas · corrección automática sobre 10</span></footer></form><div id="result"></div>';
   document.getElementById('examForm').addEventListener('submit', score);
   document.getElementById('gradeExamBtn').addEventListener('click', function(ev){ score(ev); });
 }
@@ -2346,7 +2414,7 @@ render();
     const source=materialEmbedSource(m);
     if(source.mode==='exam'){
       const runner=examRunnerHtmlForNewWindow(source.exam);
-      return `<section class="material-embed-block exam-preview-shell"><div><strong>Simulacro de examen</strong><small>Modo docente interactivo: puedes realizarlo, corregirlo y repetirlo sin guardar nota.</small></div><iframe title="Simulacro de examen en modo docente" sandbox="allow-scripts allow-forms allow-same-origin" srcdoc="${safe(runner)}" style="min-height:920px"></iframe></section>`;
+      return `<section class="material-embed-block exam-preview-shell"><div><strong>Simulacro de examen</strong><small>Autocorregible: puedes realizarlo, corregirlo y repetirlo.</small></div><iframe title="Simulacro de examen autocorregible" sandbox="allow-scripts allow-forms allow-same-origin" srcdoc="${safe(runner)}" style="min-height:920px"></iframe></section>`;
     }
     if(source.mode==='quiz'){
       const encoded=encodeBase64Utf8(JSON.stringify(source.quiz));
