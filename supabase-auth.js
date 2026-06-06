@@ -1558,6 +1558,27 @@
     }
     return '';
   }
+  function extractBalancedObjectLiteral(source='', startAt=0){
+    const src=String(source||'');
+    const start=src.indexOf('{', Math.max(0,startAt));
+    if(start<0) return '';
+    let depth=0, quote='', esc=false, lineComment=false, blockComment=false;
+    for(let i=start;i<src.length;i++){
+      const ch=src[i], next=src[i+1];
+      if(lineComment){ if(ch==='\n') lineComment=false; continue; }
+      if(blockComment){ if(ch==='*' && next==='/'){ blockComment=false; i++; } continue; }
+      if(quote){ if(esc){ esc=false; continue; } if(ch==='\\'){ esc=true; continue; } if(ch===quote) quote=''; continue; }
+      if(ch==='/' && next==='/'){ lineComment=true; i++; continue; }
+      if(ch==='/' && next==='*'){ blockComment=true; i++; continue; }
+      if(ch==='"' || ch==="'" || ch==='`'){ quote=ch; continue; }
+      if(ch==='{') depth++;
+      if(ch==='}'){
+        depth--;
+        if(depth===0) return src.slice(start,i+1);
+      }
+    }
+    return '';
+  }
   function quizTruth(value){
     if(value === true) return true;
     if(value === false || value == null) return false;
@@ -1567,32 +1588,52 @@
   function normalizeQuizPayload(payload){
     let raw=payload;
     if(Array.isArray(raw)) raw={questions:raw};
-    if(raw?.quizData && Array.isArray(raw.quizData)) raw={...raw, questions:raw.quizData};
-    if(raw?.items && Array.isArray(raw.items)) raw={...raw, questions:raw.items};
-    if(raw?.preguntas && Array.isArray(raw.preguntas)) raw={...raw, questions:raw.preguntas};
+    if(raw?.quizData){
+      if(Array.isArray(raw.quizData)) raw={...raw, questions:raw.quizData};
+      else if(raw.quizData && typeof raw.quizData==='object') raw={...raw.quizData, ...raw, questions:raw.quizData.questions || raw.quizData.items || raw.quizData.preguntas || raw.questions};
+    }
+    ['questions','items','preguntas','quizQuestions','testQuestions','testData','exercises','ejercicios'].forEach(key=>{
+      if(!Array.isArray(raw?.questions) && Array.isArray(raw?.[key])) raw={...raw, questions:raw[key]};
+    });
     if(!raw || !Array.isArray(raw.questions)) return null;
-    const questions=raw.questions.map((q,idx)=>{
-      const options=q.opts || q.options || q.answerOptions || q.answer_options || q.answers || q.choices || q.opciones || q.respuestas || [];
-      const text=String(q.q || q.question || q.text || q.statement || q.prompt || q.enunciado || q.pregunta || '').trim();
-      const hint=String(q.hint || q.ayuda || q.clue || '').trim();
-      const normalizedOptions=(options||[]).map(o=>{
+    const indexFromAnswer=(answer, options=[])=>{
+      if(answer==null || answer==='') return -1;
+      if(Number.isInteger(answer) && options[answer]) return answer;
+      const text=String(answer).trim();
+      if(/^\d+$/.test(text) && options[Number(text)] && Number(text)>=0) return Number(text);
+      const letter=text.toLowerCase().replace(/[^a-z]/g,'');
+      if(letter.length===1){ const i=letter.charCodeAt(0)-97; if(options[i]) return i; }
+      const norm=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/^\s*[a-d][\).:-]\s*/,'').trim();
+      return options.findIndex(o=>String(o.t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/^\s*[a-d][\).:-]\s*/,'').trim()===norm);
+    };
+    const normalizeOptions=(options=[])=>{
+      if(!Array.isArray(options)){
+        if(options && typeof options==='object') options=Object.entries(options).map(([k,v])=>({text:String(v), key:k}));
+        else options=[];
+      }
+      return (options||[]).map(o=>{
         if(typeof o==='string') return {t:o,c:false,r:''};
-        const t=String(o.t || o.text || o.label || o.answer || o.option || o.value || o.respuesta || '').trim();
-        const c=quizTruth(o.c ?? o.correct ?? o.is_correct ?? o.isCorrect ?? o.correcta ?? o.esCorrecta ?? o.valid ?? o.right);
+        const t=String(o.t || o.text || o.label || o.answer || o.option || o.value || o.respuesta || o.opcion || o.key || '').trim();
+        const c=quizTruth(o.c ?? o.correct ?? o.is_correct ?? o.isCorrect ?? o.correcta ?? o.esCorrecta ?? o.valid ?? o.right ?? o.ok);
         const r=String(o.r || o.rationale || o.reason || o.feedback || o.explanation || o.explicacion || o.retroalimentacion || '').trim();
         return {t,c,r};
       }).filter(o=>o.t);
-      const hasCorrect=normalizedOptions.some(o=>o.c);
-      if(!hasCorrect && Number.isInteger(q.correctIndex) && normalizedOptions[q.correctIndex]) normalizedOptions[q.correctIndex].c=true;
-      if(!hasCorrect && Number.isInteger(q.correct_index) && normalizedOptions[q.correct_index]) normalizedOptions[q.correct_index].c=true;
-      if(!hasCorrect && q.correctAnswer){
-        const answer=String(q.correctAnswer).trim().toLowerCase();
-        normalizedOptions.forEach(o=>{ if(o.t.toLowerCase()===answer) o.c=true; });
-      }
+    };
+    const questions=raw.questions.map((q,idx)=>{
+      const optionSource=q.opts || q.options || q.answerOptions || q.answer_options || q.answers || q.choices || q.opciones || q.respuestas || q.alternatives || [];
+      const text=String(q.q || q.question || q.text || q.statement || q.prompt || q.enunciado || q.pregunta || q.title || '').trim();
+      const hint=String(q.hint || q.ayuda || q.clue || '').trim();
+      const normalizedOptions=normalizeOptions(optionSource);
+      const correctCandidates=[q.correctIndex, q.correct_index, q.correctOption, q.correct_option, q.correctAnswer, q.correct_answer, q.answerKey, q.answer_key, q.answer, q.respuesta_correcta, q.respuestaCorrecta, q.correcta, q.correct].filter(v=>v!==undefined && v!==null && v!=='' && typeof v!=='boolean');
+      correctCandidates.forEach(candidate=>{
+        if(Array.isArray(candidate)) candidate.forEach(c=>{ const i=indexFromAnswer(c, normalizedOptions); if(i>=0) normalizedOptions[i].c=true; });
+        else { const i=indexFromAnswer(candidate, normalizedOptions); if(i>=0) normalizedOptions[i].c=true; }
+      });
+      if(!normalizedOptions.some(o=>o.c) && Number.isInteger(q.correctIndex) && normalizedOptions[q.correctIndex]) normalizedOptions[q.correctIndex].c=true;
       return {q:text || `Pregunta ${idx+1}`, hint, opts:normalizedOptions};
     }).filter(q=>q.q && q.opts.length);
     if(!questions.length) return null;
-    return {type:'tribeca-quiz', title:String(raw.title || raw.name || 'Test interactivo'), questions};
+    return {type:'tribeca-quiz', title:String(raw.title || raw.name || raw.titulo || 'Test interactivo'), questions};
   }
   function parseQuizFromInteractiveCode(code=''){
     const raw=stripEmbedCodeFence(code);
@@ -1603,16 +1644,29 @@
     if(/^\s*[\[{]/.test(raw)){
       try{return normalizeQuizPayload(JSON.parse(raw));}catch(_e){}
     }
-    const quizIdx=raw.search(/\bquizData\b/);
-    if(quizIdx>=0){
-      const arr=extractBalancedArrayLiteral(raw, quizIdx);
+    const names=['quizData','questions','quizQuestions','testQuestions','preguntas','testData','items','exercises','ejercicios'];
+    for(const name of names){
+      const re=new RegExp(`(?:window\\.)?${name}\\s*=|\\b${name}\\b`,'i');
+      const found=raw.search(re);
+      if(found<0) continue;
+      const arr=extractBalancedArrayLiteral(raw, found);
       if(arr){
-        try{return normalizeQuizPayload(Function(`"use strict"; return (${arr});`)());}
-        catch(error){ console.warn('[Tribeca Aula] No se pudo extraer quizData:', error); }
+        try{ const quiz=normalizeQuizPayload(Function(`"use strict"; return (${arr});`)()); if(quiz) return quiz; }
+        catch(error){ console.warn('[Tribeca Aula] No se pudo extraer array de test:', name, error); }
       }
+      const obj=extractBalancedObjectLiteral(raw, found);
+      if(obj){
+        try{ const quiz=normalizeQuizPayload(Function(`"use strict"; return (${obj});`)()); if(quiz) return quiz; }
+        catch(error){ console.warn('[Tribeca Aula] No se pudo extraer objeto de test:', name, error); }
+      }
+    }
+    const jsonScript=raw.match(/<script[^>]+type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if(jsonScript){
+      try{ return normalizeQuizPayload(JSON.parse(jsonScript[1])); }catch(_e){}
     }
     return null;
   }
+
   function quizPayloadToStorage(payload){
     const q=normalizeQuizPayload(payload);
     return q ? `tribeca-quiz-json::${JSON.stringify(q)}` : '';
@@ -2058,35 +2112,60 @@
     try{ quiz=JSON.parse(decodeBase64Utf8(container.dataset.t99Quiz||'')); }catch(_e){ quiz=null; }
     quiz=normalizeQuizPayload(quiz);
     if(!quiz){ container.innerHTML='<p>No se pudo cargar el test.</p>'; container.dataset.t99Rendered='error'; return; }
-    let index=0, score=0, answered=false;
     const total=quiz.questions.length;
-    const draw=()=>{
-      const q=quiz.questions[index]; answered=false;
-      container.innerHTML=`<div class="native-quiz-progress">Pregunta ${index+1} de ${total}</div><h4>${safe(q.q)}</h4>${q.hint?`<p class="native-quiz-hint">${safe(q.hint)}</p>`:''}<div class="native-quiz-options">${q.opts.map((o,i)=>`<button type="button" data-quiz-opt="${i}">${safe(o.t)}</button>`).join('')}</div><div class="native-quiz-feedback" hidden></div><button type="button" class="native-quiz-next" hidden>${index===total-1?'Ver resultados':'Siguiente pregunta'}</button>`;
-      container.querySelectorAll('[data-quiz-opt]').forEach(btn=>btn.addEventListener('click',()=>{
-        if(answered) return; answered=true;
-        const selected=q.opts[Number(btn.dataset.quizOpt)];
-        const feedback=container.querySelector('.native-quiz-feedback');
-        container.querySelectorAll('[data-quiz-opt]').forEach((b,i)=>{ b.disabled=true; if(q.opts[i].c) b.classList.add('is-correct'); });
-        if(selected?.c){ score++; btn.classList.add('is-correct'); feedback.className='native-quiz-feedback is-correct'; }
-        else { btn.classList.add('is-incorrect'); feedback.className='native-quiz-feedback is-incorrect'; }
-        feedback.textContent=selected?.r || (selected?.c ? 'Correcto.' : 'Revisa la respuesta correcta.');
-        feedback.hidden=false;
-        container.querySelector('.native-quiz-next').hidden=false;
-      }));
-      container.querySelector('.native-quiz-next').addEventListener('click',()=>{
-        index++;
-        if(index<total) draw();
-        else {
-          const pct=Math.round((score/total)*100);
-          container.innerHTML=`<div class="native-quiz-result"><h4>Test completado</h4><strong>${score}/${total}</strong><p>${pct}% de aciertos.</p><button type="button" class="secondary-btn">Repetir test</button></div>`;
-          container.querySelector('button')?.addEventListener('click',()=>{ index=0; score=0; draw(); });
-        }
-      });
+    const label=(q)=> q.opts.filter(o=>o.c).length>1 ? 'Selecciona todas las correctas' : 'Elige la respuesta correcta';
+    const questionHtml=(q,idx)=>{
+      const multi=q.opts.filter(o=>o.c).length>1;
+      return `<fieldset class="native-quiz-question" data-quiz-q="${idx}"><legend><span>${idx+1}</span>${safe(q.q)}</legend>${q.hint?`<p class="native-quiz-hint">${safe(q.hint)}</p>`:''}<small>${safe(label(q))}</small><div class="native-quiz-options">${q.opts.map((o,i)=>`<label><input type="${multi?'checkbox':'radio'}" name="quiz${idx}${multi?'[]':''}" value="${i}"><span>${safe(o.t)}</span></label>`).join('')}</div><div class="native-quiz-feedback" data-quiz-feedback="${idx}" hidden></div></fieldset>`;
     };
+    container.innerHTML=`<form class="native-quiz-form" data-t130-quiz-form><header><h4>${safe(quiz.title||'Test interactivo')}</h4><p>${total} pregunta${total===1?'':'s'} · corrección automática</p></header>${quiz.questions.map(questionHtml).join('')}<div class="native-quiz-result" hidden></div><footer><button type="button" class="primary-btn" data-t130-grade-quiz>Finalizar y corregir</button></footer></form>`;
+    const form=container.querySelector('[data-t130-quiz-form]');
+    const grade=()=>{
+      try{
+        let score=0;
+        quiz.questions.forEach((q,idx)=>{
+          const expected=q.opts.map((o,i)=>o.c?i:null).filter(x=>x!==null).sort((a,b)=>a-b);
+          const multi=expected.length>1;
+          const selected=[...form.querySelectorAll(`[name="quiz${idx}${multi?'[]':''}"]:checked`)].map(x=>Number(x.value)).sort((a,b)=>a-b);
+          const ok=selected.length===expected.length && selected.every((v,i)=>v===expected[i]);
+          if(ok) score++;
+          const fs=form.querySelector(`[data-quiz-q="${idx}"]`);
+          const feedback=form.querySelector(`[data-quiz-feedback="${idx}"]`);
+          fs?.classList.remove('is-correct','is-incorrect');
+          fs?.classList.add(ok?'is-correct':'is-incorrect');
+          fs?.querySelectorAll('.native-quiz-options label').forEach((label,i)=>{
+            label.classList.remove('is-correct','is-incorrect','is-selected');
+            if(expected.includes(i)) label.classList.add('is-correct');
+            if(selected.includes(i)) label.classList.add('is-selected');
+            if(selected.includes(i) && !expected.includes(i)) label.classList.add('is-incorrect');
+          });
+          const selectedText=selected.map(i=>q.opts[i]?.t).filter(Boolean).join(', ') || 'sin respuesta';
+          const expectedText=expected.map(i=>q.opts[i]?.t).filter(Boolean).join(', ') || 'sin respuesta configurada';
+          const rationales=[...new Set([...selected,...expected].map(i=>q.opts[i]?.r).filter(Boolean))];
+          if(feedback){
+            feedback.hidden=false;
+            feedback.className=`native-quiz-feedback ${ok?'is-correct':'is-incorrect'}`;
+            feedback.innerHTML=`<strong>${ok?'Correcto.':'Incorrecto.'}</strong><p><b>Tu respuesta:</b> ${safe(selectedText)}</p><p><b>Respuesta correcta:</b> ${safe(expectedText)}</p>${rationales.map(r=>`<p>${safe(r)}</p>`).join('') || (!ok?'<p>Revisa la opción correcta marcada en verde.</p>':'')}`;
+          }
+        });
+        const pct=Math.round((score/total)*100);
+        const result=form.querySelector('.native-quiz-result');
+        result.hidden=false;
+        result.innerHTML=`<div class="native-quiz-score-card"><h4>Test completado</h4><strong>${score}/${total}</strong><p>${pct}% de aciertos. Revisa cada pregunta: verde correcto, rojo incorrecto.</p><button type="button" class="secondary-btn" data-t130-retake-quiz>Rehacer test</button></div>`;
+        form.querySelectorAll('input,button[data-t130-grade-quiz]').forEach(el=>el.disabled=true);
+        result.querySelector('[data-t130-retake-quiz]')?.addEventListener('click',()=>{ delete container.dataset.t99Rendered; renderNativeQuiz(container); container.scrollIntoView?.({behavior:'smooth',block:'start'}); });
+      }catch(error){
+        console.error('[Tribeca Aula] Error al corregir test nativo:', error);
+        const result=form.querySelector('.native-quiz-result');
+        result.hidden=false;
+        result.innerHTML=`<div class="native-quiz-score-card is-error"><h4>No se pudo corregir el test</h4><p>${safe(error?.message||'Error desconocido')}</p></div>`;
+      }
+    };
+    form.querySelector('[data-t130-grade-quiz]')?.addEventListener('click', ev=>{ ev.preventDefault(); ev.stopPropagation(); grade(); });
+    form.addEventListener('submit', ev=>{ ev.preventDefault(); grade(); });
     container.dataset.t99Rendered='1';
-    draw();
   }
+
   function hydrateNativeQuizzes(root=document){
     const scope=root && root.querySelectorAll ? root : document;
     scope.querySelectorAll('.native-quiz-block[data-t99-quiz]').forEach(renderNativeQuiz);

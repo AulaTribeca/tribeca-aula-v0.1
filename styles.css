@@ -12434,3 +12434,29 @@ body.is-dark .material-video-block {
 .class-unit-status.is-error {
   color: #991b1b;
 }
+
+
+/* Tribeca Aula v130
+   Corrección robusta de tests embebidos con 25 preguntas o HTML con arrays de preguntas. */
+.native-quiz-form { display: grid; gap: .85rem; }
+.native-quiz-form > header { border-bottom: 1px solid rgba(55,49,34,.12); padding-bottom: .7rem; }
+.native-quiz-form > header h4 { margin: 0 0 .25rem; }
+.native-quiz-form > header p { margin: 0; color: var(--muted); font-weight: 760; }
+.native-quiz-question { border: 1px solid rgba(55,49,34,.10); border-radius: 16px; padding: .85rem; background: rgba(255,255,255,.72); }
+.native-quiz-question legend { display: flex; gap: .55rem; align-items: flex-start; font-weight: 950; color: var(--text); padding: 0 .2rem; }
+.native-quiz-question legend span { display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 999px; background: rgba(16,63,36,.10); color: var(--green); flex: 0 0 auto; }
+.native-quiz-question > small { display: block; margin: .25rem 0 .55rem 2.25rem; color: var(--muted); font-weight: 750; }
+.native-quiz-question .native-quiz-options { display: grid; gap: .45rem; }
+.native-quiz-question .native-quiz-options label { display: grid; grid-template-columns: auto 1fr; gap: .55rem; align-items: start; border-radius: 12px; padding: .5rem .6rem; border: 1px solid rgba(55,49,34,.08); background: rgba(255,255,255,.78); }
+.native-quiz-question.is-correct { border-left: .35rem solid #15803d; background: rgba(21,128,61,.045); }
+.native-quiz-question.is-incorrect { border-left: .35rem solid #b42318; background: rgba(180,35,24,.045); }
+.native-quiz-options label.is-correct { background: rgba(21,128,61,.10); border-color: rgba(21,128,61,.22); color: #14532d; }
+.native-quiz-options label.is-incorrect { background: rgba(180,35,24,.09); border-color: rgba(180,35,24,.24); color: #991b1b; }
+.native-quiz-feedback { margin-top: .65rem; border-radius: 12px; padding: .7rem .8rem; display: grid; gap: .25rem; }
+.native-quiz-feedback p { margin: 0; }
+.native-quiz-feedback.is-correct { background: rgba(21,128,61,.10); color: #14532d; }
+.native-quiz-feedback.is-incorrect { background: rgba(180,35,24,.09); color: #991b1b; }
+.native-quiz-form footer { display: flex; justify-content: flex-end; border-top: 1px solid rgba(55,49,34,.10); padding-top: .8rem; }
+.native-quiz-score-card { display: grid; gap: .35rem; padding: 1rem; border-radius: 16px; background: rgba(16,63,36,.08); border: 1px solid rgba(16,63,36,.16); }
+.native-quiz-score-card strong { font-size: 2.2rem; color: var(--green); }
+.native-quiz-score-card.is-error { background: rgba(180,35,24,.09); border-color: rgba(180,35,24,.24); color: #991b1b; }
