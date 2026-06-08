@@ -13047,3 +13047,59 @@ body.is-dark .schema-map-connectors marker path {
 .schema-map-drop small:empty {
   display: none;
 }
+
+
+/* Tribeca Aula v136 · esquema a vista completa y marco ancho. */
+.schema-activity-shell {
+  width: 100%;
+  max-width: min(100%, 1500px);
+}
+
+.schema-activity-block,
+.schema-activity {
+  width: 100%;
+}
+
+.schema-map-viewport.schema-map-fit {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden !important;
+  padding: .65rem;
+}
+
+.schema-map-viewport.schema-map-fit .schema-map-canvas {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.schema-activity-shell iframe[title="Esquema interactivo"] {
+  min-height: 960px !important;
+}
+
+.t16-publication.publication-type-card-schema,
+.t16-publication.publication-type-card:has(.schema-activity-shell) {
+  max-width: min(100%, 1500px);
+}
+
+.subject-detail-premium:has(.schema-activity-shell),
+.class-subject-detail:has(.schema-activity-shell) {
+  max-width: min(100%, 1500px);
+  margin-inline: auto;
+}
+
+@media (min-width: 1200px) {
+  body.is-inline-section .t52-inline-tool:has(.schema-activity-shell),
+  body.is-inline-section .t52-inline-tool:has(.publication-type-card-schema) {
+    width: min(100%, 1500px);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .schema-map-viewport.schema-map-fit {
+    padding: .45rem;
+  }
+  .schema-activity-shell iframe[title="Esquema interactivo"] {
+    min-height: 820px !important;
+  }
+}
