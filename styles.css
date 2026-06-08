@@ -13103,3 +13103,62 @@ body.is-dark .schema-map-connectors marker path {
     min-height: 820px !important;
   }
 }
+
+
+/* Tribeca Aula v137 · esquemas proporcionados, sin numeración visible y arrastre robusto. */
+.schema-map-viewport.schema-map-fit {
+  height: var(--schema-fit-height, auto) !important;
+  min-height: var(--schema-fit-height, auto) !important;
+  max-height: var(--schema-fit-height, none) !important;
+  overflow: hidden !important;
+  position: relative;
+}
+.schema-map-viewport.schema-map-fit .schema-map-canvas {
+  transform: scale(var(--schema-map-scale, 1));
+}
+.schema-map-drop small,
+.schema-map-node small,
+.schema-map-drop .schema-blank small {
+  display: none !important;
+}
+.schema-map-node.schema-blank,
+.schema-map-drop.schema-blank,
+.schema-map-drop .schema-blank {
+  padding: 4px 8px !important;
+  overflow: hidden;
+  touch-action: none;
+}
+.schema-map-drop .schema-placeholder,
+.schema-map-node .schema-placeholder {
+  font-size: clamp(.68rem, .8vw, .92rem);
+  line-height: 1.08;
+}
+.schema-map-drop > span:not(.schema-placeholder),
+.schema-map-drop .schema-blank > span:not(.schema-placeholder) {
+  font-size: clamp(.62rem, .78vw, .9rem);
+  line-height: 1.08;
+  display: block;
+  width: 100%;
+}
+.schema-draggable {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.schema-drag-ghost {
+  box-shadow: 0 18px 45px rgba(23,32,24,.22) !important;
+  opacity: .94;
+  cursor: grabbing;
+}
+.schema-activity .schema-bank {
+  max-height: 142px;
+  overflow: auto;
+}
+.t16-publication .schema-map-viewport.schema-map-fit,
+.material-collapse-card .schema-map-viewport.schema-map-fit {
+  margin-top: .35rem;
+}
+body.is-standalone-page .schema-activity-shell,
+body.is-inline-section .schema-activity-shell {
+  max-width: none;
+}
