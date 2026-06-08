@@ -2148,58 +2148,131 @@
       try{ raw=JSON.parse(stripEmbedCodeFence(raw).replace(/^tribeca-(?:schema|activity)-json::/,'')); }catch(_e){ return null; }
     }
     if(!raw || typeof raw!=='object') return null;
-    const activityType=String(raw.activityType || raw.activity_type || raw.kind || raw.type || '').trim();
+    const asArray=value=>Array.isArray(value) ? value : [];
+    const firstArray=(...values)=>values.find(Array.isArray) || [];
+    const activityConfig=raw.activity || raw.actividad || {};
+    const rendering=raw.rendering || raw.render || {};
+    const explicitLayout=raw.layout || {};
+    const explicitNodes=firstArray(raw.nodes, explicitLayout.nodes);
+    const explicitEdges=firstArray(raw.edges, explicitLayout.edges);
+    const explicitTree=raw.tree || raw.esquema_jerarquico || raw.schemaTree || null;
+    const activityType=String(raw.activityType || raw.activity_type || raw.kind || raw.type || raw.category || '').trim();
     const hasSchema=!!(raw.schema && (Array.isArray(raw.schema.branches) || Array.isArray(raw.schema.nodes)));
-    const hasZones=Array.isArray(raw.dropZones || raw.drop_zones || raw.blanks);
+    const hasZones=Array.isArray(raw.dropZones || raw.drop_zones || raw.blanks || raw.huecos);
+    const hasExplicit=explicitNodes.length>0 || !!explicitTree;
     const isTribeca=String(raw.type||'').toLowerCase()==='tribeca-activity';
-    if(!isTribeca && !/schema|esquema|drag.?drop|fill/.test(activityType.toLowerCase()) && !(hasSchema && hasZones)) return null;
-    const items=(raw.draggableItems || raw.draggable_items || raw.items || raw.words || raw.palabras || []).map((it,idx)=>{
+    if(!isTribeca && !/schema|esquema|drag.?drop|fill|mapa.?conceptual/i.test(activityType) && !(hasSchema && hasZones) && !hasExplicit) return null;
+    const itemSources=firstArray(raw.draggableItems, raw.draggable_items, raw.items, raw.words, raw.palabras, raw.wordBank, raw.palabras_para_arrastrar);
+    const items=itemSources.map((it,idx)=>{
       if(typeof it==='string') return {id:`item_${idx+1}`, text:it};
-      return {id:String(it.id || it.key || it.value || `item_${idx+1}`), text:String(it.text || it.label || it.title || it.value || it.id || '')};
+      return {id:String(it.id || it.key || it.value || `item_${idx+1}`), text:String(it.text || it.label || it.title || it.value || it.answerText || it.id || '')};
     }).filter(it=>it.id && it.text);
     const itemTextById=new Map(items.map(it=>[String(it.id), it.text]));
-    const zones=(raw.dropZones || raw.drop_zones || raw.blanks || []).map((z,idx)=>{
-      const id=String(z.id || z.blankId || z.blank_id || z.key || `blank_${idx+1}`);
-      const correctItemId=String(z.correctItemId || z.correct_item_id || z.answerItemId || z.answer_item_id || z.itemId || '');
-      const correctText=String(z.correctText || z.answer || z.correctAnswer || z.correct_answer || itemTextById.get(correctItemId) || '');
-      const accepted=[...(z.acceptedAnswers || z.accepted_answers || z.answers || [])].map(String);
-      if(correctText && !accepted.includes(correctText)) accepted.unshift(correctText);
-      return {id, correctItemId, correctText, acceptedAnswers:accepted, section:String(z.section||''), label:String(z.label||z.prompt||z.description||`Oco ${idx+1}`), afterText:String(z.afterText||z.after_text||z.continuesTo||z.endsIn||''), feedback:String(z.feedback||'')};
+    const zoneSources=firstArray(raw.dropZones, raw.drop_zones, raw.blanks, raw.huecos);
+    const zones=zoneSources.map((z,idx)=>{
+      const id=String(z.id || z.dropZoneId || z.blankId || z.blank_id || z.key || `blank_${idx+1}`);
+      const acceptedItemIds=asArray(z.acceptedItemIds || z.accepted_item_ids || z.acceptedItems || z.accepted_items).map(String).filter(Boolean);
+      const correctItemId=String(z.correctItemId || z.correct_item_id || z.answerItemId || z.answer_item_id || z.itemId || (acceptedItemIds.length===1 ? acceptedItemIds[0] : '') || '');
+      const acceptedAnswers=[...asArray(z.acceptedText || z.accepted_text), ...asArray(z.acceptedAnswers || z.accepted_answers), ...asArray(z.answers || z.respuestas)].map(String).filter(Boolean);
+      const correctText=String(z.correctText || z.correct_text || z.answerText || z.answer_text || z.answer || z.correctAnswer || z.correct_answer || itemTextById.get(correctItemId) || '');
+      if(correctText && !acceptedAnswers.includes(correctText)) acceptedAnswers.unshift(correctText);
+      acceptedItemIds.forEach(itemId=>{ const text=itemTextById.get(String(itemId)); if(text && !acceptedAnswers.includes(text)) acceptedAnswers.push(text); });
+      const pos=z.position || {};
+      const size=z.size || {};
+      return {
+        id,
+        correctItemId,
+        acceptedItemIds,
+        correctText,
+        acceptedAnswers,
+        section:String(z.section||z.apartado||''),
+        label:String(z.label||z.prompt||z.description||z.descripcion||z.answerText||z.correctText||`Oco ${idx+1}`),
+        afterText:String(z.afterText||z.after_text||z.continuesTo||z.endsIn||''),
+        feedback:z.feedback || {},
+        position:{x:Number(pos.x ?? z.x ?? 0)||0, y:Number(pos.y ?? z.y ?? 0)||0},
+        size:{width:Number(size.width ?? z.width ?? 150)||150, height:Number(size.height ?? z.height ?? 44)||44}
+      };
     }).filter(z=>z.id);
-    const answerKey=(raw.answerKey || raw.answer_key || []).map(a=>({dropZoneId:String(a.dropZoneId||a.drop_zone_id||a.blankId||a.id||''), correctItemId:String(a.correctItemId||a.correct_item_id||''), correctText:String(a.correctText||a.correct_text||a.answer||'')})).filter(a=>a.dropZoneId);
+    const answerKey=asArray(raw.answerKey || raw.answer_key).map(a=>({
+      dropZoneId:String(a.dropZoneId||a.drop_zone_id||a.blankId||a.id||''),
+      correctItemId:String(a.correctItemId||a.correct_item_id||''),
+      acceptedItemIds:asArray(a.acceptedItemIds || a.accepted_item_ids).map(String).filter(Boolean),
+      correctText:String(a.correctText||a.correct_text||a.answerText||a.answer||''),
+      acceptedText:asArray(a.acceptedText || a.accepted_text).map(String).filter(Boolean)
+    })).filter(a=>a.dropZoneId);
     answerKey.forEach(a=>{
       const z=zones.find(zone=>zone.id===a.dropZoneId);
       if(!z) return;
       if(a.correctItemId) z.correctItemId=a.correctItemId;
+      if(a.acceptedItemIds.length) z.acceptedItemIds=[...new Set([...(z.acceptedItemIds||[]), ...a.acceptedItemIds])];
       if(a.correctText) z.correctText=a.correctText;
+      a.acceptedText.forEach(txt=>{ if(txt && !z.acceptedAnswers.includes(txt)) z.acceptedAnswers.push(txt); });
       if(z.correctText && !z.acceptedAnswers.includes(z.correctText)) z.acceptedAnswers.unshift(z.correctText);
       if(!z.correctText && z.correctItemId && itemTextById.has(z.correctItemId)) z.correctText=itemTextById.get(z.correctItemId);
+      (z.acceptedItemIds||[]).forEach(itemId=>{ const text=itemTextById.get(String(itemId)); if(text && !z.acceptedAnswers.includes(text)) z.acceptedAnswers.push(text); });
     });
     const settings={...(raw.settings || raw.config || raw.configuration || {})};
-    const modeRaw=String(raw.mode || raw.interactionMode || raw.interaction_mode || settings.mode || settings.interactionMode || activityType || '').toLowerCase();
-    const mode=/write|typing|fill_text|input|escribir|texto/.test(modeRaw) ? 'write' : 'drag';
+    const modeRaw=String(raw.mode || raw.interactionMode || raw.interaction_mode || settings.mode || settings.interactionMode || activityConfig.mode || activityConfig.interaction || activityType || '').toLowerCase();
+    const mode=/write|typing|fill_text|input|escribir|texto|casilla/.test(modeRaw) ? 'write' : 'drag';
+    const treeToSchemaNode=n=>({
+      titleBlankId: n.fixed || n.locked ? '' : String(n.id||''),
+      title: n.fixed || n.locked ? String(n.label || n.text || n.answerText || '') : '',
+      nodes: asArray(n.children).map(treeToSchemaNode)
+    });
+    const treeToSchema=t=>({
+      root:String(t.label || t.text || t.answerText || raw.root || 'ESQUEMA'),
+      branches:asArray(t.children).map(treeToSchemaNode)
+    });
+    const schema=raw.schema || (explicitTree ? treeToSchema(explicitTree) : {root:raw.root || raw.label || 'ESQUEMA', branches:[]});
+    const canvas=rendering.canvas || explicitLayout.canvas || {};
+    const layoutType=String(rendering.type || explicitLayout.type || '').toLowerCase();
+    const nodesForLayout=explicitNodes.map((n,idx)=>{
+      const pos=n.position || {};
+      const size=n.size || {};
+      return {
+        id:String(n.id || `node_${idx+1}`),
+        text:String(n.text || n.label || ''),
+        answerText:String(n.answerText || n.answer_text || n.correctText || ''),
+        x:Number(n.x ?? pos.x ?? 0)||0,
+        y:Number(n.y ?? pos.y ?? 0)||0,
+        width:Number(n.width ?? size.width ?? 150)||150,
+        height:Number(n.height ?? size.height ?? 44)||44,
+        kind:String(n.kind || n.type || '').toLowerCase(),
+        style:String(n.style || ''),
+        placeholder:String(n.placeholder || rendering.nodeStyle?.emptyLabel || 'Arrastra aquí'),
+        locked:!!(n.locked || n.fixed)
+      };
+    });
     return {
       type:'tribeca-activity',
       schemaVersion:raw.schemaVersion || raw.schema_version || '1.0',
       activityType:activityType || (mode==='write'?'fill_schema':'drag_drop_schema'),
       mode,
-      title:String(raw.title || raw.titulo || 'Esquema interactivo'),
+      title:String(raw.title || raw.titulo || raw.name || 'Esquema interactivo'),
       subject:String(raw.subject || raw.materia || ''),
       course:String(raw.course || raw.curso || ''),
+      unit:String(raw.unit || raw.unidad || ''),
       language:String(raw.language || raw.idioma || 'es'),
       description:String(raw.description || raw.descripcion || ''),
       instructions:String(raw.instructions || raw.instrucciones || ''),
-      settings,
-      supportTools:raw.supportTools || raw.support_tools || {},
+      settings:{singleUseDraggables:true, ...settings, ...(activityConfig.singleUseDraggables!==undefined?{singleUseDraggables:activityConfig.singleUseDraggables}:{})},
+      supportTools:raw.supportTools || raw.support_tools || raw.support || {},
       draggableItems:items,
       dropZones:zones,
-      answerKey:zones.map(z=>({dropZoneId:z.id, correctItemId:z.correctItemId, correctText:z.correctText})),
-      schema:raw.schema || {root:raw.root || 'ESQUEMA', branches:[]},
+      answerKey:zones.map(z=>({dropZoneId:z.id, correctItemId:z.correctItemId, acceptedItemIds:z.acceptedItemIds||[], correctText:z.correctText, acceptedText:z.acceptedAnswers||[]})),
+      schema,
+      layout:{
+        type:(layoutType==='explicit_tree_layout' || layoutType==='absolute' || nodesForLayout.length) ? 'explicit_tree_layout' : '',
+        canvas:{width:Number(canvas.width||0)||0, height:Number(canvas.height||0)||0},
+        nodes:nodesForLayout,
+        edges:explicitEdges.map(e=>({from:String(e.from||''), to:String(e.to||''), type:String(e.type||'elbow'), arrow:e.arrow!==false})).filter(e=>e.from&&e.to)
+      },
       feedback:raw.feedback || {},
-      accessibility:raw.accessibility || {}
+      accessibility:raw.accessibility || {},
+      publication:raw.publication || {}
     };
   }
-  function schemaActivityBlank(activity, blankId, mode='drag'){
+    function schemaActivityBlank(activity, blankId, mode='drag'){
     const z=(activity.dropZones||[]).find(x=>String(x.id)===String(blankId));
     const label=z?.label || 'Oco do esquema';
     const after=z?.afterText || '';
@@ -2220,16 +2293,27 @@
     const main=titleBlank ? schemaActivityBlank(activity,titleBlank,mode) : `${concept?`<strong>${safe(concept)}</strong>`:''}${blank?schemaActivityBlank(activity,blank,mode):''}${continues?`<span class="schema-arrow">→</span><span>${safe(continues)}</span>`:''}${ends?`<span class="schema-arrow">→</span><span>${safe(ends)}</span>`:''}${tooltip?`<button type="button" class="schema-tooltip" title="${safe(tooltip.explanation)}">?</button>`:''}`;
     return `<li class="schema-node"><div class="schema-node-line">${main || '<span>Elemento</span>'}</div>${children.length?`<ul>${children.map(ch=>schemaActivityNodeHtml(ch,activity,mode)).join('')}</ul>`:''}</li>`;
   }
+  function schemaActivityExplicitLayoutHtml(activity={}, mode='drag'){
+    const nodes=activity.layout?.nodes || [];
+    if(!Array.isArray(nodes) || !nodes.length) return '';
+    const zonesById=new Map((activity.dropZones||[]).map(z=>[String(z.id), z]));
+    const byId=new Map(nodes.map(n=>[String(n.id), n]));
+    const width=Number(activity.layout?.canvas?.width||0) || Math.max(900, ...nodes.map(n=>Number(n.x||0)+Number(n.width||150)+60));
+    const height=Number(activity.layout?.canvas?.height||0) || Math.max(520, ...nodes.map(n=>Number(n.y||0)+Number(n.height||44)+60));
+    const center=(n,side)=>{ const x=Number(n.x||0), y=Number(n.y||0), w=Number(n.width||150), h=Number(n.height||44); return side==='left'?[x,y+h/2]:[x+w,y+h/2]; };
+    const pathFor=e=>{ const a=byId.get(String(e.from)), b=byId.get(String(e.to)); if(!a||!b) return ''; const [x1,y1]=center(a,'right'); const [x2,y2]=center(b,'left'); const mid=Math.max(x1+24, Math.min(x2-24, (x1+x2)/2)); return `<path d="M ${x1} ${y1} H ${mid} V ${y2} H ${x2}" class="schema-map-edge" ${e.arrow!==false?'marker-end="url(#schemaArrow)"':''}/>`; };
+    const nodeHtml=n=>{ const id=String(n.id||''); const z=zonesById.get(id); const style=`left:${Number(n.x||0)}px;top:${Number(n.y||0)}px;width:${Number(n.width||150)}px;min-height:${Number(n.height||44)}px;`; const cls=`schema-map-node schema-map-style-${safe(String(n.style||'standard'))}`; if(!z || n.kind==='fixed' || n.locked) return `<div class="${cls} schema-map-fixed" style="${style}">${safe(n.text || n.answerText || id)}</div>`; if(mode==='write') return `<span class="${cls} schema-blank schema-blank-write schema-map-drop" style="${style}" data-t133-zone="${safe(id)}"><input type="text" aria-label="${safe(z.label||z.correctText||id)}" placeholder="${safe(n.placeholder||'Escribe aquí')}"><small>${safe(z.section||'')}</small></span>`; return `<button type="button" class="${cls} schema-blank schema-drop-zone schema-map-drop" style="${style}" data-t133-zone="${safe(id)}" aria-label="${safe(z.label||z.correctText||id)}"><span class="schema-placeholder">${safe(n.placeholder||'Arrastra aquí')}</span><small>${safe(z.section||'')}</small></button>`; };
+    const edges=(activity.layout?.edges||[]).map(pathFor).join('');
+    return `<div class="schema-map-viewport"><div class="schema-map-canvas" style="--schema-map-width:${width}px;--schema-map-height:${height}px;"><svg class="schema-map-connectors" viewBox="0 0 ${width} ${height}" aria-hidden="true"><defs><marker id="schemaArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L8,3 z"></path></marker></defs>${edges}</svg>${nodes.map(nodeHtml).join('')}</div></div>`;
+  }
   function schemaActivityTreeHtml(activity={}, mode='drag'){
+    const explicit=schemaActivityExplicitLayoutHtml(activity, mode);
+    if(explicit) return explicit;
     const schema=activity.schema || {};
     const branches=schema.branches || schema.nodes || [];
-    return `<div class="schema-tree"><div class="schema-root">${safe(schema.root || activity.title || 'ESQUEMA')}</div><div class="schema-branches">${branches.map(branch=>{
-      const title=branch.titleBlankId ? schemaActivityBlank(activity,branch.titleBlankId,mode) : `<strong>${safe(branch.title || branch.concept || 'Apartado')}</strong>`;
-      const nodes=branch.nodes || branch.subdivisions || branch.children || [];
-      return `<section class="schema-branch"><h5>${title}</h5><ul>${nodes.map(n=>schemaActivityNodeHtml(n,activity,mode)).join('')}</ul></section>`;
-    }).join('')}</div></div>`;
+    return `<div class="schema-tree"><div class="schema-root">${safe(schema.root || activity.title || 'ESQUEMA')}</div><div class="schema-branches">${branches.map(branch=>{ const title=branch.titleBlankId ? schemaActivityBlank(activity,branch.titleBlankId,mode) : `<strong>${safe(branch.title || branch.concept || 'Apartado')}</strong>`; const nodes=branch.nodes || branch.subdivisions || branch.children || []; return `<section class="schema-branch"><h5>${title}</h5><ul>${nodes.map(n=>schemaActivityNodeHtml(n,activity,mode)).join('')}</ul></section>`; }).join('')}</div></div>`;
   }
-  function schemaActivityMarkup(activity, m={}){
+    function schemaActivityMarkup(activity, m={}){
     const normalized=normalizeSchemaActivityPayload(activity);
     if(!normalized) return '';
     const encoded=encodeBase64Utf8(JSON.stringify(normalized));
@@ -2238,31 +2322,38 @@
   function schemaActivityStandaloneHtml(activity={}, m={}){
     const normalized=normalizeSchemaActivityPayload(activity)||activity||{};
     const encoded=encodeBase64Utf8(JSON.stringify(normalized));
-    return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(normalized.title||m.title||'Esquema interactivo')}</title><style>body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1100px;margin:0 auto;padding:18px}.schema-activity-shell{background:#fffdf7;border:1px solid #e0d7c0;border-radius:16px;padding:16px}.schema-bank{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.schema-draggable{border:1px solid #d7ccb5;border-radius:999px;background:#fff;padding:8px 12px;font-weight:800;cursor:pointer}.schema-draggable.is-used{opacity:.35}.schema-root,.schema-branch{border:1px solid #ded3bb;border-radius:14px;background:#fff;margin:10px 0;padding:12px}.schema-root{text-align:center;font-weight:900;color:#0b3d22}.schema-branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.schema-node{margin:8px 0}.schema-node-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.schema-blank{border:1px dashed #9f8f70;border-radius:12px;min-width:150px;min-height:42px;background:#fffaf0;padding:7px 10px;font-weight:800}.schema-blank small{display:block;font-size:11px;color:#6a6458;font-weight:700}.schema-blank.is-correct{border-color:#1d6f3a;background:#edf8f0}.schema-blank.is-wrong{border-color:#a33;background:#fff0ed}.schema-after{color:#6a6458}.schema-feedback{border-radius:12px;margin-top:12px;padding:12px;background:#f2efe4}.schema-result{margin-top:12px}.primary-btn,.secondary-btn{border:0;border-radius:999px;padding:9px 14px;font-weight:900;cursor:pointer}.primary-btn{background:#0b3d22;color:#fff}.secondary-btn{background:#eee4d0;color:#0b3d22}</style></head><body><main class="wrap"><section class="schema-activity-shell"><div class="schema-activity-block" data-t133-schema="${safe(encoded)}"></div></section></main><script>(${schemaActivityStandaloneRunner.toString()})();<\/script></body></html>`;
+    return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(normalized.title||m.title||'Esquema interactivo')}</title><style>body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1100px;margin:0 auto;padding:18px}.schema-activity-shell{background:#fffdf7;border:1px solid #e0d7c0;border-radius:16px;padding:16px}.schema-bank{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.schema-draggable{border:1px solid #d7ccb5;border-radius:999px;background:#fff;padding:8px 12px;font-weight:800;cursor:pointer}.schema-draggable.is-used{opacity:.35}.schema-root,.schema-branch{border:1px solid #ded3bb;border-radius:14px;background:#fff;margin:10px 0;padding:12px}.schema-root{text-align:center;font-weight:900;color:#0b3d22}.schema-branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.schema-node{margin:8px 0}.schema-node-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.schema-blank{border:1px dashed #9f8f70;border-radius:12px;min-width:150px;min-height:42px;background:#fffaf0;padding:7px 10px;font-weight:800}.schema-blank small{display:block;font-size:11px;color:#6a6458;font-weight:700}.schema-blank.is-correct{border-color:#1d6f3a;background:#edf8f0}.schema-blank.is-wrong{border-color:#a33;background:#fff0ed}.schema-after{color:#6a6458}.schema-feedback{border-radius:12px;margin-top:12px;padding:12px;background:#f2efe4}.schema-result{margin-top:12px}.schema-map-viewport{overflow:auto;border:1px solid #e0d7c0;border-radius:16px;background:#fffaf0;padding:10px}.schema-map-canvas{position:relative;width:var(--schema-map-width);height:var(--schema-map-height);min-width:var(--schema-map-width);min-height:var(--schema-map-height);background:#fffdf7;border-radius:12px}.schema-map-connectors{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.schema-map-edge{fill:none;stroke:#222;stroke-width:2.5}.schema-map-connectors marker path{fill:#222}.schema-map-node{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center}.schema-map-fixed{border:2px solid #111;background:#172018;color:#fff;border-radius:12px;font-weight:900;padding:8px}.schema-map-drop .schema-blank{width:100%;height:100%;box-sizing:border-box}.primary-btn,.secondary-btn{border:0;border-radius:999px;padding:9px 14px;font-weight:900;cursor:pointer}.primary-btn{background:#0b3d22;color:#fff}.secondary-btn{background:#eee4d0;color:#0b3d22}</style></head><body><main class="wrap"><section class="schema-activity-shell"><div class="schema-activity-block" data-t133-schema="${safe(encoded)}"></div></section></main><script>(${schemaActivityStandaloneRunner.toString()})();<\/script></body></html>`;
   }
   function schemaActivityStandaloneRunner(){
     const safe=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const decodeBase64Utf8=value=>{try{const binary=atob(String(value||''));const bytes=Uint8Array.from(binary,ch=>ch.charCodeAt(0));return new TextDecoder().decode(bytes);}catch(e){return '';}};
-    const textNorm=value=>String(value||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').toLowerCase();
+    const norm=value=>String(value||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').toLowerCase();
     const block=document.querySelector('[data-t133-schema]');
     if(!block) return;
     let activity=null;
     try{ activity=JSON.parse(decodeBase64Utf8(block.dataset.t133Schema||'')); }catch(_e){ activity=null; }
     if(!activity){ block.innerHTML='<p>No se pudo cargar el esquema.</p>'; return; }
+    const mode=activity.mode==='write'?'write':'drag';
     const itemById=new Map((activity.draggableItems||[]).map(it=>[String(it.id),it]));
     const answerByZone=new Map((activity.dropZones||[]).map(z=>[String(z.id),z]));
-    const blank=(id)=>{ const z=answerByZone.get(String(id))||{}; return `<button type="button" class="schema-blank" data-zone="${safe(id)}"><span>Soltar aquí</span><small>${safe(z.label||'Oco')}</small></button>${z.afterText?`<span class="schema-after">${safe(z.afterText)}</span>`:''}`; };
-    const node=n=>{ const ch=n.nodes||n.subdivisions||n.children||[]; const main=(n.titleBlankId?blank(n.titleBlankId):`${n.concept||n.title?`<strong>${safe(n.concept||n.title)}</strong>`:''}${n.blankId?blank(n.blankId):''}${n.continuesTo?`<span>→ ${safe(n.continuesTo)}</span>`:''}${n.endsIn?`<span>→ ${safe(n.endsIn)}</span>`:''}`); return `<li><div class="schema-node-line">${main}</div>${ch.length?`<ul>${ch.map(node).join('')}</ul>`:''}</li>`; };
+    const acceptedFor=z=>{const vals=[...(z.acceptedAnswers||[]), ...(z.acceptedText||[])]; if(z.correctText) vals.push(z.correctText); (z.acceptedItemIds||[]).forEach(id=>{const it=itemById.get(String(id)); if(it&&it.text) vals.push(it.text);}); if(z.correctItemId&&itemById.get(String(z.correctItemId))&&itemById.get(String(z.correctItemId)).text) vals.push(itemById.get(String(z.correctItemId)).text); return [...new Set(vals.filter(Boolean).map(String))];};
+    const currentText=zone=>mode==='write'?(zone.querySelector('input')?.value||''):(zone.dataset.itemText || (zone.dataset.item&&itemById.get(String(zone.dataset.item))?.text)||'');
+    const zoneOk=zone=>{const z=answerByZone.get(String(zone.dataset.zone||''))||{}; const item=String(zone.dataset.item||''); if(item && (String(z.correctItemId||'')===item || (z.acceptedItemIds||[]).map(String).includes(item))) return true; const val=currentText(zone); return !!val && acceptedFor(z).some(a=>norm(a)===norm(val));};
+    const blank=(id,node={})=>{ const z=answerByZone.get(String(id))||{}; if(mode==='write') return `<span class="schema-blank schema-blank-write" data-zone="${safe(id)}"><input type="text" placeholder="Escribe aquí" aria-label="${safe(z.label||z.correctText||id)}"><small>${safe(z.section||z.label||'')}</small></span>`; return `<button type="button" class="schema-blank schema-drop-zone" data-zone="${safe(id)}"><span>${safe(node.placeholder||'Soltar aquí')}</span><small>${safe(z.section||z.label||'')}</small></button>`; };
+    const explicitHtml=()=>{const nodes=activity.layout?.nodes||[]; if(!nodes.length) return ''; const byId=new Map(nodes.map(n=>[String(n.id),n])); const w=Number(activity.layout?.canvas?.width||0)||Math.max(900,...nodes.map(n=>Number(n.x||0)+Number(n.width||150)+60)); const h=Number(activity.layout?.canvas?.height||0)||Math.max(520,...nodes.map(n=>Number(n.y||0)+Number(n.height||44)+60)); const center=(n,side)=>{const x=Number(n.x||0),y=Number(n.y||0),ww=Number(n.width||150),hh=Number(n.height||44); return side==='left'?[x,y+hh/2]:[x+ww,y+hh/2];}; const edge=e=>{const a=byId.get(String(e.from)),b=byId.get(String(e.to)); if(!a||!b) return ''; const [x1,y1]=center(a,'right'),[x2,y2]=center(b,'left'),mid=Math.max(x1+24,Math.min(x2-24,(x1+x2)/2)); return `<path d="M ${x1} ${y1} H ${mid} V ${y2} H ${x2}" class="schema-map-edge" marker-end="url(#schemaArrow)"></path>`;}; const node=n=>{const id=String(n.id||''); const style=`left:${Number(n.x||0)}px;top:${Number(n.y||0)}px;width:${Number(n.width||150)}px;min-height:${Number(n.height||44)}px;`; if(!answerByZone.has(id)||n.kind==='fixed'||n.locked) return `<div class="schema-map-node schema-map-fixed" style="${style}">${safe(n.text||n.answerText||id)}</div>`; return `<span class="schema-map-node schema-map-drop" style="${style}">${blank(id,n)}</span>`;}; return `<div class="schema-map-viewport"><div class="schema-map-canvas" style="--schema-map-width:${w}px;--schema-map-height:${h}px"><svg class="schema-map-connectors" viewBox="0 0 ${w} ${h}"><defs><marker id="schemaArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z"></path></marker></defs>${(activity.layout?.edges||[]).map(edge).join('')}</svg>${nodes.map(node).join('')}</div></div>`;};
+    const node=n=>{const ch=n.nodes||n.subdivisions||n.children||[]; const main=n.titleBlankId?blank(n.titleBlankId):`${n.concept||n.title?`<strong>${safe(n.concept||n.title)}</strong>`:''}${n.blankId?blank(n.blankId):''}${n.continuesTo?`<span>→ ${safe(n.continuesTo)}</span>`:''}${n.endsIn?`<span>→ ${safe(n.endsIn)}</span>`:''}`; return `<li><div class="schema-node-line">${main}</div>${ch.length?`<ul>${ch.map(node).join('')}</ul>`:''}</li>`;};
     const branches=(activity.schema?.branches||[]).map(b=>`<section class="schema-branch"><h3>${b.titleBlankId?blank(b.titleBlankId):safe(b.title||'Apartado')}</h3><ul>${(b.nodes||[]).map(node).join('')}</ul></section>`).join('');
-    block.innerHTML=`<h2>${safe(activity.title)}</h2><p>${safe(activity.instructions||'Completa el esquema.')}</p><div class="schema-bank">${(activity.draggableItems||[]).map(it=>`<button type="button" class="schema-draggable" data-item="${safe(it.id)}">${safe(it.text)}</button>`).join('')}</div><div class="schema-root">${safe(activity.schema?.root||'ESQUEMA')}</div><div class="schema-branches">${branches}</div><div class="schema-result" hidden></div><button type="button" class="primary-btn" data-check>Finalizar y corregir</button><button type="button" class="secondary-btn" data-reset>Rehacer</button>`;
+    const schemaHtml=explicitHtml() || `<div class="schema-root">${safe(activity.schema?.root||'ESQUEMA')}</div><div class="schema-branches">${branches}</div>`;
+    block.innerHTML=`<h2>${safe(activity.title)}</h2><p>${safe(activity.instructions||'Completa el esquema.')}</p>${mode==='drag'?`<div class="schema-bank">${(activity.draggableItems||[]).map(it=>`<button type="button" class="schema-draggable" data-item="${safe(it.id)}">${safe(it.text)}</button>`).join('')}</div>`:''}${schemaHtml}<div class="schema-result" hidden></div><button type="button" class="primary-btn" data-check>Finalizar y corregir</button><button type="button" class="secondary-btn" data-reset>Rehacer</button>`;
     let selected='';
-    const setSel=id=>{selected=id;block.querySelectorAll('[data-item]').forEach(b=>b.classList.toggle('is-selected',b.dataset.item===id));};
-    const ok=z=>String(z.dataset.item||'')===String(answerByZone.get(z.dataset.zone)?.correctItemId||'');
-    const mark=z=>{z.classList.toggle('is-correct',ok(z));z.classList.toggle('is-wrong',!ok(z));};
-    const checkAll=()=>{let good=0,total=0;block.querySelectorAll('[data-zone]').forEach(z=>{total++;mark(z);if(ok(z))good++;});const score=total?((good/total)*10).toFixed(2):'0.00';const res=block.querySelector('.schema-result');res.hidden=false;res.innerHTML=`<div class="schema-feedback"><strong>${good}/${total} · ${score}/10</strong><p>${safe(good===total?(activity.feedback?.allCorrect||'Todo correcto.'):(activity.feedback?.someIncorrect||'Revisa los huecos marcados.'))}</p></div>`;};
-    block.addEventListener('click',ev=>{ const item=ev.target.closest('[data-item]'); if(item){setSel(item.dataset.item);return;} const zone=ev.target.closest('[data-zone]'); if(zone&&selected){zone.dataset.item=selected;zone.querySelector('span').textContent=itemById.get(selected)?.text||selected;mark(zone);setSel('');} if(ev.target.closest('[data-reset]')) block.querySelectorAll('[data-zone]').forEach(z=>{z.dataset.item='';z.classList.remove('is-correct','is-wrong');z.querySelector('span').textContent='Soltar aquí';}); if(ev.target.closest('[data-check]')) checkAll(); });
+    const setSel=id=>{selected=String(id||'');block.querySelectorAll('[data-item]').forEach(b=>b.classList.toggle('is-selected',String(b.dataset.item)===selected));};
+    const mark=z=>{const val=currentText(z).trim(); z.classList.remove('is-correct','is-wrong','is-empty'); if(!val){z.classList.add('is-empty'); return false;} const ok=zoneOk(z); z.classList.add(ok?'is-correct':'is-wrong'); return ok;};
+    const place=(z,id)=>{const it=itemById.get(String(id)); if(!z||!it) return; z.dataset.item=String(id); z.dataset.itemText=it.text; const span=z.querySelector('span'); if(span) span.textContent=it.text; mark(z);};
+    const checkAll=()=>{let good=0,total=0;block.querySelectorAll('[data-zone]').forEach(z=>{total++; if(mark(z)) good++;});const score=total?((good/total)*10).toFixed(2):'0.00';const res=block.querySelector('.schema-result');res.hidden=false;res.innerHTML=`<div class="schema-feedback"><strong>${good}/${total} · ${score}/10</strong><p>${safe(good===total?(activity.feedback?.allCorrect||activity.feedback?.final?.allCorrect||'Todo correcto.'):(activity.feedback?.someIncorrect||activity.feedback?.immediate?.incorrect||'Revisa los huecos marcados.'))}</p></div>`;};
+    block.addEventListener('click',ev=>{ const item=ev.target.closest('[data-item]'); if(item){setSel(item.dataset.item);return;} const zone=ev.target.closest('[data-zone]'); if(zone&&selected){place(zone,selected);setSel('');return;} if(ev.target.closest('[data-reset]')){block.querySelectorAll('[data-zone]').forEach(z=>{z.dataset.item='';z.dataset.itemText='';z.classList.remove('is-correct','is-wrong','is-empty'); const span=z.querySelector('span'); if(span) span.textContent='Soltar aquí'; const input=z.querySelector('input'); if(input) input.value='';}); const res=block.querySelector('.schema-result'); if(res){res.hidden=true;res.innerHTML='';}} if(ev.target.closest('[data-check]')) checkAll(); });
+    block.querySelectorAll('[data-zone] input').forEach(input=>input.addEventListener('input',()=>mark(input.closest('[data-zone]'))));
   }
-  async function saveSchemaActivityAttempt(materialId, activity, result){
+    async function saveSchemaActivityAttempt(materialId, activity, result){
     if(!materialId || typeof saveExamAttempt!=='function') return null;
     return saveExamAttempt(materialId, {title:activity.title||'Esquema interactivo', subject:activity.subject||'', unit:activity.unit||''}, result);
   }
