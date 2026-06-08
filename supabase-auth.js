@@ -192,6 +192,7 @@
   }
   function ensureAccessibilityWidget(){
     if(!document.body) return;
+    if(studentFocusModeEnabled(State.profile)) { document.getElementById('tribecaAccessibilityWidget')?.remove?.(); return; }
     let root=document.getElementById('tribecaAccessibilityWidget');
     if(!root){
       root=document.createElement('div');
@@ -264,7 +265,18 @@
     'Economía':'€','Economía y Emprendimiento':'€','Empresa y Diseño de Modelos de Negocio':'€','Formación y Orientación Personal y Profesional':'FO','Psicología':'Ψ','Tutoría':'TU','Orientación académica':'OA','Apoyo personalizado':'AP','Ámbito Científico-Tecnológico':'CT','Ámbito Lingüístico y Social':'LS','Ámbito Práctico':'PR','Higiene Bucodental':'HB','FP Sanitaria':'FP'
   };
   function hashText(str='') { let h=0; for(const ch of String(str)) h=(h*31+ch.charCodeAt(0))>>>0; return h; }
+  function normalizeLooseText(value=''){
+    return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  }
+  function isStudySkillsSubject(subject=''){
+    const s=normalizeLooseText(subject);
+    return /tecnicas\s+de\s+estud/.test(s) || /aprender\s+a\s+estudiar/.test(s) || /study\s+skills/.test(s);
+  }
+  function studySkillsBannerMarkup(){
+    return `<div class="study-subject-banner"><span>Plan de estudio guiado</span><strong>Aprender a estudiar paso a paso</strong></div>`;
+  }
   function subjectVisual(subject=''){
+    if(isStudySkillsSubject(subject)) return { color:'#2f7d68', glyph:'📚' };
     const key = Object.keys(SUBJECT_GLYPHS).find(k => String(subject).toLowerCase().includes(k.toLowerCase())) || subject;
     const idx = hashText(subject) % SUBJECT_PALETTE.length;
     return { color: SUBJECT_PALETTE[idx], glyph: SUBJECT_GLYPHS[key] || String(subject||'?').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase() };
@@ -672,8 +684,27 @@
   function studentFocusModeEnabled(profile = State.profile){
     return !!profile && !roleTeacher() && focusModeEnabledForProfile(profile);
   }
+  function focusModeShouldHideControl(el){
+    const txt=normalizeLooseText(el?.textContent || '');
+    if(/texto|tamano|tamanho|lectura|leitura|reading/.test(txt)) return true;
+    if(el?.classList?.contains('reading-control')) return true;
+    if(el?.classList?.contains('font-control')) return true;
+    const sel=el?.querySelector?.('select');
+    const selId=normalizeLooseText([sel?.id, sel?.name, sel?.dataset?.setting, sel?.ariaLabel].filter(Boolean).join(' '));
+    return /font|texto|text|reading|lectura|leitura/.test(selId) && !/lang|idioma|language/.test(selId);
+  }
+  function pruneFocusModeInterface(){
+    const active=studentFocusModeEnabled(State.profile);
+    try{
+      document.querySelectorAll('.public-tool-lumen,.public-tool-itinera,.public-tools-strip,[data-public-tool-link]').forEach(el=>{ el.hidden=active; el.setAttribute('aria-hidden', active?'true':'false'); });
+      document.querySelectorAll('.utility-bar .control-field').forEach(el=>{ if(focusModeShouldHideControl(el)) { el.hidden=active; el.setAttribute('aria-hidden', active?'true':'false'); } });
+      document.querySelectorAll('.site-footer,.tribeca-footer-v41,footer.site-footer,.hero-watermark,.hero-quote-block').forEach(el=>{ el.hidden=active; el.setAttribute('aria-hidden', active?'true':'false'); });
+      const a11y=document.getElementById('tribecaAccessibilityWidget');
+      if(active && a11y) a11y.remove();
+    }catch(_e){}
+  }
   function syncFocusModeClass(){
-    try { document.body.classList.toggle('is-focus-mode', studentFocusModeEnabled(State.profile)); } catch(_e) {}
+    try { document.body.classList.toggle('is-focus-mode', studentFocusModeEnabled(State.profile)); pruneFocusModeInterface(); } catch(_e) {}
   }
 
   function visibleAnnouncements() { return (State.data.announcements||[]).filter(x=>visibleForProfile(x)); }
@@ -777,7 +808,7 @@
         return;
       }
       if(roleTeacher()) main.innerHTML = teacherHome(); else main.innerHTML = studentHome();
-      bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations(); ensureAccessibilityWidget(); ensureMathCalculatorWidget();
+      bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations(); ensureAccessibilityWidget(); ensureMathCalculatorWidget(); syncFocusModeClass();
     } catch(error) {
       console.error('[Tribeca Aula] Error al renderizar la aplicación:', error);
       if(main) main.innerHTML = `<section class="panel app-error-panel"><p class="eyebrow">Tribeca Aula</p><h1>No se pudo cargar correctamente el panel</h1><p>${safe(error?.message || 'Error de interfaz')}</p><button type="button" class="primary-btn" onclick="location.reload()">Recargar aula</button></section>`;
@@ -1183,7 +1214,35 @@
   function studentClassesMarkup(){
     const classes=studentAssignedClasses();
     if(!classes.length) return '';
+    if(studentFocusModeEnabled(State.profile)) return focusStudentClassesMarkup(classes);
     return `<section class="student-classroom-area"><div class="section-heading"><h2>Mis clases</h2><span>${classes.length} clase${classes.length===1?'':'s'} activa${classes.length===1?'':'s'}</span></div>${classes.map(studentClassroomCard).join('')}</section>`;
+  }
+  function focusStudentClassesMarkup(classes=studentAssignedClasses()){
+    const subjects=[];
+    classes.forEach(c=>classSubjectsForStudentClass(c.id).forEach((s,i)=>subjects.push({s,c,i})));
+    if(!subjects.length) return `<section class="focus-study-area panel"><h2>Tu materia</h2><p>Todavía no hay una materia visible asignada.</p></section>`;
+    return `<section class="focus-study-area"><div class="section-heading focus-study-heading"><h2>Tu materia</h2><span>${subjects.length} materia${subjects.length===1?'':'s'} activa${subjects.length===1?'':'s'}</span></div><div class="focus-study-grid">${subjects.map(({s,c,i})=>focusStudySubjectCard(s,c,i)).join('')}</div></section>`;
+  }
+  function focusStudySubjectCard(s,iOrClass,cMaybe){
+    const c = cMaybe || iOrClass || {};
+    const i = typeof iOrClass === 'number' ? iOrClass : 0;
+    const vis=subjectVisual(s.subject);
+    const units=visibleClassUnitsForSubject(s.id);
+    const mats=materialsForClassSubject(s.id);
+    const pr=classSubjectProgress(s.id);
+    const firstUnit=units[0]?.title || 'Primera unidad';
+    const study=isStudySkillsSubject(s.subject);
+    return `<article class="subject-card class-subject-card focus-study-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-class-subject="${safe(s.id)}" data-class-id="${safe(c.id)}" data-subject="${safe(s.subject)}" style="--subject-color:${vis.color}">
+      ${study?studySkillsBannerMarkup():''}
+      <div class="focus-study-icon">${safe(vis.glyph)}</div>
+      <div class="focus-study-copy">
+        <p class="eyebrow">${safe(c.center || 'Tribeca Aula')}</p>
+        <h3>${safe(s.subject)}</h3>
+        <p>Empieza por <strong>${safe(firstUnit)}</strong>. Abre la unidad y trabaja una actividad cada vez.</p>
+        <div class="focus-study-steps"><span>1. Abrir</span><span>2. Leer</span><span>3. Practicar</span><span>4. Revisar</span></div>
+      </div>
+      <div class="focus-study-progress"><strong>${pr.percent}%</strong><span>${pr.done}/${pr.total || mats.length} hechas</span></div>
+    </article>`;
   }
   function studentClassroomCard(c){
     const subjects=classSubjectsForStudentClass(c.id);
@@ -1198,11 +1257,14 @@
     </article>`;
   }
   function classSubjectCard(s,i,c){
+    if(studentFocusModeEnabled(State.profile)) return focusStudySubjectCard(s,c,i);
     const vis=subjectVisual(s.subject);
     const units=visibleClassUnitsForSubject(s.id);
     const mats=materialsForClassSubject(s.id);
     const pr=classSubjectProgress(s.id);
-    return `<article class="subject-card class-subject-card subject-${i%6}" tabindex="0" role="button" data-class-subject="${safe(s.id)}" data-class-id="${safe(c.id)}" data-subject="${safe(s.subject)}" style="--subject-color:${vis.color}">
+    const study=isStudySkillsSubject(s.subject);
+    return `<article class="subject-card class-subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-class-subject="${safe(s.id)}" data-class-id="${safe(c.id)}" data-subject="${safe(s.subject)}" style="--subject-color:${vis.color}">
+      ${study?studySkillsBannerMarkup():''}
       <div class="subject-top"><span>${safe(c.course||'')}</span></div>
       <div class="subject-mark">${safe(vis.glyph)}</div>
       <h3>${safe(s.subject)}</h3>
@@ -1216,8 +1278,8 @@
     const p=State.profile;
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
-    const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>Elige una materia</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">Modo concentración</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>Trabaja paso a paso. Elige una materia, abre una unidad y realiza una actividad cada vez.</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>Ahora:</strong><span>abre tu materia y continúa con la primera actividad disponible.</span></section>${classHtml}`;
+    const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>Tu materia</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">Modo concentración</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>Trabaja con calma, paso a paso. Abre tu materia, entra en una unidad y completa una actividad cada vez.</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>Ahora:</strong><span>elige tu materia y continúa con la primera unidad disponible.</span></section>${classHtml}`;
   }
 
   function studentHome() {
@@ -1226,7 +1288,7 @@
     const diffs=State.data.difficulties||[]; const grades=State.data.grades||[]; const fails=grades.filter(g=>Number(g.grade)<5).length; const subjects=subjectList(p);
     const q=dailyQuote(); return `<section class="hero-card panel"><div class="hero-main"><p class="eyebrow">Panel personal de aprendizaje</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span> <span class="wave">👋</span></h1><p>${new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p><p class="muted">${safe(academicLine(p))}</p></div><div class="hero-quote-block"><blockquote>“${safe(q.text)}”<cite>${safe(q.author)}</cite></blockquote><img class="hero-watermark" src="assets/watermark-tribeca.png" alt="" aria-hidden="true"></div></section><section class="quick-grid"><article class="quick-card panel" data-tool="guidance" role="button"><span class="quick-icon">${toolIcon('guidance')}</span><h2>Orientación académica</h2><p>Tests vocacionales, inteligencia emocional, itinerarios, Bachillerato, FP y recursos para decidir mejor.</p></article><article class="quick-card panel" data-tool="badges" role="button"><span class="quick-icon">${toolIcon('badges')}</span><h2>Mis insignias</h2><p>${studentBadgeSummary()}</p></article><article class="quick-card panel" data-tool="difficulties" role="button"><span class="quick-icon">${toolIcon('difficulties')}</span><h2>Mis materias con dificultades</h2><p>${diffs.length?diffs.map(d=>safe(d.subject)).join(', '):'Indica dónde necesitas más refuerzo.'}</p></article><article class="quick-card panel" data-tool="grades" role="button"><span class="quick-icon">${toolIcon('grades')}</span><h2>Mis calificaciones</h2><p>${fails?`${fails} calificación/es suspensa/s`:grades.length?`${grades.length} calificaciones registradas`:'Registra tus notas del centro escolar.'}</p></article></section><section class="section-heading"><h2>Mis materias</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
-  function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); return `<article class="subject-card subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}"><div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} publicaciones · ${units.size||0} unidades</p><div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} publicaciones hechas.</small></article>`; }
+  function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} publicaciones · ${units.size||0} unidades</p><div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} publicaciones hechas.</small></article>`; }
   function bindSubjectCards(){ 
     $$('.subject-card[data-class-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('classSubjectDetail', {classSubjectId:card.dataset.classSubject, classId:card.dataset.classId, subject:card.dataset.subject});});});
     $$('.subject-card[data-subject]:not([data-class-subject])').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); 
@@ -3037,6 +3099,7 @@ render();
     if(!main || !State.profile) return;
     if(!roleTeacher() && activePauseFor(State.profile.id)) { renderApp(); return; }
     const id = String(target || 'home');
+    syncFocusModeClass();
     if(id && id !== 'home') setTribecaHistory(id, opts || {});
     State.activeInlineSection = id;
     State.activeInlineOptions = opts || {};
@@ -3093,6 +3156,7 @@ render();
     applyTranslations();
     hydrateInteractiveEmbeds(main);
       hydrateInteractiveEmbeds(main);
+    syncFocusModeClass();
   }
   window.TribecaRenderInlineSection = renderInlineSection;
 
@@ -6247,7 +6311,7 @@ function classroomCard(c,i=0){
     try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
     document.querySelectorAll('.theme-toggle,[data-theme-toggle],#themeToggle,#themeSelect').forEach(el=>{ const wrap=el.closest('label,.select-wrap,.control-field')||el; wrap.remove(); });
     State.client = configured && window.supabase?.createClient ? window.supabase.createClient(cfg.url, cfg.anonKey, { auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true} }) : null;
-    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); applySeasonalLogos(n); } }))).observe(document.body,{childList:true,subtree:true}); applySeasonalLogos(document);
+    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); applySeasonalLogos(n); syncFocusModeClass(); } }))).observe(document.body,{childList:true,subtree:true}); applySeasonalLogos(document); syncFocusModeClass();
     if(!window.__tribecaHistoryBound){
       window.__tribecaHistoryBound=true;
       window.addEventListener('popstate', ev=>{

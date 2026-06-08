@@ -13320,3 +13320,224 @@ body.is-focus-mode .material-summary-flags span {
   body.is-focus-mode .focus-hero-card { padding: 22px 18px; }
   body.is-focus-mode .focus-next-step { align-items: flex-start; flex-direction: column; }
 }
+
+
+/* Tribeca Aula · versión 139 Optimización del modo concentración para Izam Sánchez Sambade. */
+body.is-focus-mode {
+  --focus-max-width: 1060px;
+  --focus-study: #2f7d68;
+  --focus-study-dark: #174d3f;
+  --focus-study-soft: #e8f3ee;
+  font-family: "Atkinson Hyperlegible", "Lexend", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  letter-spacing: 0;
+  background: linear-gradient(180deg, #f8f5eb 0%, #f4f0e4 100%) !important;
+}
+body.is-focus-mode * {
+  font-family: inherit !important;
+}
+body.is-focus-mode .site-footer,
+body.is-focus-mode .tribeca-footer-v41,
+body.is-focus-mode footer.site-footer,
+body.is-focus-mode .public-tools-strip,
+body.is-focus-mode .public-tool-lumen,
+body.is-focus-mode .public-tool-itinera,
+body.is-focus-mode [data-public-tool-link],
+body.is-focus-mode .utility-bar .control-field:not(.language-control),
+body.is-focus-mode .utility-bar .reading-control,
+body.is-focus-mode .utility-bar .font-control,
+body.is-focus-mode #tribecaAccessibilityWidget,
+body.is-focus-mode .tribeca-a11y-widget,
+body.is-focus-mode .hero-quote-block,
+body.is-focus-mode .hero-watermark,
+body.is-focus-mode .quick-grid,
+body.is-focus-mode .watermark,
+body.is-focus-mode [class*="watermark"] {
+  display: none !important;
+}
+body.is-focus-mode .app-header {
+  background: rgba(250, 248, 241, .94) !important;
+  backdrop-filter: blur(14px) saturate(1.05);
+}
+body.is-focus-mode .header-inner {
+  grid-template-columns: minmax(17rem, 24rem) minmax(22rem, 1fr) auto;
+}
+body.is-focus-mode .main-nav {
+  box-shadow: none;
+  background: #fffdf6;
+}
+body.is-focus-mode .main-nav .nav-btn:not([data-route="home"]):not([data-tool="messages"]):not([data-tool="calendar"]) {
+  display: none !important;
+}
+body.is-focus-mode .profile-button {
+  box-shadow: none;
+  background: #fffdf6;
+}
+body.is-focus-mode .focus-hero-card {
+  display: block;
+  border-left: 8px solid var(--focus-study) !important;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #fffdf6 0%, #edf7f2 100%) !important;
+  max-width: var(--focus-max-width);
+}
+body.is-focus-mode .focus-hero-card .eyebrow {
+  color: var(--focus-study-dark);
+  letter-spacing: .08em;
+}
+body.is-focus-mode .focus-hero-card h1 {
+  color: #183326;
+  font-weight: 850;
+  line-height: 1.04;
+}
+body.is-focus-mode .focus-hero-card p {
+  max-width: 780px;
+  color: #3a4b42;
+  font-size: 1.05rem;
+}
+body.is-focus-mode .focus-next-step {
+  border-left-color: var(--focus-study) !important;
+  border-radius: 18px;
+  background: #fffdf6 !important;
+  color: #20372d;
+}
+body.is-focus-mode .focus-study-area {
+  max-width: var(--focus-max-width);
+  margin: 26px auto 0;
+}
+body.is-focus-mode .focus-study-heading {
+  margin-bottom: 14px;
+  align-items: center;
+}
+body.is-focus-mode .focus-study-heading h2 {
+  font-size: clamp(1.55rem, 2.5vw, 2.2rem);
+  color: #173d30;
+}
+body.is-focus-mode .focus-study-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+body.is-focus-mode .focus-study-card {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+  min-height: 0 !important;
+  padding: 26px 28px !important;
+  border: 2px solid rgba(47,125,104,.24) !important;
+  border-left: 9px solid var(--focus-study) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg, #fffdf6 0%, #eff8f4 100%) !important;
+  color: #183326 !important;
+  box-shadow: 0 18px 44px rgba(28, 72, 55, .08) !important;
+}
+body.is-focus-mode .focus-study-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(47,125,104,.44) !important;
+}
+body.is-focus-mode .focus-study-icon {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background: var(--focus-study);
+  color: white;
+  font-size: 2.35rem;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+}
+body.is-focus-mode .focus-study-copy h3,
+.study-skills-subject-card h3 {
+  color: #143f31 !important;
+}
+body.is-focus-mode .focus-study-copy h3 {
+  font-size: clamp(1.85rem, 3vw, 2.65rem);
+  margin: 4px 0 8px;
+}
+body.is-focus-mode .focus-study-copy p {
+  max-width: 680px;
+  color: #405247 !important;
+  font-size: 1.04rem;
+  line-height: 1.55;
+}
+body.is-focus-mode .focus-study-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+body.is-focus-mode .focus-study-steps span {
+  border-radius: 999px;
+  background: #e1f0e9;
+  color: #164334;
+  border: 1px solid rgba(47,125,104,.18);
+  padding: 7px 11px;
+  font-weight: 850;
+  font-size: .9rem;
+}
+body.is-focus-mode .focus-study-progress {
+  display: grid;
+  place-items: center;
+  min-width: 92px;
+  border-radius: 22px;
+  background: #fffdf6;
+  border: 1px solid rgba(47,125,104,.18);
+  padding: 16px 14px;
+}
+body.is-focus-mode .focus-study-progress strong {
+  color: #143f31;
+  font-size: 2rem;
+  line-height: 1;
+}
+body.is-focus-mode .focus-study-progress span {
+  margin-top: 6px;
+  color: #627167;
+  font-weight: 800;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+.study-subject-banner {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 9px;
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: #e1f0e9;
+  border: 1px solid rgba(47,125,104,.20);
+  color: #143f31;
+  font-size: .82rem;
+  font-weight: 850;
+}
+.study-subject-banner span {
+  color: #2f7d68;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  font-size: .72rem;
+}
+.study-skills-subject-card {
+  --subject-color: #2f7d68 !important;
+}
+.study-skills-subject-card .subject-mark {
+  background: #2f7d68 !important;
+  color: #fff !important;
+}
+body.is-focus-mode .student-classroom-card {
+  display: none !important;
+}
+body.is-focus-mode .student-classroom-area > .section-heading {
+  display: none !important;
+}
+@media (max-width: 780px) {
+  body.is-focus-mode .header-inner {
+    grid-template-columns: 1fr;
+  }
+  body.is-focus-mode .focus-study-card {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+  body.is-focus-mode .focus-study-progress {
+    width: fit-content;
+    place-items: start;
+  }
+}
