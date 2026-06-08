@@ -665,6 +665,17 @@
     if(scope === 'class') return item.center === p.center && item.stage === p.stage && item.course === p.course;
     return true;
   }
+  function focusModeEnabledForProfile(profile = State.profile){
+    if(!profile || typeof profile !== 'object') return false;
+    return profile.focus_mode_enabled === true || profile.focus_mode_enabled === 'true' || profile.focus_mode === true || profile.simplified_view === true || profile.ui_mode === 'focus';
+  }
+  function studentFocusModeEnabled(profile = State.profile){
+    return !!profile && !roleTeacher() && focusModeEnabledForProfile(profile);
+  }
+  function syncFocusModeClass(){
+    try { document.body.classList.toggle('is-focus-mode', studentFocusModeEnabled(State.profile)); } catch(_e) {}
+  }
+
   function visibleAnnouncements() { return (State.data.announcements||[]).filter(x=>visibleForProfile(x)); }
   function materialDateValue(m={}){
     const raw=m.created_at || m.createdAt || m.date || m.updated_at || '';
@@ -748,6 +759,7 @@
       if(!main) return;
       document.body.classList.toggle('is-teacher', roleTeacher());
       document.body.classList.toggle('is-student', !roleTeacher());
+      syncFocusModeClass();
       ensureMainNavHomeButton();
       const pause = !roleTeacher() ? activePauseFor(p.id) : null;
       document.body.classList.toggle('is-paused-student', !!pause);
@@ -1200,8 +1212,18 @@
       <small>${pr.done}/${pr.total} publicaciones hechas.</small>
     </article>`;
   }
+  function focusStudentHome(){
+    const p=State.profile;
+    const classes=studentAssignedClasses(p?.id);
+    const legacySubjects=subjectList(p);
+    const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>Elige una materia</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">Modo concentración</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>Trabaja paso a paso. Elige una materia, abre una unidad y realiza una actividad cada vez.</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>Ahora:</strong><span>abre tu materia y continúa con la primera actividad disponible.</span></section>${classHtml}`;
+  }
+
   function studentHome() {
-    const p=State.profile; const diffs=State.data.difficulties||[]; const grades=State.data.grades||[]; const fails=grades.filter(g=>Number(g.grade)<5).length; const subjects=subjectList(p);
+    const p=State.profile;
+    if(studentFocusModeEnabled(p)) return focusStudentHome();
+    const diffs=State.data.difficulties||[]; const grades=State.data.grades||[]; const fails=grades.filter(g=>Number(g.grade)<5).length; const subjects=subjectList(p);
     const q=dailyQuote(); return `<section class="hero-card panel"><div class="hero-main"><p class="eyebrow">Panel personal de aprendizaje</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span> <span class="wave">👋</span></h1><p>${new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p><p class="muted">${safe(academicLine(p))}</p></div><div class="hero-quote-block"><blockquote>“${safe(q.text)}”<cite>${safe(q.author)}</cite></blockquote><img class="hero-watermark" src="assets/watermark-tribeca.png" alt="" aria-hidden="true"></div></section><section class="quick-grid"><article class="quick-card panel" data-tool="guidance" role="button"><span class="quick-icon">${toolIcon('guidance')}</span><h2>Orientación académica</h2><p>Tests vocacionales, inteligencia emocional, itinerarios, Bachillerato, FP y recursos para decidir mejor.</p></article><article class="quick-card panel" data-tool="badges" role="button"><span class="quick-icon">${toolIcon('badges')}</span><h2>Mis insignias</h2><p>${studentBadgeSummary()}</p></article><article class="quick-card panel" data-tool="difficulties" role="button"><span class="quick-icon">${toolIcon('difficulties')}</span><h2>Mis materias con dificultades</h2><p>${diffs.length?diffs.map(d=>safe(d.subject)).join(', '):'Indica dónde necesitas más refuerzo.'}</p></article><article class="quick-card panel" data-tool="grades" role="button"><span class="quick-icon">${toolIcon('grades')}</span><h2>Mis calificaciones</h2><p>${fails?`${fails} calificación/es suspensa/s`:grades.length?`${grades.length} calificaciones registradas`:'Registra tus notas del centro escolar.'}</p></article></section><section class="section-heading"><h2>Mis materias</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); return `<article class="subject-card subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}"><div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} publicaciones · ${units.size||0} unidades</p><div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} publicaciones hechas.</small></article>`; }
@@ -3694,7 +3716,8 @@ render();
     const pause=pauseStatusText(s.id);
     const sup=supportSummary(s);
     const activeClasses=studentAssignedClasses(s.id);
-    const statusChips=[academicLine(s), pause?`En pausa: ${pause}`:'Activo', sup.flags.length?sup.flags.join(' · '):'Sin apoyos registrados', activeClasses.length?`${activeClasses.length} clase${activeClasses.length===1?'':'s'}`:'Sin clase nueva'].filter(Boolean);
+    const focusActive=focusModeEnabledForProfile(s);
+    const statusChips=[academicLine(s), pause?`En pausa: ${pause}`:'Activo', focusActive?'Modo concentración activo':'Vista estándar', sup.flags.length?sup.flags.join(' · '):'Sin apoyos registrados', activeClasses.length?`${activeClasses.length} clase${activeClasses.length===1?'':'s'}`:'Sin clase nueva'].filter(Boolean);
     return `<form id="t24StudentProfileForm" class="form-grid premium-student-editor t24-student-editor teacher-clean-form" method="post" action="javascript:void(0)">
       <input type="hidden" name="id" value="${safe(s.id)}">
       <div class="t24-editor-head clean-editor-head">
@@ -3716,6 +3739,9 @@ render();
       <details class="teacher-option-drawer"><summary><span>Atención personalizada, NEAE y NEE</span><em>${sup.flags.length||0} indicador${sup.flags.length===1?'':'es'}</em></summary>
         <section class="premium-form-section attention-section t34-attention-section"><div class="support-note"><strong>Clasificación correcta:</strong> las NEE forman parte de las NEAE. Registra solo lo relevante para la atención educativa.</div><label class="check-line attention-main"><input type="checkbox" name="personalizedAttention" ${s.personalized_attention?'checked':''}> Requiere atención personalizada o adaptación</label><div class="support-needs-grid t24-support-grid t34-support-grid"><fieldset class="support-box support-box-nee"><legend>NEE</legend><div class="support-checks">${checks('neeTypes', neeTypes, selectedNee)}</div></fieldset><fieldset class="support-box support-box-neae"><legend>NEAE</legend><div class="support-checks">${checks('neaeTypes', neaeTypes, selectedNeae)}</div></fieldset><fieldset class="support-box support-box-health"><legend>Condiciones relevantes</legend><div class="support-checks">${checks('healthConditions', healthConditions, selectedHealth)}</div></fieldset></div><label>Observaciones privadas<textarea name="observations" rows="5">${safe(s.observations||'')}</textarea></label></section>
       </details>
+      <details class="teacher-option-drawer focus-mode-drawer" ${focusActive?'open':''}><summary><span>Modo concentración</span><em>${focusActive?'Activo':'Inactivo'}</em></summary>
+        <section class="premium-form-section focus-mode-section"><p class="meta">Vista simplificada, clara y sin distracciones para el trabajo diario. Solo la profesora puede activarla o desactivarla desde este perfil.</p><label class="check-line focus-mode-check"><input type="checkbox" name="focusModeEnabled" ${focusActive?'checked':''}> Activar vista simplificada por defecto para este alumno</label><div class="focus-mode-preview"><strong>Qué verá el alumnado:</strong><span>una interfaz más limpia</span><span>menos tarjetas simultáneas</span><span>instrucciones visibles</span><span>actividades centradas en un paso cada vez</span></div></section>
+      </details>
       <details class="teacher-option-drawer"><summary><span>Promoción de curso</span><em>Uso puntual</em></summary>
         <section class="premium-form-section promotion-section"><p class="meta">Actualiza centro, etapa y curso con los datos elegidos arriba y limpia datos académicos del curso anterior.</p><button class="secondary-btn" type="button" data-t29-promote-student>Promocionar y limpiar datos del curso anterior</button></section>
       </details>
@@ -3734,7 +3760,7 @@ render();
     const full = String(fd.get('fullName') || `${first} ${last}`.trim() || knownStudentNames[username] || username).trim();
     const weekdays = fd.getAll('scheduleWeekday'), starts = fd.getAll('scheduleStart'), ends = fd.getAll('scheduleEnd'), types = fd.getAll('scheduleType'), notes = fd.getAll('scheduleNotes');
     const schedule = weekdays.map((w,i)=>({ weekday:Number(w), start_time:starts[i]||null, end_time:ends[i]||null, class_type:types[i]||'group', notes:notes[i]||'' })).filter(r => r.weekday && r.start_time && r.end_time);
-    return { id, first_name:first, last_name:last, full_name:full, username, auth_email:String(fd.get('authEmail')||'').trim()||null, personal_email:String(fd.get('personalEmail')||'').trim()||null, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, track:String(fd.get('track')||'').trim()||null, nee_types:fd.getAll('neeTypes'), neae_types:fd.getAll('neaeTypes'), health_conditions:fd.getAll('healthConditions'), observations:fd.get('observations')||'', personalized_attention:!!fd.get('personalizedAttention'), schedule };
+    return { id, first_name:first, last_name:last, full_name:full, username, auth_email:String(fd.get('authEmail')||'').trim()||null, personal_email:String(fd.get('personalEmail')||'').trim()||null, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, track:String(fd.get('track')||'').trim()||null, nee_types:fd.getAll('neeTypes'), neae_types:fd.getAll('neaeTypes'), health_conditions:fd.getAll('healthConditions'), observations:fd.get('observations')||'', personalized_attention:!!fd.get('personalizedAttention'), focus_mode_enabled:!!fd.get('focusModeEnabled'), schedule };
   }
 
   async function saveStudentProfile(form){
@@ -3750,7 +3776,9 @@ render();
       const rpc = await State.client.rpc('tribeca_teacher_save_student_profile_v25', { p_payload: payload });
       if(rpc.error) throw rpc.error;
       if(!rpc.data || rpc.data.ok !== true) throw new Error('Supabase no confirmó el guardado.');
-      const fresh = rpc.data.profile || payload;
+      const focusRpc = await State.client.rpc('tribeca_teacher_set_focus_mode_v138', { p_user_id: payload.id, p_enabled: !!payload.focus_mode_enabled });
+      if(focusRpc.error) throw new Error(`${focusRpc.error.message || 'No se pudo guardar el modo concentración.'} Ejecuta el SQL de la versión 138 si todavía no lo has aplicado.`);
+      const fresh = {...(rpc.data.profile || payload), focus_mode_enabled:!!payload.focus_mode_enabled};
       State.selectedStudentId = payload.id;
       State.data.students = (State.data.students||[]).map(st => st.id===payload.id ? {...st, ...fresh} : st);
       const sched = await State.client.from('student_schedules').select('*').eq('user_id', payload.id).order('weekday').order('start_time');

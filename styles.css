@@ -13162,3 +13162,161 @@ body.is-standalone-page .schema-activity-shell,
 body.is-inline-section .schema-activity-shell {
   max-width: none;
 }
+
+
+/* Tribeca Aula v138 · Modo concentración docente para alumnado */
+.focus-mode-drawer[open] {
+  border-color: rgba(7, 74, 38, .28);
+  box-shadow: 0 14px 34px rgba(7, 74, 38, .08);
+}
+.focus-mode-section .meta {
+  max-width: 68rem;
+}
+.focus-mode-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(7, 74, 38, .18);
+  border-radius: 16px;
+  background: rgba(246, 241, 226, .66);
+  font-weight: 800;
+}
+.focus-mode-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: #064b2d;
+}
+.focus-mode-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.focus-mode-preview strong {
+  flex-basis: 100%;
+}
+.focus-mode-preview span,
+body.is-focus-mode .clean-chip-row span {
+  border: 1px solid rgba(7, 74, 38, .14);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fffdf5;
+  font-size: .85rem;
+  font-weight: 750;
+}
+body.is-focus-mode {
+  --focus-max-width: 980px;
+}
+body.is-focus-mode .app-shell,
+body.is-focus-mode main,
+body.is-focus-mode #inicio {
+  background: #fbf8ed;
+}
+body.is-focus-mode .main-nav .nav-btn:not([data-route="home"]):not([data-tool="messages"]):not([data-tool="calendar"]),
+body.is-focus-mode .main-nav [data-tool="guidance"],
+body.is-focus-mode #announcementsBadge,
+body.is-focus-mode #calendarBadge,
+body.is-focus-mode #messagesBadge,
+body.is-focus-mode .hero-quote-block,
+body.is-focus-mode .hero-watermark,
+body.is-focus-mode .wave,
+body.is-focus-mode .quick-grid {
+  display: none !important;
+}
+body.is-focus-mode .hero-card,
+body.is-focus-mode .focus-hero-card {
+  max-width: var(--focus-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 28px 32px;
+  border: 2px solid rgba(7, 74, 38, .16);
+  box-shadow: none;
+  background: #fffdf5;
+}
+body.is-focus-mode .focus-hero-card h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: -.03em;
+}
+body.is-focus-mode .focus-next-step {
+  max-width: var(--focus-max-width);
+  margin: 18px auto 22px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 16px 18px;
+  border-left: 6px solid #064b2d;
+  background: #fffdf5;
+  box-shadow: none;
+}
+body.is-focus-mode .student-classroom-area,
+body.is-focus-mode .subjects-grid,
+body.is-focus-mode .section-heading,
+body.is-focus-mode .t16-subject-detail,
+body.is-focus-mode .class-subject-detail,
+body.is-focus-mode .t52-inline-head,
+body.is-focus-mode .t52-inline-tool {
+  max-width: var(--focus-max-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+body.is-focus-mode .student-classroom-card,
+body.is-focus-mode .subject-card,
+body.is-focus-mode .subject-unit-card,
+body.is-focus-mode .t16-publication,
+body.is-focus-mode .material-collapse-card {
+  box-shadow: none !important;
+  border: 1px solid rgba(7, 74, 38, .16) !important;
+  background: #fffdf5 !important;
+}
+body.is-focus-mode .student-class-subject-grid,
+body.is-focus-mode .subjects-grid.focus-subjects,
+body.is-focus-mode #subjectsGrid {
+  grid-template-columns: 1fr !important;
+  gap: 16px;
+}
+body.is-focus-mode .subject-card {
+  min-height: auto;
+  padding: 22px 24px;
+}
+body.is-focus-mode .subject-card .subject-mark {
+  transform: scale(.82);
+  opacity: .85;
+}
+body.is-focus-mode .subject-detail-head,
+body.is-focus-mode .t52-inline-head {
+  box-shadow: none;
+  border-left: 6px solid #064b2d;
+  background: #fffdf5;
+}
+body.is-focus-mode .subject-detail-intro,
+body.is-focus-mode .material-body-text,
+body.is-focus-mode .schema-activity-card,
+body.is-focus-mode .native-exam,
+body.is-focus-mode .material-video-block {
+  font-size: 1.04rem;
+  line-height: 1.65;
+}
+body.is-focus-mode .material-collapse-summary,
+body.is-focus-mode .subject-unit-card > summary {
+  padding: 18px 20px;
+}
+body.is-focus-mode .material-card-actions,
+body.is-focus-mode .inline-actions {
+  gap: 10px;
+}
+body.is-focus-mode button,
+body.is-focus-mode .primary-btn,
+body.is-focus-mode .secondary-btn {
+  min-height: 44px;
+}
+body.is-focus-mode .publication-type-tag,
+body.is-focus-mode .material-summary-flags span {
+  font-size: .8rem;
+}
+@media (max-width: 760px) {
+  body.is-focus-mode { --focus-max-width: calc(100vw - 24px); }
+  body.is-focus-mode .hero-card,
+  body.is-focus-mode .focus-hero-card { padding: 22px 18px; }
+  body.is-focus-mode .focus-next-step { align-items: flex-start; flex-direction: column; }
+}
