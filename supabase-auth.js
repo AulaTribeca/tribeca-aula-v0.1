@@ -2149,14 +2149,14 @@
     }
     if(!raw || typeof raw!=='object') return null;
     const asArray=value=>Array.isArray(value) ? value : [];
-    const firstArray=(...values)=>values.find(Array.isArray) || [];
+    const firstArray=(...values)=>values.find(value=>Array.isArray(value) && value.length) || [];
     const activityConfig=raw.activity || raw.actividad || {};
     const rendering=raw.rendering || raw.render || {};
     const explicitLayout=raw.layout || {};
     const explicitNodes=firstArray(raw.nodes, explicitLayout.nodes);
     const explicitEdges=firstArray(raw.edges, explicitLayout.edges);
     const explicitTree=raw.tree || raw.esquema_jerarquico || raw.schemaTree || null;
-    const activityType=String(raw.activityType || raw.activity_type || raw.kind || raw.type || raw.category || '').trim();
+    const activityType=String(raw.activityType || raw.activity_type || raw.publicationType || raw.kind || raw.type || raw.category || '').trim();
     const hasSchema=!!(raw.schema && (Array.isArray(raw.schema.branches) || Array.isArray(raw.schema.nodes)));
     const hasZones=Array.isArray(raw.dropZones || raw.drop_zones || raw.blanks || raw.huecos);
     const hasExplicit=explicitNodes.length>0 || !!explicitTree;
@@ -2164,17 +2164,25 @@
     if(!isTribeca && !/schema|esquema|drag.?drop|fill|mapa.?conceptual/i.test(activityType) && !(hasSchema && hasZones) && !hasExplicit) return null;
     const itemSources=firstArray(raw.draggableItems, raw.draggable_items, raw.items, raw.words, raw.palabras, raw.wordBank, raw.palabras_para_arrastrar);
     const items=itemSources.map((it,idx)=>{
-      if(typeof it==='string') return {id:`item_${idx+1}`, text:it};
-      return {id:String(it.id || it.key || it.value || `item_${idx+1}`), text:String(it.text || it.label || it.title || it.value || it.answerText || it.id || '')};
+      if(typeof it==='string') return {id:`item_${idx+1}`, text:it, correctDropZoneId:''};
+      return {
+        id:String(it.id || it.key || it.value || it.correctWordId || `item_${idx+1}`),
+        text:String(it.text || it.texto || it.label || it.title || it.value || it.answerText || it.correctAnswer || it.id || ''),
+        correctDropZoneId:String(it.correctDropZoneId || it.correct_drop_zone_id || it.target || it.dropZoneId || '')
+      };
     }).filter(it=>it.id && it.text);
     const itemTextById=new Map(items.map(it=>[String(it.id), it.text]));
+    const itemTargetById=new Map(items.filter(it=>it.correctDropZoneId).map(it=>[String(it.id), String(it.correctDropZoneId)]));
     const zoneSources=firstArray(raw.dropZones, raw.drop_zones, raw.blanks, raw.huecos);
     const zones=zoneSources.map((z,idx)=>{
-      const id=String(z.id || z.dropZoneId || z.blankId || z.blank_id || z.key || `blank_${idx+1}`);
+      const id=String(z.id || z.dropZoneId || z.drop_zone_id || z.blankId || z.blank_id || z.nodeId || z.key || `blank_${idx+1}`);
       const acceptedItemIds=asArray(z.acceptedItemIds || z.accepted_item_ids || z.acceptedItems || z.accepted_items).map(String).filter(Boolean);
-      const correctItemId=String(z.correctItemId || z.correct_item_id || z.answerItemId || z.answer_item_id || z.itemId || (acceptedItemIds.length===1 ? acceptedItemIds[0] : '') || '');
+      const directCorrectItem=String(z.correctItemId || z.correct_item_id || z.correctWordId || z.correct_word_id || z.correctWord || z.answerItemId || z.answer_item_id || z.itemId || '');
+      const inferredItem=(items.find(it=>String(it.correctDropZoneId)===id)?.id) || '';
+      const correctItemId=String(directCorrectItem || inferredItem || (acceptedItemIds.length===1 ? acceptedItemIds[0] : '') || '');
+      if(correctItemId && !acceptedItemIds.includes(correctItemId)) acceptedItemIds.unshift(correctItemId);
       const acceptedAnswers=[...asArray(z.acceptedText || z.accepted_text), ...asArray(z.acceptedAnswers || z.accepted_answers), ...asArray(z.answers || z.respuestas)].map(String).filter(Boolean);
-      const correctText=String(z.correctText || z.correct_text || z.answerText || z.answer_text || z.answer || z.correctAnswer || z.correct_answer || itemTextById.get(correctItemId) || '');
+      const correctText=String(z.correctText || z.correct_text || z.answerText || z.answer_text || z.answer || z.correctAnswer || z.correct_answer || z.expected || itemTextById.get(correctItemId) || '');
       if(correctText && !acceptedAnswers.includes(correctText)) acceptedAnswers.unshift(correctText);
       acceptedItemIds.forEach(itemId=>{ const text=itemTextById.get(String(itemId)); if(text && !acceptedAnswers.includes(text)) acceptedAnswers.push(text); });
       const pos=z.position || {};
@@ -2186,7 +2194,7 @@
         correctText,
         acceptedAnswers,
         section:String(z.section||z.apartado||''),
-        label:String(z.label||z.prompt||z.description||z.descripcion||z.answerText||z.correctText||`Oco ${idx+1}`),
+        label:String(z.label||z.prompt||z.description||z.descripcion||`Oco ${idx+1}`),
         afterText:String(z.afterText||z.after_text||z.continuesTo||z.endsIn||''),
         feedback:z.feedback || {},
         position:{x:Number(pos.x ?? z.x ?? 0)||0, y:Number(pos.y ?? z.y ?? 0)||0},
@@ -2195,15 +2203,16 @@
     }).filter(z=>z.id);
     const answerKey=asArray(raw.answerKey || raw.answer_key).map(a=>({
       dropZoneId:String(a.dropZoneId||a.drop_zone_id||a.blankId||a.id||''),
-      correctItemId:String(a.correctItemId||a.correct_item_id||''),
+      correctItemId:String(a.correctItemId||a.correct_item_id||a.correctWordId||a.correct_word_id||a.correctWord||''),
       acceptedItemIds:asArray(a.acceptedItemIds || a.accepted_item_ids).map(String).filter(Boolean),
-      correctText:String(a.correctText||a.correct_text||a.answerText||a.answer||''),
-      acceptedText:asArray(a.acceptedText || a.accepted_text).map(String).filter(Boolean)
+      correctText:String(a.correctText||a.correct_text||a.correctAnswer||a.answerText||a.answer||''),
+      acceptedText:asArray(a.acceptedText || a.accepted_text || a.acceptedAnswers || a.accepted_answers).map(String).filter(Boolean)
     })).filter(a=>a.dropZoneId);
     answerKey.forEach(a=>{
       const z=zones.find(zone=>zone.id===a.dropZoneId);
       if(!z) return;
       if(a.correctItemId) z.correctItemId=a.correctItemId;
+      if(a.correctItemId && !z.acceptedItemIds.includes(a.correctItemId)) z.acceptedItemIds.unshift(a.correctItemId);
       if(a.acceptedItemIds.length) z.acceptedItemIds=[...new Set([...(z.acceptedItemIds||[]), ...a.acceptedItemIds])];
       if(a.correctText) z.correctText=a.correctText;
       a.acceptedText.forEach(txt=>{ if(txt && !z.acceptedAnswers.includes(txt)) z.acceptedAnswers.push(txt); });
@@ -2211,11 +2220,21 @@
       if(!z.correctText && z.correctItemId && itemTextById.has(z.correctItemId)) z.correctText=itemTextById.get(z.correctItemId);
       (z.acceptedItemIds||[]).forEach(itemId=>{ const text=itemTextById.get(String(itemId)); if(text && !z.acceptedAnswers.includes(text)) z.acceptedAnswers.push(text); });
     });
+    items.forEach(it=>{
+      const target=itemTargetById.get(String(it.id));
+      if(!target) return;
+      const z=zones.find(zone=>String(zone.id)===String(target));
+      if(!z) return;
+      if(!z.correctItemId) z.correctItemId=String(it.id);
+      if(!z.acceptedItemIds.includes(String(it.id))) z.acceptedItemIds.unshift(String(it.id));
+      if(!z.correctText) z.correctText=it.text;
+      if(!z.acceptedAnswers.includes(it.text)) z.acceptedAnswers.push(it.text);
+    });
     const settings={...(raw.settings || raw.config || raw.configuration || {})};
-    const modeRaw=String(raw.mode || raw.interactionMode || raw.interaction_mode || settings.mode || settings.interactionMode || activityConfig.mode || activityConfig.interaction || activityType || '').toLowerCase();
+    const modeRaw=String(raw.mode || raw.interactionMode || raw.interaction_mode || settings.mode || settings.interactionMode || activityConfig.mode || activityConfig.modalidade || activityConfig.interaction || activityType || '').toLowerCase();
     const mode=/write|typing|fill_text|input|escribir|texto|casilla/.test(modeRaw) ? 'write' : 'drag';
     const treeToSchemaNode=n=>({
-      titleBlankId: n.fixed || n.locked ? '' : String(n.id||''),
+      titleBlankId: n.fixed || n.locked ? '' : String(n.id||n.dropZoneId||''),
       title: n.fixed || n.locked ? String(n.label || n.text || n.answerText || '') : '',
       nodes: asArray(n.children).map(treeToSchemaNode)
     });
@@ -2226,23 +2245,42 @@
     const schema=raw.schema || (explicitTree ? treeToSchema(explicitTree) : {root:raw.root || raw.label || 'ESQUEMA', branches:[]});
     const canvas=rendering.canvas || explicitLayout.canvas || {};
     const layoutType=String(rendering.type || explicitLayout.type || '').toLowerCase();
-    const nodesForLayout=explicitNodes.map((n,idx)=>{
+    const cssStyleObject=obj=>obj && typeof obj==='object' && !Array.isArray(obj) ? obj : null;
+    const styleKeyFor=n=>{
+      if(typeof n.style==='string') return n.style;
+      const st=cssStyleObject(n.style);
+      const bg=String(st?.background||st?.backgroundColor||'').toLowerCase();
+      if(n.locked || n.fixed || n.type==='fixed' || n.kind==='fixed' || /050505|000|111|172018/.test(bg)) return 'root-black';
+      if(bg && bg!=='#ffffff' && bg!=='white') return 'section-dark';
+      if(Number(n.width||0)>300) return 'wide';
+      return 'standard';
+    };
+    const normalizeNode=(n,idx)=>{
       const pos=n.position || {};
       const size=n.size || {};
+      const id=String(n.id || n.dropZoneId || n.nodeId || `node_${idx+1}`);
+      const z=zones.find(zone=>String(zone.id)===id || String(zone.id)===String(n.dropZoneId||''));
       return {
-        id:String(n.id || `node_${idx+1}`),
+        id,
         text:String(n.text || n.label || ''),
-        answerText:String(n.answerText || n.answer_text || n.correctText || ''),
-        x:Number(n.x ?? pos.x ?? 0)||0,
-        y:Number(n.y ?? pos.y ?? 0)||0,
-        width:Number(n.width ?? size.width ?? 150)||150,
-        height:Number(n.height ?? size.height ?? 44)||44,
-        kind:String(n.kind || n.type || '').toLowerCase(),
-        style:String(n.style || ''),
+        answerText:String(n.answerText || n.answer_text || n.correctText || n.correctAnswer || z?.correctText || ''),
+        x:Number(n.x ?? pos.x ?? z?.position?.x ?? 0)||0,
+        y:Number(n.y ?? pos.y ?? z?.position?.y ?? 0)||0,
+        width:Number(n.width ?? size.width ?? z?.size?.width ?? 150)||150,
+        height:Number(n.height ?? size.height ?? z?.size?.height ?? 44)||44,
+        kind:String(n.kind || n.type || (z?'dropzone':'')).toLowerCase(),
+        style:String(styleKeyFor(n) || ''),
+        nodeStyle:cssStyleObject(n.style) || {},
         placeholder:String(n.placeholder || rendering.nodeStyle?.emptyLabel || 'Arrastra aquí'),
         locked:!!(n.locked || n.fixed)
       };
-    });
+    };
+    let nodesForLayout=explicitNodes.map(normalizeNode);
+    if(!nodesForLayout.length && zones.some(z=>Number(z.position?.x||0) || Number(z.position?.y||0))){
+      nodesForLayout=zones.map((z,idx)=>normalizeNode({id:z.id, type:'dropzone', x:z.position.x, y:z.position.y, width:z.size.width, height:z.size.height, placeholder:'Arrastra aquí'}, idx));
+    }
+    const canvasWidth=Number(canvas.width || rendering.width || explicitLayout.width || raw.width || 0) || 0;
+    const canvasHeight=Number(canvas.height || rendering.height || explicitLayout.height || raw.height || 0) || 0;
     return {
       type:'tribeca-activity',
       schemaVersion:raw.schemaVersion || raw.schema_version || '1.0',
@@ -2256,23 +2294,23 @@
       description:String(raw.description || raw.descripcion || ''),
       instructions:String(raw.instructions || raw.instrucciones || ''),
       settings:{singleUseDraggables:true, ...settings, ...(activityConfig.singleUseDraggables!==undefined?{singleUseDraggables:activityConfig.singleUseDraggables}:{})},
-      supportTools:raw.supportTools || raw.support_tools || raw.support || {},
+      supportTools:raw.supportTools || raw.support_tools || raw.support || raw.tools || raw.herramientas_apoyo || {},
       draggableItems:items,
       dropZones:zones,
       answerKey:zones.map(z=>({dropZoneId:z.id, correctItemId:z.correctItemId, acceptedItemIds:z.acceptedItemIds||[], correctText:z.correctText, acceptedText:z.acceptedAnswers||[]})),
       schema,
       layout:{
         type:(layoutType==='explicit_tree_layout' || layoutType==='absolute' || nodesForLayout.length) ? 'explicit_tree_layout' : '',
-        canvas:{width:Number(canvas.width||0)||0, height:Number(canvas.height||0)||0},
+        canvas:{width:canvasWidth, height:canvasHeight},
         nodes:nodesForLayout,
-        edges:explicitEdges.map(e=>({from:String(e.from||''), to:String(e.to||''), type:String(e.type||'elbow'), arrow:e.arrow!==false})).filter(e=>e.from&&e.to)
+        edges:explicitEdges.map(e=>({from:String(e.from||''), to:String(e.to||''), type:String(e.type||e.connector||'elbow'), arrow:e.arrow!==false && e.endMarker!==false && e.markerEnd!==false, edgeStyle:e.style||{}})).filter(e=>e.from&&e.to)
       },
-      feedback:raw.feedback || {},
+      feedback:raw.feedback || raw.feedbackFinal || {},
       accessibility:raw.accessibility || {},
-      publication:raw.publication || {}
+      publication:raw.publication || raw.storage || {}
     };
   }
-    function schemaActivityBlank(activity, blankId, mode='drag'){
+  function schemaActivityBlank(activity, blankId, mode='drag'){
     const z=(activity.dropZones||[]).find(x=>String(x.id)===String(blankId));
     const label=z?.label || 'Oco do esquema';
     const after=z?.afterText || '';
@@ -2294,15 +2332,34 @@
     return `<li class="schema-node"><div class="schema-node-line">${main || '<span>Elemento</span>'}</div>${children.length?`<ul>${children.map(ch=>schemaActivityNodeHtml(ch,activity,mode)).join('')}</ul>`:''}</li>`;
   }
   function schemaActivityExplicitLayoutHtml(activity={}, mode='drag'){
-    const nodes=activity.layout?.nodes || [];
-    if(!Array.isArray(nodes) || !nodes.length) return '';
+    let nodes=Array.isArray(activity.layout?.nodes) ? activity.layout.nodes : [];
     const zonesById=new Map((activity.dropZones||[]).map(z=>[String(z.id), z]));
+    if(!nodes.length && (activity.dropZones||[]).some(z=>Number(z.position?.x||0) || Number(z.position?.y||0))){
+      nodes=(activity.dropZones||[]).map(z=>({id:z.id, kind:'dropzone', x:z.position?.x||0, y:z.position?.y||0, width:z.size?.width||150, height:z.size?.height||44, placeholder:'Arrastra aquí'}));
+    }
+    if(!Array.isArray(nodes) || !nodes.length) return '';
     const byId=new Map(nodes.map(n=>[String(n.id), n]));
     const width=Number(activity.layout?.canvas?.width||0) || Math.max(900, ...nodes.map(n=>Number(n.x||0)+Number(n.width||150)+60));
     const height=Number(activity.layout?.canvas?.height||0) || Math.max(520, ...nodes.map(n=>Number(n.y||0)+Number(n.height||44)+60));
     const center=(n,side)=>{ const x=Number(n.x||0), y=Number(n.y||0), w=Number(n.width||150), h=Number(n.height||44); return side==='left'?[x,y+h/2]:[x+w,y+h/2]; };
     const pathFor=e=>{ const a=byId.get(String(e.from)), b=byId.get(String(e.to)); if(!a||!b) return ''; const [x1,y1]=center(a,'right'); const [x2,y2]=center(b,'left'); const mid=Math.max(x1+24, Math.min(x2-24, (x1+x2)/2)); return `<path d="M ${x1} ${y1} H ${mid} V ${y2} H ${x2}" class="schema-map-edge" ${e.arrow!==false?'marker-end="url(#schemaArrow)"':''}/>`; };
-    const nodeHtml=n=>{ const id=String(n.id||''); const z=zonesById.get(id); const style=`left:${Number(n.x||0)}px;top:${Number(n.y||0)}px;width:${Number(n.width||150)}px;min-height:${Number(n.height||44)}px;`; const cls=`schema-map-node schema-map-style-${safe(String(n.style||'standard'))}`; if(!z || n.kind==='fixed' || n.locked) return `<div class="${cls} schema-map-fixed" style="${style}">${safe(n.text || n.answerText || id)}</div>`; if(mode==='write') return `<span class="${cls} schema-blank schema-blank-write schema-map-drop" style="${style}" data-t133-zone="${safe(id)}"><input type="text" aria-label="${safe(z.label||z.correctText||id)}" placeholder="${safe(n.placeholder||'Escribe aquí')}"><small>${safe(z.section||'')}</small></span>`; return `<button type="button" class="${cls} schema-blank schema-drop-zone schema-map-drop" style="${style}" data-t133-zone="${safe(id)}" aria-label="${safe(z.label||z.correctText||id)}"><span class="schema-placeholder">${safe(n.placeholder||'Arrastra aquí')}</span><small>${safe(z.section||'')}</small></button>`; };
+    const cssName=name=>String(name||'').replace(/[A-Z]/g,m=>`-${m.toLowerCase()}`).replace(/[^a-z0-9-]/gi,'');
+    const inlineNodeStyle=n=>{
+      const st=n.nodeStyle && typeof n.nodeStyle==='object' ? n.nodeStyle : null;
+      const allowed=['background','backgroundColor','color','border','borderRadius','fontWeight','boxShadow'];
+      const css=st ? allowed.map(k=>st[k]!==undefined ? `${cssName(k)}:${String(st[k]).replace(/[;<>]/g,'')}` : '').filter(Boolean).join(';') : '';
+      return `left:${Number(n.x||0)}px;top:${Number(n.y||0)}px;width:${Number(n.width||150)}px;min-height:${Number(n.height||44)}px;${css?`;${css}`:''}`;
+    };
+    const nodeHtml=n=>{
+      const id=String(n.id||'');
+      const z=zonesById.get(id);
+      const style=inlineNodeStyle(n);
+      const cls=`schema-map-node schema-map-style-${safe(String(n.style||'standard'))}`;
+      if(!z || n.kind==='fixed' || n.locked) return `<div class="${cls} schema-map-fixed" style="${style}">${safe(n.text || n.answerText || id)}</div>`;
+      const small=z.section ? `<small>${safe(z.section)}</small>` : '';
+      if(mode==='write') return `<span class="${cls} schema-blank schema-blank-write schema-map-drop" style="${style}" data-t133-zone="${safe(id)}"><input type="text" aria-label="${safe(z.label||z.correctText||id)}" placeholder="${safe(n.placeholder||'Escribe aquí')}">${small}</span>`;
+      return `<button type="button" class="${cls} schema-blank schema-drop-zone schema-map-drop" style="${style}" data-t133-zone="${safe(id)}" aria-label="${safe(z.label||z.correctText||id)}"><span class="schema-placeholder">${safe(n.placeholder||'Arrastra aquí')}</span>${small}</button>`;
+    };
     const edges=(activity.layout?.edges||[]).map(pathFor).join('');
     return `<div class="schema-map-viewport"><div class="schema-map-canvas" style="--schema-map-width:${width}px;--schema-map-height:${height}px;"><svg class="schema-map-connectors" viewBox="0 0 ${width} ${height}" aria-hidden="true"><defs><marker id="schemaArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L8,3 z"></path></marker></defs>${edges}</svg>${nodes.map(nodeHtml).join('')}</div></div>`;
   }
@@ -2340,7 +2397,7 @@
     const currentText=zone=>mode==='write'?(zone.querySelector('input')?.value||''):(zone.dataset.itemText || (zone.dataset.item&&itemById.get(String(zone.dataset.item))?.text)||'');
     const zoneOk=zone=>{const z=answerByZone.get(String(zone.dataset.zone||''))||{}; const item=String(zone.dataset.item||''); if(item && (String(z.correctItemId||'')===item || (z.acceptedItemIds||[]).map(String).includes(item))) return true; const val=currentText(zone); return !!val && acceptedFor(z).some(a=>norm(a)===norm(val));};
     const blank=(id,node={})=>{ const z=answerByZone.get(String(id))||{}; if(mode==='write') return `<span class="schema-blank schema-blank-write" data-zone="${safe(id)}"><input type="text" placeholder="Escribe aquí" aria-label="${safe(z.label||z.correctText||id)}"><small>${safe(z.section||z.label||'')}</small></span>`; return `<button type="button" class="schema-blank schema-drop-zone" data-zone="${safe(id)}"><span>${safe(node.placeholder||'Soltar aquí')}</span><small>${safe(z.section||z.label||'')}</small></button>`; };
-    const explicitHtml=()=>{const nodes=activity.layout?.nodes||[]; if(!nodes.length) return ''; const byId=new Map(nodes.map(n=>[String(n.id),n])); const w=Number(activity.layout?.canvas?.width||0)||Math.max(900,...nodes.map(n=>Number(n.x||0)+Number(n.width||150)+60)); const h=Number(activity.layout?.canvas?.height||0)||Math.max(520,...nodes.map(n=>Number(n.y||0)+Number(n.height||44)+60)); const center=(n,side)=>{const x=Number(n.x||0),y=Number(n.y||0),ww=Number(n.width||150),hh=Number(n.height||44); return side==='left'?[x,y+hh/2]:[x+ww,y+hh/2];}; const edge=e=>{const a=byId.get(String(e.from)),b=byId.get(String(e.to)); if(!a||!b) return ''; const [x1,y1]=center(a,'right'),[x2,y2]=center(b,'left'),mid=Math.max(x1+24,Math.min(x2-24,(x1+x2)/2)); return `<path d="M ${x1} ${y1} H ${mid} V ${y2} H ${x2}" class="schema-map-edge" marker-end="url(#schemaArrow)"></path>`;}; const node=n=>{const id=String(n.id||''); const style=`left:${Number(n.x||0)}px;top:${Number(n.y||0)}px;width:${Number(n.width||150)}px;min-height:${Number(n.height||44)}px;`; if(!answerByZone.has(id)||n.kind==='fixed'||n.locked) return `<div class="schema-map-node schema-map-fixed" style="${style}">${safe(n.text||n.answerText||id)}</div>`; return `<span class="schema-map-node schema-map-drop" style="${style}">${blank(id,n)}</span>`;}; return `<div class="schema-map-viewport"><div class="schema-map-canvas" style="--schema-map-width:${w}px;--schema-map-height:${h}px"><svg class="schema-map-connectors" viewBox="0 0 ${w} ${h}"><defs><marker id="schemaArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z"></path></marker></defs>${(activity.layout?.edges||[]).map(edge).join('')}</svg>${nodes.map(node).join('')}</div></div>`;};
+    const explicitHtml=()=>{let nodes=activity.layout?.nodes||[]; if(!nodes.length && (activity.dropZones||[]).some(z=>Number(z.position?.x||0)||Number(z.position?.y||0))){nodes=(activity.dropZones||[]).map(z=>({id:z.id,kind:'dropzone',x:z.position?.x||0,y:z.position?.y||0,width:z.size?.width||150,height:z.size?.height||44,placeholder:'Arrastra aquí'}));} if(!nodes.length) return ''; const byId=new Map(nodes.map(n=>[String(n.id),n])); const w=Number(activity.layout?.canvas?.width||0)||Math.max(900,...nodes.map(n=>Number(n.x||0)+Number(n.width||150)+60)); const h=Number(activity.layout?.canvas?.height||0)||Math.max(520,...nodes.map(n=>Number(n.y||0)+Number(n.height||44)+60)); const center=(n,side)=>{const x=Number(n.x||0),y=Number(n.y||0),ww=Number(n.width||150),hh=Number(n.height||44); return side==='left'?[x,y+hh/2]:[x+ww,y+hh/2];}; const edge=e=>{const a=byId.get(String(e.from)),b=byId.get(String(e.to)); if(!a||!b) return ''; const [x1,y1]=center(a,'right'),[x2,y2]=center(b,'left'),mid=Math.max(x1+24,Math.min(x2-24,(x1+x2)/2)); return `<path d="M ${x1} ${y1} H ${mid} V ${y2} H ${x2}" class="schema-map-edge" marker-end="url(#schemaArrow)"></path>`;}; const cssName=name=>String(name||'').replace(/[A-Z]/g,m=>`-${m.toLowerCase()}`).replace(/[^a-z0-9-]/gi,''); const inlineStyle=n=>{const st=n.nodeStyle&&typeof n.nodeStyle==='object'?n.nodeStyle:null; const allowed=['background','backgroundColor','color','border','borderRadius','fontWeight','boxShadow']; const extra=st?allowed.map(k=>st[k]!==undefined?`${cssName(k)}:${String(st[k]).replace(/[;<>]/g,'')}`:'').filter(Boolean).join(';'):''; return `left:${Number(n.x||0)}px;top:${Number(n.y||0)}px;width:${Number(n.width||150)}px;min-height:${Number(n.height||44)}px;${extra?`;${extra}`:''}`;}; const node=n=>{const id=String(n.id||''); const style=inlineStyle(n); if(!answerByZone.has(id)||n.kind==='fixed'||n.locked) return `<div class="schema-map-node schema-map-fixed" style="${style}">${safe(n.text||n.answerText||id)}</div>`; return `<span class="schema-map-node schema-map-drop" style="${style}">${blank(id,n)}</span>`;}; return `<div class="schema-map-viewport"><div class="schema-map-canvas" style="--schema-map-width:${w}px;--schema-map-height:${h}px"><svg class="schema-map-connectors" viewBox="0 0 ${w} ${h}"><defs><marker id="schemaArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z"></path></marker></defs>${(activity.layout?.edges||[]).map(edge).join('')}</svg>${nodes.map(node).join('')}</div></div>`;};
     const node=n=>{const ch=n.nodes||n.subdivisions||n.children||[]; const main=n.titleBlankId?blank(n.titleBlankId):`${n.concept||n.title?`<strong>${safe(n.concept||n.title)}</strong>`:''}${n.blankId?blank(n.blankId):''}${n.continuesTo?`<span>→ ${safe(n.continuesTo)}</span>`:''}${n.endsIn?`<span>→ ${safe(n.endsIn)}</span>`:''}`; return `<li><div class="schema-node-line">${main}</div>${ch.length?`<ul>${ch.map(node).join('')}</ul>`:''}</li>`;};
     const branches=(activity.schema?.branches||[]).map(b=>`<section class="schema-branch"><h3>${b.titleBlankId?blank(b.titleBlankId):safe(b.title||'Apartado')}</h3><ul>${(b.nodes||[]).map(node).join('')}</ul></section>`).join('');
     const schemaHtml=explicitHtml() || `<div class="schema-root">${safe(activity.schema?.root||'ESQUEMA')}</div><div class="schema-branches">${branches}</div>`;
