@@ -1821,7 +1821,7 @@
     return {
       type:'tribeca-exam',
       title:String(raw.title || raw.name || 'Simulacro de examen'),
-      instructions:String(raw.instructions || raw.instrucciones || 'Responde todas las preguntas y pulsa finalizar para obtener tu nota sobre 10.'),
+      instructions:String(raw.instructions || raw.instrucciones || 'Responde todas las preguntas y pulsa finalizar para obtener tu resultado sobre 10.'),
       subject:String(raw.subject || ''),
       unit:String(raw.unit || raw.unit_title || ''),
       questions
@@ -1853,7 +1853,7 @@
   }
   function nativeExamMarkup(exam, m={}){
     if(!exam?.questions?.length) return '';
-    return `<section class="material-embed-block native-exam-shell"><div><strong>Simulacro de examen</strong><small>Autocorregible · nota sobre 10</small></div><div class="native-exam-block" data-t103-exam="${safe(encodeBase64Utf8(JSON.stringify(exam)))}" data-material-id="${safe(m.id||'')}"><p>Cargando simulacro…</p></div></section>`;
+    return `<section class="material-embed-block native-exam-shell"><div><strong>Simulacro de examen</strong><small>Autocorregible · resultado sobre 10</small></div><div class="native-exam-block" data-t103-exam="${safe(encodeBase64Utf8(JSON.stringify(exam)))}" data-material-id="${safe(m.id||'')}"><p>Cargando simulacro…</p></div></section>`;
   }
   function examAttemptsFor(materialId, userId=State.profile?.id){
     if(!materialId || !userId) return [];
@@ -2110,6 +2110,209 @@
     scope.querySelectorAll('.native-exam-block[data-t103-exam]').forEach(renderNativeExam);
   }
 
+
+  function parseSchemaActivityFromInteractiveCode(code=''){
+    const raw=stripEmbedCodeFence(code);
+    if(!raw) return null;
+    if(raw.startsWith('tribeca-schema-json::') || raw.startsWith('tribeca-activity-json::')){
+      const prefix=raw.startsWith('tribeca-schema-json::') ? 'tribeca-schema-json::' : 'tribeca-activity-json::';
+      try{ return normalizeSchemaActivityPayload(JSON.parse(raw.slice(prefix.length))); }catch(_e){ return null; }
+    }
+    if(/^\s*[\[{]/.test(raw)){
+      try{ return normalizeSchemaActivityPayload(JSON.parse(raw)); }catch(_e){}
+    }
+    const jsonScript=raw.match(/<script[^>]+type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if(jsonScript){
+      try{ return normalizeSchemaActivityPayload(JSON.parse(jsonScript[1])); }catch(_e){}
+    }
+    const names=['schemaActivity','tribecaActivity','activityData','schemaData','esquemaData'];
+    for(const name of names){
+      const re=new RegExp(`(?:window\\.)?${name}\\s*=|\\b${name}\\b`,'i');
+      const found=raw.search(re);
+      if(found<0) continue;
+      const obj=extractBalancedObjectLiteral(raw, found);
+      if(obj){
+        try{ const activity=normalizeSchemaActivityPayload(Function(`"use strict"; return (${obj});`)()); if(activity) return activity; }
+        catch(error){ console.warn('[Tribeca Aula] No se pudo extraer esquema interactivo:', name, error); }
+      }
+    }
+    return null;
+  }
+  function schemaActivityPayloadToStorage(payload){
+    const activity=normalizeSchemaActivityPayload(payload);
+    return activity ? `tribeca-schema-json::${JSON.stringify(activity)}` : '';
+  }
+  function normalizeSchemaActivityPayload(payload){
+    let raw=payload;
+    if(typeof raw==='string'){
+      try{ raw=JSON.parse(stripEmbedCodeFence(raw).replace(/^tribeca-(?:schema|activity)-json::/,'')); }catch(_e){ return null; }
+    }
+    if(!raw || typeof raw!=='object') return null;
+    const activityType=String(raw.activityType || raw.activity_type || raw.kind || raw.type || '').trim();
+    const hasSchema=!!(raw.schema && (Array.isArray(raw.schema.branches) || Array.isArray(raw.schema.nodes)));
+    const hasZones=Array.isArray(raw.dropZones || raw.drop_zones || raw.blanks);
+    const isTribeca=String(raw.type||'').toLowerCase()==='tribeca-activity';
+    if(!isTribeca && !/schema|esquema|drag.?drop|fill/.test(activityType.toLowerCase()) && !(hasSchema && hasZones)) return null;
+    const items=(raw.draggableItems || raw.draggable_items || raw.items || raw.words || raw.palabras || []).map((it,idx)=>{
+      if(typeof it==='string') return {id:`item_${idx+1}`, text:it};
+      return {id:String(it.id || it.key || it.value || `item_${idx+1}`), text:String(it.text || it.label || it.title || it.value || it.id || '')};
+    }).filter(it=>it.id && it.text);
+    const itemTextById=new Map(items.map(it=>[String(it.id), it.text]));
+    const zones=(raw.dropZones || raw.drop_zones || raw.blanks || []).map((z,idx)=>{
+      const id=String(z.id || z.blankId || z.blank_id || z.key || `blank_${idx+1}`);
+      const correctItemId=String(z.correctItemId || z.correct_item_id || z.answerItemId || z.answer_item_id || z.itemId || '');
+      const correctText=String(z.correctText || z.answer || z.correctAnswer || z.correct_answer || itemTextById.get(correctItemId) || '');
+      const accepted=[...(z.acceptedAnswers || z.accepted_answers || z.answers || [])].map(String);
+      if(correctText && !accepted.includes(correctText)) accepted.unshift(correctText);
+      return {id, correctItemId, correctText, acceptedAnswers:accepted, section:String(z.section||''), label:String(z.label||z.prompt||z.description||`Oco ${idx+1}`), afterText:String(z.afterText||z.after_text||z.continuesTo||z.endsIn||''), feedback:String(z.feedback||'')};
+    }).filter(z=>z.id);
+    const answerKey=(raw.answerKey || raw.answer_key || []).map(a=>({dropZoneId:String(a.dropZoneId||a.drop_zone_id||a.blankId||a.id||''), correctItemId:String(a.correctItemId||a.correct_item_id||''), correctText:String(a.correctText||a.correct_text||a.answer||'')})).filter(a=>a.dropZoneId);
+    answerKey.forEach(a=>{
+      const z=zones.find(zone=>zone.id===a.dropZoneId);
+      if(!z) return;
+      if(a.correctItemId) z.correctItemId=a.correctItemId;
+      if(a.correctText) z.correctText=a.correctText;
+      if(z.correctText && !z.acceptedAnswers.includes(z.correctText)) z.acceptedAnswers.unshift(z.correctText);
+      if(!z.correctText && z.correctItemId && itemTextById.has(z.correctItemId)) z.correctText=itemTextById.get(z.correctItemId);
+    });
+    const settings={...(raw.settings || raw.config || raw.configuration || {})};
+    const modeRaw=String(raw.mode || raw.interactionMode || raw.interaction_mode || settings.mode || settings.interactionMode || activityType || '').toLowerCase();
+    const mode=/write|typing|fill_text|input|escribir|texto/.test(modeRaw) ? 'write' : 'drag';
+    return {
+      type:'tribeca-activity',
+      schemaVersion:raw.schemaVersion || raw.schema_version || '1.0',
+      activityType:activityType || (mode==='write'?'fill_schema':'drag_drop_schema'),
+      mode,
+      title:String(raw.title || raw.titulo || 'Esquema interactivo'),
+      subject:String(raw.subject || raw.materia || ''),
+      course:String(raw.course || raw.curso || ''),
+      language:String(raw.language || raw.idioma || 'es'),
+      description:String(raw.description || raw.descripcion || ''),
+      instructions:String(raw.instructions || raw.instrucciones || ''),
+      settings,
+      supportTools:raw.supportTools || raw.support_tools || {},
+      draggableItems:items,
+      dropZones:zones,
+      answerKey:zones.map(z=>({dropZoneId:z.id, correctItemId:z.correctItemId, correctText:z.correctText})),
+      schema:raw.schema || {root:raw.root || 'ESQUEMA', branches:[]},
+      feedback:raw.feedback || {},
+      accessibility:raw.accessibility || {}
+    };
+  }
+  function schemaActivityBlank(activity, blankId, mode='drag'){
+    const z=(activity.dropZones||[]).find(x=>String(x.id)===String(blankId));
+    const label=z?.label || 'Oco do esquema';
+    const after=z?.afterText || '';
+    if(mode==='write'){
+      return `<span class="schema-blank schema-blank-write" data-t133-zone="${safe(blankId)}"><input type="text" aria-label="${safe(label)}" placeholder="Escribe aquí"><small>${safe(label)}</small></span>${after?`<span class="schema-after">${safe(after)}</span>`:''}`;
+    }
+    return `<button type="button" class="schema-blank schema-drop-zone" data-t133-zone="${safe(blankId)}" aria-label="${safe(label)}"><span class="schema-placeholder">Soltar aquí</span><small>${safe(label)}</small></button>${after?`<span class="schema-after">${safe(after)}</span>`:''}`;
+  }
+  function schemaActivityNodeHtml(node={}, activity={}, mode='drag'){
+    const titleBlank=node.titleBlankId || node.title_blank_id || '';
+    const blank=node.blankId || node.blank_id || '';
+    const concept=node.concept || node.title || node.label || '';
+    const continues=node.continuesTo || node.continues_to || '';
+    const ends=node.endsIn || node.ends_in || node.afterText || '';
+    const tooltipId=node.tooltipId || node.tooltip_id || '';
+    const tooltip=tooltipId ? ((activity.supportTools?.tooltips||[]).find(t=>String(t.id)===String(tooltipId))||null) : null;
+    const children=node.nodes || node.subdivisions || node.children || [];
+    const main=titleBlank ? schemaActivityBlank(activity,titleBlank,mode) : `${concept?`<strong>${safe(concept)}</strong>`:''}${blank?schemaActivityBlank(activity,blank,mode):''}${continues?`<span class="schema-arrow">→</span><span>${safe(continues)}</span>`:''}${ends?`<span class="schema-arrow">→</span><span>${safe(ends)}</span>`:''}${tooltip?`<button type="button" class="schema-tooltip" title="${safe(tooltip.explanation)}">?</button>`:''}`;
+    return `<li class="schema-node"><div class="schema-node-line">${main || '<span>Elemento</span>'}</div>${children.length?`<ul>${children.map(ch=>schemaActivityNodeHtml(ch,activity,mode)).join('')}</ul>`:''}</li>`;
+  }
+  function schemaActivityTreeHtml(activity={}, mode='drag'){
+    const schema=activity.schema || {};
+    const branches=schema.branches || schema.nodes || [];
+    return `<div class="schema-tree"><div class="schema-root">${safe(schema.root || activity.title || 'ESQUEMA')}</div><div class="schema-branches">${branches.map(branch=>{
+      const title=branch.titleBlankId ? schemaActivityBlank(activity,branch.titleBlankId,mode) : `<strong>${safe(branch.title || branch.concept || 'Apartado')}</strong>`;
+      const nodes=branch.nodes || branch.subdivisions || branch.children || [];
+      return `<section class="schema-branch"><h5>${title}</h5><ul>${nodes.map(n=>schemaActivityNodeHtml(n,activity,mode)).join('')}</ul></section>`;
+    }).join('')}</div></div>`;
+  }
+  function schemaActivityMarkup(activity, m={}){
+    const normalized=normalizeSchemaActivityPayload(activity);
+    if(!normalized) return '';
+    const encoded=encodeBase64Utf8(JSON.stringify(normalized));
+    return `<section class="material-embed-block schema-activity-shell"><div><strong>Esquema interactivo</strong><small>Autocorregible · feedback inmediato</small></div><div class="schema-activity-block" data-t133-schema="${safe(encoded)}" data-material-id="${safe(m.id||'')}"><p>Cargando esquema interactivo…</p></div></section>`;
+  }
+  function schemaActivityStandaloneHtml(activity={}, m={}){
+    const normalized=normalizeSchemaActivityPayload(activity)||activity||{};
+    const encoded=encodeBase64Utf8(JSON.stringify(normalized));
+    return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(normalized.title||m.title||'Esquema interactivo')}</title><style>body{margin:0;background:#f7f4ec;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1100px;margin:0 auto;padding:18px}.schema-activity-shell{background:#fffdf7;border:1px solid #e0d7c0;border-radius:16px;padding:16px}.schema-bank{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.schema-draggable{border:1px solid #d7ccb5;border-radius:999px;background:#fff;padding:8px 12px;font-weight:800;cursor:pointer}.schema-draggable.is-used{opacity:.35}.schema-root,.schema-branch{border:1px solid #ded3bb;border-radius:14px;background:#fff;margin:10px 0;padding:12px}.schema-root{text-align:center;font-weight:900;color:#0b3d22}.schema-branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.schema-node{margin:8px 0}.schema-node-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.schema-blank{border:1px dashed #9f8f70;border-radius:12px;min-width:150px;min-height:42px;background:#fffaf0;padding:7px 10px;font-weight:800}.schema-blank small{display:block;font-size:11px;color:#6a6458;font-weight:700}.schema-blank.is-correct{border-color:#1d6f3a;background:#edf8f0}.schema-blank.is-wrong{border-color:#a33;background:#fff0ed}.schema-after{color:#6a6458}.schema-feedback{border-radius:12px;margin-top:12px;padding:12px;background:#f2efe4}.schema-result{margin-top:12px}.primary-btn,.secondary-btn{border:0;border-radius:999px;padding:9px 14px;font-weight:900;cursor:pointer}.primary-btn{background:#0b3d22;color:#fff}.secondary-btn{background:#eee4d0;color:#0b3d22}</style></head><body><main class="wrap"><section class="schema-activity-shell"><div class="schema-activity-block" data-t133-schema="${safe(encoded)}"></div></section></main><script>(${schemaActivityStandaloneRunner.toString()})();<\/script></body></html>`;
+  }
+  function schemaActivityStandaloneRunner(){
+    const safe=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const decodeBase64Utf8=value=>{try{const binary=atob(String(value||''));const bytes=Uint8Array.from(binary,ch=>ch.charCodeAt(0));return new TextDecoder().decode(bytes);}catch(e){return '';}};
+    const textNorm=value=>String(value||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').toLowerCase();
+    const block=document.querySelector('[data-t133-schema]');
+    if(!block) return;
+    let activity=null;
+    try{ activity=JSON.parse(decodeBase64Utf8(block.dataset.t133Schema||'')); }catch(_e){ activity=null; }
+    if(!activity){ block.innerHTML='<p>No se pudo cargar el esquema.</p>'; return; }
+    const itemById=new Map((activity.draggableItems||[]).map(it=>[String(it.id),it]));
+    const answerByZone=new Map((activity.dropZones||[]).map(z=>[String(z.id),z]));
+    const blank=(id)=>{ const z=answerByZone.get(String(id))||{}; return `<button type="button" class="schema-blank" data-zone="${safe(id)}"><span>Soltar aquí</span><small>${safe(z.label||'Oco')}</small></button>${z.afterText?`<span class="schema-after">${safe(z.afterText)}</span>`:''}`; };
+    const node=n=>{ const ch=n.nodes||n.subdivisions||n.children||[]; const main=(n.titleBlankId?blank(n.titleBlankId):`${n.concept||n.title?`<strong>${safe(n.concept||n.title)}</strong>`:''}${n.blankId?blank(n.blankId):''}${n.continuesTo?`<span>→ ${safe(n.continuesTo)}</span>`:''}${n.endsIn?`<span>→ ${safe(n.endsIn)}</span>`:''}`); return `<li><div class="schema-node-line">${main}</div>${ch.length?`<ul>${ch.map(node).join('')}</ul>`:''}</li>`; };
+    const branches=(activity.schema?.branches||[]).map(b=>`<section class="schema-branch"><h3>${b.titleBlankId?blank(b.titleBlankId):safe(b.title||'Apartado')}</h3><ul>${(b.nodes||[]).map(node).join('')}</ul></section>`).join('');
+    block.innerHTML=`<h2>${safe(activity.title)}</h2><p>${safe(activity.instructions||'Completa el esquema.')}</p><div class="schema-bank">${(activity.draggableItems||[]).map(it=>`<button type="button" class="schema-draggable" data-item="${safe(it.id)}">${safe(it.text)}</button>`).join('')}</div><div class="schema-root">${safe(activity.schema?.root||'ESQUEMA')}</div><div class="schema-branches">${branches}</div><div class="schema-result" hidden></div><button type="button" class="primary-btn" data-check>Finalizar y corregir</button><button type="button" class="secondary-btn" data-reset>Rehacer</button>`;
+    let selected='';
+    const setSel=id=>{selected=id;block.querySelectorAll('[data-item]').forEach(b=>b.classList.toggle('is-selected',b.dataset.item===id));};
+    const ok=z=>String(z.dataset.item||'')===String(answerByZone.get(z.dataset.zone)?.correctItemId||'');
+    const mark=z=>{z.classList.toggle('is-correct',ok(z));z.classList.toggle('is-wrong',!ok(z));};
+    const checkAll=()=>{let good=0,total=0;block.querySelectorAll('[data-zone]').forEach(z=>{total++;mark(z);if(ok(z))good++;});const score=total?((good/total)*10).toFixed(2):'0.00';const res=block.querySelector('.schema-result');res.hidden=false;res.innerHTML=`<div class="schema-feedback"><strong>${good}/${total} · ${score}/10</strong><p>${safe(good===total?(activity.feedback?.allCorrect||'Todo correcto.'):(activity.feedback?.someIncorrect||'Revisa los huecos marcados.'))}</p></div>`;};
+    block.addEventListener('click',ev=>{ const item=ev.target.closest('[data-item]'); if(item){setSel(item.dataset.item);return;} const zone=ev.target.closest('[data-zone]'); if(zone&&selected){zone.dataset.item=selected;zone.querySelector('span').textContent=itemById.get(selected)?.text||selected;mark(zone);setSel('');} if(ev.target.closest('[data-reset]')) block.querySelectorAll('[data-zone]').forEach(z=>{z.dataset.item='';z.classList.remove('is-correct','is-wrong');z.querySelector('span').textContent='Soltar aquí';}); if(ev.target.closest('[data-check]')) checkAll(); });
+  }
+  async function saveSchemaActivityAttempt(materialId, activity, result){
+    if(!materialId || typeof saveExamAttempt!=='function') return null;
+    return saveExamAttempt(materialId, {title:activity.title||'Esquema interactivo', subject:activity.subject||'', unit:activity.unit||''}, result);
+  }
+  function renderSchemaActivity(container){
+    if(!container || container.dataset.t133Rendered==='1') return;
+    let activity=null;
+    try{ activity=JSON.parse(decodeBase64Utf8(container.dataset.t133Schema||'')); }catch(_e){ activity=null; }
+    activity=normalizeSchemaActivityPayload(activity);
+    if(!activity){ container.innerHTML='<p>No se pudo cargar el esquema interactivo.</p>'; container.dataset.t133Rendered='error'; return; }
+    const materialId=container.dataset.materialId||'';
+    const mode=activity.mode || 'drag';
+    const itemById=new Map((activity.draggableItems||[]).map(it=>[String(it.id), it]));
+    const answerByZone=new Map((activity.dropZones||[]).map(z=>[String(z.id), z]));
+    const total=activity.dropZones.length || 0;
+    const canPersist=typeof State!=='undefined' && typeof saveExamAttempt==='function' && !!materialId;
+    const itemsHtml=mode==='drag' ? `<div class="schema-bank" aria-label="Conceptos para arrastrar">${activity.draggableItems.map(it=>`<button type="button" draggable="true" class="schema-draggable" data-t133-item="${safe(it.id)}">${safe(it.text)}</button>`).join('')}</div>` : '';
+    container.innerHTML=`<article class="schema-activity" data-t133-mode="${safe(mode)}"><header class="schema-activity-head"><div><h4>${safe(activity.title)}</h4>${activity.description?`<p>${safe(activity.description)}</p>`:''}${activity.instructions?`<p class="schema-instructions">${safe(activity.instructions)}</p>`:''}</div><strong>${total} oco${total===1?'':'s'}</strong></header><div data-exam-attempt-history-slot>${canPersist && typeof examAttemptHistoryMarkup==='function'?examAttemptHistoryMarkup(materialId):''}</div>${itemsHtml}${schemaActivityTreeHtml(activity, mode)}<div class="schema-live-feedback" aria-live="polite"></div><div class="schema-complete-feedback" hidden></div><footer class="schema-actions"><button type="button" class="primary-btn" data-t133-check>Finalizar y corregir</button><button type="button" class="secondary-btn" data-t133-reset>Rehacer esquema</button></footer></article>`;
+    const root=container.querySelector('.schema-activity');
+    const live=container.querySelector('.schema-live-feedback');
+    const finalBox=container.querySelector('.schema-complete-feedback');
+    let selectedItemId='';
+    const norm=value=>textNorm(value, false);
+    const acceptedFor=z=>{ const vals=[...(z.acceptedAnswers||[])]; if(z.correctText) vals.push(z.correctText); if(z.correctItemId && itemById.has(String(z.correctItemId))) vals.push(itemById.get(String(z.correctItemId)).text); return [...new Set(vals.filter(Boolean).map(String))]; };
+    const answerTextFor=zoneId=>{ const z=answerByZone.get(String(zoneId)) || {}; return z.correctText || (z.correctItemId && itemById.get(String(z.correctItemId))?.text) || ''; };
+    const currentTextFor=zone=> mode==='write' ? (zone.querySelector('input')?.value || '') : (zone.dataset.itemText || (zone.dataset.itemId && itemById.get(String(zone.dataset.itemId))?.text) || '');
+    const zoneOk=zone=>{ const z=answerByZone.get(String(zone.dataset.t133Zone||'')) || {}; if(mode==='write') return acceptedFor(z).some(a=>norm(a)===norm(zone.querySelector('input')?.value||'')); const placed=String(zone.dataset.itemId||''); if(z.correctItemId && placed===String(z.correctItemId)) return true; return acceptedFor(z).some(a=>norm(a)===norm(currentTextFor(zone))); };
+    const markZone=zone=>{ const value=currentTextFor(zone).trim(); zone.classList.remove('is-correct','is-wrong','is-empty'); if(!value){ zone.classList.add('is-empty'); return null; } const ok=zoneOk(zone); zone.classList.add(ok?'is-correct':'is-wrong'); live.innerHTML=`<span class="${ok?'is-correct':'is-wrong'}">${safe(ok?'Correcto.':`Incorrecto. Respuesta correcta: ${answerTextFor(zone.dataset.t133Zone) || 'sin configurar'}.`)}</span>`; return ok; };
+    const updateProgress=()=>{ const filled=[...container.querySelectorAll('[data-t133-zone]')].filter(z=>currentTextFor(z).trim()).length; root.style.setProperty('--schema-progress', total?`${Math.round((filled/total)*100)}%`:'0%'); };
+    const setSelectedItem=id=>{ selectedItemId=String(id||''); container.querySelectorAll('[data-t133-item]').forEach(btn=>btn.classList.toggle('is-selected', String(btn.dataset.t133Item)===selectedItemId)); };
+    const refreshUsedItems=()=>{ if(mode!=='drag') return; const used=new Set([...container.querySelectorAll('[data-t133-zone]')].map(z=>z.dataset.itemId).filter(Boolean)); container.querySelectorAll('[data-t133-item]').forEach(btn=>btn.classList.toggle('is-used', used.has(String(btn.dataset.t133Item)))); };
+    const clearZone=zone=>{ if(!zone) return; zone.dataset.itemId=''; zone.dataset.itemText=''; const label=answerByZone.get(String(zone.dataset.t133Zone))?.label || 'Oco do esquema'; zone.innerHTML=`<span class="schema-placeholder">Soltar aquí</span><small>${safe(label)}</small>`; zone.classList.remove('is-correct','is-wrong','is-empty'); };
+    const placeItem=(zone,itemId)=>{ if(!zone||!itemId) return; const item=itemById.get(String(itemId)); if(!item) return; if(activity.settings?.singleUseDraggables !== false){ container.querySelectorAll('[data-t133-zone]').forEach(other=>{ if(other!==zone && String(other.dataset.itemId||'')===String(itemId)) clearZone(other); }); } zone.dataset.itemId=String(itemId); zone.dataset.itemText=item.text; const label=answerByZone.get(String(zone.dataset.t133Zone))?.label || ''; zone.innerHTML=`<span>${safe(item.text)}</span><small>${safe(label)}</small>`; markZone(zone); refreshUsedItems(); updateProgress(); };
+    if(mode==='drag'){
+      container.querySelectorAll('[data-t133-item]').forEach(btn=>{ btn.addEventListener('dragstart',ev=>{ ev.dataTransfer?.setData('text/plain', btn.dataset.t133Item||''); setSelectedItem(btn.dataset.t133Item); }); btn.addEventListener('click',()=>setSelectedItem(btn.dataset.t133Item)); });
+      container.querySelectorAll('.schema-drop-zone').forEach(zone=>{ zone.addEventListener('dragover',ev=>{ ev.preventDefault(); zone.classList.add('is-drag-over'); }); zone.addEventListener('dragleave',()=>zone.classList.remove('is-drag-over')); zone.addEventListener('drop',ev=>{ ev.preventDefault(); zone.classList.remove('is-drag-over'); placeItem(zone, ev.dataTransfer?.getData('text/plain') || selectedItemId); setSelectedItem(''); }); zone.addEventListener('click',()=>{ if(selectedItemId){ placeItem(zone, selectedItemId); setSelectedItem(''); } }); });
+    } else {
+      container.querySelectorAll('[data-t133-zone] input').forEach(input=>{ input.addEventListener('input',()=>{ updateProgress(); const zone=input.closest('[data-t133-zone]'); if(input.value.trim()) markZone(zone); }); input.addEventListener('blur',()=>markZone(input.closest('[data-t133-zone]'))); });
+    }
+    const collectResult=()=>{ let correct=0, answered=0; const rows=[...container.querySelectorAll('[data-t133-zone]')].map(zone=>{ const zoneId=String(zone.dataset.t133Zone||''); const z=answerByZone.get(zoneId)||{}; const value=currentTextFor(zone).trim(); if(value) answered++; const ok=!!value && zoneOk(zone); if(ok) correct++; markZone(zone); return {zoneId, section:z.section||'', question:z.label||zoneId, type:mode==='write'?'schema_write':'schema_drag_drop', value, correct:answerTextFor(zoneId), fraction:ok?1:0, feedback:ok?'Correcto.':`Respuesta correcta: ${answerTextFor(zoneId)}`}; }); const score=total?Number(((correct/total)*10).toFixed(2)):0; return {correct, answered, total, score, rows}; };
+    const showFinal=async ()=>{ const result=collectResult(); const fb=activity.feedback||{}; const mainMessage=result.answered===0?(fb.empty||'Completa al menos un oco antes de finalizar.'):(result.correct===result.total?(fb.allCorrect||'Muy bien. Has completado correctamente el esquema.'):(fb.someIncorrect||'Revisa los conceptos marcados en rojo.')); finalBox.hidden=false; finalBox.innerHTML=`<div class="schema-score-card ${result.correct===result.total?'is-correct':'is-partial'}"><h4>Resultado</h4><strong>${result.correct}/${result.total} · ${result.score.toFixed(2)}/10</strong><p>${safe(mainMessage)}</p></div><details class="schema-answer-review" open><summary>Feedback completo</summary><ol>${result.rows.map((r,i)=>`<li class="${r.fraction?'is-correct':'is-wrong'}"><span>${i+1}. ${safe(r.question)}</span><b>${r.fraction?'Correcto':'Incorrecto'}</b><small>Tu respuesta: ${safe(r.value||'sin respuesta')} · Correcta: ${safe(r.correct||'sin configurar')}</small></li>`).join('')}</ol></details>`; if(canPersist){ const saved=await saveSchemaActivityAttempt(materialId, activity, {score:result.score, max_score:10, answers:result.rows, completed_at:new Date().toISOString(), activity_type:'schema'}); if(saved && typeof updateAttemptHistoryBox==='function') updateAttemptHistoryBox(container, materialId); } };
+    container.querySelector('[data-t133-check]')?.addEventListener('click',ev=>{ ev.preventDefault(); showFinal().catch(error=>{ console.error(error); finalBox.hidden=false; finalBox.innerHTML=`<div class="schema-score-card is-error"><strong>No se pudo corregir el esquema</strong><p>${safe(error?.message||'Error desconocido')}</p></div>`; }); });
+    container.querySelector('[data-t133-reset]')?.addEventListener('click',ev=>{ ev.preventDefault(); container.querySelectorAll('[data-t133-zone]').forEach(zone=>{ if(mode==='write'){ const input=zone.querySelector('input'); if(input) input.value=''; zone.classList.remove('is-correct','is-wrong','is-empty'); } else clearZone(zone); }); setSelectedItem(''); refreshUsedItems(); updateProgress(); live.innerHTML=''; finalBox.hidden=true; finalBox.innerHTML=''; });
+    updateProgress();
+    container.dataset.t133Rendered='1';
+  }
+  function hydrateSchemaActivities(root=document){
+    const scope=root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('.schema-activity-block[data-t133-schema]').forEach(renderSchemaActivity);
+  }
+
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
@@ -2119,8 +2322,10 @@
     if(exam) return {src:'', mode:'exam', html:'', quiz:null, exam};
     const quiz=parseQuizFromInteractiveCode(clean);
     if(quiz) return {src:'', mode:'quiz', html:'', quiz, exam:null};
+    const schemaActivity=parseSchemaActivityFromInteractiveCode(clean);
+    if(schemaActivity) return {src:'', mode:'schemaActivity', html:'', quiz:null, exam:null, activity:schemaActivity};
     if(clean){
-      if(/^\s*[\[{]/.test(clean) || clean.startsWith('tribeca-exam-json::')) return {src:'', mode:'quizError', html:'', quiz:null, exam:null};
+      if(/^\s*[\[{]/.test(clean) || clean.startsWith('tribeca-exam-json::') || clean.startsWith('tribeca-schema-json::')) return {src:'', mode:'quizError', html:'', quiz:null, exam:null};
       const iframeSrc=extractIframeSrc(clean);
       if(iframeSrc && (videoKind || isVideoEmbedSource(iframeSrc))){
         const v=normalizeVideoUrl(iframeSrc);
@@ -2158,7 +2363,8 @@
     const source=materialEmbedSource(m);
     if(source.mode==='exam') return nativeExamMarkup(source.exam, m);
     if(source.mode==='quiz') return nativeQuizMarkup(source.quiz, m);
-    if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test o simulacro. Comprueba que contiene <code>type: "tribeca-exam"</code> o <code>questions</code> con ejercicios compatibles.</p></section>`;
+    if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test, simulacro o esquema interactivo. Comprueba que contiene <code>type: "tribeca-activity"</code>, <code>type: "tribeca-exam"</code> o <code>questions</code> con ejercicios compatibles.</p></section>`;
+    if(source.mode==='schemaActivity') return schemaActivityMarkup(source.activity, m);
     if(source.mode==='video' || source.mode==='videoHtml') return videoEmbedMarkup(source, m);
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
@@ -2244,6 +2450,7 @@
     const scope=root && root.querySelectorAll ? root : document;
     hydrateNativeQuizzes(scope);
     hydrateNativeExams(scope);
+    hydrateSchemaActivities(scope);
     ensureMathCalculatorWidget();
     scope.querySelectorAll('iframe[data-t98-embed-html]:not([data-t98-ready])').forEach(frame=>{
       const encoded=frame.getAttribute('data-t98-embed-html')||'';
@@ -2419,6 +2626,10 @@ render();
     if(source.mode==='quiz'){
       const encoded=encodeBase64Utf8(JSON.stringify(source.quiz));
       return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>Test nativo de Tribeca Aula</small></div><div class="native-quiz-block" data-t99-quiz="${safe(encoded)}"><p>Cargando test…</p></div></section><script>(${renderNativeQuiz.toString()})(document.querySelector('.native-quiz-block'))<\/script>`;
+    }
+    if(source.mode==='schemaActivity'){
+      const runner=schemaActivityStandaloneHtml(source.activity, m);
+      return `<section class="material-embed-block schema-activity-shell"><div><strong>Esquema interactivo</strong><small>Autocorregible · feedback inmediato</small></div><iframe title="Esquema interactivo" sandbox="allow-scripts allow-forms allow-same-origin" srcdoc="${safe(runner)}" style="min-height:820px"></iframe></section>`;
     }
     if(source.mode==='video' || source.mode==='videoHtml') return videoEmbedMarkup(source, m, true);
     if(!source.src && !source.html) return '';
@@ -2658,6 +2869,7 @@ render();
     if(!v) return 'material';
     if(['announcement','notice','news','anuncio','aviso','noticia'].includes(v)) return 'announcement';
     if(['video','vídeo','videoclase','video_clase','clase_video','clase en vídeo','clase en video'].includes(v) || /v[ií]deo|video|videoclase/.test(v)) return 'video';
+    if(['schema','scheme','esquema','esquema_interactivo','interactive_schema','drag_drop_schema','fill_schema','complete_schema','mapa_conceptual'].includes(v) || /esquema|schema|mapa.?conceptual/.test(v)) return 'schema';
     if(['game','juego','jocs','play','gamified','ludico','lúdico'].includes(v) || /juego|game|l[uú]dic/.test(v)) return 'game';
     if(['exam','simulacro','mock_exam','simulacro_examen','mock','examen'].includes(v) || /simulacro|mock.?exam|examen/.test(v)) return 'exam';
     if(['test','quiz','external_test','prueba','cuestionario','daypo'].includes(v) || /test|quiz|cuestionario|prueba/.test(v)) return 'test';
@@ -2667,7 +2879,7 @@ render();
   }
   function dbMaterialType(kind='material') {
     const k = normalizeMaterialKind(kind);
-    return ({ material:'apuntes', task:'tarea', test:'test', exam:'simulacro', game:'juego', video:'video' }[k] || 'apuntes');
+    return ({ material:'apuntes', task:'tarea', test:'test', exam:'simulacro', game:'juego', video:'video', schema:'esquema' }[k] || 'apuntes');
   }
   function materialTypeMeta(value='material') {
     const k = normalizeMaterialKind(value);
@@ -2678,6 +2890,7 @@ render();
       exam: { key:'exam', label:'Simulacro de examen', icon:'📝' },
       game: { key:'game', label:'Juego', icon:'🎮' },
       video: { key:'video', label:'Vídeo', icon:'🎥' },
+      schema: { key:'schema', label:'Esquema', icon:'🧩' },
       announcement: { key:'announcement', label:'Anuncio', icon:'📣' }
     };
     return map[k] || map.material;
@@ -2685,7 +2898,7 @@ render();
   function selectedAttr(a,b){ return String(a||'')===String(b||'') ? 'selected' : ''; }
   async function persistSupabaseRecord(tableName, payload, id=null) {
     let current = {...payload};
-    const materialFallbacks = ['apuntes','tarea','test','simulacro','juego','video','actividad','recurso','documento','document','link','material'];
+    const materialFallbacks = ['apuntes','tarea','test','simulacro','juego','video','esquema','actividad','recurso','documento','document','link','material'];
     for(let attempt=0; attempt<12; attempt++) {
       const res = id ? await table(tableName).update(current).eq('id', id) : await table(tableName).insert(current);
       if(!res.error) return res;
@@ -2787,7 +3000,7 @@ render();
       <section class="window-panel t18-publish-main">
         <h3>${editing?'Editar publicación':'1. Contenido'}</h3>
         ${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}
-        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('video','🎥','Vídeo','Vídeo embebido de YouTube, Vimeo, Drive o URL directa.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con nota sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
+        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('video','🎥','Vídeo','Vídeo embebido de YouTube, Vimeo, Drive o URL directa.')}${typeCard('schema','🧩','Esquema','Completar un esquema escribiendo o arrastrando conceptos.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con resultado sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
         ${publicationClassroomSelector(item)}
         <div class="window-grid">
           <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
@@ -2800,7 +3013,7 @@ render();
       </section>
       <section class="window-panel publication-files-panel publication-files-panel-v94">
         <h3>2. Archivos y recursos interactivos</h3>
-        <p class="meta">Adjunta documentos o inserta un test/juego interactivo. Para juegos creados con IA, lo más estable es publicarlos en una URL y pegarla aquí.</p>
+        <p class="meta">Adjunta documentos o inserta un esquema, test, vídeo o juego interactivo. Los esquemas en JSON de Tribeca Aula se corrigen automáticamente.</p>
         <div class="publication-upload-grid">
           <label class="publication-upload-card">
             <strong>Imagen de portada</strong>
@@ -2818,11 +3031,11 @@ render();
           </label>
         </div>
         <div class="interactive-embed-panel interactive-embed-panel-v99">
-          <h4>Recurso embebido: vídeo, test o juego</h4>
-          <p class="meta">Para vídeos, pega la URL de YouTube, Vimeo, Google Drive, Streamable o un iframe. Para tests, sube JSON o HTML.</p>
+          <h4>Recurso embebido: esquema, vídeo, test o juego</h4>
+          <p class="meta">Para esquemas, sube un JSON de tipo tribeca-activity. Para vídeos, pega la URL de YouTube, Vimeo, Google Drive, Streamable o un iframe. Para tests, sube JSON o HTML.</p>
           <label class="publication-upload-card interactive-file-card">
             <strong>Subir recurso interactivo</strong>
-            <small>JSON, HTML, HTM o TXT. El JSON es la opción más limpia para tests.</small>
+            <small>JSON, HTML, HTM o TXT. El JSON es la opción más limpia para esquemas, tests y simulacros.</small>
             <input name="interactiveFile" type="file" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain">
             <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún recurso interactivo seleccionado.</span>
           </label>
@@ -2831,7 +3044,7 @@ render();
             <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
           </div>
           <label>Código HTML, JSON, iframe o vídeo<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo, iframe de vídeo o etiqueta video. Para vídeos, también puedes pegar solo la URL arriba.">${safe(embedCode)}</textarea></label>
-          <p class="meta">Si eliges Vídeo, se mostrará embebido dentro de la publicación. Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo.</p>
+          <p class="meta">Si eliges Esquema, se mostrará como actividad autocorregible dentro de la publicación. Si eliges Vídeo, se mostrará embebido. Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo.</p>
         </div>
       </section>
       <footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer>
@@ -5081,6 +5294,15 @@ function classroomCard(c,i=0){
       const radios=form.querySelectorAll('input[name="publicationKind"]');
       radios.forEach(r=>{ r.checked = r.value==='exam'; });
       toast(`Simulacro importado: ${exam.questions.length} preguntas.`);
+      return;
+    }
+    const schemaActivity=parseSchemaActivityFromInteractiveCode(raw);
+    if(schemaActivity){
+      if(embed) embed.value=schemaActivityPayloadToStorage(schemaActivity);
+      if(preview) preview.textContent=`${file.name} · esquema autocorregible (${schemaActivity.dropZones.length} ocos)`;
+      const radios=form.querySelectorAll('input[name="publicationKind"]');
+      radios.forEach(r=>{ r.checked = r.value==='schema'; });
+      toast(`Esquema importado: ${schemaActivity.dropZones.length} ocos autocorregibles.`);
       return;
     }
     const quiz=parseQuizFromInteractiveCode(raw);
