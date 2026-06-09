@@ -107,7 +107,9 @@
     hideImages:false,
     letterSpacing:0,
     lineHeight:1.2,
-    linkHighlight:false
+    linkHighlight:false,
+    language:'',
+    zoom:1
   };
   function a11yDefaults(){ return {...A11Y_DEFAULTS}; }
   function loadAccessibilitySettings(){
@@ -124,13 +126,13 @@
   }
   function a11yDict(){
     return {
-      es:{accessibility:'Accesibilidad', open:'Abrir opciones de accesibilidad', close:'Cerrar', background:'Color de fondo', text:'Color del texto', fontFace:'Tipo de letra', reset:'Restablecer', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Interletraje', turnOn:'Activar', turnOff:'Desactivar', fontSize:'Tamaño de letra', imageVisibility:'Visibilidad de imágenes', hideImages:'Ocultar imágenes', showImages:'Mostrar imágenes', letterSpacing:'Espaciado entre letras', lineHeight:'Altura de línea', linkHighlight:'Resaltar enlaces', disabled:'Desactivado', enabled:'Activado'},
-      gl:{accessibility:'Accesibilidade', open:'Abrir opcións de accesibilidade', close:'Pechar', background:'Cor de fondo', text:'Cor do texto', fontFace:'Tipo de letra', reset:'Restablecer', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Interletraxe', turnOn:'Activar', turnOff:'Desactivar', fontSize:'Tamaño de letra', imageVisibility:'Visibilidade das imaxes', hideImages:'Ocultar imaxes', showImages:'Mostrar imaxes', letterSpacing:'Espazado entre letras', lineHeight:'Altura de liña', linkHighlight:'Resaltar ligazóns', disabled:'Desactivado', enabled:'Activado'},
-      en:{accessibility:'Accessibility', open:'Open accessibility options', close:'Close', background:'Background Colour', text:'Text Colour', fontFace:'Font Face', reset:'Reset', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexic', kerning:'Font Kerning', turnOn:'Turn on', turnOff:'Turn off', fontSize:'Font Size', imageVisibility:'Image Visibility', hideImages:'Hide Images', showImages:'Show Images', letterSpacing:'Letter Spacing', lineHeight:'Line Height', linkHighlight:'Link Highlight', disabled:'Disabled', enabled:'Enabled'},
-      fr:{accessibility:'Accessibilité', open:'Ouvrir les options d’accessibilité', close:'Fermer', background:'Couleur de fond', text:'Couleur du texte', fontFace:'Police', reset:'Réinitialiser', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexique', kerning:'Crénage', turnOn:'Activer', turnOff:'Désactiver', fontSize:'Taille du texte', imageVisibility:'Visibilité des images', hideImages:'Masquer les images', showImages:'Afficher les images', letterSpacing:'Espacement des lettres', lineHeight:'Hauteur de ligne', linkHighlight:'Surbrillance des liens', disabled:'Désactivé', enabled:'Activé'},
+      es:{accessibility:'Accesibilidad', open:'Abrir opciones de accesibilidad', close:'Cerrar', background:'Color de fondo', text:'Color del texto', fontFace:'Tipo de letra', reset:'Restablecer', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Interletraje', turnOn:'Activar', turnOff:'Desactivar', fontSize:'Tamaño de letra', imageVisibility:'Visibilidad de imágenes', hideImages:'Ocultar imágenes', showImages:'Mostrar imágenes', letterSpacing:'Espaciado entre letras', lineHeight:'Altura de línea', linkHighlight:'Resaltar enlaces', disabled:'Desactivado', enabled:'Activado', language:'Idioma', zoom:'Zoom', profileTools:'Herramientas'},
+      gl:{accessibility:'Accesibilidade', open:'Abrir opcións de accesibilidade', close:'Pechar', background:'Cor de fondo', text:'Cor do texto', fontFace:'Tipo de letra', reset:'Restablecer', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Interletraxe', turnOn:'Activar', turnOff:'Desactivar', fontSize:'Tamaño de letra', imageVisibility:'Visibilidade das imaxes', hideImages:'Ocultar imaxes', showImages:'Mostrar imaxes', letterSpacing:'Espazado entre letras', lineHeight:'Altura de liña', linkHighlight:'Resaltar ligazóns', disabled:'Desactivado', enabled:'Activado', language:'Idioma', zoom:'Zoom', profileTools:'Herramientas'},
+      en:{accessibility:'Accessibility', open:'Open accessibility options', close:'Close', background:'Background Colour', text:'Text Colour', fontFace:'Font Face', reset:'Reset', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexic', kerning:'Font Kerning', turnOn:'Turn on', turnOff:'Turn off', fontSize:'Font Size', imageVisibility:'Image Visibility', hideImages:'Hide Images', showImages:'Show Images', letterSpacing:'Letter Spacing', lineHeight:'Line Height', linkHighlight:'Link Highlight', disabled:'Disabled', enabled:'Enabled', language:'Language', zoom:'Zoom', profileTools:'Tools'},
+      fr:{accessibility:'Accessibilité', open:'Ouvrir les options d’accessibilité', close:'Fermer', background:'Couleur de fond', text:'Couleur du texte', fontFace:'Police', reset:'Réinitialiser', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexique', kerning:'Crénage', turnOn:'Activer', turnOff:'Désactiver', fontSize:'Taille du texte', imageVisibility:'Visibilité des images', hideImages:'Masquer les images', showImages:'Afficher les images', letterSpacing:'Espacement des lettres', lineHeight:'Hauteur de ligne', linkHighlight:'Surbrillance des liens', disabled:'Désactivé', enabled:'Activé', language:'Langue', zoom:'Zoom', profileTools:'Outils'},
       pl:{accessibility:'Dostępność', open:'Otwórz opcje dostępności', close:'Zamknij', background:'Kolor tła', text:'Kolor tekstu', fontFace:'Krój pisma', reset:'Reset', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslektyczna', kerning:'Kerning czcionki', turnOn:'Włącz', turnOff:'Wyłącz', fontSize:'Rozmiar tekstu', imageVisibility:'Widoczność obrazów', hideImages:'Ukryj obrazy', showImages:'Pokaż obrazy', letterSpacing:'Odstępy między literami', lineHeight:'Wysokość linii', linkHighlight:'Podświetlanie linków', disabled:'Wyłączone', enabled:'Włączone'},
-      de:{accessibility:'Barrierefreiheit', open:'Optionen für Barrierefreiheit öffnen', close:'Schließen', background:'Hintergrundfarbe', text:'Textfarbe', fontFace:'Schriftart', reset:'Zurücksetzen', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexic', kerning:'Schrift-Kerning', turnOn:'Einschalten', turnOff:'Ausschalten', fontSize:'Schriftgröße', imageVisibility:'Bildsichtbarkeit', hideImages:'Bilder ausblenden', showImages:'Bilder anzeigen', letterSpacing:'Buchstabenabstand', lineHeight:'Zeilenhöhe', linkHighlight:'Links hervorheben', disabled:'Deaktiviert', enabled:'Aktiviert'},
-      pt:{accessibility:'Acessibilidade', open:'Abrir opções de acessibilidade', close:'Fechar', background:'Cor de fundo', text:'Cor do texto', fontFace:'Tipo de letra', reset:'Repor', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Kerning da fonte', turnOn:'Ativar', turnOff:'Desativar', fontSize:'Tamanho da letra', imageVisibility:'Visibilidade das imagens', hideImages:'Ocultar imagens', showImages:'Mostrar imagens', letterSpacing:'Espaçamento entre letras', lineHeight:'Altura da linha', linkHighlight:'Realce de links', disabled:'Desativado', enabled:'Ativado'}
+      de:{accessibility:'Barrierefreiheit', open:'Optionen für Barrierefreiheit öffnen', close:'Schließen', background:'Hintergrundfarbe', text:'Textfarbe', fontFace:'Schriftart', reset:'Zurücksetzen', serif:'Serif', sans:'Sans Serif', dyslexic:'Dyslexic', kerning:'Schrift-Kerning', turnOn:'Einschalten', turnOff:'Ausschalten', fontSize:'Schriftgröße', imageVisibility:'Bildsichtbarkeit', hideImages:'Bilder ausblenden', showImages:'Bilder anzeigen', letterSpacing:'Buchstabenabstand', lineHeight:'Zeilenhöhe', linkHighlight:'Links hervorheben', disabled:'Deaktiviert', enabled:'Aktiviert', language:'Sprache', zoom:'Zoom', profileTools:'Werkzeuge'},
+      pt:{accessibility:'Acessibilidade', open:'Abrir opções de acessibilidade', close:'Fechar', background:'Cor de fundo', text:'Cor do texto', fontFace:'Tipo de letra', reset:'Repor', serif:'Serif', sans:'Sans Serif', dyslexic:'Disléxica', kerning:'Kerning da fonte', turnOn:'Ativar', turnOff:'Desativar', fontSize:'Tamanho da letra', imageVisibility:'Visibilidade das imagens', hideImages:'Ocultar imagens', showImages:'Mostrar imagens', letterSpacing:'Espaçamento entre letras', lineHeight:'Altura da linha', linkHighlight:'Realce de links', disabled:'Desativado', enabled:'Ativado', language:'Idioma', zoom:'Zoom', profileTools:'Ferramentas'}
     };
   }
   function a11yText(key){
@@ -158,8 +160,15 @@
     root.style.setProperty('--a11y-bg', s.background || A11Y_DEFAULTS.background);
     root.style.setProperty('--a11y-text', s.text || A11Y_DEFAULTS.text);
     root.style.setProperty('--a11y-font-scale', String(clampA11y(s.fontSize, .75, 1.8, 1)));
+    root.style.setProperty('--a11y-zoom-scale', String(clampA11y(s.zoom, .5, 1.6, 1)));
     root.style.setProperty('--a11y-letter-spacing', `${clampA11y(s.letterSpacing, 0, .18, 0).toFixed(3)}em`);
     root.style.setProperty('--a11y-line-height', String(clampA11y(s.lineHeight, 1, 2.2, 1.2)));
+    try {
+      const zoom = document.querySelector('#zoomSelect');
+      if(zoom) zoom.value = String(Math.round(clampA11y(s.zoom, .5, 1.6, 1) * 100));
+      const lang = document.querySelector('#languageSelect');
+      if(lang && s.language && LANG_META?.[s.language]) lang.value = s.language;
+    } catch(_e) {}
   }
   function accessibilityWidgetMarkup(){
     const s=loadAccessibilitySettings();
@@ -169,6 +178,8 @@
       <section class="tribeca-a11y-panel" data-a11y-panel hidden aria-label="${safe(a11yText('accessibility'))}">
         <header><strong>♿ ${safe(a11yText('accessibility'))}</strong><button type="button" data-a11y-close aria-label="${safe(a11yText('close'))}">×</button></header>
         <div class="tribeca-a11y-grid">
+          <article><h3>🌐 ${safe(a11yText('language'))}</h3><select class="a11y-select" data-a11y-language>${Object.entries(LANG_META).map(([code,meta])=>`<option value="${safe(code)}" ${(currentLangCode()===code)?'selected':''}>${safe(meta.label)}</option>`).join('')}</select></article>
+          <article><h3>🔎 ${safe(a11yText('zoom'))}</h3><div class="a11y-slider-row"><button type="button" data-a11y-step="zoom" data-step="-0.1">−</button><input type="range" min=".5" max="1.6" step=".05" value="${safe(s.zoom||1)}" data-a11y-range="zoom"><output>${safe(Math.round(Number(s.zoom||1)*100))}%</output><button type="button" data-a11y-step="zoom" data-step="0.1">+</button></div><button type="button" data-a11y-reset="zoom">${safe(a11yText('reset'))}</button></article>
           <article><h3>⌁ ${safe(a11yText('background'))}</h3><div class="a11y-control-row"><input type="color" value="${safe(s.background||A11Y_DEFAULTS.background)}" data-a11y-field="background"><button type="button" data-a11y-reset="background">${safe(a11yText('reset'))}</button></div></article>
           <article><h3>A ${safe(a11yText('fontFace'))}</h3><div class="a11y-button-stack">${button('reset',a11yText('reset'))}${button('serif',a11yText('serif'))}${button('sans',a11yText('sans'))}${button('dyslexic',a11yText('dyslexic'))}</div></article>
           <article><h3>V/A ${safe(a11yText('kerning'))}</h3><button type="button" data-a11y-toggle-setting="kerning">${safe(s.kerning?a11yText('turnOff'):a11yText('turnOn'))}</button></article>
@@ -212,23 +223,26 @@
       const font=ev.target.closest?.('[data-a11y-font]');
       if(font){ ev.preventDefault(); const s=saveAccessibilitySettings({...loadAccessibilitySettings(), fontFace:font.dataset.a11yFont||'reset'}); applyAccessibilitySettings(s); updateAccessibilityWidgetText(); return; }
       const reset=ev.target.closest?.('[data-a11y-reset]');
-      if(reset){ ev.preventDefault(); const key=reset.dataset.a11yReset; const s=loadAccessibilitySettings(); if(key==='fontSize') s.fontSize=A11Y_DEFAULTS.fontSize; else if(key==='letterSpacing') s.letterSpacing=A11Y_DEFAULTS.letterSpacing; else if(key==='lineHeight') s.lineHeight=A11Y_DEFAULTS.lineHeight; else if(key==='background') s.background=A11Y_DEFAULTS.background; else if(key==='text') s.text=A11Y_DEFAULTS.text; saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
+      if(reset){ ev.preventDefault(); const key=reset.dataset.a11yReset; const s=loadAccessibilitySettings(); if(key==='fontSize') s.fontSize=A11Y_DEFAULTS.fontSize; else if(key==='letterSpacing') s.letterSpacing=A11Y_DEFAULTS.letterSpacing; else if(key==='lineHeight') s.lineHeight=A11Y_DEFAULTS.lineHeight; else if(key==='background') s.background=A11Y_DEFAULTS.background; else if(key==='text') s.text=A11Y_DEFAULTS.text; else if(key==='zoom') s.zoom=A11Y_DEFAULTS.zoom; saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
       const toggleSetting=ev.target.closest?.('[data-a11y-toggle-setting]');
       if(toggleSetting){ ev.preventDefault(); const key=toggleSetting.dataset.a11yToggleSetting; const s=loadAccessibilitySettings(); s[key]=!s[key]; saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
       const step=ev.target.closest?.('[data-a11y-step]');
-      if(step){ ev.preventDefault(); const key=step.dataset.a11yStep; const inc=Number(step.dataset.step||0); const s=loadAccessibilitySettings(); const ranges={fontSize:[.75,1.8,1],letterSpacing:[0,.18,0],lineHeight:[1,2.2,1.2]}; const r=ranges[key]||[0,1,0]; s[key]=Number(clampA11y((Number(s[key]??r[2])+inc), r[0], r[1], r[2]).toFixed(3)); saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
+      if(step){ ev.preventDefault(); const key=step.dataset.a11yStep; const inc=Number(step.dataset.step||0); const s=loadAccessibilitySettings(); const ranges={fontSize:[.75,1.8,1],letterSpacing:[0,.18,0],lineHeight:[1,2.2,1.2],zoom:[.5,1.6,1]}; const r=ranges[key]||[0,1,0]; s[key]=Number(clampA11y((Number(s[key]??r[2])+inc), r[0], r[1], r[2]).toFixed(3)); saveAccessibilitySettings(s); applyAccessibilitySettings(); updateAccessibilityWidgetText(); return; }
     }, true);
     document.addEventListener('input', ev=>{
+      const lang=ev.target.closest?.('[data-a11y-language]');
       const field=ev.target.closest?.('[data-a11y-field]');
       const range=ev.target.closest?.('[data-a11y-range]');
-      if(!field && !range) return;
+      if(!field && !range && !lang) return;
       const s=loadAccessibilitySettings();
       if(field) s[field.dataset.a11yField]=field.value;
       if(range) s[range.dataset.a11yRange]=Number(range.value);
+      if(lang){ s.language=lang.value; localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', lang.value || (roleTeacher()?'es':'gl')); const legacy=document.querySelector('#languageSelect'); if(legacy) legacy.value=lang.value; }
       saveAccessibilitySettings(s);
       applyAccessibilitySettings();
       const out=range?.closest('.a11y-slider-row')?.querySelector('output');
-      if(out) out.value=String(Number(range.value).toFixed(2).replace(/\.00$/,''));
+      if(out) out.value=range?.dataset?.a11yRange==='zoom' ? `${Math.round(Number(range.value)*100)}%` : String(Number(range.value).toFixed(2).replace(/\.00$/,''));
+      if(lang){ applyTranslations(document); updateAccessibilityWidgetText(); }
     }, true);
   }
   window.TribecaApplyAccessibilitySettings = applyAccessibilitySettings;
@@ -466,10 +480,7 @@
   }
 
   function publicToolLinksMarkup(){
-    return `<div class="public-tools-strip" aria-label="Herramientas públicas de Tribeca">
-      <a class="public-tool-btn public-tool-lumen" href="https://aulatribeca.github.io/LUMEN-V/" target="_blank" rel="noopener" data-public-tool-link aria-label="Abrir LUMEN-V en una pestaña nueva"><img src="assets/lumen-v-icon.webp" alt="" aria-hidden="true"><span>LUMEN-V</span></a>
-      <a class="public-tool-btn public-tool-itinera" href="https://aulatribeca.github.io/itinera/#inicio" target="_blank" rel="noopener" data-public-tool-link aria-label="Abrir ITINERA en una pestaña nueva"><img src="assets/itinera-icon.webp" alt="" aria-hidden="true"><span>ITINERA</span></a>
-    </div>`;
+    return '';
   }
 
   function loginMarkup() {
@@ -703,8 +714,15 @@
       if(active && a11y) a11y.remove();
     }catch(_e){}
   }
+  function pruneCleanAulaInterface(){
+    try{
+      document.querySelectorAll('.public-tool-lumen,.public-tool-itinera,.public-tools-strip,[data-public-tool-link]').forEach(el=>{ el.hidden=true; el.setAttribute('aria-hidden','true'); });
+      document.querySelectorAll('.utility-bar .control-field').forEach(el=>{ el.hidden=true; el.setAttribute('aria-hidden','true'); });
+      document.querySelectorAll('.hero-watermark,.hero-quote-block,.watermark,[class*="watermark"]').forEach(el=>{ el.hidden=true; el.setAttribute('aria-hidden','true'); });
+    }catch(_e){}
+  }
   function syncFocusModeClass(){
-    try { document.body.classList.toggle('is-focus-mode', studentFocusModeEnabled(State.profile)); pruneFocusModeInterface(); } catch(_e) {}
+    try { document.body.classList.toggle('is-clean-aula', !!State.profile); document.body.classList.toggle('is-focus-mode', studentFocusModeEnabled(State.profile)); pruneCleanAulaInterface(); pruneFocusModeInterface(); } catch(_e) {}
   }
 
   function visibleAnnouncements() { return (State.data.announcements||[]).filter(x=>visibleForProfile(x)); }
@@ -837,7 +855,8 @@
     }
   }
   function accountMenuMarkup(){
-    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button>`;
+    const gradeBtn = roleTeacher() ? '' : '<button type="button" data-t73-account-panel="grades">Mis calificaciones</button>';
+    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="tools">LUMEN-V e ITINERA</button><button type="button" data-t73-account-panel="guidance">Orientación académica</button>${gradeBtn}<button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button>`;
   }
   function toggleAccountMenu(){
     const menu=$('#profileMenu');
@@ -913,13 +932,6 @@
       title:`${g.subject||'Materia'} · ${g.grade}`,
       body:`${studentName(g.user_id||g.student_id)} · ${g.evaluation||''}`
     }));
-    const diff=(State.data.difficulties||[]).map(d=>({
-      key:`difficulty:${d.id||d.user_id}:${d.subject||''}:${d.level||''}`,
-      group:'Dificultades declaradas',
-      tone:'',
-      title:d.subject||'Materia con dificultad',
-      body:`${studentName(d.user_id)} · ${d.level||''}`
-    }));
     const pass=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').map(r=>({
       key:`password:${r.id||r.username||r.display_name}`,
       group:'Recuperación de contraseña',
@@ -934,7 +946,7 @@
       title:`${a.name} · ${a.month}`,
       body:`Importe previsto: ${money(a.amount)}`
     }));
-    return [...grades, ...diff, ...pass, ...unpaid];
+    return [...grades, ...pass, ...unpaid];
   }
   function teacherAlertCount(){
     return teacherAlertItems().filter(a=>!teacherAlertIgnored(a.key)).length;
@@ -1163,22 +1175,21 @@
     return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>${rows.length} clase${rows.length===1?'':'s'}</span></div><div class="teacher-quick-class-grid">${rows.map(c=>{ const assigned=classroomStudents(c.id); const subjects=classroomSubjects(c.id); const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id))); const mats=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)); return `<article class="teacher-quick-class-card ${classroomThemeClass(c)}" style="${safe(classroomThemeStyle(c))}" tabindex="0" role="button" data-t90-open-class="${safe(c.id)}"><div><p>${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></div><footer><span>${assigned.length} alumno${assigned.length===1?'':'s'}</span><span>${subjects.length} materia${subjects.length===1?'':'s'}</span><span>${units.length} unidad${units.length===1?'':'es'}</span><span>${mats.length} pub.</span></footer></article>`; }).join('')}</div></section>`;
   }
   function teacherHome() {
-    const students=State.data.students||[]; const assignedBadges=(State.data.userBadges||[]).length; const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
+    const students=State.data.students||[]; const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
     const tools=[
       ['newPublication','✍️','Nueva publicación','Crear anuncios o materiales y vincularlos a una clase, materia y unidad.'],
-      ['teacherAlerts','⚠️','Alertas docentes','Suspensos, materias con dificultades, solicitudes de contraseña e insignias pendientes.'],
+      ['teacherAlerts','⚠️','Alertas docentes','Suspensos, solicitudes de contraseña y mensualidades pendientes.'],
       ['classOverview','📊','Vista general del aula','Cada grupo aparece en una tarjeta con alumnado y avisos básicos.'],
-      ['assignBadge','🏅','Asignar insignia','Seleccionar uno o varios alumnos y asignar insignias docentes.'],
       ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
       ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
       ['classrooms','🏫','Clases','Crear aulas permanentes por centro y curso, al estilo Google Classroom.'],
-      ['guidance','🧭','Orientación académica','Subir, editar, ocultar o eliminar tests, documentos, enlaces y presentaciones de orientación.'],
+      ['teacherSubjects','📚','Materias y materiales','Revisar materias, unidades y publicaciones de aula.'],
       ['payments','💶','Pagos','Tarifas, mensualidades, meses pagados, recibís e histórico económico.'],
       ['attendance','📅','Asistencia y pausas','Registro de asistencia, faltas justificadas y pausas temporales de acceso.']
     ];
     const alertCount = teacherAlertCount();
     const unseenAlerts = Math.max(0, alertCount - Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
-    return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}${State.teacherTasksOpen?teacherTasksManager():''}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${assignedBadges} insignias asignadas</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${activeClassroomsQuickAccess()}</section>`;
+    return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}${State.teacherTasksOpen?teacherTasksManager():''}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${activeClassroomsQuickAccess()}</section>`;
   }
 
   function studentAssignedClasses(studentId=State.profile?.id){
@@ -1223,9 +1234,9 @@
     if(!subjects.length) return `<section class="focus-study-area panel"><h2>Tu materia</h2><p>Todavía no hay una materia visible asignada.</p></section>`;
     return `<section class="focus-study-area"><div class="section-heading focus-study-heading"><h2>Tu materia</h2><span>${subjects.length} materia${subjects.length===1?'':'s'} activa${subjects.length===1?'':'s'}</span></div><div class="focus-study-grid">${subjects.map(({s,c,i})=>focusStudySubjectCard(s,c,i)).join('')}</div></section>`;
   }
-  function focusStudySubjectCard(s,iOrClass,cMaybe){
-    const c = cMaybe || iOrClass || {};
-    const i = typeof iOrClass === 'number' ? iOrClass : 0;
+  function focusStudySubjectCard(s,c={},i=0){
+    c = c || {};
+    i = Number(i || 0);
     const vis=subjectVisual(s.subject);
     const units=visibleClassUnitsForSubject(s.id);
     const mats=materialsForClassSubject(s.id);
@@ -1285,8 +1296,8 @@
   function studentHome() {
     const p=State.profile;
     if(studentFocusModeEnabled(p)) return focusStudentHome();
-    const diffs=State.data.difficulties||[]; const grades=State.data.grades||[]; const fails=grades.filter(g=>Number(g.grade)<5).length; const subjects=subjectList(p);
-    const q=dailyQuote(); return `<section class="hero-card panel"><div class="hero-main"><p class="eyebrow">Panel personal de aprendizaje</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span> <span class="wave">👋</span></h1><p>${new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p><p class="muted">${safe(academicLine(p))}</p></div><div class="hero-quote-block"><blockquote>“${safe(q.text)}”<cite>${safe(q.author)}</cite></blockquote><img class="hero-watermark" src="assets/watermark-tribeca.png" alt="" aria-hidden="true"></div></section><section class="quick-grid"><article class="quick-card panel" data-tool="guidance" role="button"><span class="quick-icon">${toolIcon('guidance')}</span><h2>Orientación académica</h2><p>Tests vocacionales, inteligencia emocional, itinerarios, Bachillerato, FP y recursos para decidir mejor.</p></article><article class="quick-card panel" data-tool="badges" role="button"><span class="quick-icon">${toolIcon('badges')}</span><h2>Mis insignias</h2><p>${studentBadgeSummary()}</p></article><article class="quick-card panel" data-tool="difficulties" role="button"><span class="quick-icon">${toolIcon('difficulties')}</span><h2>Mis materias con dificultades</h2><p>${diffs.length?diffs.map(d=>safe(d.subject)).join(', '):'Indica dónde necesitas más refuerzo.'}</p></article><article class="quick-card panel" data-tool="grades" role="button"><span class="quick-icon">${toolIcon('grades')}</span><h2>Mis calificaciones</h2><p>${fails?`${fails} calificación/es suspensa/s`:grades.length?`${grades.length} calificaciones registradas`:'Registra tus notas del centro escolar.'}</p></article></section><section class="section-heading"><h2>Mis materias</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    const classHtml = studentHasNewClassModel(p) ? studentClassesMarkup() : `<section class="section-heading clean-learning-heading"><h2>Mis materias</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjectList(p).map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel clean-hero-card"><div class="hero-main"><p class="eyebrow">Tribeca Aula</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>Abre tu materia, entra en una unidad y continúa con la actividad disponible.</p><p class="muted">${safe(academicLine(p))}</p></div></section>${classHtml}`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} publicaciones · ${units.size||0} unidades</p><div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} publicaciones hechas.</small></article>`; }
   function bindSubjectCards(){ 
@@ -3006,7 +3017,7 @@ render();
     w.document.close();
   }
 
-  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',assignBadge:'Asignar insignia',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',badges:'Mis insignias',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
+  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     $('#profileMenu')?.setAttribute('hidden','');
@@ -3138,14 +3149,7 @@ render();
     }
 
     const title = (id === 'classroomDetail' && State.currentClassId) ? (classroomLabel(classById(State.currentClassId)||{}) || 'Clase') : ((id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id)));
-    main.innerHTML = `<section class="t52-inline-head panel">
-      <div>
-        <p class="eyebrow">Tribeca Aula</p>
-        <h1>${safe(title)}</h1>
-      </div>
-      <button type="button" class="secondary-btn" data-t52-go-home>← Página principal</button>
-    </section>
-    <section class="t52-inline-tool ${safe(id)}-inline">${bodyHtml}</section>`;
+    main.innerHTML = `<section class="t52-inline-tool ${safe(id)}-inline">${bodyHtml}</section>`;
 
     wireManagedForms(main);
     bindSubjectCards();
@@ -3205,7 +3209,7 @@ render();
   window.rerenderOpenWindows = rerender;
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='assignBadge') return assignBadgeContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='badges') return badgesContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -5490,7 +5494,7 @@ function classroomCard(c,i=0){
           <p>${safe(p.role === 'teacher' ? 'Profesora' : academic)}</p>
         </div>
       </section>`;
-    const tabs = `<div class="profile-account-tabs"><button type="button" data-t74-profile-tab="profile" class="${panel==='profile'?'is-active':''}">Mi perfil</button><button type="button" data-t74-profile-tab="password" class="${panel==='password'?'is-active':''}">Ajustes de contraseña</button><button type="button" data-t74-profile-tab="notifications" class="${panel==='notifications'?'is-active':''}">Ajustes de notificaciones</button></div>`;
+    const tabs = `<div class="profile-account-tabs"><button type="button" data-t74-profile-tab="profile" class="${panel==='profile'?'is-active':''}">Mi perfil</button><button type="button" data-t74-profile-tab="tools" class="${panel==='tools'?'is-active':''}">Herramientas</button><button type="button" data-t74-profile-tab="guidance" class="${panel==='guidance'?'is-active':''}">Orientación académica</button>${roleTeacher()?'':`<button type="button" data-t74-profile-tab="grades" class="${panel==='grades'?'is-active':''}">Mis calificaciones</button>`}<button type="button" data-t74-profile-tab="password" class="${panel==='password'?'is-active':''}">Ajustes de contraseña</button><button type="button" data-t74-profile-tab="notifications" class="${panel==='notifications'?'is-active':''}">Ajustes de notificaciones</button></div>`;
     const profileCard = `<section class="profile-tool-card profile-avatar-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🎨</span>
@@ -5552,7 +5556,10 @@ function classroomCard(c,i=0){
         </header>
         <p class="meta">Estos datos solo puede modificarlos la profesora.</p>
       </section>`:'';
-    const selected = panel==='password' ? passwordCard : panel==='notifications' ? notificationsCard : profileCard + academicCard;
+    const toolsCard = `<section class="profile-tool-card profile-tools-card"><header class="profile-tool-head"><span class="profile-tool-icon">🧭</span><div><h3>Herramientas de Tribeca</h3><p>Accede a las herramientas complementarias sin añadir botones al encabezado principal.</p></div></header><div class="profile-tool-links"><a class="secondary-btn" href="https://aulatribeca.github.io/LUMEN-V/" target="_blank" rel="noopener">LUMEN-V</a><a class="secondary-btn" href="https://aulatribeca.github.io/itinera/#inicio" target="_blank" rel="noopener">ITINERA</a></div></section>`;
+    const guidanceCard = `<section class="profile-embedded-tool profile-guidance-embedded">${guidanceContent()}</section>`;
+    const gradesCard = roleTeacher() ? '' : `<section class="profile-embedded-tool profile-grades-embedded">${gradesContent()}</section>`;
+    const selected = panel==='password' ? passwordCard : panel==='notifications' ? notificationsCard : panel==='tools' ? toolsCard : panel==='guidance' ? guidanceCard : panel==='grades' ? gradesCard : profileCard + academicCard;
     return `<div class="profile-hub">${summary}${tabs}${selected}</div>`;
   }
 
