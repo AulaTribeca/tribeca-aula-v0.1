@@ -13622,3 +13622,84 @@ body.a11y-reading-focus .hero-watermark {
 body.is-focus-mode .main-nav .nav-btn[data-tool="announcements"] {
   display: inline-flex !important;
 }
+
+
+/* Tribeca Aula v142 · bienvenida ampliada, paleta más viva y controles trasladados a accesibilidad. */
+body .hero-card.hero-welcome-card,
+body .hero-card:not(:has(.hero-quote-block)) {
+  grid-template-columns: 1fr !important;
+  min-height: clamp(13rem, 24vw, 18rem) !important;
+  padding: clamp(2.4rem, 4vw, 4.2rem) clamp(2rem, 5vw, 4.8rem) !important;
+  border-radius: 26px !important;
+  background: linear-gradient(135deg, #fffdf7 0%, #f3efe2 48%, #edf6f1 100%) !important;
+}
+body .hero-card .hero-main {
+  border-right: 0 !important;
+  padding-right: 0 !important;
+  max-width: 980px;
+}
+body .hero-card h1 {
+  font-size: clamp(2.5rem, 5.2vw, 5rem) !important;
+  letter-spacing: -0.045em;
+  color: #15251b;
+}
+.hero-wave {
+  display: inline-block;
+  margin-right: .18em;
+  transform-origin: 70% 70%;
+  animation: tribeca-wave 2.8s ease-in-out infinite;
+}
+@keyframes tribeca-wave {
+  0%, 58%, 100% { transform: rotate(0deg); }
+  8% { transform: rotate(16deg); }
+  16% { transform: rotate(-10deg); }
+  24% { transform: rotate(14deg); }
+  32% { transform: rotate(-6deg); }
+  40% { transform: rotate(8deg); }
+}
+body .hero-card p {
+  font-size: clamp(1rem, 1.35vw, 1.22rem);
+  line-height: 1.55;
+}
+.subject-card,
+.subject-detail-head {
+  box-shadow: 0 18px 46px rgba(22, 33, 24, .13) !important;
+}
+.subject-card {
+  background:
+    radial-gradient(circle at 88% 26%, rgba(255,255,255,.22), transparent 17%),
+    linear-gradient(135deg, color-mix(in srgb, var(--subject-color) 72%, #fff8e8 28%), color-mix(in srgb, var(--subject-color) 78%, #172016 22%)) !important;
+}
+.subject-detail-head {
+  background:
+    radial-gradient(circle at 88% 26%, rgba(255,255,255,.20), transparent 18%),
+    linear-gradient(135deg, color-mix(in srgb, var(--subject-color) 74%, #fff8e8 26%), color-mix(in srgb, var(--subject-color) 78%, #172016 22%)) !important;
+}
+.subject-card .subject-mark,
+.subject-detail-emblem,
+.subject-detail-head .subject-mark {
+  background: rgba(255,255,255,.18) !important;
+  border-color: rgba(255,255,255,.36) !important;
+  color: rgba(255,255,255,.86) !important;
+}
+.utility-bar .font-control,
+.utility-bar .reading-control,
+.utility-bar .language-control,
+.utility-bar [id="textScale"],
+.utility-bar [id="textSize"],
+.utility-bar [id="fontSize"],
+.utility-bar [id*="text" i],
+.utility-bar [id*="zoom" i],
+.utility-bar label:has(select[id*="text" i]),
+.utility-bar label:has(select[id*="zoom" i]),
+.utility-bar .control-field:has(select[id*="text" i]),
+.utility-bar .control-field:has(select[id*="zoom" i]),
+.utility-bar .control-field:has(select[id*="language" i]),
+.utility-bar .control-field:has(select[id*="reading" i]) {
+  display: none !important;
+}
+@media (max-width: 780px) {
+  body .hero-card h1 { font-size: clamp(2.1rem, 11vw, 3.4rem) !important; }
+  body .hero-card.hero-welcome-card,
+  body .hero-card:not(:has(.hero-quote-block)) { padding: 2rem 1.35rem !important; }
+}

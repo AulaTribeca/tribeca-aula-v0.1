@@ -264,7 +264,21 @@
     if(!file) return `<span class="tribeca-tool-icon-fallback">${safe(fallback||'')}</span>`;
     return `<img class="tribeca-tool-icon-img" src="assets/icons/${file}.png" alt="" aria-hidden="true">`;
   }
-  const SUBJECT_PALETTE = ['#6f5a2a','#0b3d22','#103f5f','#51418b','#7a5225','#254f3f','#8f3d3d','#3e5f7a','#816b2c','#2f5d50','#624b78','#5f6f42','#884b4b','#345f7f'];
+  const SUBJECT_PALETTE = ['#2f7d68','#b57a2a','#5b6fa9','#c65f4a','#6b5a8f','#4f8c8a','#8a6f2a','#7b5b92','#487aa3','#9a5b45','#59723c','#356f5b','#a86f38','#536f9d'];
+  const SUBJECT_COLOR_OVERRIDES = [
+    [/lingua\s+castela|lengua\s+castell|castela\s+e\s+literatura|castellana\s+y\s+literatura/, '#c65f4a'],
+    [/lingua\s+galeg|lengua\s+galleg|galega\s+e\s+literatura|gallega\s+y\s+literatura/, '#2f7d68'],
+    [/matematic|matematicas|matemáticas/, '#b57a2a'],
+    [/english|ingles|inglés|anglais|francais|francés|français/, '#6b5a8f'],
+    [/biolox|biolog|xeolox|geolog|ciencias\s+da\s+natureza|ciencias\s+de\s+la\s+naturaleza/, '#4f8c8a'],
+    [/xeografia|geografia|historia|ciencias\s+sociais|ciencias\s+sociales/, '#8a6f2a'],
+    [/fisica|física|quimica|química/, '#487aa3'],
+    [/educacion\s+fisica|educación\s+física/, '#59723c'],
+    [/plastica|plástica|visual|artistica|artística|musica|música/, '#9a5b45'],
+    [/tecnolox|tecnolog|digital/, '#536f9d'],
+    [/econom|empresa|emprend/, '#a86f38'],
+    [/filosof|latin|latín|griego|cultura\s+clasica|clásica/, '#7b5b92']
+  ];
   const SUBJECT_GLYPHS = {
     'Matemáticas':'π','Matemáticas A':'π','Matemáticas B':'π','Matemáticas I':'π','Matemáticas II':'π','Matemáticas Aplicadas a las Ciencias Sociales':'∑','Métodos Estadísticos y Numéricos':'∑',
     'Biología y Geología':'BG','Ciencias de la Naturaleza':'CN','Ciencias Sociales':'CS','Física y Química':'FQ','Física':'F','Química':'Q','Geología y Ciencias Ambientales':'GA','Ciencias Generales':'CG',
@@ -287,9 +301,11 @@
   }
   function subjectVisual(subject=''){
     if(isStudySkillsSubject(subject)) return { color:'#2f7d68', glyph:'📚' };
+    const loose = normalizeLooseText(subject);
+    const override = SUBJECT_COLOR_OVERRIDES.find(([rx]) => rx.test(loose));
     const key = Object.keys(SUBJECT_GLYPHS).find(k => String(subject).toLowerCase().includes(k.toLowerCase())) || subject;
     const idx = hashText(subject) % SUBJECT_PALETTE.length;
-    return { color: SUBJECT_PALETTE[idx], glyph: SUBJECT_GLYPHS[key] || String(subject||'?').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase() };
+    return { color: override?.[1] || SUBJECT_PALETTE[idx], glyph: SUBJECT_GLYPHS[key] || String(subject||'?').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase() };
   }
   const subjectCatalog = {
     'Primaria-1.º Primaria':['Ciencias de la Naturaleza','Ciencias Sociales','Educación Física','Educación Plástica y Visual','Lengua Castellana y Literatura','English','Lengua Gallega y Literatura','Matemáticas','Música y Danza'],
@@ -865,6 +881,16 @@
   }
   function simplifyTribecaNavigation(){
     document.querySelectorAll('[data-public-tool-link], .public-tool-lumen, .public-tool-itinera, .main-nav [data-tool="guidance"], .main-nav [data-tool="badges"], .main-nav [data-tool="difficulties"], .main-nav [data-tool="grades"], .main-nav [data-tool="assignBadge"], [data-t16-tool="assignBadge"], [data-tool="badges"]').forEach(el=>el.remove?.());
+    document.querySelectorAll('.utility-bar .control-field, .utility-bar label, .utility-bar .select-wrap').forEach(el=>{
+      const txt = normalizeLooseText(el.textContent || '');
+      const sel = el.matches?.('select') ? el : el.querySelector?.('select');
+      const raw = normalizeLooseText([sel?.id, sel?.name, sel?.className, sel?.dataset?.setting, sel?.getAttribute?.('aria-label'), sel?.value].filter(Boolean).join(' '));
+      if(/texto|tamano|tamanho|tamaño|zoom|lectura|leitura|reading|idioma|language|lingua/.test(`${txt} ${raw}`)) el.remove?.();
+    });
+    document.querySelectorAll('.utility-bar select').forEach(sel=>{
+      const txt = normalizeLooseText([sel.id, sel.name, sel.className, sel.dataset?.setting, sel.getAttribute('aria-label'), sel.closest('label,.control-field,.select-wrap')?.textContent].filter(Boolean).join(' '));
+      if(/texto|tamano|tamanho|tamaño|zoom|lectura|leitura|reading|idioma|language|lingua/.test(txt)) (sel.closest('label,.control-field,.select-wrap')||sel).remove?.();
+    });
   }
   function ensureMainNavHomeButton() {
     const nav = document.querySelector('.main-nav');
@@ -1295,13 +1321,37 @@
     return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">Modo concentración</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>Trabaja con calma, paso a paso. Abre tu materia, entra en una unidad y completa una actividad cada vez.</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>Ahora:</strong><span>elige tu materia y continúa con la primera unidad disponible.</span></section>${classHtml}`;
   }
 
+  function uiLocale(){
+    const code=currentLangCode();
+    return ({es:'es-ES',gl:'gl-ES',en:'en-GB',fr:'fr-FR',pl:'pl-PL',de:'de-DE',pt:'pt-PT'})[code] || (roleTeacher()?'es-ES':'gl-ES');
+  }
+  function uiLabel(key){
+    const code=currentLangCode();
+    const dict={
+      personalPanel:{es:'Panel personal de aprendizaje',gl:'Panel persoal de aprendizaxe',en:'Personal learning panel',fr:'Espace personnel d’apprentissage',pl:'Osobisty panel nauki',de:'Persönlicher Lernbereich',pt:'Painel pessoal de aprendizagem'},
+      hello:{es:'Hola',gl:'Ola',en:'Hello',fr:'Bonjour',pl:'Witaj',de:'Hallo',pt:'Olá'},
+      mySubjects:{es:'Mis materias',gl:'As miñas materias',en:'My subjects',fr:'Mes matières',pl:'Moje przedmioty',de:'Meine Fächer',pt:'As minhas disciplinas'},
+      publications:{es:'publicaciones',gl:'publicacións',en:'posts',fr:'publications',pl:'publikacje',de:'Veröffentlichungen',pt:'publicações'},
+      publication:{es:'publicación',gl:'publicación',en:'post',fr:'publication',pl:'publikacja',de:'Veröffentlichung',pt:'publicação'},
+      units:{es:'unidades',gl:'unidades',en:'units',fr:'unités',pl:'działy',de:'Einheiten',pt:'unidades'},
+      unit:{es:'unidad',gl:'unidade',en:'unit',fr:'unité',pl:'dział',de:'Einheit',pt:'unidade'},
+      progress:{es:'Progreso',gl:'Progreso',en:'Progress',fr:'Progression',pl:'Postęp',de:'Fortschritt',pt:'Progresso'},
+      donePublications:{es:'publicaciones hechas',gl:'publicacións feitas',en:'posts completed',fr:'publications terminées',pl:'ukończone publikacje',de:'erledigte Veröffentlichungen',pt:'publicações concluídas'}
+    };
+    return dict[key]?.[code] || dict[key]?.[roleTeacher()?'es':'gl'] || key;
+  }
+  function uiPlural(count, singularKey, pluralKey){
+    return Number(count)===1 ? uiLabel(singularKey) : uiLabel(pluralKey);
+  }
+
   function studentHome() {
     const p=State.profile;
     if(studentFocusModeEnabled(p)) return focusStudentHome();
     const subjects=subjectList(p);
-    return `<section class="hero-card panel"><div class="hero-main"><p class="eyebrow">Panel personal de aprendizaje</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="section-heading"><h2>Mis materias</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    const dateLabel = new Intl.DateTimeFormat(uiLocale(), {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
-  function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} publicaciones · ${units.size||0} unidades</p><div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} publicaciones hechas.</small></article>`; }
+  function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
     $$('.subject-card[data-class-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('classSubjectDetail', {classSubjectId:card.dataset.classSubject, classId:card.dataset.classId, subject:card.dataset.subject});});});
     $$('.subject-card[data-subject]:not([data-class-subject])').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); 
@@ -6226,10 +6276,10 @@ function classroomCard(c,i=0){
   }
   function currentLangCode(){
     const sel = document.querySelector('#languageSelect');
-    const value = sel?.value || localStorage.getItem('tribeca-language') || 'gl';
+    const value = localStorage.getItem('tribeca-language') || sel?.value || (roleTeacher()?'es':'gl');
     if(LANG_META[value]) return value;
     const label = sel?.selectedOptions?.[0]?.textContent?.trim() || value;
-    return LABEL_TO_CODE[label] || 'gl';
+    return LABEL_TO_CODE[label] || (roleTeacher()?'es':'gl');
   }
   function currentLang(){ return LANG_META[currentLangCode()]?.label || 'Galego'; }
   function translateText(value, targetLabel=currentLang()){
@@ -6265,13 +6315,13 @@ function classroomCard(c,i=0){
   }
   function ensureLanguageDefault(){
     const sel = document.querySelector('#languageSelect');
-    if(!sel) return;
     const saved = localStorage.getItem('tribeca-language');
     const manual = localStorage.getItem('tribeca-language-user-set') === '1';
     const fallbackLang = roleTeacher() ? 'es' : 'gl';
     const next = manual && saved && LANG_META[saved] ? saved : fallbackLang;
-    if(sel.value !== next) sel.value = next;
-    document.documentElement.lang = LANG_META[next].html;
+    if(!manual || !saved || !LANG_META[saved]) localStorage.setItem('tribeca-language', next);
+    if(sel && sel.value !== next) sel.value = next;
+    document.documentElement.lang = LANG_META[next]?.html || (roleTeacher()?'es':'gl');
   }
   function applyTranslations(root=document){
     const targetLabel = currentLang();
