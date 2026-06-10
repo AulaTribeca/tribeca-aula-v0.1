@@ -13703,3 +13703,64 @@ body .hero-card p {
   body .hero-card.hero-welcome-card,
   body .hero-card:not(:has(.hero-quote-block)) { padding: 2rem 1.35rem !important; }
 }
+
+/* Tribeca Aula v143 · Ficha personal ampliada y avisos de cumpleaños. */
+.student-personal-editor-head {
+  align-items: center;
+  gap: 1rem;
+}
+.student-editor-photo {
+  width: 86px;
+  height: 86px;
+  margin: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, rgba(5, 77, 46, .12), rgba(181, 122, 42, .18));
+  border: 1px solid rgba(5, 77, 46, .22);
+  box-shadow: 0 12px 28px rgba(22, 33, 24, .12);
+  color: var(--tribeca-green, #064b31);
+  font-weight: 900;
+  font-size: 2rem;
+}
+.student-editor-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.t143-personal-grid input[type="date"],
+.t143-personal-grid input[type="url"] {
+  min-height: 42px;
+}
+.teacher-birthday-notice {
+  margin-top: 1rem;
+  padding: .9rem 1rem;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(181, 122, 42, .16), rgba(255, 248, 232, .86));
+  border: 1px solid rgba(181, 122, 42, .28);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .9rem;
+  box-shadow: 0 12px 28px rgba(72, 46, 12, .08);
+}
+.teacher-birthday-notice strong {
+  color: var(--tribeca-green, #064b31);
+  display: block;
+  margin-bottom: .2rem;
+}
+.teacher-birthday-notice p {
+  margin: 0;
+  color: #3e3a30;
+  font-weight: 700;
+}
+@media (max-width: 760px) {
+  .student-personal-editor-head,
+  .teacher-birthday-notice {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

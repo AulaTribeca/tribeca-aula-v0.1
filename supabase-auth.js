@@ -1187,6 +1187,32 @@
     </section>`;
   }
 
+  function parseStudentBirthDate(value=''){
+    const raw=String(value||'').trim();
+    if(!raw) return null;
+    const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(!m) return null;
+    return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3]), iso:`${m[1]}-${m[2]}-${m[3]}`};
+  }
+  function birthdayMatchesDate(profile={}, date=new Date()){
+    const b=parseStudentBirthDate(profile.birth_date || profile.date_of_birth);
+    return !!b && b.month===date.getMonth()+1 && b.day===date.getDate();
+  }
+  function ageOnBirthday(profile={}, date=new Date()){
+    const b=parseStudentBirthDate(profile.birth_date || profile.date_of_birth);
+    if(!b?.year) return '';
+    const age=date.getFullYear()-b.year;
+    return age>0 ? age : '';
+  }
+  function studentBirthdaysToday(date=new Date()){
+    return (State.data.students||[]).filter(s=>birthdayMatchesDate(s,date)).sort((a,b)=>displayName(a).localeCompare(displayName(b),'es'));
+  }
+  function teacherBirthdayNotice(date=new Date()){
+    const rows=studentBirthdaysToday(date);
+    if(!rows.length) return '';
+    return `<article class="teacher-birthday-notice"><div><strong>🎂 Cumpleaños de hoy</strong><p>${rows.map(s=>{ const age=ageOnBirthday(s,date); return `${safe(displayName(s))}${age?` cumple ${age} años`:''}`; }).join(' · ')}</p></div><button type="button" class="secondary-btn compact-btn" data-t16-tool="studentProfiles">Ver perfil</button></article>`;
+  }
+
   function teacherWelcomePanel(){
     const today=new Date();
     const dateText=today.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -1196,7 +1222,8 @@
     events.forEach(e=>{ if(!byDay.has(e.date)) byDay.set(e.date, []); byDay.get(e.date).push(e); });
     const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state teacher-week-empty">No hay eventos previstos esta semana.</div>';
     const pending=todayTeacherTasks().length;
-    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span></div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><article class="teacher-tasks-summary" data-t114-open-tasks role="button" tabindex="0" aria-label="Abrir tareas pendientes"><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</article></section>`;
+    const birthdayNotice=teacherBirthdayNotice(today);
+    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span>${birthdayNotice}</div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><article class="teacher-tasks-summary" data-t114-open-tasks role="button" tabindex="0" aria-label="Abrir tareas pendientes"><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</article></section>`;
   }
   function activeClassroomsQuickAccess(){
     const rows=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
@@ -1317,8 +1344,8 @@
     const p=State.profile;
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
-    const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>Tu materia</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">Modo concentración</p><h1>Hola, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>Trabaja con calma, paso a paso. Abre tu materia, entra en una unidad y completa una actividad cada vez.</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>Ahora:</strong><span>elige tu materia y continúa con la primera unidad disponible.</span></section>${classHtml}`;
+    const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${classHtml}`;
   }
 
   function uiLocale(){
@@ -1336,7 +1363,12 @@
       units:{es:'unidades',gl:'unidades',en:'units',fr:'unités',pl:'działy',de:'Einheiten',pt:'unidades'},
       unit:{es:'unidad',gl:'unidade',en:'unit',fr:'unité',pl:'dział',de:'Einheit',pt:'unidade'},
       progress:{es:'Progreso',gl:'Progreso',en:'Progress',fr:'Progression',pl:'Postęp',de:'Fortschritt',pt:'Progresso'},
-      donePublications:{es:'publicaciones hechas',gl:'publicacións feitas',en:'posts completed',fr:'publications terminées',pl:'ukończone publikacje',de:'erledigte Veröffentlichungen',pt:'publicações concluídas'}
+      donePublications:{es:'publicaciones hechas',gl:'publicacións feitas',en:'posts completed',fr:'publications terminées',pl:'ukończone publikacje',de:'erledigte Veröffentlichungen',pt:'publicações concluídas'},
+      focusMode:{es:'Modo concentración',gl:'Modo concentración',en:'Focus mode',fr:'Mode concentration',pl:'Tryb skupienia',de:'Konzentrationsmodus',pt:'Modo concentração'},
+      focusIntro:{es:'Trabaja con calma, paso a paso. Abre tu materia, entra en una unidad y completa una actividad cada vez.',gl:'Traballa con calma, paso a paso. Abre a túa materia, entra nunha unidade e completa unha actividade cada vez.',en:'Work calmly, step by step. Open your subject, enter one unit and complete one activity at a time.',fr:'Travaille calmement, étape par étape. Ouvre ta matière, entre dans une unité et fais une activité à la fois.',pl:'Pracuj spokojnie, krok po kroku. Otwórz przedmiot, wejdź do działu i wykonuj po jednej aktywności.',de:'Arbeite ruhig, Schritt für Schritt. Öffne dein Fach, gehe in eine Einheit und bearbeite jeweils eine Aktivität.',pt:'Trabalha com calma, passo a passo. Abre a tua disciplina, entra numa unidade e completa uma atividade de cada vez.'},
+      now:{es:'Ahora',gl:'Agora',en:'Now',fr:'Maintenant',pl:'Teraz',de:'Jetzt',pt:'Agora'},
+      focusNext:{es:'elige tu materia y continúa con la primera unidad disponible.',gl:'escolle a túa materia e continúa coa primeira unidade dispoñible.',en:'choose your subject and continue with the first available unit.',fr:'choisis ta matière et continue avec la première unité disponible.',pl:'wybierz przedmiot i kontynuuj od pierwszego dostępnego działu.',de:'wähle dein Fach und mache mit der ersten verfügbaren Einheit weiter.',pt:'escolhe a tua disciplina e continua com a primeira unidade disponível.'},
+      yourSubject:{es:'Tu materia',gl:'A túa materia',en:'Your subject',fr:'Ta matière',pl:'Twój przedmiot',de:'Dein Fach',pt:'A tua disciplina'}
     };
     return dict[key]?.[code] || dict[key]?.[roleTeacher()?'es':'gl'] || key;
   }
@@ -3825,6 +3857,9 @@ render();
     return `<div class="t24-student-profiles"><section class="window-panel t24-profile-list"><h3>Alumnado</h3><p class="meta">Selecciona un perfil. Los cambios solo los puede guardar la profesora.</p><input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>${studentList || '<div class="empty-state">No hay alumnado cargado.</div>'}</section><section class="window-panel t24-profile-editor">${selected ? studentEditForm(selected) : '<div class="empty-state">Selecciona un alumno.</div>'}</section></div>`;
   }
 
+  function studentPhotoUrl(s={}){ return String(s.student_photo_url || s.photo_url || s.avatar_url || '').trim(); }
+  function birthDateInputValue(value=''){ const raw=String(value||'').trim(); if(!raw) return ''; return raw.slice(0,10); }
+
   function studentEditForm(s){
     const sched = (State.data.schedules || []).filter(x => x.user_id === s.id && x.active !== false);
     const weekdayOptions = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
@@ -3840,10 +3875,12 @@ render();
     const sup=supportSummary(s);
     const activeClasses=studentAssignedClasses(s.id);
     const focusActive=focusModeEnabledForProfile(s);
+    const photoUrl = studentPhotoUrl(s);
     const statusChips=[academicLine(s), pause?`En pausa: ${pause}`:'Activo', focusActive?'Modo concentración activo':'Vista estándar', sup.flags.length?sup.flags.join(' · '):'Sin apoyos registrados', activeClasses.length?`${activeClasses.length} clase${activeClasses.length===1?'':'s'}`:'Sin clase nueva'].filter(Boolean);
     return `<form id="t24StudentProfileForm" class="form-grid premium-student-editor t24-student-editor teacher-clean-form" method="post" action="javascript:void(0)">
       <input type="hidden" name="id" value="${safe(s.id)}">
-      <div class="t24-editor-head clean-editor-head">
+      <div class="t24-editor-head clean-editor-head student-personal-editor-head">
+        <figure class="student-editor-photo">${photoUrl?`<img src="${safe(photoUrl)}" alt="Foto de ${safe(displayName(s))}">`:`<span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>`}</figure>
         <div><p class="eyebrow">Perfil del alumnado</p><h3>${safe(displayName(s))}</h3><div class="clean-chip-row">${statusChips.map(x=>`<span>${safe(x)}</span>`).join('')}</div></div>
       </div>
       <div class="form-status t24-profile-status" data-t24-profile-status></div>
@@ -3852,7 +3889,11 @@ render();
         <div class="window-grid"><label>Nombre<input name="firstName" value="${safe(s.first_name||firstPart(s.full_name))}"></label><label>Apellidos<input name="lastName" value="${safe(s.last_name||lastPart(s.full_name))}"></label></div>
         <div class="window-grid"><label>Nombre completo<input name="fullName" value="${safe(s.full_name && !/^demo\b/i.test(s.full_name) ? s.full_name : displayName(s))}"></label><label>Usuario<input name="username" value="${safe(s.username||'')}"></label></div>
         <div class="window-grid"><label>Centro<select name="center">${options(centers,s.center)}</select></label><label>Etapa<select name="stage">${options(stages,s.stage)}</select></label><label>Curso<select name="course">${options(dynamicCourses(),s.course)}</select></label></div>
+        <div class="window-grid t143-personal-grid"><label>Fecha de nacimiento<input name="birthDate" type="date" value="${safe(birthDateInputValue(s.birth_date))}"></label><label>Foto del alumno (URL)<input name="studentPhotoUrl" type="url" value="${safe(photoUrl)}" placeholder="https://..."></label></div>
       </section>
+      <details class="teacher-option-drawer" open><summary><span>Datos familiares y personales</span><em>Privado</em></summary>
+        <section class="premium-form-section"><div class="window-grid"><label>Nombre y apellidos del padre / tutor 1<input name="fatherFullName" value="${safe(s.father_full_name||'')}"></label><label>Nombre y apellidos de la madre / tutora 2<input name="motherFullName" value="${safe(s.mother_full_name||'')}"></label></div><label>Dirección<textarea name="studentAddress" rows="2">${safe(s.address||'')}</textarea></label></section>
+      </details>
       <details class="teacher-option-drawer" open><summary><span>Contacto e itinerario</span><em>Datos útiles</em></summary>
         <section class="premium-form-section"><div class="window-grid"><label>Email interno<input name="authEmail" type="email" value="${safe(s.auth_email||'')}"></label><label>Email personal<input name="personalEmail" type="email" value="${safe(s.personal_email||'')}"></label></div><label>Modalidad / itinerario<input name="track" value="${safe(s.track||'')}"></label></section>
       </details>
@@ -3883,7 +3924,7 @@ render();
     const full = String(fd.get('fullName') || `${first} ${last}`.trim() || knownStudentNames[username] || username).trim();
     const weekdays = fd.getAll('scheduleWeekday'), starts = fd.getAll('scheduleStart'), ends = fd.getAll('scheduleEnd'), types = fd.getAll('scheduleType'), notes = fd.getAll('scheduleNotes');
     const schedule = weekdays.map((w,i)=>({ weekday:Number(w), start_time:starts[i]||null, end_time:ends[i]||null, class_type:types[i]||'group', notes:notes[i]||'' })).filter(r => r.weekday && r.start_time && r.end_time);
-    return { id, first_name:first, last_name:last, full_name:full, username, auth_email:String(fd.get('authEmail')||'').trim()||null, personal_email:String(fd.get('personalEmail')||'').trim()||null, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, track:String(fd.get('track')||'').trim()||null, nee_types:fd.getAll('neeTypes'), neae_types:fd.getAll('neaeTypes'), health_conditions:fd.getAll('healthConditions'), observations:fd.get('observations')||'', personalized_attention:!!fd.get('personalizedAttention'), focus_mode_enabled:!!fd.get('focusModeEnabled'), schedule };
+    return { id, first_name:first, last_name:last, full_name:full, username, auth_email:String(fd.get('authEmail')||'').trim()||null, personal_email:String(fd.get('personalEmail')||'').trim()||null, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, track:String(fd.get('track')||'').trim()||null, birth_date:String(fd.get('birthDate')||'').trim()||null, student_photo_url:String(fd.get('studentPhotoUrl')||'').trim()||null, father_full_name:String(fd.get('fatherFullName')||'').trim()||null, mother_full_name:String(fd.get('motherFullName')||'').trim()||null, address:String(fd.get('studentAddress')||'').trim()||null, nee_types:fd.getAll('neeTypes'), neae_types:fd.getAll('neaeTypes'), health_conditions:fd.getAll('healthConditions'), observations:fd.get('observations')||'', personalized_attention:!!fd.get('personalizedAttention'), focus_mode_enabled:!!fd.get('focusModeEnabled'), schedule };
   }
 
   async function saveStudentProfile(form){
@@ -3896,12 +3937,26 @@ render();
     try {
       const payload = buildStudentProfilePayload(form);
       if(!payload.id) throw new Error('No se ha podido identificar el perfil del alumno.');
-      const rpc = await State.client.rpc('tribeca_teacher_save_student_profile_v25', { p_payload: payload });
+      const personalKeys = ['birth_date','student_photo_url','father_full_name','mother_full_name','address'];
+      const personalPayload = {};
+      personalKeys.forEach(k => { personalPayload[k] = payload[k] || null; });
+      const rpcPayload = {...payload};
+      personalKeys.forEach(k => delete rpcPayload[k]);
+      const rpc = await State.client.rpc('tribeca_teacher_save_student_profile_v25', { p_payload: rpcPayload });
       if(rpc.error) throw rpc.error;
       if(!rpc.data || rpc.data.ok !== true) throw new Error('Supabase no confirmó el guardado.');
+      let personalData = null;
+      const personalRpc = await State.client.rpc('tribeca_teacher_save_student_personal_v143', { p_payload: {id: payload.id, ...personalPayload} });
+      if(personalRpc.error || personalRpc.data?.ok !== true){
+        const personalUpdate = await State.client.from('profiles').update(personalPayload).eq('id', payload.id).select('*').single();
+        if(personalUpdate.error) throw new Error(`${personalRpc.error?.message || personalUpdate.error.message || 'No se pudo guardar la ficha personal.'} Ejecuta el SQL de la versión 143 si todavía no lo has aplicado.`);
+        personalData = personalUpdate.data || personalPayload;
+      } else {
+        personalData = personalRpc.data.profile || personalPayload;
+      }
       const focusRpc = await State.client.rpc('tribeca_teacher_set_focus_mode_v138', { p_user_id: payload.id, p_enabled: !!payload.focus_mode_enabled });
       if(focusRpc.error) throw new Error(`${focusRpc.error.message || 'No se pudo guardar el modo concentración.'} Ejecuta el SQL de la versión 138 si todavía no lo has aplicado.`);
-      const fresh = {...(rpc.data.profile || payload), focus_mode_enabled:!!payload.focus_mode_enabled};
+      const fresh = {...(rpc.data.profile || rpcPayload), ...personalData, focus_mode_enabled:!!payload.focus_mode_enabled};
       State.selectedStudentId = payload.id;
       State.data.students = (State.data.students||[]).map(st => st.id===payload.id ? {...st, ...fresh} : st);
       const sched = await State.client.from('student_schedules').select('*').eq('user_id', payload.id).order('weekday').order('start_time');
@@ -6257,6 +6312,19 @@ function classroomCard(c,i=0){
     'Nombre de usuario o contraseña incorrectos.':{Galego:'Nome de usuario ou contrasinal incorrectos.',English:'Incorrect username or password.',Français:'Nom d’utilisateur ou mot de passe incorrect.',Polski:'Nieprawidłowa nazwa użytkownika lub hasło.',Deutsch:'Benutzername oder Passwort falsch.',Português:'Nome de utilizador ou palavra-passe incorretos.'},
     'Supabase aún no está configurado. Revisa supabase-config.js.':{Galego:'Supabase aínda non está configurado. Revisa supabase-config.js.',English:'Supabase is not configured yet. Check supabase-config.js.',Français:'Supabase n’est pas encore configuré. Vérifie supabase-config.js.',Polski:'Supabase nie jest jeszcze skonfigurowany. Sprawdź supabase-config.js.',Deutsch:'Supabase ist noch nicht konfiguriert. Prüfe supabase-config.js.',Português:'O Supabase ainda não está configurado. Revê supabase-config.js.'}
   };
+
+  Object.assign(EXTRA_TRANSLATIONS, {
+    'Perfil del alumnado':{Galego:'Perfil do alumnado',English:'Student profile',Français:'Profil de l’élève',Polski:'Profil ucznia',Deutsch:'Schülerprofil',Português:'Perfil do aluno'},
+    'Datos familiares y personales':{Galego:'Datos familiares e persoais',English:'Family and personal details',Français:'Données familiales et personnelles',Polski:'Dane rodzinne i osobiste',Deutsch:'Familiäre und persönliche Daten',Português:'Dados familiares e pessoais'},
+    'Nombre y apellidos del padre / tutor 1':{Galego:'Nome e apelidos do pai / titor 1',English:'Father / guardian 1 full name',Français:'Nom complet du père / tuteur 1',Polski:'Imię i nazwisko ojca / opiekuna 1',Deutsch:'Vollständiger Name Vater / Vormund 1',Português:'Nome completo do pai / tutor 1'},
+    'Nombre y apellidos de la madre / tutora 2':{Galego:'Nome e apelidos da nai / titora 2',English:'Mother / guardian 2 full name',Français:'Nom complet de la mère / tutrice 2',Polski:'Imię i nazwisko matki / opiekuna 2',Deutsch:'Vollständiger Name Mutter / Vormund 2',Português:'Nome completo da mãe / tutora 2'},
+    'Dirección':{Galego:'Enderezo',English:'Address',Français:'Adresse',Polski:'Adres',Deutsch:'Adresse',Português:'Morada'},
+    'Fecha de nacimiento':{Galego:'Data de nacemento',English:'Date of birth',Français:'Date de naissance',Polski:'Data urodzenia',Deutsch:'Geburtsdatum',Português:'Data de nascimento'},
+    'Foto del alumno (URL)':{Galego:'Foto do alumno (URL)',English:'Student photo (URL)',Français:'Photo de l’élève (URL)',Polski:'Zdjęcie ucznia (URL)',Deutsch:'Foto des Schülers (URL)',Português:'Fotografia do aluno (URL)'},
+    'Cumpleaños de hoy':{Galego:'Aniversarios de hoxe',English:'Today’s birthdays',Français:'Anniversaires du jour',Polski:'Dzisiejsze urodziny',Deutsch:'Geburtstage heute',Português:'Aniversários de hoje'},
+    'Ver perfil':{Galego:'Ver perfil',English:'View profile',Français:'Voir le profil',Polski:'Zobacz profil',Deutsch:'Profil ansehen',Português:'Ver perfil'},
+    'Privado':{Galego:'Privado',English:'Private',Français:'Privé',Polski:'Prywatne',Deutsch:'Privat',Português:'Privado'}
+  });
   Object.assign(BASE_TRANSLATIONS, EXTRA_TRANSLATIONS);
   const LANG_META = {
     es:{label:'Castellano', html:'es'}, gl:{label:'Galego', html:'gl'}, en:{label:'English', html:'en'}, fr:{label:'Français', html:'fr'}, pl:{label:'Polski', html:'pl'}, de:{label:'Deutsch', html:'de'}, pt:{label:'Português', html:'pt'}
