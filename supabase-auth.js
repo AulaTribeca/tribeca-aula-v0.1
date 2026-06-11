@@ -3345,9 +3345,8 @@ render();
     }
 
     const title = (id === 'classroomDetail' && State.currentClassId) ? (classroomLabel(classById(State.currentClassId)||{}) || 'Clase') : ((id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id)));
-    const showInlineHead = !['subjectDetail','classSubjectDetail'].includes(id);
-    const headHtml = showInlineHead ? `<section class="t52-inline-head panel"><div><p class="eyebrow">Tribeca Aula</p><h1>${safe(title)}</h1></div></section>` : '';
-    main.innerHTML = `${headHtml}<section class="t52-inline-tool ${safe(id)}-inline">${bodyHtml}</section>`;
+    const headHtml = '';
+    main.innerHTML = `${headHtml}<section class="t52-inline-tool ${safe(id)}-inline teacher-section-clean-v147" data-section-title="${safe(title)}">${bodyHtml}</section>`;
 
     wireManagedForms(main);
     bindSubjectCards();
@@ -4021,10 +4020,43 @@ render();
 
   function studentProfilesContent(){
     const students = State.data.students || [];
-    const selected = students.find(s => s.id === State.selectedStudentId) || students[0] || null;
+    const selected = students.find(s => String(s.id) === String(State.selectedStudentId)) || students[0] || null;
     if(!State.selectedStudentId && selected) State.selectedStudentId = selected.id;
-    const studentList = groups(students).map(g => `<details class="t24-profile-group" open><summary>${safe(g.label)} <span>${g.items.length}</span></summary>${g.items.map(s => { const pause=pauseStatusText(s.id); return `<button type="button" class="t24-student-row ${selected?.id===s.id?'is-selected':''} ${pause?'is-paused-row':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}"><strong>${safe(displayName(s))}${pause?' <em class="pause-mini-badge">EN PAUSA</em>':''}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}${pause?' · '+safe(pause):''}</small></button>`; }).join('')}</details>`).join('');
-    return `<div class="t24-student-profiles"><section class="window-panel t24-profile-list"><h3>Alumnado</h3><p class="meta">Selecciona un perfil. Los cambios solo los puede guardar la profesora.</p><input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>${studentList || '<div class="empty-state">No hay alumnado cargado.</div>'}</section><section class="window-panel t24-profile-editor">${selected ? studentEditForm(selected) : '<div class="empty-state">Selecciona un alumno.</div>'}</section></div>`;
+    const active = students.filter(s=>!pauseStatusText(s.id)).length;
+    const paused = students.length - active;
+    const focusCount = students.filter(s=>focusModeEnabledForProfile(s)).length;
+    const withSchedule = students.filter(s=>(State.data.schedules||[]).some(x=>String(x.user_id)===String(s.id) && x.active!==false)).length;
+    const supportCount = students.filter(s=>supportSummary(s).flags.length).length;
+    const selectedFamily = selected ? String(selected.family_name || selected.family_group_id || '').trim() : '';
+    const list = groups(students).map(g => `<details class="profile-group-v147" open><summary><span>${safe(g.label)}</span><em>${g.items.length}</em></summary><div class="profile-card-grid-v147">${g.items.map(s => {
+      const pause=pauseStatusText(s.id);
+      const sup=supportSummary(s);
+      const photo=studentPhotoUrl(s);
+      const selectedClass=String(selected?.id||'')===String(s.id)?'is-selected':'';
+      const focus=focusModeEnabledForProfile(s);
+      const family=String(s.family_name || s.family_group_id || '').trim();
+      const schedCount=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(s.id) && x.active!==false).length;
+      return `<button type="button" class="profile-student-card-v147 ${selectedClass} ${pause?'is-paused':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)+' '+family).toLowerCase())}">
+        <span class="profile-avatar-v147">${photo?`<img src="${safe(photo)}" alt="">`:`${safe((displayName(s)||'?').slice(0,1).toUpperCase())}`}</span>
+        <span class="profile-card-main-v147"><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small><span>${family?`Familia: ${safe(family)}`:'Sin grupo familiar'} · ${schedCount} horario${schedCount===1?'':'s'}</span></span>
+        <span class="profile-card-badges-v147">${pause?`<em class="danger">Pausa</em>`:''}${focus?`<em>Concentración</em>`:''}${sup.flags.length?`<em>${safe(sup.flags[0])}</em>`:''}</span>
+      </button>`;
+    }).join('')}</div></details>`).join('');
+    return `<section class="teacher-profiles-v147">
+      <header class="finance-hero-clean-v146 profile-hero-v147 window-panel"><div><p class="eyebrow">Seguimiento pedagógico</p><h2>Perfiles del alumnado</h2><p>Fichas completas, horarios, apoyos, familia y datos profesionales en una vista limpia y fácil de revisar.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button></header>
+      <section class="profile-kpi-grid-v147">
+        <article><small>Total</small><strong>${students.length}</strong><span>perfiles activos</span></article>
+        <article><small>Con horario</small><strong>${withSchedule}</strong><span>alumnos con clases registradas</span></article>
+        <article class="${paused?'is-warn':''}"><small>Pausas</small><strong>${paused}</strong><span>perfiles temporalmente pausados</span></article>
+        <article><small>Apoyos</small><strong>${supportCount}</strong><span>con NEAE, NEE o notas relevantes</span></article>
+        <article><small>Modo concentración</small><strong>${focusCount}</strong><span>vista simplificada activa</span></article>
+      </section>
+      <section class="window-panel profile-toolbar-v147"><label>Buscar alumnado<input class="t16-search" type="search" placeholder="Filtrar por nombre, usuario, curso o familia..." data-t16-student-search></label>${selectedFamily?`<span class="profile-family-pill-v147">${safe(selectedFamily)}</span>`:''}</section>
+      <div class="profile-layout-v147">
+        <section class="window-panel profile-list-v147"><div class="section-heading"><h3>Alumnado</h3><span>${students.length}</span></div>${list || '<div class="empty-state">No hay alumnado cargado.</div>'}</section>
+        <section class="window-panel profile-editor-v147"><div class="section-heading"><h3>${selected?`Ficha de ${safe(displayName(selected))}`:'Ficha del alumnado'}</h3><span>${selected?safe(academicLine(selected)):''}</span></div>${selected ? studentEditForm(selected) : '<div class="empty-state">Selecciona un alumno.</div>'}</section>
+      </div>
+    </section>`;
   }
 
   function studentPhotoUrl(s={}){ return String(s.student_photo_url || s.photo_url || s.avatar_url || '').trim(); }

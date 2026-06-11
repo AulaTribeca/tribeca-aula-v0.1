@@ -14094,3 +14094,277 @@ body .hero-card p {
   .attendance-percent-v146{grid-column:2;text-align:left;}
   .attendance-month-grid-v146{grid-template-columns:1fr;}
 }
+
+
+/* Tribeca Aula v147 · secciones docentes sin cabeceras duplicadas y perfiles rehechos. */
+.t52-inline-head,
+.teacher-section-clean-v147 > .t52-inline-head{
+  display:none !important;
+}
+.teacher-section-clean-v147{
+  max-width:1440px;
+  margin:0 auto;
+  display:block;
+}
+.teacher-section-clean-v147 > .window-panel:first-child:not(.finance-hero-clean-v146),
+.teacher-section-clean-v147 > section:first-child.window-panel:not(.finance-hero-clean-v146){
+  border-radius:24px;
+}
+.teacher-profiles-v147{
+  display:grid;
+  gap:18px;
+  max-width:1440px;
+  margin:0 auto;
+}
+.profile-hero-v147{
+  border-left-color:#2f7655;
+}
+.profile-hero-v147 h2{
+  font-size:clamp(2rem,4vw,3.4rem);
+}
+.profile-kpi-grid-v147{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;
+}
+.profile-kpi-grid-v147 article{
+  border:1px solid rgba(20,64,39,.13);
+  border-radius:20px;
+  background:rgba(255,253,247,.94);
+  padding:16px;
+  box-shadow:0 12px 30px rgba(22,32,24,.06);
+}
+.profile-kpi-grid-v147 article.is-warn{border-color:#d6b15c;background:#fff8e6;}
+.profile-kpi-grid-v147 small{display:block;text-transform:uppercase;letter-spacing:.07em;font-size:.72rem;font-weight:900;color:#746b59;}
+.profile-kpi-grid-v147 strong{display:block;margin:.25rem 0;font-size:clamp(1.6rem,3vw,2.35rem);line-height:1;color:#0b3d22;}
+.profile-kpi-grid-v147 span{color:#665f52;font-weight:700;font-size:.9rem;}
+.profile-toolbar-v147{
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  gap:14px;
+}
+.profile-toolbar-v147 label{
+  flex:1;
+  display:grid;
+  gap:6px;
+  font-weight:950;
+  color:#123923;
+}
+.profile-toolbar-v147 input{
+  width:100%;
+  border-radius:14px;
+  border:1px solid rgba(24,63,42,.17);
+  padding:12px 14px;
+  background:#fff;
+  color:#162018;
+}
+.profile-family-pill-v147{
+  border-radius:999px;
+  padding:9px 13px;
+  background:#f1ead6;
+  color:#0b3d22;
+  font-weight:950;
+  white-space:nowrap;
+}
+.profile-layout-v147{
+  display:grid;
+  grid-template-columns:minmax(320px,440px) minmax(0,1fr);
+  gap:18px;
+  align-items:start;
+}
+.profile-list-v147,
+.profile-editor-v147{min-width:0;overflow:visible;}
+.profile-list-v147{display:grid;gap:12px;}
+.profile-group-v147{
+  border:1px solid rgba(20,64,39,.10);
+  border-radius:18px;
+  background:#fffdf7;
+  overflow:hidden;
+}
+.profile-group-v147 summary{
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 14px;
+  background:#f5efdd;
+  color:#123923;
+  font-weight:950;
+}
+.profile-group-v147 summary em{
+  font-style:normal;
+  border-radius:999px;
+  padding:4px 9px;
+  background:#e5eadf;
+  color:#0b3d22;
+}
+.profile-card-grid-v147{display:grid;gap:10px;padding:12px;}
+.profile-student-card-v147{
+  width:100%;
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  text-align:left;
+  border:1px solid rgba(20,64,39,.13);
+  border-radius:18px;
+  background:#fffdf7;
+  padding:12px;
+  cursor:pointer;
+  box-shadow:0 10px 22px rgba(22,32,24,.045);
+}
+.profile-student-card-v147:hover{box-shadow:0 16px 28px rgba(22,32,24,.08);transform:translateY(-1px);}
+.profile-student-card-v147.is-selected{border-color:#0b3d22;box-shadow:0 0 0 3px rgba(11,61,34,.12),0 16px 30px rgba(22,32,24,.09);}
+.profile-student-card-v147.is-paused{border-left:5px solid #b23b3b;background:#fff8f6;}
+.profile-avatar-v147{
+  width:48px;
+  height:48px;
+  border-radius:16px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg,#0b3d22,#2f7655);
+  color:#fff;
+  font-weight:950;
+  font-size:1.1rem;
+}
+.profile-avatar-v147 img{width:100%;height:100%;object-fit:cover;display:block;}
+.profile-card-main-v147{min-width:0;display:grid;gap:2px;}
+.profile-card-main-v147 strong{color:#102018;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.profile-card-main-v147 small,
+.profile-card-main-v147 span{color:#6a6255;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.84rem;}
+.profile-card-badges-v147{
+  grid-column:1 / -1;
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  padding-left:60px;
+}
+.profile-card-badges-v147 em{
+  font-style:normal;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#eaf1e8;
+  color:#0b3d22;
+  font-weight:950;
+  font-size:.76rem;
+}
+.profile-card-badges-v147 em.danger{background:#f5d9d5;color:#86291e;}
+.profile-editor-v147{display:grid;gap:14px;}
+.profile-editor-v147 > .section-heading{margin:0;}
+.profile-editor-v147 .premium-student-editor{
+  display:grid;
+  gap:16px;
+  max-width:100%;
+  grid-template-columns:1fr;
+}
+.profile-editor-v147 .t24-editor-head{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:16px;
+  border:1px solid rgba(20,64,39,.12);
+  border-radius:22px;
+  background:linear-gradient(135deg,#f4fbf5,#fffdf7);
+  min-height:auto;
+}
+.profile-editor-v147 .student-editor-photo{
+  flex:0 0 82px;
+  width:82px;
+  height:82px;
+  border-radius:24px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:#e8efe7;
+  margin:0;
+}
+.profile-editor-v147 .student-editor-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+.profile-editor-v147 .student-editor-photo span{font-size:2rem;font-weight:950;color:#0b3d22;}
+.profile-editor-v147 .clean-chip-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
+.profile-editor-v147 .clean-chip-row span{border-radius:999px;background:#edf3ea;color:#0b3d22;padding:5px 9px;font-weight:900;font-size:.78rem;}
+.profile-editor-v147 .premium-form-section,
+.profile-editor-v147 .teacher-option-drawer{
+  border:1px solid rgba(20,64,39,.12);
+  border-radius:20px;
+  background:#fffdf7;
+  box-shadow:0 10px 22px rgba(22,32,24,.035);
+  overflow:hidden;
+}
+.profile-editor-v147 .premium-form-section{padding:16px;}
+.profile-editor-v147 .teacher-option-drawer{padding:0;}
+.profile-editor-v147 .teacher-option-drawer summary{
+  cursor:pointer;
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  background:#f5efdd;
+  color:#0b3d22;
+  font-weight:950;
+}
+.profile-editor-v147 .teacher-option-drawer summary em{
+  font-style:normal;
+  border-radius:999px;
+  padding:4px 9px;
+  background:#e5eadf;
+  color:#0b3d22;
+  font-size:.76rem;
+}
+.profile-editor-v147 .teacher-option-drawer > .premium-form-section{border:0;border-radius:0;box-shadow:none;}
+.profile-editor-v147 .window-grid,
+.profile-editor-v147 .t143-personal-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:12px;
+  align-items:end;
+}
+.profile-editor-v147 label{min-width:0;}
+.profile-editor-v147 input,
+.profile-editor-v147 select,
+.profile-editor-v147 textarea{
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+.profile-editor-v147 .seasonal-schedule-columns{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:16px;
+}
+.profile-editor-v147 .t24-schedule-grid{
+  display:grid;
+  gap:10px;
+  max-height:none;
+  overflow:visible;
+}
+.profile-editor-v147 .sticky-form-actions{
+  position:sticky;
+  bottom:12px;
+  z-index:8;
+  border:1px solid rgba(20,64,39,.12);
+  border-radius:18px;
+  background:rgba(255,253,247,.96);
+  backdrop-filter:blur(8px);
+  padding:12px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+}
+.studentProfiles-inline .t52-inline-head,
+.payments-inline .t52-inline-head,
+.attendance-inline .t52-inline-head{display:none!important;}
+@media(max-width:1180px){
+  .profile-layout-v147{grid-template-columns:1fr;}
+}
+@media(max-width:720px){
+  .profile-toolbar-v147{align-items:stretch;flex-direction:column;}
+  .profile-hero-v147{flex-direction:column;align-items:flex-start;}
+  .profile-card-badges-v147{padding-left:0;}
+  .profile-editor-v147 .t24-editor-head{align-items:flex-start;flex-direction:column;}
+}
