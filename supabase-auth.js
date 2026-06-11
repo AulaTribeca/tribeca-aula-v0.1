@@ -48,6 +48,7 @@
     prefillPublicationKind: null,
     teacherTasksOpen: false,
     pendingTeacherTaskEdit: null,
+    scheduleSeason: localStorage.getItem('tribeca-schedule-season-v144') || 'school',
     historyNavigating: false,
     suppressHistoryPush: false
   };
@@ -1104,19 +1105,30 @@
     return {start:toIso(start), end:toIso(end)};
   }
   function weekEventsForTeacher(){
-    const {start,end}=teacherWeekBounds(new Date());
-    return relevantEvents().filter(e=>e.date>=start && e.date<=end).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')) || String(a.title||'').localeCompare(String(b.title||''),'es'));
+    const today=todayIso();
+    const end=addDays(new Date(),7).toISOString().slice(0,10);
+    return relevantEvents()
+      .filter(e=>String(e.date||'').slice(0,10)>=today && String(e.date||'').slice(0,10)<=end)
+      .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')) || String(a.title||'').localeCompare(String(b.title||''),'es'));
   }
   function classColorPalette(){
     return [
       {key:'forest', label:'Verde Tribeca', primary:'#103f24', secondary:'#2f6848', soft:'#eaf2e7'},
+      {key:'emerald', label:'Esmeralda', primary:'#0f5a3a', secondary:'#3b8a63', soft:'#e6f3ec'},
       {key:'blue', label:'Azul académico', primary:'#1e5a8a', secondary:'#2f74b5', soft:'#e8f1f8'},
+      {key:'navy', label:'Azul tinta', primary:'#143b5c', secondary:'#345f86', soft:'#e9f0f6'},
       {key:'violet', label:'Violeta sobrio', primary:'#5b3476', secondary:'#8a59a8', soft:'#f0e8f5'},
+      {key:'plum', label:'Ciruela', primary:'#67385f', secondary:'#9a638d', soft:'#f5e8f1'},
       {key:'teal', label:'Verde agua', primary:'#1f6f68', secondary:'#3f978c', soft:'#e7f3f1'},
+      {key:'cyan', label:'Azul verdoso', primary:'#276c78', secondary:'#5a99a5', soft:'#e6f3f5'},
       {key:'amber', label:'Dorado tierra', primary:'#7a5120', secondary:'#b9873f', soft:'#f5edde'},
+      {key:'ochre', label:'Ocre académico', primary:'#8a6525', secondary:'#c39a45', soft:'#f7f0dc'},
       {key:'rose', label:'Rosa arcilla', primary:'#7b3f4a', secondary:'#b76473', soft:'#f5e9ec'},
+      {key:'coral', label:'Coral suave', primary:'#8a4a35', secondary:'#c17860', soft:'#f6ece7'},
       {key:'slate', label:'Gris pizarra', primary:'#3f4b4f', secondary:'#6c7b80', soft:'#edf0f1'},
-      {key:'olive', label:'Oliva clásico', primary:'#556b2f', secondary:'#7f9651', soft:'#eef2e3'}
+      {key:'olive', label:'Oliva clásico', primary:'#556b2f', secondary:'#7f9651', soft:'#eef2e3'},
+      {key:'moss', label:'Musgo', primary:'#3f5f35', secondary:'#6f8f5d', soft:'#edf3e7'},
+      {key:'burgundy', label:'Burdeos', primary:'#713747', secondary:'#a85c70', soft:'#f4e8ec'}
     ];
   }
   function stableIndexFromString(value='', len=1){
@@ -1213,6 +1225,69 @@
     return `<article class="teacher-birthday-notice"><div><strong>🎂 Cumpleaños de hoy</strong><p>${rows.map(s=>{ const age=ageOnBirthday(s,date); return `${safe(displayName(s))}${age?` cumple ${age} años`:''}`; }).join(' · ')}</p></div><button type="button" class="secondary-btn compact-btn" data-t16-tool="studentProfiles">Ver perfil</button></article>`;
   }
 
+  function scheduleRecordSeason(row={}){
+    const raw=String(row.schedule_season || row.season || row.scheduleMode || row.mode || 'school').toLowerCase();
+    return raw==='summer' || raw==='verano' ? 'summer' : 'school';
+  }
+  function activeScheduleSeason(){
+    const raw=String(State.scheduleSeason || localStorage.getItem('tribeca-schedule-season-v144') || 'school').toLowerCase();
+    return raw==='summer' ? 'summer' : 'school';
+  }
+  function scheduleSeasonLabel(season=activeScheduleSeason()){
+    return season==='summer' ? 'modo verano' : 'modo curso escolar';
+  }
+  function setScheduleSeason(season='school'){
+    const next=String(season||'school')==='summer' ? 'summer' : 'school';
+    State.scheduleSeason=next;
+    try{ localStorage.setItem('tribeca-schedule-season-v144', next); }catch(_e){}
+    toast(next==='summer' ? 'Modo verano activado.' : 'Modo curso escolar activado.');
+    rerender();
+  }
+  window.TribecaToggleScheduleSeason=function(input,ev){
+    ev?.preventDefault?.();
+    ev?.stopPropagation?.();
+    setScheduleSeason(input?.checked ? 'summer' : 'school');
+    return false;
+  };
+  function teacherScheduleModeSwitch(){
+    const summer=activeScheduleSeason()==='summer';
+    return `<article class="teacher-season-switch-card"><div><strong>${summer?'Modo verano':'Modo curso escolar'}</strong><p>${summer?'Se usan los horarios de mañana registrados para verano.':'Se usan los horarios ordinarios del curso escolar.'}</p></div><label class="tribeca-switch"><input type="checkbox" ${summer?'checked':''} onchange="return window.TribecaToggleScheduleSeason(this,event)"><span></span></label></article>`;
+  }
+  function studentScheduleRows(studentId, season=activeScheduleSeason()){
+    return (State.data.schedules||[])
+      .filter(x=>String(x.user_id)===String(studentId) && x.active!==false && scheduleRecordSeason(x)===season)
+      .sort((a,b)=>Number(a.weekday||0)-Number(b.weekday||0) || String(a.start_time||'').localeCompare(String(b.start_time||'')));
+  }
+  function buildStudentScheduleFromFormData(fd, prefix='schoolSchedule', season='school'){
+    const weekdays=fd.getAll(`${prefix}Weekday`), starts=fd.getAll(`${prefix}Start`), ends=fd.getAll(`${prefix}End`), types=fd.getAll(`${prefix}Type`), notes=fd.getAll(`${prefix}Notes`);
+    return weekdays.map((w,i)=>({
+      weekday:Number(w),
+      start_time:starts[i]||null,
+      end_time:ends[i]||null,
+      class_type:types[i]||'group',
+      notes:notes[i]||'',
+      schedule_season:season,
+      season
+    })).filter(r=>r.weekday && r.start_time && r.end_time);
+  }
+  function scheduleRowsEditor(rows=[], prefix='schoolSchedule'){
+    const weekdayOptions = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    return Array.from({length:12}, (_,i)=>i).map(i=>{
+      const r=rows[i]||{};
+      return `<div class="schedule-row t24-schedule-row"><label>Día<select name="${prefix}Weekday"><option value="">Sin clase</option>${weekdayOptions.map((d,idx)=>`<option value="${idx+1}" ${Number(r.weekday)===idx+1?'selected':''}>${d}</option>`).join('')}</select></label><label>Inicio<input name="${prefix}Start" type="time" value="${safe(String(r.start_time||'').slice(0,5))}"></label><label>Fin<input name="${prefix}End" type="time" value="${safe(String(r.end_time||'').slice(0,5))}"></label><label>Tipo<select name="${prefix}Type"><option value="group" ${r.class_type==='group'?'selected':''}>Grupal</option><option value="individual" ${r.class_type==='individual'?'selected':''}>Individual</option></select></label><label>Notas<input name="${prefix}Notes" value="${safe(r.notes||'')}"></label></div>`;
+    }).join('');
+  }
+  function defaultPlanningSlots(season=activeScheduleSeason()){
+    return season==='summer'
+      ? [['09:00','10:00'],['10:00','11:00'],['11:00','12:00'],['12:00','13:00'],['13:00','14:00']]
+      : [['15:30','16:30'],['16:30','17:30'],['17:30','18:30'],['18:30','19:30'],['19:30','20:30'],['20:30','21:30']];
+  }
+  function schedulePlanningTable(season=activeScheduleSeason()){
+    const days=['LUNS','MARTES','MÉRCORES','XOVES','VENRES'];
+    const rows=defaultPlanningSlots(season);
+    const schedules=(State.data.schedules||[]).filter(r=>r.active!==false && scheduleRecordSeason(r)===season);
+    return `<table class="planning-pdf-table"><thead><tr><th></th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>${rows.map(([start,end])=>`<tr><th>${safe(start)}-${safe(end)}</th>${[1,2,3,4,5].map(day=>{ const items=schedules.filter(r=>Number(r.weekday)===day && String(r.start_time||'').slice(0,5)===start && String(r.end_time||'').slice(0,5)===end); return `<td>${items.map(r=>{ const st=(State.data.students||[]).find(s=>String(s.id)===String(r.user_id))||{}; return `<strong>${safe(displayName(st))}</strong><br><span>${safe(r.class_type==='individual'?'Individual':'Grupo')}</span>${r.notes?`<br><small>${safe(r.notes)}</small>`:''}`; }).join('<hr>')}</td>`; }).join('')}</tr>`).join('')}</tbody></table>`;
+  }
   function teacherWelcomePanel(){
     const today=new Date();
     const dateText=today.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -1223,7 +1298,7 @@
     const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state teacher-week-empty">No hay eventos previstos esta semana.</div>';
     const pending=todayTeacherTasks().length;
     const birthdayNotice=teacherBirthdayNotice(today);
-    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span>${birthdayNotice}</div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><article class="teacher-tasks-summary" data-t114-open-tasks role="button" tabindex="0" aria-label="Abrir tareas pendientes"><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</article></section>`;
+    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia</h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span>${birthdayNotice}${teacherScheduleModeSwitch()}</div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><article class="teacher-tasks-summary" data-t114-open-tasks role="button" tabindex="0" aria-label="Abrir tareas pendientes"><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</article></section>`;
   }
   function activeClassroomsQuickAccess(){
     const rows=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
@@ -1235,7 +1310,9 @@
     const tools=[
       ['newPublication','✍️','Nueva publicación','Crear anuncios o materiales y vincularlos a una clase, materia y unidad.'],
       ['teacherAlerts','⚠️','Alertas docentes','Suspensos, materias con dificultades, solicitudes de contraseña y avisos pendientes.'],
-      ['classOverview','📊','Vista general del aula','Cada grupo aparece en una tarjeta con alumnado y avisos básicos.'],
+      ['classOverview','📊','Vista general del aula','Cada grupo aparece en una tarjeta con alumnado, clases, asistencia y avisos básicos.'],
+      ['activityAnalytics','📈','Actividad del alumnado','Intentos, puntuaciones, repeticiones y alertas de mejora en actividades autocorregibles.'],
+      ['teacherDocuments','🧾','Documentos PDF','Recibís, históricos económicos, horario semanal, ficha de alumnado y documentos útiles.'],
       ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
       ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
       ['classrooms','🏫','Clases','Crear aulas permanentes por centro y curso, al estilo Google Classroom.'],
@@ -3101,7 +3178,7 @@ render();
     w.document.close();
   }
 
-  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
+  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     $('#profileMenu')?.setAttribute('hidden','');
@@ -3296,7 +3373,7 @@ render();
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
     if(id==='badges' || id==='assignBadge') return '<div class="empty-state">Este apartado ya no está disponible en Tribeca Aula.</div>';
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -3790,22 +3867,13 @@ render();
   function fieldArray(value){ if(Array.isArray(value)) return value.filter(Boolean); if(!value) return []; if(typeof value==='string'){ try{ const parsed=JSON.parse(value); if(Array.isArray(parsed)) return parsed.filter(Boolean); }catch(_e){} return value.split(/[;,]/).map(x=>x.trim()).filter(Boolean); } return []; }
   function supportSummary(s){ const nee=fieldArray(s.nee_types); const neae=fieldArray(s.neae_types); const health=fieldArray(s.health_conditions); const flags=[]; if(s.personalized_attention) flags.push('Atención personalizada'); if(nee.length) flags.push(`${nee.length} NEE`); if(neae.length) flags.push(`${neae.length} NEAE`); if(health.length) flags.push(`${health.length} condición/es registradas`); return {nee,neae,health,flags}; }
   function classOverviewContent(){
-    const students=State.data.students||[]; const gs=groups(students);
-    const totals=students.reduce((acc,s)=>{ const sup=supportSummary(s); acc.nee+=sup.nee.length?1:0; acc.neae+=sup.neae.length?1:0; acc.health+=sup.health.length?1:0; acc.attention+=s.personalized_attention?1:0; return acc; }, {nee:0,neae:0,health:0,attention:0});
-    const risky=students.filter(s=>{
-      const fails=(State.data.grades||[]).filter(x=>String(x.user_id||x.student_id)===String(s.id)&&Number(x.grade)<5).length;
-      const diff=(State.data.difficulties||[]).filter(x=>String(x.user_id)===String(s.id)).length;
-      return fails || diff || pauseStatusText(s.id) || supportSummary(s).flags.length;
-    }).length;
-    return `<section class="class-overview-premium clean-overview">
-      <div class="overview-hero window-panel clean-hero">
-        <div><p class="eyebrow">Vista docente</p><h3>Vista general del aula</h3><p class="meta">Resumen útil por grupos. Abre cada grupo solo cuando necesites detalle.</p></div>
-        <div class="overview-kpis clean-kpis"><span><strong>${students.length}</strong> alumnado</span><span><strong>${gs.length}</strong> grupos</span><span><strong>${risky}</strong> con seguimiento</span><span><strong>${totals.neae}</strong> NEAE</span></div>
-      </div>
-      <div class="overview-group-grid clean-overview-grid">
-        ${gs.map((g,idx)=>{ const needCount=g.items.filter(s=>supportSummary(s).flags.length || pauseStatusText(s.id)).length; const failCount=g.items.reduce((n,s)=>n+(State.data.grades||[]).filter(x=>String(x.user_id||x.student_id)===String(s.id)&&Number(x.grade)<5).length,0); return `<details class="overview-group-card window-panel clean-group-card" ${idx===0?'open':''}><summary><div><h3>${safe(g.label)}</h3><p>${g.items.length} alumno/s · ${needCount} seguimiento/s · ${failCount} suspenso/s</p></div><span>${g.items.length}</span></summary><div class="overview-student-list clean-student-list">${g.items.map(st=>{ const sup=supportSummary(st); const fails=(State.data.grades||[]).filter(x=>String(x.user_id||x.student_id)===String(st.id)&&Number(x.grade)<5).length; const diff=(State.data.difficulties||[]).filter(x=>String(x.user_id)===String(st.id)).length; const pause=pauseStatusText(st.id); return `<div class="overview-student-row ${pause?'is-paused-row':''}"><div><strong>${safe(displayName(st))}</strong><small>${safe(st.username||'')} · ${safe(st.course||'')}${pause?' · EN PAUSA':''}</small></div><div class="overview-tags">${pause?`<em class="tag-pause">${safe(pause)}</em>`:''}${fails?`<em class="tag-danger">${fails} suspenso/s</em>`:''}${diff?`<em>${diff} dificultad/es</em>`:''}${sup.flags.slice(0,2).map(f=>`<em class="tag-support">${safe(f)}</em>`).join('')||(!pause&&!fails&&!diff?'<em class="tag-muted">Sin observaciones</em>':'')}</div></div>`; }).join('')}</div></details>`; }).join('')||'<div class="empty-state">No hay alumnado cargado.</div>'}
-      </div>
-    </section>`;
+    const students=State.data.students||[];
+    const classes=(State.data.classrooms||[]).filter(c=>c.active!==false && !c.hidden);
+    const gs=groups(students);
+    const month=State.billingMonth||defaultBillingMonth();
+    const totalDue=students.reduce((sum,s)=>sum+(paymentPausedForMonth(s.id,month)?0:Number(calculatePaymentAmount(s.id,month).amount||0)),0);
+    const alerts=students.filter(s=>attemptAlertForStudent(s.id).tone==='danger' || pauseStatusText(s.id) || supportSummary(s).flags.length).length;
+    return `<section class="class-overview-premium clean-overview overview-v144"><div class="overview-hero window-panel clean-hero"><div><p class="eyebrow">Vista docente</p><h3>Vista general del aula</h3><p class="meta">Resumen operativo de alumnado, clases, asistencia, pagos y actividad autocorregible.</p></div><div class="overview-kpis clean-kpis"><span><strong>${students.length}</strong> alumnado</span><span><strong>${classes.length}</strong> clases activas</span><span><strong>${alerts}</strong> seguimientos</span><span><strong>${money(totalDue)}</strong> previsto</span></div></div><div class="overview-action-grid-v144"><button type="button" data-t16-tool="studentProfiles">Perfiles</button><button type="button" data-t16-tool="attendance">Asistencia</button><button type="button" data-t16-tool="payments">Pagos</button><button type="button" data-t16-tool="activityAnalytics">Actividad</button><button type="button" data-t16-tool="teacherDocuments">PDF</button></div><div class="overview-group-grid clean-overview-grid">${gs.map((g,idx)=>{ const needCount=g.items.filter(s=>supportSummary(s).flags.length || pauseStatusText(s.id) || attemptAlertForStudent(s.id).tone==='danger').length; return `<details class="overview-group-card window-panel clean-group-card" ${idx===0?'open':''}><summary><div><h3>${safe(g.label)}</h3><p>${g.items.length} alumno/s · ${needCount} seguimiento/s</p></div><span>${g.items.length}</span></summary><div class="overview-student-list clean-student-list">${g.items.map(st=>{ const sup=supportSummary(st); const pause=pauseStatusText(st.id); const al=attemptAlertForStudent(st.id); const calc=calculatePaymentAmount(st.id,month); return `<div class="overview-student-row ${pause?'is-paused-row':''}"><div><strong>${safe(displayName(st))}</strong><small>${safe(st.username||'')} · ${safe(st.course||'')}${pause?' · EN PAUSA':''}</small></div><div class="overview-tags">${pause?`<em class="tag-pause">${safe(pause)}</em>`:''}<em class="tag-${safe(al.tone)}">${safe(al.label)}</em><em>${safe(money(calc.amount))}</em>${sup.flags.slice(0,2).map(f=>`<em class="tag-support">${safe(f)}</em>`).join('')}</div></div>`; }).join('')}</div></details>`; }).join('')||'<div class="empty-state">No hay alumnado cargado.</div>'}</div></section>`;
   }
   function assignBadgeContent(){
     const students=State.data.students||[]; const grouped=groups(students);
@@ -3847,6 +3915,56 @@ render();
     rerender();
   }
   async function resolveClaim(id, ok){ const claim=(State.data.badgeClaims||[]).find(c=>c.id===id); if(!claim) return; await maybe(table('badge_claim_requests').update({status:ok?'approved':'rejected', resolved_at:new Date().toISOString(), resolved_by:State.profile.id}).eq('id',id)); if(ok) await saveUserBadgesWithoutDuplicates([{user_id:claim.user_id,badge_code:claim.badge_code,badge_name:badgeName(claim.badge_code),assigned_by:State.profile.id}]); await loadData(true); toast(ok?'Insignia aprobada.':'Solicitud rechazada.'); rerender(); }
+
+  function materialById(id){ return (State.data.materials||[]).find(m=>String(m.id)===String(id)) || {}; }
+  function attemptRowsForStudent(userId=''){
+    return (State.data.examAttempts||[]).filter(a=>!userId || String(a.user_id)===String(userId)).sort((a,b)=>String(b.completed_at||b.created_at||'').localeCompare(String(a.completed_at||a.created_at||'')));
+  }
+  function attemptAlertForStudent(userId=''){
+    const rows=attemptRowsForStudent(userId);
+    if(!rows.length) return {tone:'muted', label:'Sin intentos', detail:'Todavía no ha realizado actividades autocorregibles.'};
+    const byMat=new Map(); rows.forEach(a=>{ const k=String(a.material_id||a.title||''); if(!byMat.has(k)) byMat.set(k, []); byMat.get(k).push(a); });
+    let alerts=[];
+    byMat.forEach((items,k)=>{ const sorted=items.slice().sort((a,b)=>String(a.completed_at||'').localeCompare(String(b.completed_at||''))); const last=sorted[sorted.length-1]; const scores=sorted.map(x=>Number(x.score||0)); const lastScore=Number(last?.score||0); const best=Math.max(...scores); if(lastScore<5) alerts.push('última nota baja'); if(sorted.length>=3 && best<6) alerts.push('repite sin consolidar'); if(sorted.length>=3 && scores[scores.length-1] <= scores[0]) alerts.push('sin mejora clara'); });
+    if(alerts.length) return {tone:'danger', label:'Revisar', detail:[...new Set(alerts)].join(' · ')};
+    const avg=rows.reduce((s,a)=>s+Number(a.score||0),0)/rows.length;
+    return avg>=7 ? {tone:'ok', label:'Buen progreso', detail:`Media ${avg.toFixed(2)}/10 en ${rows.length} intento(s).`} : {tone:'warn', label:'Seguimiento', detail:`Media ${avg.toFixed(2)}/10 en ${rows.length} intento(s).`};
+  }
+  function activityAnalyticsContent(){
+    const students=State.data.students||[];
+    const selected=students.find(s=>s.id===State.selectedStudentId)||students[0];
+    if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
+    const all=State.data.examAttempts||[];
+    const low=all.filter(a=>Number(a.score||0)<5).length;
+    const repeated=[...new Set(all.map(a=>`${a.user_id}:${a.material_id}`).filter(Boolean))].filter(k=>{ const [u,m]=k.split(':'); return all.filter(a=>String(a.user_id)===u && String(a.material_id)===m).length>=3; }).length;
+    const selectedRows=selected?attemptRowsForStudent(selected.id):[];
+    return `<section class="activity-analytics-v144"><div class="window-panel clean-hero activity-hero-v144"><div><p class="eyebrow">Actividad autocorregible</p><h2>Seguimiento de intentos y calificaciones</h2><p>Consulta cuántas veces realiza cada actividad, qué puntuación obtiene y cuándo conviene intervenir.</p></div><div class="overview-kpis clean-kpis"><span><strong>${all.length}</strong> intentos</span><span><strong>${low}</strong> notas bajas</span><span><strong>${repeated}</strong> repeticiones</span></div></div><div class="teacher-workspace-grid"><section class="window-panel payments-students t54-student-picker"><h3>Alumnado</h3><input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>${groups(students).map(g=>`<details open><summary>${safe(g.label)}</summary>${g.items.map(s=>{ const al=attemptAlertForStudent(s.id); return `<button type="button" class="t16-student-row is-${safe(al.tone)} ${selected?.id===s.id?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+s.username+' '+academicLine(s)).toLowerCase())}"><span>${safe(displayName(s))}</span><small>${safe(al.label)} · ${safe(al.detail)}</small></button>`; }).join('')}</details>`).join('')}</section><section class="window-panel activity-detail-v144"><h3>${selected?safe(displayName(selected)):'Selecciona un alumno'}</h3>${selected?activityStudentAttemptsTable(selectedRows):'<div class="empty-state">Selecciona un alumno para ver su actividad.</div>'}</section></div></section>`;
+  }
+  function activityStudentAttemptsTable(rows=[]){
+    if(!rows.length) return '<div class="empty-state">Este alumno todavía no tiene intentos guardados.</div>';
+    return `<table class="premium-table activity-attempt-table"><thead><tr><th>Fecha</th><th>Materia</th><th>Unidad</th><th>Actividad</th><th>Nota</th><th>Intento</th></tr></thead><tbody>${rows.map((a,idx)=>{ const mat=materialById(a.material_id); const same=rows.filter(x=>String(x.material_id||x.title)===String(a.material_id||a.title)); const attemptNo=same.slice().reverse().findIndex(x=>String(x.id||x.completed_at)===String(a.id||a.completed_at))+1 || (same.length-idx); const score=Number(a.score||0); return `<tr class="${score<5?'is-low-score':''}"><td>${safe(fmtDT(a.completed_at||a.created_at||''))}</td><td>${safe(a.subject||mat.subject||'')}</td><td>${safe(a.unit_title||mat.unit_title||mat.unit||'')}</td><td>${safe(a.title||mat.title||'Actividad')}</td><td><strong>${score.toFixed(2)}/10</strong></td><td>${attemptNo}</td></tr>`; }).join('')}</tbody></table>`;
+  }
+  function teacherDocumentsContent(){
+    const month=State.billingMonth||defaultBillingMonth();
+    const selected=(State.data.students||[]).find(s=>s.id===State.selectedStudentId)||(State.data.students||[])[0];
+    const season=activeScheduleSeason();
+    return `<section class="teacher-documents-v144 teacher-documents-v144b"><div class="window-panel clean-hero"><div><p class="eyebrow">Documentos rápidos</p><h2>Descargas y plantillas PDF</h2><p>Genera documentos limpios con estética Tribeca desde los datos actuales del aula. Activo: <strong>${safe(scheduleSeasonLabel(season))}</strong>.</p></div>${teacherScheduleModeSwitch()}</div><div class="document-card-grid-v144"><article class="window-panel document-card-v144"><h3>Pagos y recibís</h3><p>Recibís e históricos mensual, trimestral, anual, total, por alumno o por familia.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-month',{month:'${safe(month)}'})">Histórico mensual</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-year',{month:'${safe(month)}'})">Histórico anual</button>${selected?`<button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(selected.id)}','${safe(month)}')">Recibí alumno seleccionado</button>`:''}</div></article><article class="window-panel document-card-v144"><h3>Planificario con horas</h3><p>Tabla semanal limpia basada en el planificario de Tribeca. Incluye modo curso escolar o modo verano.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'school'})">Planning curso escolar</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'summer'})">Planning verano</button></div></article><article class="window-panel document-card-v144"><h3>Ficha persoal do alumnado</h3><p>Formulario imprimible para familias, con datos persoais, familiares, académicos y hoja médica.</p><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('student-form')">Descargar ficha en blanco</button></article><article class="window-panel document-card-v144"><h3>Seguimiento pedagógico</h3><p>Plantilla para tutoría, objetivos, acuerdos y evolución.</p><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('pedagogical-followup')">Descargar plantilla</button></article></div></section>`;
+  }
+  function tribecaPrintableShell(title='', body=''){
+    const today=new Date().toLocaleDateString('es-ES');
+    return `<html><head><title>${safe(title)}</title><style>@page{margin:16mm}body{font-family:Inter,Arial,sans-serif;color:#172018;background:#fff;font-size:12px}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #b99a3b;padding-bottom:12px;margin-bottom:20px}.brand strong{font-family:Georgia,serif;font-size:24px;color:#0b3d22}.brand span{display:block;color:#766b56}.tag{border:1px solid #d8caa5;border-radius:999px;padding:6px 10px;background:#fbf7ea;color:#0b3d22;font-weight:800}h1{font-family:Georgia,serif;color:#0b3d22;margin:0 0 12px}h2{font-size:15px;color:#0b3d22;border-bottom:1px solid #e5dcc6;padding-bottom:5px;margin-top:18px}table{width:100%;border-collapse:collapse;margin:8px 0 14px}.planning-pdf-table th,.planning-pdf-table td{height:54px}.planning-pdf-table td{font-size:11px}th,td{border:1px solid #e3d8bf;padding:7px;text-align:left;vertical-align:top}th{background:#f7f1e1;color:#0b3d22}.field{border:1px solid #e3d8bf;border-radius:10px;min-height:34px;margin:6px 0 10px;padding:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:#6c6558}.sign{margin-top:35px;display:grid;grid-template-columns:1fr 1fr;gap:30px}.line{border-top:1px solid #172018;padding-top:6px}</style></head><body><header class="head"><div class="brand"><strong>Tribeca Academia</strong><span>Documento generado desde Tribeca Aula</span></div><span class="tag">${safe(today)}</span></header><main>${body}</main></body></html>`;
+  }
+  window.TribecaPrintTribecaDocument=function(kind, opts={}){
+    const month=opts.month||State.billingMonth||defaultBillingMonth();
+    let title='Documento Tribeca'; let body='';
+    if(kind==='payments-month'){ title='Histórico mensual de pagos'; body=`<h1>${title}</h1><p class="muted">Mes: ${safe(monthLabel(month))}</p>${paymentSummary(month)}`; }
+    else if(kind==='payments-year'){ const y=String(month).slice(0,4)||String(new Date().getFullYear()); title='Histórico anual de pagos'; const months=Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,'0')}`); body=`<h1>${title}</h1><p class="muted">Año ${safe(y)}</p>${months.map(m=>`<h2>${safe(monthLabel(m))}</h2>${paymentSummary(m)}`).join('')}`; }
+    else if(kind==='schedule'){ const season=opts.season||activeScheduleSeason(); title=season==='summer'?'Planificario de verano':'Planificario curso escolar'; body=`<h1>${title}</h1><p class="muted">${season==='summer'?'Horario de mañana para clases de verano.':'Horario ordinario de curso escolar.'}</p>${schedulePlanningTable(season)}`; }
+    else if(kind==='student-form'){ title='Ficha persoal do alumnado'; body=`<h1>${title}</h1><p class="muted">Tribeca Apoio ao estudo · Rúa Rafael Juan 33 · 15130 Corcubión (A Coruña) · 647 961 161</p><h2>Datos persoais</h2><div class="grid"><div class="field">Apelidos:</div><div class="field">Nome:</div><div class="field">DNI / NIE:</div><div class="field">Data de nacemento:</div><div class="field">Enderezo: rúa, número, andar, letra</div><div class="field">Código postal e localidade:</div><div class="field">Provincia:</div><div class="field">Teléfono móbil:</div></div><h2>Datos familiares</h2><div class="grid"><div class="field">Pai / titor, idade e profesión:</div><div class="field">Nai / titora, idade e profesión:</div><div class="field">Teléfonos de contacto:</div><div class="field">Número de irmáns e lugar que ocupa:</div></div><div class="field">Vives cos teus pais ou titores legais?  ☐ SI   ☐ NON</div><div class="field">Outros familiares ou persoas que viven contigo:</div><div class="field">Situacións especiais na familia que poidan influír nos estudos:</div><h2>Datos académicos</h2><div class="grid"><div class="field">Centro de estudos:</div><div class="field">Curso:</div></div><div class="field">Materias con dificultades:</div><div class="field">Repetiches curso algunha vez? ☐ SI ☐ NON. Curso e motivo:</div><div class="field">Materias habitualmente suspensas:</div><div class="field">Que che gustaría estudar no futuro?</div><div class="field">Realizas outros estudos ou actividades fóra de Tribeca? Cal/es?</div><div class="field">Que outra formación complementaria desexarías recibir en Tribeca?</div><h2>Folla de información médica</h2><div class="field">Alerxias, medicación ou información médica relevante:</div><div class="field">Necesidades educativas, atención específica ou observacións pedagóxicas:</div><div class="sign"><div class="line">Firma da familia</div><div class="line">Data</div></div>`; }
+    else { title='Seguimiento pedagógico'; body=`<h1>${title}</h1><div class="grid"><div class="field">Alumno/a:</div><div class="field">Fecha:</div></div><h2>Objetivos</h2><div class="field"></div><h2>Trabajo realizado</h2><div class="field"></div><h2>Observaciones</h2><div class="field"></div><h2>Acuerdos y próximos pasos</h2><div class="field"></div>`; }
+    const w=window.open('', '_blank'); if(!w) return toast('No se pudo abrir la ventana de impresión.'); w.document.write(tribecaPrintableShell(title, body)); w.document.close(); setTimeout(()=>w.print(),250); return false;
+  };
+
   function passwordRequestsContent(){ const rows=State.data.passwordRequests||[]; return `<section class="window-panel"><h3>Solicitudes de recuperación de contraseña</h3>${rows.length?rows.map(r=>`<article class="list-item"><strong>${safe(r.username||r.display_name)}</strong><p>${safe(r.display_name||'')} · ${safe(r.status||'pending')}</p><small>${fmtDT(r.created_at)}</small><button data-t16-pass-done="${safe(r.id)}">Marcar como atendida</button></article>`).join(''):'<div class="empty-state">No hay solicitudes pendientes.</div>'}</section>`; }
 
   function studentProfilesContent(){
@@ -3861,15 +3979,14 @@ render();
   function birthDateInputValue(value=''){ const raw=String(value||'').trim(); if(!raw) return ''; return raw.slice(0,10); }
 
   function studentEditForm(s){
-    const sched = (State.data.schedules || []).filter(x => x.user_id === s.id && x.active !== false);
-    const weekdayOptions = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    const schedAll = (State.data.schedules || []).filter(x => x.user_id === s.id && x.active !== false);
+    const schoolSched = schedAll.filter(x=>scheduleRecordSeason(x)==='school');
+    const summerSched = schedAll.filter(x=>scheduleRecordSeason(x)==='summer');
     const selectedNee = Array.isArray(s.nee_types) ? s.nee_types : [];
     const selectedNeae = Array.isArray(s.neae_types) ? s.neae_types : [];
     const selectedHealth = Array.isArray(s.health_conditions) ? s.health_conditions : [];
-    const scheduleRows = Array.from({length:12}, (_,i) => i).map(i => {
-      const r = sched[i] || {};
-      return `<div class="schedule-row t24-schedule-row"><label>Día<select name="scheduleWeekday"><option value="">Sin clase</option>${weekdayOptions.map((d,idx)=>`<option value="${idx+1}" ${Number(r.weekday)===idx+1?'selected':''}>${d}</option>`).join('')}</select></label><label>Inicio<input name="scheduleStart" type="time" value="${safe(String(r.start_time||'').slice(0,5))}"></label><label>Fin<input name="scheduleEnd" type="time" value="${safe(String(r.end_time||'').slice(0,5))}"></label><label>Tipo<select name="scheduleType"><option value="group" ${r.class_type==='group'?'selected':''}>Grupal</option><option value="individual" ${r.class_type==='individual'?'selected':''}>Individual</option></select></label><label>Notas<input name="scheduleNotes" value="${safe(r.notes||'')}"></label></div>`;
-    }).join('');
+    const scheduleRows = scheduleRowsEditor(schoolSched, 'schoolSchedule');
+    const summerScheduleRows = scheduleRowsEditor(summerSched, 'summerSchedule');
     const checks = (name, items, selected) => items.map(x=>`<label><input type="checkbox" name="${name}" value="${safe(x)}" ${selected.includes(x)?'checked':''}> <span>${safe(x)}</span></label>`).join('');
     const pause=pauseStatusText(s.id);
     const sup=supportSummary(s);
@@ -3889,16 +4006,20 @@ render();
         <div class="window-grid"><label>Nombre<input name="firstName" value="${safe(s.first_name||firstPart(s.full_name))}"></label><label>Apellidos<input name="lastName" value="${safe(s.last_name||lastPart(s.full_name))}"></label></div>
         <div class="window-grid"><label>Nombre completo<input name="fullName" value="${safe(s.full_name && !/^demo\b/i.test(s.full_name) ? s.full_name : displayName(s))}"></label><label>Usuario<input name="username" value="${safe(s.username||'')}"></label></div>
         <div class="window-grid"><label>Centro<select name="center">${options(centers,s.center)}</select></label><label>Etapa<select name="stage">${options(stages,s.stage)}</select></label><label>Curso<select name="course">${options(dynamicCourses(),s.course)}</select></label></div>
-        <div class="window-grid t143-personal-grid"><label>Fecha de nacimiento<input name="birthDate" type="date" value="${safe(birthDateInputValue(s.birth_date))}"></label><label>Foto del alumno (URL)<input name="studentPhotoUrl" type="url" value="${safe(photoUrl)}" placeholder="https://..."></label></div>
+        <div class="window-grid t143-personal-grid"><label>Fecha de nacimiento<input name="birthDate" type="date" value="${safe(birthDateInputValue(s.birth_date))}"></label><label>Foto del alumno (URL o archivo)<input name="studentPhotoUrl" type="url" value="${safe(photoUrl)}" placeholder="https://... o sube una imagen"></label></div>
+        <label class="publication-upload-card student-photo-upload-v144"><strong>Subir foto desde el ordenador</strong><small>PNG, JPG o WebP. Límite recomendado: 350 KB.</small><input name="studentPhotoFile" type="file" accept="image/png,image/jpeg,image/webp"><span class="attachment-preview-pill" data-student-photo-file-name>Ningún archivo seleccionado.</span></label>
       </section>
       <details class="teacher-option-drawer" open><summary><span>Datos familiares y personales</span><em>Privado</em></summary>
-        <section class="premium-form-section"><div class="window-grid"><label>Nombre y apellidos del padre / tutor 1<input name="fatherFullName" value="${safe(s.father_full_name||'')}"></label><label>Nombre y apellidos de la madre / tutora 2<input name="motherFullName" value="${safe(s.mother_full_name||'')}"></label></div><label>Dirección<textarea name="studentAddress" rows="2">${safe(s.address||'')}</textarea></label></section>
+        <section class="premium-form-section"><div class="window-grid"><label>Nombre y apellidos del padre / tutor 1<input name="fatherFullName" value="${safe(s.father_full_name||'')}"></label><label>Nombre y apellidos de la madre / tutora 2<input name="motherFullName" value="${safe(s.mother_full_name||'')}"></label></div><div class="window-grid"><label>Teléfono principal de familia<input name="familyPhone" value="${safe(s.family_phone||'')}"></label><label>Teléfono de emergencia<input name="emergencyPhone" value="${safe(s.emergency_phone||'')}"></label></div><div class="window-grid"><label>Email familiar<input name="familyEmail" type="email" value="${safe(s.family_email||'')}"></label><label>Contacto preferente<input name="preferredContact" value="${safe(s.preferred_contact||'')}"></label></div><div class="window-grid"><label>Grupo familiar / hermanos<input name="familyGroupId" value="${safe(s.family_group_id||'')}" placeholder="Ej.: familia_wrona"></label><label>Nombre visible de familia<input name="familyName" value="${safe(s.family_name||'')}" placeholder="Ej.: Familia Wrona"></label></div><label>Dirección<textarea name="studentAddress" rows="2">${safe(s.address||'')}</textarea></label></section>
       </details>
       <details class="teacher-option-drawer" open><summary><span>Contacto e itinerario</span><em>Datos útiles</em></summary>
         <section class="premium-form-section"><div class="window-grid"><label>Email interno<input name="authEmail" type="email" value="${safe(s.auth_email||'')}"></label><label>Email personal<input name="personalEmail" type="email" value="${safe(s.personal_email||'')}"></label></div><label>Modalidad / itinerario<input name="track" value="${safe(s.track||'')}"></label></section>
       </details>
-      <details class="teacher-option-drawer"><summary><span>Horario de asistencia</span><em>${sched.length} hueco${sched.length===1?'':'s'}</em></summary>
-        <section class="premium-form-section"><p class="meta">Días y horas para asistencia mensual y cálculo económico.</p><div class="t24-schedule-grid">${scheduleRows}</div></section>
+      <details class="teacher-option-drawer" open><summary><span>Horarios de asistencia</span><em>${schoolSched.length} curso · ${summerSched.length} verano</em></summary>
+        <section class="premium-form-section seasonal-schedule-editor"><p class="meta">Puedes registrar horarios de curso escolar y horarios de verano por separado. Cambiar uno no modifica el otro.</p><div class="seasonal-schedule-columns"><article><h5>Curso escolar</h5><p class="meta">Horario ordinario de tarde.</p><div class="t24-schedule-grid">${scheduleRows}</div></article><article><h5>Verano</h5><p class="meta">Horario especial de mañana.</p><div class="t24-schedule-grid">${summerScheduleRows}</div></article></div></section>
+      </details>
+      <details class="teacher-option-drawer"><summary><span>Perfil pedagógico profesional</span><em>Seguimiento</em></summary>
+        <section class="premium-form-section"><div class="window-grid"><label>Tutor/a del centro educativo<input name="schoolTutor" value="${safe(s.school_tutor||'')}"></label><label>Motivo principal de apoyo<input name="supportReason" value="${safe(s.support_reason||'')}"></label></div><label>Objetivos pedagógicos<textarea name="learningGoals" rows="3">${safe(s.learning_goals||'')}</textarea></label><label>Observaciones de evaluación inicial<textarea name="initialAssessment" rows="3">${safe(s.initial_assessment||'')}</textarea></label><label>Indicaciones familiares o coordinación externa<textarea name="familyCoordination" rows="3">${safe(s.family_coordination||'')}</textarea></label><label>Notas sensibles o clínicas relevantes para la intervención educativa<textarea name="diagnosisNotes" rows="3">${safe(s.diagnosis_notes||'')}</textarea></label></section>
       </details>
       <details class="teacher-option-drawer"><summary><span>Atención personalizada, NEAE y NEE</span><em>${sup.flags.length||0} indicador${sup.flags.length===1?'':'es'}</em></summary>
         <section class="premium-form-section attention-section t34-attention-section"><div class="support-note"><strong>Clasificación correcta:</strong> las NEE forman parte de las NEAE. Registra solo lo relevante para la atención educativa.</div><label class="check-line attention-main"><input type="checkbox" name="personalizedAttention" ${s.personalized_attention?'checked':''}> Requiere atención personalizada o adaptación</label><div class="support-needs-grid t24-support-grid t34-support-grid"><fieldset class="support-box support-box-nee"><legend>NEE</legend><div class="support-checks">${checks('neeTypes', neeTypes, selectedNee)}</div></fieldset><fieldset class="support-box support-box-neae"><legend>NEAE</legend><div class="support-checks">${checks('neaeTypes', neaeTypes, selectedNeae)}</div></fieldset><fieldset class="support-box support-box-health"><legend>Condiciones relevantes</legend><div class="support-checks">${checks('healthConditions', healthConditions, selectedHealth)}</div></fieldset></div><label>Observaciones privadas<textarea name="observations" rows="5">${safe(s.observations||'')}</textarea></label></section>
@@ -3922,9 +4043,11 @@ render();
     const last = String(fd.get('lastName') || '').trim();
     const username = String(fd.get('username') || '').trim().toLowerCase();
     const full = String(fd.get('fullName') || `${first} ${last}`.trim() || knownStudentNames[username] || username).trim();
-    const weekdays = fd.getAll('scheduleWeekday'), starts = fd.getAll('scheduleStart'), ends = fd.getAll('scheduleEnd'), types = fd.getAll('scheduleType'), notes = fd.getAll('scheduleNotes');
-    const schedule = weekdays.map((w,i)=>({ weekday:Number(w), start_time:starts[i]||null, end_time:ends[i]||null, class_type:types[i]||'group', notes:notes[i]||'' })).filter(r => r.weekday && r.start_time && r.end_time);
-    return { id, first_name:first, last_name:last, full_name:full, username, auth_email:String(fd.get('authEmail')||'').trim()||null, personal_email:String(fd.get('personalEmail')||'').trim()||null, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, track:String(fd.get('track')||'').trim()||null, birth_date:String(fd.get('birthDate')||'').trim()||null, student_photo_url:String(fd.get('studentPhotoUrl')||'').trim()||null, father_full_name:String(fd.get('fatherFullName')||'').trim()||null, mother_full_name:String(fd.get('motherFullName')||'').trim()||null, address:String(fd.get('studentAddress')||'').trim()||null, nee_types:fd.getAll('neeTypes'), neae_types:fd.getAll('neaeTypes'), health_conditions:fd.getAll('healthConditions'), observations:fd.get('observations')||'', personalized_attention:!!fd.get('personalizedAttention'), focus_mode_enabled:!!fd.get('focusModeEnabled'), schedule };
+    const schedule = [
+      ...buildStudentScheduleFromFormData(fd, 'schoolSchedule', 'school'),
+      ...buildStudentScheduleFromFormData(fd, 'summerSchedule', 'summer')
+    ];
+    return { id, first_name:first, last_name:last, full_name:full, username, auth_email:String(fd.get('authEmail')||'').trim()||null, personal_email:String(fd.get('personalEmail')||'').trim()||null, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, track:String(fd.get('track')||'').trim()||null, birth_date:String(fd.get('birthDate')||'').trim()||null, student_photo_url:String(fd.get('studentPhotoUrl')||'').trim()||null, father_full_name:String(fd.get('fatherFullName')||'').trim()||null, mother_full_name:String(fd.get('motherFullName')||'').trim()||null, family_phone:String(fd.get('familyPhone')||'').trim()||null, emergency_phone:String(fd.get('emergencyPhone')||'').trim()||null, family_email:String(fd.get('familyEmail')||'').trim()||null, preferred_contact:String(fd.get('preferredContact')||'').trim()||null, family_group_id:String(fd.get('familyGroupId')||'').trim()||null, family_name:String(fd.get('familyName')||'').trim()||null, address:String(fd.get('studentAddress')||'').trim()||null, school_tutor:String(fd.get('schoolTutor')||'').trim()||null, support_reason:String(fd.get('supportReason')||'').trim()||null, learning_goals:String(fd.get('learningGoals')||'').trim()||null, initial_assessment:String(fd.get('initialAssessment')||'').trim()||null, family_coordination:String(fd.get('familyCoordination')||'').trim()||null, diagnosis_notes:String(fd.get('diagnosisNotes')||'').trim()||null, nee_types:fd.getAll('neeTypes'), neae_types:fd.getAll('neaeTypes'), health_conditions:fd.getAll('healthConditions'), observations:fd.get('observations')||'', personalized_attention:!!fd.get('personalizedAttention'), focus_mode_enabled:!!fd.get('focusModeEnabled'), schedule };
   }
 
   async function saveStudentProfile(form){
@@ -3937,11 +4060,12 @@ render();
     try {
       const payload = buildStudentProfilePayload(form);
       if(!payload.id) throw new Error('No se ha podido identificar el perfil del alumno.');
-      const personalKeys = ['birth_date','student_photo_url','father_full_name','mother_full_name','address'];
+      const personalKeys = ['birth_date','student_photo_url','father_full_name','mother_full_name','family_phone','emergency_phone','family_email','preferred_contact','family_group_id','family_name','address','school_tutor','support_reason','learning_goals','initial_assessment','family_coordination','diagnosis_notes'];
       const personalPayload = {};
       personalKeys.forEach(k => { personalPayload[k] = payload[k] || null; });
       const rpcPayload = {...payload};
       personalKeys.forEach(k => delete rpcPayload[k]);
+      delete rpcPayload.schedule;
       const rpc = await State.client.rpc('tribeca_teacher_save_student_profile_v25', { p_payload: rpcPayload });
       if(rpc.error) throw rpc.error;
       if(!rpc.data || rpc.data.ok !== true) throw new Error('Supabase no confirmó el guardado.');
@@ -3956,6 +4080,8 @@ render();
       }
       const focusRpc = await State.client.rpc('tribeca_teacher_set_focus_mode_v138', { p_user_id: payload.id, p_enabled: !!payload.focus_mode_enabled });
       if(focusRpc.error) throw new Error(`${focusRpc.error.message || 'No se pudo guardar el modo concentración.'} Ejecuta el SQL de la versión 138 si todavía no lo has aplicado.`);
+      const scheduleRpc = await State.client.rpc('tribeca_teacher_save_student_schedules_v144b', { p_user_id: payload.id, p_schedules: payload.schedule || [] });
+      if(scheduleRpc.error || scheduleRpc.data?.ok !== true) throw new Error(`${scheduleRpc.error?.message || scheduleRpc.data?.error || 'No se pudieron guardar los horarios de curso/verano.'} Ejecuta el SQL ampliado de la versión 144 si todavía no lo has aplicado.`);
       const fresh = {...(rpc.data.profile || rpcPayload), ...personalData, focus_mode_enabled:!!payload.focus_mode_enabled};
       State.selectedStudentId = payload.id;
       State.data.students = (State.data.students||[]).map(st => st.id===payload.id ? {...st, ...fresh} : st);
@@ -4026,14 +4152,30 @@ render();
     return `<div class="attendance-head payment-month-nav t54-month-nav"><h4>${safe(heading)}: ${safe(monthLabel(month))}</h4><div class="inline-actions"><button type="button" class="secondary-btn" data-t51-month-nav="${safe(addMonthsToMonth(month,-1))}">← Mes anterior</button><label>Mes<input type="month" value="${safe(month)}" data-t16-billing-month></label><button type="button" class="secondary-btn" data-t51-month-nav="${safe(addMonthsToMonth(month,1))}">Mes siguiente →</button></div></div>`;
   }
   function paymentsContent(){
-    const students=State.data.students||[]; const selected=students.find(s=>s.id===State.selectedStudentId)||students[0]; if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
+    const students=State.data.students||[];
+    const selected=students.find(s=>s.id===State.selectedStudentId)||students[0];
+    if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
     const month=(State.billingMonth||defaultBillingMonth()); State.billingMonth=month;
-    return `<div class="payments-layout t54-payments-layout clean-finance-layout"><div class="t54-section-intro window-panel clean-hero clean-linked-hero"><div><h3>Pagos</h3><p class="meta">Resumen primero. Hasta el día 10 se muestra por defecto el mes anterior para facilitar los cobros a mes vencido.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button></div>${teacherStudentPicker(selected,'payments')}<section class="window-panel payments-summary clean-main-summary"><h3>Resumen mensual</h3>${paymentSummary(month)}</section><details class="window-panel teacher-option-drawer clean-editor-drawer" open><summary><span>Editar pagos de ${selected?safe(displayName(selected)):'alumno/a'}</span><em>${safe(month)}</em></summary>${selected?paymentEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</details></div>`;
+    const fam=selected ? familyPaymentCard(selected, month) : '';
+    return `<div class="teacher-workspace-grid finance-workspace-v144">
+      <section class="window-panel finance-hero-v144"><div><p class="eyebrow">Gestión económica</p><h2>Pagos</h2><p>Resumen mensual, pagos por familia, recibís e históricos. Selecciona un alumno y revisa primero lo esencial.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button></section>
+      ${teacherStudentPicker(selected,'payments')}
+      <section class="window-panel payments-summary clean-main-summary finance-summary-v144"><h3>Resumen mensual</h3>${paymentSummary(month)}</section>
+      ${fam}
+      <section class="window-panel finance-editor-v144"><h3>${selected?`Ficha económica de ${safe(displayName(selected))}`:'Ficha económica'}</h3>${selected?paymentEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
+    </div>`;
   }
   function attendanceContent(){
-    const students=State.data.students||[]; const selected=students.find(s=>s.id===State.selectedStudentId)||students[0]; if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
+    const students=State.data.students||[];
+    const selected=students.find(s=>s.id===State.selectedStudentId)||students[0];
+    if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
     const month=(State.billingMonth||defaultBillingMonth()); State.billingMonth=month;
-    return `<div class="payments-layout attendance-layout t54-attendance-layout clean-finance-layout"><div class="t54-section-intro window-panel clean-hero clean-linked-hero"><div><h3>Asistencia y pausas</h3><p class="meta">Vista operativa con resumen primero y edición agrupada.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="payments">Ir a pagos</button></div>${teacherStudentPicker(selected,'attendance')}<section class="window-panel attendance-summary clean-main-summary"><h3>Resumen de asistencia</h3>${attendanceSummary(month)}</section><details class="window-panel teacher-option-drawer clean-editor-drawer" open><summary><span>Editar asistencia de ${selected?safe(displayName(selected)):'alumno/a'}</span><em>${safe(month)}</em></summary>${selected?attendanceEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</details></div>`;
+    return `<div class="teacher-workspace-grid attendance-workspace-v144">
+      <section class="window-panel finance-hero-v144"><div><p class="eyebrow">Seguimiento de clases</p><h2>Asistencia y pausas</h2><p>Control mensual claro: asistencias, faltas, justificaciones y pausas que afectan al cálculo económico.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="payments">Ir a pagos</button></section>
+      ${teacherStudentPicker(selected,'attendance')}
+      <section class="window-panel attendance-summary clean-main-summary finance-summary-v144"><h3>Resumen de asistencia</h3>${attendanceSummary(month)}</section>
+      <section class="window-panel attendance-editor-v144"><h3>${selected?`Asistencia de ${safe(displayName(selected))}`:'Asistencia'}</h3>${selected?attendanceEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
+    </div>`;
   }
   function paymentEditor(s,month){
     const bill=(State.data.billing||[]).find(b=>b.user_id===s.id)||{}; const pay=paymentMonthRecord(s.id,month); const calc=calculatePaymentAmount(s.id,month); const pausedBilling=paymentPausedForMonth(s.id,month);
@@ -4055,7 +4197,7 @@ render();
     const status=active?`<div class="pause-active-card"><strong>Asistencia pausada</strong><p>${safe(pauseStatusText(s.id))}. El acceso del alumno al aula virtual queda bloqueado mientras dure la pausa.</p></div>`:(upcoming?`<div class="pause-active-card is-upcoming"><strong>Pausa programada</strong><p>Programada desde ${safe(fmtDate(upcoming.start_date))}${upcoming.end_date?` hasta ${safe(fmtDate(upcoming.end_date))}`:' hasta reactivación manual'}.</p></div>`:'<p class="meta">Puedes programar una pausa por fechas o dejarla abierta para activarla y desactivarla manualmente. La pausa se crea solo si marcas expresamente “Pausa activa”.</p>');
     return `<section class="student-pause-panel"><h4>Pausa temporal de asistencia y acceso</h4>${status}<form id="t50PauseForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="pauseId" value="${safe(editing.id||'')}"><input type="hidden" name="userId" value="${safe(s.id)}"><div class="window-grid"><label>Tipo de pausa<select name="mode"><option value="scheduled" ${editing.mode!=='manual'?'selected':''}>Programada por fechas</option><option value="manual" ${editing.mode==='manual'?'selected':''}>Manual, hasta reactivación</option></select></label><label class="check-line"><input type="checkbox" name="active" ${(active || (editing.id && editing.active!==false))?'checked':''}> Pausa activa</label></div><div class="window-grid"><label>Fecha de inicio<input name="startDate" type="date" value="${safe(editing.start_date||todayIso())}" required></label><label>Fecha de fin<input name="endDate" type="date" value="${safe(editing.end_date||'')}"><small>Déjala en blanco si la pausa será manual.</small></label></div><label>Motivo o nota visible para el alumno cuando intente iniciar sesión<textarea name="reason" rows="2" placeholder="Ej.: pausa de verano, viaje familiar, descanso temporal... El alumno verá este texto al intentar entrar en el aula.">${safe(editing.reason||'')}</textarea><small class="field-help">No escribas aquí nada que no quieras que el alumno vea en la pantalla de acceso pausado.</small></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar pausa</button>${active?`<button class="danger-btn" type="button" data-t50-end-pause="${safe(active.id)}">Reanudar asistencia desde hoy</button>`:''}</div></form>${pauses.length?`<details class="pause-history"><summary>Histórico de pausas (${pauses.length})</summary><table class="premium-table compact"><thead><tr><th>Inicio</th><th>Fin</th><th>Estado</th><th>Motivo visible</th></tr></thead><tbody>${pauses.map(p=>`<tr><td>${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.end_date?fmtDate(p.end_date):'Abierta'}</td><td>${pauseCoversDate(p)?'Activa':'Finalizada/programada'}</td><td>${safe(p.reason||'—')}</td></tr>`).join('')}</tbody></table></details>`:''}</section>`;
   }
-  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const sched=(State.data.schedules||[]).filter(x=>x.user_id===userId && x.active!==false); const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), paused:isPaused})); } return out; }
+  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const season=opts.season||activeScheduleSeason(); const sched=(State.data.schedules||[]).filter(x=>x.user_id===userId && x.active!==false && (opts.allSeasons || scheduleRecordSeason(x)===season)); const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), paused:isPaused})); } return out; }
   function calculatePaymentAmount(userId,month){ const bill=(State.data.billing||[]).find(b=>b.user_id===userId)||{}; const allDays=monthScheduleDays(userId,month,{includePaused:true}); const activeDays=allDays.filter(d=>!d.paused); const att=(State.data.attendance||[]).filter(a=>a.user_id===userId && String(a.class_date||'').startsWith(month) && !pausedOnDate(userId,a.class_date)); const present=att.filter(a=>a.status==='present').length; const absent=att.filter(a=>a.status==='absent').length; const justified=att.filter(a=>a.status==='justified').length; const fixed=Number(bill.monthly_fee||0); const rate=Number(bill.class_rate||0); const individualPresent=activeDays.filter(d=>d.type==='individual' && att.some(a=>a.status==='present' && a.class_date===d.date && String(a.scheduled_start||'').slice(0,5)===d.start)).length; const totalGroupDays=allDays.filter(d=>d.type!=='individual').length; const activeGroupDays=activeDays.filter(d=>d.type!=='individual').length; const paused=allDays.filter(d=>d.paused).length; const fixedProrated=totalGroupDays>0 && activeGroupDays<totalGroupDays ? fixed*(activeGroupDays/totalGroupDays) : fixed; let amount=0, detail=''; if(bill.tariff_type==='individual'){ amount=present*rate; detail=`${present} asistencias activas × ${money(rate)}`; } else if(bill.tariff_type==='mixed'){ amount=fixedProrated+(individualPresent*rate); detail=`Cuota ${activeGroupDays<totalGroupDays?'prorrateada ':''}${money(fixedProrated)} + ${individualPresent} clases individuales × ${money(rate)}`; } else { amount=fixedProrated; detail=activeGroupDays<totalGroupDays?`Cuota fija prorrateada: ${activeGroupDays}/${totalGroupDays} clases activas`:'Cuota fija mensual'; } if(paused && amount===0) detail='Mes en pausa, sin clases facturables'; return {amount,detail,present,individualPresent,fixedGroupDays:activeGroupDays,absent,justified,paused,totalDays:allDays.length,activeDays:activeDays.length}; }
   function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); return `<strong>Total calculado: ${money(c.amount)}</strong><p>${safe(c.detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
   function paymentStudentHistory(userId){
@@ -4063,6 +4205,28 @@ render();
     const months=[...new Set([...(State.data.paymentMonths||[]).filter(p=>p.user_id===userId).map(p=>String(p.month).slice(0,7)), ...pauseMonths, State.billingMonth||defaultBillingMonth()])].filter(Boolean).sort().reverse();
     return `<table class="premium-table compact"><thead><tr><th>Mes</th><th>Importe</th><th>Estado</th><th>Forma de pago</th><th>Día de pago</th><th>Pausas</th><th>Recibí</th></tr></thead><tbody>${months.map(m=>{ const c=calculatePaymentAmount(userId,m); const p=paymentMonthRecord(userId,m); const pausedBilling=paymentPausedForMonth(userId,m); const pauses=pauseMonthOverlap(userId,m).length; return `<tr class="${pausedBilling?'is-paused-row':''}"><td>${safe(monthLabel(m))}</td><td>${money(pausedBilling?0:c.amount)}</td><td>${pausedBilling?'En pausa, excluido':p.paid?'Pagado':'Pendiente'}</td><td>${safe(paymentMethodLabel(p.payment_method))}</td><td>${p.paid_date?fmtDate(p.paid_date):'—'}</td><td>${pauses?`${pauses} pausa/s`:c.paused?`${c.paused} clase/s`: '—'}</td><td><button type="button" class="secondary-btn compact-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(userId)}','${safe(m)}')">Descargar</button></td></tr>`; }).join('')}</tbody></table>`;
   }
+
+  function studentFamilyKey(s={}){
+    return String(s.family_group_id || s.family_name || '').trim();
+  }
+  function familyGroupForStudent(s={}){
+    const key=studentFamilyKey(s);
+    if(!key) return [];
+    return (State.data.students||[]).filter(x=>studentFamilyKey(x) && studentFamilyKey(x).toLowerCase()===key.toLowerCase()).sort((a,b)=>displayName(a).localeCompare(displayName(b),'es'));
+  }
+  function familyPaymentCard(s={}, month=defaultBillingMonth()){
+    const members=familyGroupForStudent(s);
+    if(members.length<2) return '';
+    const rows=members.map(st=>{ const calc=calculatePaymentAmount(st.id, month); const pay=paymentMonthRecord(st.id,month); return {st,calc,pay,paused:paymentPausedForMonth(st.id,month)}; });
+    const total=rows.reduce((sum,r)=>sum+(r.paused?0:Number(r.calc.amount||0)),0);
+    return `<section class="window-panel family-payment-card-v144"><div><p class="eyebrow">Pago familiar único</p><h3>${safe(s.family_name || s.family_group_id || 'Familia')}</h3><p class="meta">Puedes ver el importe total familiar y el desglose individual de cada hermano/a.</p></div><strong>${money(total)}</strong><table class="premium-table compact-table"><thead><tr><th>Alumno/a</th><th>Importe individual</th><th>Estado</th></tr></thead><tbody>${rows.map(r=>{ const status=paymentSummaryStatus(r.pay, month, r.paused); return `<tr><td>${safe(displayName(r.st))}</td><td>${money(r.paused?0:r.calc.amount)}</td><td><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></td></tr>`; }).join('')}</tbody></table></section>`;
+  }
+  function familySummaryRows(month){
+    const groupsMap=new Map();
+    (State.data.students||[]).forEach(s=>{ const key=studentFamilyKey(s); if(!key) return; if(!groupsMap.has(key.toLowerCase())) groupsMap.set(key.toLowerCase(), {label:s.family_name||key, members:[]}); groupsMap.get(key.toLowerCase()).members.push(s); });
+    return [...groupsMap.values()].filter(g=>g.members.length>1).map(g=>{ const total=g.members.reduce((sum,s)=>sum+(paymentPausedForMonth(s.id,month)?0:Number(calculatePaymentAmount(s.id,month).amount||0)),0); return `<tr><td>${safe(g.label)}</td><td>${g.members.map(displayName).map(safe).join('<br>')}</td><td>${money(total)}</td></tr>`; }).join('');
+  }
+
   function paymentSummary(month){
     const students=State.data.students||[];
     let total=0, paidCount=0, pendingCount=0, lateCount=0, pausedCount=0;
@@ -4090,8 +4254,9 @@ render();
       <div class="payment-grand-total">Total previsto: ${money(total)}</div>
       <div class="payment-status-legend"><span class="payment-status-pill payment-status-paid">Pagados: ${paidCount}</span><span class="payment-status-pill payment-status-pending">Pendientes: ${pendingCount}</span><span class="payment-status-pill payment-status-late">Retrasados: ${lateCount}</span>${pausedCount?`<span class="payment-status-pill payment-status-paused">En pausa: ${pausedCount}</span>`:''}</div>
       <p class="meta">El total previsto excluye al alumnado en pausa. El estado “retrasado” se aplica si sigue pendiente después del día 10 del mes siguiente.</p>
+      ${familySummaryRows(month)?`<h4>Pagos familiares agrupados</h4><table class="premium-table payment-family-table-v144"><thead><tr><th>Familia</th><th>Alumnado</th><th>Total familiar</th></tr></thead><tbody>${familySummaryRows(month)}</tbody></table>`:''}
       <h4>Histórico total mensual</h4>
-      <div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('month')">Descargar histórico mensual en PDF</button></div>
+      <div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('month')">Descargar histórico mensual en PDF</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-month',{month:'${safe(month)}'})">PDF mensual completo</button></div>
       <table class="premium-table payment-summary-table"><thead><tr><th>Alumno/a</th><th>Tarifa</th><th>Asistencias</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
   function money(v){ return `${Number(v||0).toFixed(2).replace('.',',')} €`; }
@@ -4752,7 +4917,7 @@ function classroomsContent(){
           <fieldset class="class-color-picker full-row"><legend>Color de la clase</legend><div>${colorOptions.map(o=>`<label class="class-color-option" style="--swatch:${safe(o.primary)}"><input type="radio" name="classColor" value="${safe(o.key)}" ${editColor===o.key?'checked':''}><span></span><em>${safe(o.label)}</em></label>`).join('')}</div></fieldset>
           <div class="classroom-state-options full-row"><label class="check-line"><input type="checkbox" name="hidden" ${edit?.hidden?'checked':''}> <span>Clase oculta para el alumnado</span></label>
           <label class="check-line"><input type="checkbox" name="active" ${editId?(edit?.active!==false?'checked':''):'checked'}> <span>Clase activa</span></label></div>
-          <div class="inline-actions full-row"><button class="primary-btn" type="submit">${editId?'Guardar cambios':'Crear clase'}</button>${editId?'<button class="secondary-btn" type="button" onclick="window.TribecaClassroomCancelEdit && window.TribecaClassroomCancelEdit(event)">Cancelar edición</button>':''}</div>
+          <div class="inline-actions full-row"><button class="primary-btn" type="button" onclick="return window.TribecaSaveClassroomDirect(this,event)">${editId?'Guardar cambios':'Crear clase'}</button>${editId?'<button class="secondary-btn" type="button" onclick="window.TribecaClassroomCancelEdit && window.TribecaClassroomCancelEdit(event)">Cancelar edición</button>':''}</div>
         </form>
       </details>
 
@@ -5440,6 +5605,7 @@ function classroomCard(c,i=0){
 
   window.TribecaClassroomEditDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80EditClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(c){ State.pendingClassroomEdit={...c}; rerender(); } return false; };
   window.TribecaClassroomCancelEdit=function(ev){ ev?.preventDefault?.(); State.pendingClassroomEdit=null; rerender(); return false; };
+  window.TribecaSaveClassroomDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); if(ev?.stopImmediatePropagation) ev.stopImmediatePropagation(); const form=btn?.closest?.('form') || document.getElementById('t80ClassroomForm'); if(!form){ toast('No se encontró el formulario de clase.'); return false; } const old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…'; saveClassroom(form).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar la clase.'); }).finally(()=>{ btn.disabled=false; btn.textContent=old; }); return false; };
   window.TribecaClassroomSaveStudents=function(btn,ev,mode='assign'){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const form=btn?.closest?.('form'); if(!form){ toast('No se encontró el formulario de alumnado.'); return false; } saveClassroomStudents(form,mode).catch(e=>{ console.error(e); toast(e.message||'No se pudo guardar el alumnado de la clase.'); }); return false; };
   window.TribecaClassroomToggleDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); const id=btn?.dataset?.t80ToggleClass; const c=(State.data.classrooms||[]).find(x=>String(x.id)===String(id)); if(!c) return false; persistSupabaseRecord('tribeca_classes',{hidden:!c.hidden,updated_at:new Date().toISOString()},id).then(()=>loadData(true)).then(()=>{toast(c.hidden?'Clase visible.':'Clase oculta.'); rerender();}).catch(e=>toast(e.message||'No se pudo modificar la clase.')); return false; };
   window.TribecaClassroomDeleteDirect=function(btn,ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); deleteClassroom(btn?.dataset?.t80DeleteClass).catch(e=>toast(e.message||'No se pudo eliminar la clase.')); return false; };
@@ -6005,7 +6171,7 @@ function classroomCard(c,i=0){
     document.addEventListener('click', ev=>{ const btn=ev.target.closest?.('.native-exam-form [data-t129-grade-exam]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); const form=btn.closest('form'); form?.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); } }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; if(file.size>350*1024){ toast('La foto es demasiado grande. Usa una imagen de menos de 350 KB.'); ev.target.value=''; return; } const url=await normImage(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=file.name; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
