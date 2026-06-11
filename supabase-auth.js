@@ -4030,7 +4030,7 @@ render();
   function activityAnalyticsStudentCards(students=[]){
     const active=students.filter(s=>attemptRowsForStudent(s.id).length);
     if(!active.length) return '<div class="empty-state">Todavía no hay actividades autocorregibles realizadas.</div>';
-    return `<div class="activity-student-card-grid-v145">${active.map(s=>{ const rows=attemptRowsForStudent(s.id); const al=attemptAlertForStudent(s.id); const avg=rows.reduce((sum,a)=>sum+Number(a.score||0),0)/Math.max(1,rows.length); const unique=new Set(rows.map(a=>String(a.material_id||a.title||''))).size; return `<button type="button" class="activity-student-card-v145 is-${safe(al.tone)} ${State.selectedStudentId===s.id?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}"><span>${safe(displayName(s))}</span><strong>${avg.toFixed(2)}/10</strong><small>${rows.length} intento${rows.length===1?'':'s'} · ${unique} actividad${unique===1?'':'es'}</small><em>${safe(al.label)} · ${safe(al.detail)}</em></button>`; }).join('')}</div>`;
+    return `<div class="activity-student-card-grid-v145 activity-student-card-grid-v149">${active.map(s=>{ const rows=attemptRowsForStudent(s.id); const al=attemptAlertForStudent(s.id); const avg=rows.reduce((sum,a)=>sum+Number(a.score||0),0)/Math.max(1,rows.length); const unique=new Set(rows.map(a=>String(a.material_id||a.title||''))).size; return `<button type="button" class="activity-student-card-v145 activity-student-card-v149 is-${safe(al.tone)} ${State.selectedStudentId===s.id?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}">${studentAvatarMarkup(s,'activity-student-avatar-v149')}<span class="activity-student-copy-v149"><span>${safe(displayName(s))}</span><small>${rows.length} intento${rows.length===1?'':'s'} · ${unique} actividad${unique===1?'':'es'}</small><em>${safe(al.label)} · ${safe(al.detail)}</em></span><strong>${avg.toFixed(2)}/10</strong></button>`; }).join('')}</div>`;
   }
   function attemptSubjectButton(a={}, mat={}){
     const subject=a.subject||mat.subject||'';
@@ -4105,7 +4105,7 @@ render();
       const family=String(s.family_name || s.family_group_id || '').trim();
       const schedCount=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(s.id) && x.active!==false).length;
       return `<button type="button" class="profile-student-card-v147 ${selectedClass} ${pause?'is-paused':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)+' '+family).toLowerCase())}">
-        <span class="profile-avatar-v147">${photo?`<img src="${safe(photo)}" alt="">`:`${safe((displayName(s)||'?').slice(0,1).toUpperCase())}`}</span>
+        ${studentAvatarMarkup(s,'profile-avatar-v147')}
         <span class="profile-card-main-v147"><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small><span>${family?`Familia: ${safe(family)}`:'Sin grupo familiar'} · ${schedCount} horario${schedCount===1?'':'s'}</span></span>
         <span class="profile-card-badges-v147">${pause?`<em class="danger">Pausa</em>`:''}${focus?`<em>Concentración</em>`:''}${sup.flags.length?`<em>${safe(sup.flags[0])}</em>`:''}</span>
       </button>`;
@@ -4128,6 +4128,13 @@ render();
   }
 
   function studentPhotoUrl(s={}){ return String(s.student_photo_url || s.photo_url || s.avatar_url || '').trim(); }
+  function studentAvatarMarkup(s={}, className='student-avatar-photo-v149', alt=''){
+    const photo=studentPhotoUrl(s);
+    const name=displayName(s)||'Alumno';
+    const initial=safe((name||'?').slice(0,1).toUpperCase());
+    const title=safe(alt || name);
+    return `<span class="${safe(className)} ${photo?'has-photo':'has-initial'}" aria-label="${title}">${photo?`<img src="${safe(photo)}" alt="${title}">`:initial}</span>`;
+  }
   function birthDateInputValue(value=''){ const raw=String(value||'').trim(); if(!raw) return ''; return raw.slice(0,10); }
 
   function studentEditForm(s){
@@ -4161,7 +4168,7 @@ render();
         <div class="window-grid"><label>Nombre completo<input name="fullName" value="${safe(s.full_name && !/^demo\b/i.test(s.full_name) ? s.full_name : displayName(s))}"></label><label>Usuario<input name="username" value="${safe(s.username||'')}"></label></div>
         <div class="window-grid"><label>Centro<select name="center">${options(centers,s.center)}</select></label><label>Etapa<select name="stage">${options(stages,s.stage)}</select></label><label>Curso<select name="course">${options(dynamicCourses(),s.course)}</select></label></div>
         <div class="window-grid t143-personal-grid"><label>Fecha de nacimiento<input name="birthDate" type="date" value="${safe(birthDateInputValue(s.birth_date))}"></label><label>Foto del alumno (URL o archivo)<input name="studentPhotoUrl" type="url" value="${safe(photoUrl)}" placeholder="https://... o sube una imagen"></label></div>
-        <label class="publication-upload-card student-photo-upload-v144"><strong>Subir foto desde el ordenador</strong><small>PNG, JPG o WebP. Límite recomendado: 350 KB.</small><input name="studentPhotoFile" type="file" accept="image/png,image/jpeg,image/webp"><span class="attachment-preview-pill" data-student-photo-file-name>Ningún archivo seleccionado.</span></label>
+        <label class="publication-upload-card student-photo-upload-v144"><strong>Subir foto desde el ordenador</strong><small>PNG, JPG o WebP. Puedes subir hasta 4 MB; Tribeca la optimiza antes de guardarla.</small><input name="studentPhotoFile" type="file" accept="image/png,image/jpeg,image/webp"><span class="attachment-preview-pill" data-student-photo-file-name>Ningún archivo seleccionado.</span></label>
       </section>
       <details class="teacher-option-drawer" open><summary><span>Datos familiares y personales</span><em>Privado</em></summary>
         <section class="premium-form-section"><div class="window-grid"><label>Nombre y apellidos del padre / tutor 1<input name="fatherFullName" value="${safe(s.father_full_name||'')}"></label><label>Nombre y apellidos de la madre / tutora 2<input name="motherFullName" value="${safe(s.mother_full_name||'')}"></label></div><div class="window-grid"><label>Teléfono principal de familia<input name="familyPhone" value="${safe(s.family_phone||'')}"></label><label>Teléfono de emergencia<input name="emergencyPhone" value="${safe(s.emergency_phone||'')}"></label></div><div class="window-grid"><label>Email familiar<input name="familyEmail" type="email" value="${safe(s.family_email||'')}"></label><label>Contacto preferente<input name="preferredContact" value="${safe(s.preferred_contact||'')}"></label></div><div class="window-grid"><label>Grupo familiar / hermanos<input name="familyGroupId" value="${safe(s.family_group_id||'')}" placeholder="Ej.: familia_wrona"></label><label>Nombre visible de familia<input name="familyName" value="${safe(s.family_name||'')}" placeholder="Ej.: Familia Wrona"></label></div><label>Dirección<textarea name="studentAddress" rows="2">${safe(s.address||'')}</textarea></label></section>
@@ -4336,7 +4343,7 @@ render();
     const paidText=m.paused?'En pausa':m.status.label;
     const amount=m.paused?0:m.calc.amount;
     return `<button type="button" class="finance-student-card-v146 status-${safe(m.status.key)} ${String(selected?.id)===String(s.id)?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)+' '+(s.family_name||'')).toLowerCase())}">
-      <span class="finance-student-avatar-v146">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>
+      ${studentAvatarMarkup(s,'finance-student-avatar-v146')}
       <span class="finance-student-main-v146"><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}</small><em>${safe(familyLabel)} · ${safe(paymentModeLabel(s))}</em></span>
       <span class="finance-student-amount-v146"><strong>${money(amount)}</strong><small>${safe(paidText)}</small></span>
     </button>`;
@@ -4348,7 +4355,7 @@ render();
     const percent=Math.round((Number(c.present||0)/total)*100);
     const tone=active?'paused':(c.absent>2?'danger':(c.absent>0?'warn':'ok'));
     return `<button type="button" class="attendance-student-card-v146 is-${safe(tone)} ${String(selected?.id)===String(s.id)?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}">
-      <span class="finance-student-avatar-v146">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>
+      ${studentAvatarMarkup(s,'finance-student-avatar-v146')}
       <span class="finance-student-main-v146"><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}</small><em>${active?'Pausa activa':`${c.present} asistencias · ${c.absent} faltas · ${c.justified} justificadas`}</em></span>
       <span class="attendance-percent-v146"><strong>${active?'—':percent+'%'}</strong><small>${c.activeDays||0} clases</small></span>
     </button>`;
@@ -6194,6 +6201,57 @@ function classroomCard(c,i=0){
 
   function normImage(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); }
 
+  const STUDENT_PHOTO_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+  const STUDENT_PHOTO_TARGET_BYTES = 850 * 1024;
+  function approxDataUrlBytes(dataUrl=''){
+    const raw = String(dataUrl||'').split(',')[1] || '';
+    return Math.round(raw.length * 3 / 4);
+  }
+  function prettyBytes(bytes=0){
+    const n=Number(bytes||0);
+    if(n>=1024*1024) return `${(n/(1024*1024)).toFixed(n>=10*1024*1024?0:1)} MB`;
+    if(n>=1024) return `${Math.round(n/1024)} KB`;
+    return `${Math.round(n)} B`;
+  }
+  function studentPhotoFileToDataUrl(file){
+    return new Promise((resolve,reject)=>{
+      if(!file) return reject(new Error('No se ha seleccionado ninguna foto.'));
+      if(!/^image\/(png|jpeg|jpg|webp)$/i.test(file.type||'')) return reject(new Error('Formato no admitido. Usa PNG, JPG o WebP.'));
+      if(file.size > STUDENT_PHOTO_MAX_UPLOAD_BYTES) return reject(new Error(`La foto supera ${prettyBytes(STUDENT_PHOTO_MAX_UPLOAD_BYTES)}. Reduce la imagen antes de subirla.`));
+      const url=URL.createObjectURL(file);
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          URL.revokeObjectURL(url);
+          const sourceW=img.naturalWidth || img.width || 1;
+          const sourceH=img.naturalHeight || img.height || 1;
+          let best='';
+          const dimensions=[960,840,720,600,520,440];
+          const qualities=[.88,.8,.72,.64,.56,.48,.4];
+          for(const maxDim of dimensions){
+            const scale=Math.min(1, maxDim/sourceW, maxDim/sourceH);
+            const w=Math.max(1, Math.round(sourceW*scale));
+            const h=Math.max(1, Math.round(sourceH*scale));
+            const canvas=document.createElement('canvas');
+            canvas.width=w; canvas.height=h;
+            const ctx=canvas.getContext('2d');
+            ctx.fillStyle='#fff';
+            ctx.fillRect(0,0,w,h);
+            ctx.drawImage(img,0,0,w,h);
+            for(const q of qualities){
+              const data=canvas.toDataURL('image/jpeg', q);
+              best=data;
+              if(approxDataUrlBytes(data) <= STUDENT_PHOTO_TARGET_BYTES) return resolve(data);
+            }
+          }
+          resolve(best);
+        }catch(err){ reject(err); }
+      };
+      img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen seleccionada.')); };
+      img.src=url;
+    });
+  }
+
 
 
   async function promoteStudentFromForm(form){
@@ -6405,7 +6463,7 @@ function classroomCard(c,i=0){
     document.addEventListener('click', ev=>{ const btn=ev.target.closest?.('.native-exam-form [data-t129-grade-exam]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); const form=btn.closest('form'); form?.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); } }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; if(file.size>350*1024){ toast('La foto es demasiado grande. Usa una imagen de menos de 350 KB.'); ev.target.value=''; return; } const url=await normImage(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=file.name; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; try{ const url=await studentPhotoFileToDataUrl(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=`${file.name} · optimizada a ${prettyBytes(approxDataUrlBytes(url))}`; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; toast('Foto optimizada y cargada. Pulsa Guardar cambios para conservarla.'); }catch(err){ toast(err?.message || 'No se pudo procesar la foto.'); ev.target.value=''; } } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
