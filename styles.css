@@ -13901,3 +13901,196 @@ body .hero-card p {
     grid-row:auto;
   }
 }
+
+
+/* Tribeca Aula v146 · rediseño completo de Pagos y Asistencia en panel docente. */
+.teacher-finance-v146,
+.teacher-attendance-v146{
+  display:grid;
+  gap:18px;
+  max-width:1440px;
+  margin:0 auto;
+}
+.finance-hero-clean-v146{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  border-left:7px solid #0b3d22;
+  background:linear-gradient(135deg,#fffdf7 0%,#f7f1df 100%);
+}
+.finance-hero-clean-v146 h2{
+  margin:.1rem 0;
+  font-size:clamp(2rem,4vw,3.4rem);
+  line-height:.95;
+  letter-spacing:-.04em;
+  color:#102018;
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-weight:950;
+}
+.finance-hero-clean-v146 p{max-width:760px;color:#5f594d;font-weight:700;}
+.finance-toolbar-v146 .payment-month-nav{margin:0;}
+.finance-toolbar-v146 .payment-month-nav h4{margin:0 0 8px;color:#123923;font-size:1.05rem;}
+.finance-toolbar-v146 .inline-actions{display:grid;grid-template-columns:auto minmax(180px,260px) auto;gap:10px;align-items:end;}
+.finance-kpi-grid-v146,
+.attendance-kpi-grid-v146,
+.attendance-stats-v146{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;
+}
+.finance-kpi-grid-v146 article,
+.attendance-kpi-grid-v146 article,
+.attendance-stats-v146 article{
+  border:1px solid rgba(20,64,39,.13);
+  border-radius:20px;
+  background:rgba(255,253,247,.94);
+  padding:16px;
+  box-shadow:0 12px 30px rgba(22,32,24,.06);
+}
+.finance-kpi-grid-v146 article.is-warn,
+.attendance-kpi-grid-v146 article.is-warn{border-color:#d6b15c;background:#fff8e6;}
+.finance-kpi-grid-v146 article.is-danger{border-color:#c98282;background:#fff3f1;}
+.finance-kpi-grid-v146 small,
+.attendance-kpi-grid-v146 small,
+.attendance-stats-v146 small{display:block;text-transform:uppercase;letter-spacing:.07em;font-size:.72rem;font-weight:900;color:#746b59;}
+.finance-kpi-grid-v146 strong,
+.attendance-kpi-grid-v146 strong,
+.attendance-stats-v146 strong{display:block;margin:.25rem 0;font-size:clamp(1.6rem,3vw,2.35rem);line-height:1;color:#0b3d22;}
+.finance-kpi-grid-v146 span,
+.attendance-kpi-grid-v146 span{color:#665f52;font-weight:700;font-size:.9rem;}
+.finance-layout-v146{
+  display:grid;
+  grid-template-columns:minmax(320px,420px) minmax(0,1fr);
+  gap:18px;
+  align-items:start;
+}
+.finance-student-list-v146,
+.finance-student-detail-v146{min-width:0;overflow:visible;}
+.finance-search-v146{display:grid;gap:6px;margin:10px 0 14px;font-weight:900;color:#123923;}
+.finance-search-v146 input{width:100%;border-radius:14px;border:1px solid rgba(24,63,42,.17);padding:12px 14px;background:#fff;color:#162018;}
+.finance-student-grid-v146{display:grid;gap:10px;max-height:none;overflow:visible;}
+.finance-student-card-v146,
+.attendance-student-card-v146{
+  width:100%;
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  text-align:left;
+  border:1px solid rgba(20,64,39,.13);
+  border-radius:18px;
+  background:#fffdf7;
+  padding:12px;
+  cursor:pointer;
+  box-shadow:0 10px 22px rgba(22,32,24,.045);
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.finance-student-card-v146:hover,
+.attendance-student-card-v146:hover{transform:translateY(-1px);box-shadow:0 16px 28px rgba(22,32,24,.08);}
+.finance-student-card-v146.is-selected,
+.attendance-student-card-v146.is-selected{border-color:#0b3d22;box-shadow:0 0 0 3px rgba(11,61,34,.12),0 16px 30px rgba(22,32,24,.09);}
+.finance-student-avatar-v146{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#0b3d22,#2f7655);color:#fff;font-weight:950;font-size:1.1rem;}
+.finance-student-main-v146{min-width:0;display:grid;gap:2px;}
+.finance-student-main-v146 strong{color:#102018;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.finance-student-main-v146 small{color:#6a6255;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.finance-student-main-v146 em{font-style:normal;color:#0b3d22;font-size:.8rem;font-weight:800;}
+.finance-student-amount-v146,
+.attendance-percent-v146{text-align:right;display:grid;gap:2px;}
+.finance-student-amount-v146 strong,
+.attendance-percent-v146 strong{color:#0b3d22;font-size:1.2rem;}
+.finance-student-amount-v146 small,
+.attendance-percent-v146 small{font-weight:900;color:#6b6357;font-size:.78rem;}
+.finance-student-card-v146.status-paid{border-left:5px solid #2f7a4c;}
+.finance-student-card-v146.status-pending{border-left:5px solid #d1a83f;}
+.finance-student-card-v146.status-late{border-left:5px solid #b23b3b;}
+.finance-student-card-v146.status-paused,
+.attendance-student-card-v146.is-paused{opacity:.82;background:#f3f0e7;}
+.attendance-student-card-v146.is-danger{border-left:5px solid #b23b3b;}
+.attendance-student-card-v146.is-warn{border-left:5px solid #d1a83f;}
+.attendance-student-card-v146.is-ok{border-left:5px solid #2f7a4c;}
+.finance-student-detail-v146{display:grid;gap:14px;}
+.finance-student-detail-v146 > .section-heading{margin:0;}
+.payment-editor-v146{display:grid;gap:14px;}
+.payment-total-card-v146{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  border:1px solid rgba(20,64,39,.13);
+  border-radius:20px;
+  padding:16px;
+  background:linear-gradient(135deg,#f4fbf5,#fffdf7);
+}
+.payment-total-card-v146.status-late{background:#fff3f1;border-color:#d9a3a3;}
+.payment-total-card-v146.status-pending{background:#fff8e6;border-color:#dfc16f;}
+.payment-total-card-v146 small{display:block;text-transform:uppercase;letter-spacing:.08em;color:#6f6657;font-weight:900;}
+.payment-total-card-v146 strong{display:block;margin:.25rem 0;color:#0b3d22;font-size:2rem;line-height:1;}
+.payment-total-card-v146 p{margin:0;color:#625b4e;font-weight:700;}
+.finance-payment-form-v146{display:grid;gap:16px;margin-top:0;}
+.finance-form-section-v146{border:1px solid rgba(20,64,39,.10);border-radius:18px;padding:14px;background:#fffdf7;}
+.finance-form-section-v146 h4{margin:0 0 10px;color:#102018;font-size:1rem;}
+.finance-form-grid-v146{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end;}
+.finance-payment-form-v146 input,
+.finance-payment-form-v146 select,
+.finance-payment-form-v146 textarea{width:100%;min-width:0;box-sizing:border-box;}
+.finance-actions-v146{display:flex;flex-wrap:wrap;gap:10px;}
+.finance-history-drawer-v146,
+.pause-drawer-v146{
+  border:1px solid rgba(20,64,39,.12);
+  border-radius:18px;
+  background:#fffdf7;
+  padding:0;
+  overflow:hidden;
+}
+.finance-history-drawer-v146 summary,
+.pause-drawer-v146 summary{cursor:pointer;padding:14px 16px;font-weight:950;color:#0b3d22;background:#f5efdd;}
+.finance-history-drawer-v146[open] summary,
+.pause-drawer-v146[open] summary{border-bottom:1px solid rgba(20,64,39,.10);}
+.finance-history-drawer-v146 table{margin:12px;width:calc(100% - 24px);}
+.finance-history-v146 details{border:0;}
+.finance-history-v146 summary{cursor:pointer;font-weight:950;color:#0b3d22;}
+.attendance-editor-clean-v146{display:grid;gap:16px;}
+.attendance-help-v146{border-left:5px solid #0b3d22;border-radius:16px;background:#f8f3e4;padding:12px 14px;color:#4c463b;}
+.attendance-help-v146 p{margin:.25rem 0 0;font-weight:700;}
+.attendance-month-grid-v146{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+.attendance-day-v146{
+  border:1px solid rgba(20,64,39,.13);
+  border-radius:18px;
+  background:#fffdf7;
+  padding:13px;
+  display:grid;
+  gap:8px;
+  box-shadow:0 10px 22px rgba(22,32,24,.045);
+}
+.attendance-day-v146 header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.attendance-day-v146 header strong{color:#102018;font-size:.95rem;}
+.attendance-day-v146 header span{white-space:nowrap;font-weight:900;color:#0b3d22;}
+.attendance-day-v146 p{margin:0;color:#625b4e;font-weight:800;}
+.attendance-day-v146 em{font-style:normal;width:max-content;border-radius:999px;padding:4px 9px;font-weight:950;font-size:.78rem;}
+.attendance-day-v146.is-present{background:#f0fbf3;border-color:#8fc69e;}
+.attendance-day-v146.is-present em{background:#dff3e5;color:#17603a;}
+.attendance-day-v146.is-absent{background:#fff8f6;border-color:#dca9a0;}
+.attendance-day-v146.is-absent em{background:#f7dcd7;color:#8c271d;}
+.attendance-day-v146.is-justified{background:#fff9e8;border-color:#d8bd6b;}
+.attendance-day-v146.is-justified em{background:#f3e6b8;color:#6c5011;}
+.attendance-day-v146.is-paused{background:#f2efe7;border-color:#c9c1ad;opacity:.88;}
+.attendance-actions-v146{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.attendance-actions-v146 button{border:1px solid rgba(20,64,39,.16);background:#fff;border-radius:999px;padding:7px 9px;font-weight:900;color:#0b3d22;cursor:pointer;font-size:.78rem;}
+.attendance-actions-v146 button:hover{background:#0b3d22;color:#fff;}
+.pause-drawer-v146 .student-pause-panel{padding:14px;border:0;background:transparent;}
+.teacher-finance-v146 .premium-table,
+.teacher-attendance-v146 .premium-table{min-width:720px;}
+.teacher-finance-v146 .payment-summary-table{margin-top:12px;}
+@media(max-width:1100px){
+  .finance-layout-v146{grid-template-columns:1fr;}
+  .finance-toolbar-v146 .inline-actions{grid-template-columns:1fr;}
+}
+@media(max-width:720px){
+  .finance-hero-clean-v146{align-items:flex-start;flex-direction:column;}
+  .finance-student-card-v146,
+  .attendance-student-card-v146{grid-template-columns:40px minmax(0,1fr);}
+  .finance-student-amount-v146,
+  .attendance-percent-v146{grid-column:2;text-align:left;}
+  .attendance-month-grid-v146{grid-template-columns:1fr;}
+}

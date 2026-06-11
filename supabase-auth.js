@@ -4205,46 +4205,125 @@ render();
   function paymentMonthNavigator(month, heading='Mes de referencia'){
     return `<div class="attendance-head payment-month-nav t54-month-nav"><h4>${safe(heading)}: ${safe(monthLabel(month))}</h4><div class="inline-actions"><button type="button" class="secondary-btn" data-t51-month-nav="${safe(addMonthsToMonth(month,-1))}">← Mes anterior</button><label>Mes<input type="month" value="${safe(month)}" data-t16-billing-month></label><button type="button" class="secondary-btn" data-t51-month-nav="${safe(addMonthsToMonth(month,1))}">Mes siguiente →</button></div></div>`;
   }
+  function financeStudentMetricsV146(s={}, month=defaultBillingMonth()){
+    const calc=calculatePaymentAmount(s.id,month);
+    const pay=paymentMonthRecord(s.id,month);
+    const paused=paymentPausedForMonth(s.id,month);
+    const status=paymentSummaryStatus(pay, month, paused);
+    const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
+    return {calc,pay,paused,status,bill};
+  }
+  function paymentKpisV146(month){
+    const students=State.data.students||[];
+    let total=0, paid=0, pending=0, late=0, paused=0;
+    students.forEach(s=>{ const m=financeStudentMetricsV146(s,month); if(!m.paused) total+=Number(m.calc.amount||0); if(m.status.key==='paid') paid++; else if(m.status.key==='late') late++; else if(m.status.key==='paused') paused++; else pending++; });
+    return {total,paid,pending,late,paused,count:students.length};
+  }
+  function financeTopKpisMarkupV146(month){
+    const k=paymentKpisV146(month);
+    return `<section class="finance-kpi-grid-v146" aria-label="Resumen económico del mes">
+      <article><small>Total previsto</small><strong>${money(k.total)}</strong><span>${safe(monthLabel(month))}</span></article>
+      <article><small>Pagados</small><strong>${k.paid}</strong><span>mensualidades confirmadas</span></article>
+      <article class="${k.pending?'is-warn':''}"><small>Pendientes</small><strong>${k.pending}</strong><span>en plazo o sin confirmar</span></article>
+      <article class="${k.late?'is-danger':''}"><small>Retrasados</small><strong>${k.late}</strong><span>requieren revisión</span></article>
+      ${k.paused?`<article><small>En pausa</small><strong>${k.paused}</strong><span>excluidos del total</span></article>`:''}
+    </section>`;
+  }
+  function financeStudentCardV146(s={}, month=defaultBillingMonth(), selected=null){
+    const m=financeStudentMetricsV146(s,month);
+    const family=familyGroupForStudent(s);
+    const familyLabel=family.length>1 ? `${family.length} hermanos/as` : 'Individual';
+    const paidText=m.paused?'En pausa':m.status.label;
+    const amount=m.paused?0:m.calc.amount;
+    return `<button type="button" class="finance-student-card-v146 status-${safe(m.status.key)} ${String(selected?.id)===String(s.id)?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)+' '+(s.family_name||'')).toLowerCase())}">
+      <span class="finance-student-avatar-v146">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>
+      <span class="finance-student-main-v146"><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}</small><em>${safe(familyLabel)} · ${safe(paymentModeLabel(s))}</em></span>
+      <span class="finance-student-amount-v146"><strong>${money(amount)}</strong><small>${safe(paidText)}</small></span>
+    </button>`;
+  }
+  function attendanceStudentCardV146(s={}, month=defaultBillingMonth(), selected=null){
+    const c=calculatePaymentAmount(s.id,month);
+    const active=activePauseFor(s.id);
+    const total=Math.max(1,Number(c.activeDays||0));
+    const percent=Math.round((Number(c.present||0)/total)*100);
+    const tone=active?'paused':(c.absent>2?'danger':(c.absent>0?'warn':'ok'));
+    return `<button type="button" class="attendance-student-card-v146 is-${safe(tone)} ${String(selected?.id)===String(s.id)?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}">
+      <span class="finance-student-avatar-v146">${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span>
+      <span class="finance-student-main-v146"><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}</small><em>${active?'Pausa activa':`${c.present} asistencias · ${c.absent} faltas · ${c.justified} justificadas`}</em></span>
+      <span class="attendance-percent-v146"><strong>${active?'—':percent+'%'}</strong><small>${c.activeDays||0} clases</small></span>
+    </button>`;
+  }
+  function financeSearchBoxV146(placeholder='Filtrar alumnado...'){
+    return `<label class="finance-search-v146"><span>Buscar</span><input class="t16-search" type="search" placeholder="${safe(placeholder)}" data-t16-student-search></label>`;
+  }
   function paymentsContent(){
     const students=State.data.students||[];
-    const selected=students.find(s=>s.id===State.selectedStudentId)||students[0];
+    const selected=students.find(s=>String(s.id)===String(State.selectedStudentId))||students[0]||null;
     if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
     const month=(State.billingMonth||defaultBillingMonth()); State.billingMonth=month;
-    const fam=selected ? familyPaymentCard(selected, month) : '';
-    return `<div class="teacher-workspace-grid finance-workspace-v144">
-      <section class="window-panel finance-hero-v144"><div><p class="eyebrow">Gestión económica</p><h2>Pagos</h2><p>Resumen mensual, pagos por familia, recibís e históricos. Selecciona un alumno y revisa primero lo esencial.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button></section>
-      ${teacherStudentPicker(selected,'payments')}
-      <section class="window-panel payments-summary clean-main-summary finance-summary-v144"><h3>Resumen mensual</h3>${paymentSummary(month)}</section>
-      ${fam}
-      <section class="window-panel finance-editor-v144"><h3>${selected?`Ficha económica de ${safe(displayName(selected))}`:'Ficha económica'}</h3>${selected?paymentEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
-    </div>`;
+    const family=selected ? familyPaymentCard(selected, month) : '';
+    return `<section class="teacher-finance-v146 payments-v146">
+      <header class="finance-hero-clean-v146 window-panel"><div><p class="eyebrow">Gestión económica</p><h2>Pagos</h2><p>Una vista limpia para revisar importes, familias, mensualidades pendientes y recibís sin paneles solapados.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button></header>
+      <section class="window-panel finance-toolbar-v146">${paymentMonthNavigator(month,'Mes económico')}</section>
+      ${financeTopKpisMarkupV146(month)}
+      <div class="finance-layout-v146">
+        <section class="window-panel finance-student-list-v146"><div class="section-heading"><h3>Alumnado y familias</h3><span>${students.length}</span></div>${financeSearchBoxV146('Filtrar por nombre, curso o familia...')}<div class="finance-student-grid-v146">${students.length?students.map(s=>financeStudentCardV146(s,month,selected)).join(''):'<div class="empty-state">No hay alumnado cargado.</div>'}</div></section>
+        <section class="window-panel finance-student-detail-v146"><div class="section-heading"><h3>${selected?`Ficha económica de ${safe(displayName(selected))}`:'Ficha económica'}</h3><span>${safe(monthLabel(month))}</span></div>${selected?`${family}${paymentEditor(selected,month)}`:'<div class="empty-state">Selecciona un alumno.</div>'}</section>
+      </div>
+      <section class="window-panel finance-history-v146"><details><summary>Ver histórico mensual completo y pagos familiares agrupados</summary>${paymentSummary(month)}</details></section>
+    </section>`;
   }
   function attendanceContent(){
     const students=State.data.students||[];
-    const selected=students.find(s=>s.id===State.selectedStudentId)||students[0];
+    const selected=students.find(s=>String(s.id)===String(State.selectedStudentId))||students[0]||null;
     if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
     const month=(State.billingMonth||defaultBillingMonth()); State.billingMonth=month;
-    return `<div class="teacher-workspace-grid attendance-workspace-v144">
-      <section class="window-panel finance-hero-v144"><div><p class="eyebrow">Seguimiento de clases</p><h2>Asistencia y pausas</h2><p>Control mensual claro: asistencias, faltas, justificaciones y pausas que afectan al cálculo económico.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="payments">Ir a pagos</button></section>
-      ${teacherStudentPicker(selected,'attendance')}
-      <section class="window-panel attendance-summary clean-main-summary finance-summary-v144"><h3>Resumen de asistencia</h3>${attendanceSummary(month)}</section>
-      <section class="window-panel attendance-editor-v144"><h3>${selected?`Asistencia de ${safe(displayName(selected))}`:'Asistencia'}</h3>${selected?attendanceEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
-    </div>`;
+    return `<section class="teacher-attendance-v146 attendance-v146">
+      <header class="finance-hero-clean-v146 window-panel"><div><p class="eyebrow">Seguimiento de clases</p><h2>Asistencia y pausas</h2><p>Control mensual claro: asistencias, faltas, justificaciones y pausas que afectan al cálculo económico.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="payments">Ir a pagos</button></header>
+      <section class="window-panel finance-toolbar-v146">${paymentMonthNavigator(month,'Mes de asistencia')}</section>
+      ${attendanceSummary(month)}
+      <div class="finance-layout-v146 attendance-layout-v146">
+        <section class="window-panel finance-student-list-v146"><div class="section-heading"><h3>Alumnado</h3><span>${students.length}</span></div>${financeSearchBoxV146('Filtrar alumnado...')}<div class="finance-student-grid-v146">${students.length?students.map(s=>attendanceStudentCardV146(s,month,selected)).join(''):'<div class="empty-state">No hay alumnado cargado.</div>'}</div></section>
+        <section class="window-panel finance-student-detail-v146 attendance-student-detail-v146"><div class="section-heading"><h3>${selected?`Asistencia de ${safe(displayName(selected))}`:'Asistencia'}</h3><span>${safe(monthLabel(month))}</span></div>${selected?attendanceEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
+      </div>
+    </section>`;
   }
   function paymentEditor(s,month){
-    const bill=(State.data.billing||[]).find(b=>b.user_id===s.id)||{}; const pay=paymentMonthRecord(s.id,month); const calc=calculatePaymentAmount(s.id,month); const pausedBilling=paymentPausedForMonth(s.id,month);
+    const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
+    const pay=paymentMonthRecord(s.id,month);
+    const calc=calculatePaymentAmount(s.id,month);
+    const pausedBilling=paymentPausedForMonth(s.id,month);
     const method=pay.payment_method || '';
-    const pauseNotice = pausedBilling ? `<div class="payment-pause-exclusion"><strong>Alumno/a en pausa de asistencia.</strong><p>No se marca como pendiente de pago y no se suma al total previsto del mes mientras dure la pausa.</p></div>` : '';
-    return `<h3>Pagos de ${safe(displayName(s))}</h3>${paymentMonthNavigator(month,'Mes económico')}${pauseNotice}<form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-form"><input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase asistida</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija + clases individuales</option></select></label><div class="window-grid"><label>Cuota mensual fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Precio por clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div><p class="meta">El importe se calcula con la asistencia registrada y con las pausas activas. Regla general: mensualidad a mes vencido. Excepciones configuradas: Wrona y Marco Calvo, pago por adelantado. Criterio actual: ${safe(paymentModeLabel(s))}.</p><div class="window-grid"><label class="check-line"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> Mes ${safe(monthLabel(month))} pagado</label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div><label>Notas privadas de pago<textarea name="paymentNotes" rows="3">${safe(bill.payment_notes||'')}</textarea></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar tarifa y estado de pago</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Descargar recibí del mes</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Descargar recibís del trimestre</button></div><div class="payment-total-card is-visible ${pausedBilling?'is-paused-payment-total':''}"><strong>Total calculado: ${money(calc.amount)}</strong><p>${safe(calc.detail)} · Asistencias: ${calc.present} · Individuales: ${calc.individualPresent||0} · Faltas: ${calc.absent} · Justificadas: ${calc.justified} · Pausadas: ${calc.paused||0} · Estado: ${pausedBilling?'en pausa, excluido de pendientes':pay.paid?'pagado':'pendiente'} · Forma de pago: ${safe(paymentMethodLabel(method))}</p></div></form><section class="payment-history-panel"><h4>Histórico económico del alumno</h4>${paymentStudentHistory(s.id)}<div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('student')">Descargar histórico del alumno en PDF</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Descargar recibí de ${safe(monthLabel(month))}</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Descargar todos los recibís del trimestre</button></div></section>`;
+    const status=paymentSummaryStatus(pay, month, pausedBilling);
+    return `<section class="payment-editor-v146">
+      <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe calculado</small><strong>${money(pausedBilling?0:calc.amount)}</strong><p>${safe(calc.detail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
+      <form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="premium-form finance-payment-form-v146">
+        <input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}">
+        <div class="finance-form-section-v146"><h4>Tarifa</h4><div class="finance-form-grid-v146"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase asistida</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija + clases individuales</option></select></label><label>Cuota fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div></div>
+        <div class="finance-form-section-v146"><h4>Estado del mes</h4><div class="finance-form-grid-v146"><label class="check-line"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> Pagado</label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div></div>
+        <label>Notas privadas de pago<textarea name="paymentNotes" rows="3" placeholder="Observaciones internas de pago, familia o acuerdo económico.">${safe(bill.payment_notes||'')}</textarea></label>
+        <div class="finance-actions-v146"><button class="primary-btn" type="submit">Guardar pago</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Recibí del mes</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Recibís del trimestre</button></div>
+      </form>
+      <details class="finance-history-drawer-v146"><summary>Histórico económico de ${safe(displayName(s))}</summary>${paymentStudentHistory(s.id)}</details>
+    </section>`;
   }
   function attendanceEditor(s,month){
-    const days=monthScheduleDays(s.id,month,{includePaused:true}); const calc=calculatePaymentAmount(s.id,month);
-    return `<h3>Asistencia de ${safe(displayName(s))}</h3>${paymentPausePanel(s,month)}${paymentMonthNavigator(month,'Mes de asistencia')}<p class="meta">Haz clic en un día de clase para alternar asistencia/no asistencia. Los días en pausa quedan bloqueados y se excluyen del cálculo económico.</p><div class="attendance-month-grid">${days.length?days.map(d=>{ const rec=(State.data.attendance||[]).find(a=>a.user_id===s.id && a.class_date===d.date && String(a.scheduled_start||'').slice(0,5)===d.start); const status=d.paused?'paused':(rec?.status||'absent'); return `<article class="attendance-day t22-attendance-day is-${status} is-${safe(d.type)}" role="button" tabindex="0" ${d.paused?'data-paused="true"':''} data-t22-attendance-toggle data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}" data-current="${safe(status)}"><strong>${fmtLongDate(d.date)}</strong><span>${safe(d.start)}-${safe(d.end)} · ${d.type==='individual'?'Individual':'Grupal'}</span><em>${status==='present'?'Asistió':status==='justified'?'Justificada':status==='paused'?'Pausa':'No asistió'}</em>${d.paused?'<small>Asistencia pausada</small>':`<button type="button" data-t16-attendance="justified" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Justificar</button>`}</article>`; }).join(''):'<div class="empty-state">Este alumno no tiene horario asignado para este mes.</div>'}</div><div class="payment-total-card is-visible"><strong>Resumen del mes: ${calc.present} asistencias · ${calc.absent} faltas · ${calc.justified} justificadas · ${calc.paused||0} clases pausadas</strong><p>El cálculo económico asociado a este mes es ${money(calc.amount)}. Los recibís y el estado de pago se gestionan en la sección Pagos.</p></div>`;
+    const days=monthScheduleDays(s.id,month,{includePaused:true});
+    const calc=calculatePaymentAmount(s.id,month);
+    const grouped=days.reduce((map,d)=>{ const k=String(d.date).slice(0,7); if(!map[k]) map[k]=[]; map[k].push(d); return map; },{});
+    const dayCards=days.length?days.map(d=>{ const rec=(State.data.attendance||[]).find(a=>String(a.user_id)===String(s.id) && a.class_date===d.date && String(a.scheduled_start||'').slice(0,5)===d.start); const status=d.paused?'paused':(rec?.status||'absent'); return `<article class="attendance-day-v146 is-${safe(status)} is-${safe(d.type)}" ${d.paused?'data-paused="true"':''} data-t22-attendance-toggle data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}" data-current="${safe(status)}"><header><strong>${fmtLongDate(d.date)}</strong><span>${safe(d.start)}-${safe(d.end)}</span></header><p>${d.type==='individual'?'Clase individual':'Clase grupal'}</p><em>${status==='present'?'Asistió':status==='justified'?'Justificada':status==='paused'?'Pausa':'Falta'}</em>${d.paused?'<small>Bloqueada por pausa</small>':`<div class="attendance-actions-v146"><button type="button" data-t16-attendance="present" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Asistió</button><button type="button" data-t16-attendance="absent" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Falta</button><button type="button" data-t16-attendance="justified" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Justificada</button></div>`}</article>`; }).join(''):'<div class="empty-state">Este alumno no tiene horario asignado para este mes.</div>';
+    return `<section class="attendance-editor-clean-v146">
+      <div class="attendance-stats-v146"><article><small>Asistencias</small><strong>${calc.present}</strong></article><article><small>Faltas</small><strong>${calc.absent}</strong></article><article><small>Justificadas</small><strong>${calc.justified}</strong></article><article><small>Pausadas</small><strong>${calc.paused||0}</strong></article><article><small>Importe asociado</small><strong>${money(calc.amount)}</strong></article></div>
+      <details class="pause-drawer-v146"><summary>Pausas temporales de asistencia y acceso</summary>${paymentPausePanel(s,month)}</details>
+      <div class="attendance-help-v146"><strong>Registro rápido</strong><p>Usa los botones de cada día. Los cambios se guardan al momento y actualizan el cálculo económico.</p></div>
+      <div class="attendance-month-grid-v146">${dayCards}</div>
+    </section>`;
   }
   function attendanceSummary(month){
     const students=State.data.students||[];
-    const rows=students.map(s=>{ const c=calculatePaymentAmount(s.id,month); const active=activePauseFor(s.id); const monthPauses=pauseMonthOverlap(s.id,month).length; return `<tr class="${active?'is-paused-row':''}"><td>${safe(displayName(s))}${active?'<br><small>En pausa activa</small>':''}</td><td>${c.present}</td><td>${c.absent}</td><td>${c.justified}</td><td>${c.paused||0}</td><td>${monthPauses?`${monthPauses} pausa/s`:'—'}</td></tr>`; }).join('');
-    return `<label>Mes<input type="month" value="${safe(month)}" data-t16-billing-month></label><table class="premium-table"><thead><tr><th>Alumno/a</th><th>Asist.</th><th>Faltas</th><th>Justif.</th><th>Pausadas</th><th>Pausas del mes</th></tr></thead><tbody>${rows}</tbody></table>`;
+    let present=0, absent=0, justified=0, paused=0, withSchedule=0;
+    students.forEach(s=>{ const c=calculatePaymentAmount(s.id,month); present+=Number(c.present||0); absent+=Number(c.absent||0); justified+=Number(c.justified||0); paused+=Number(c.paused||0); if(Number(c.totalDays||0)>0) withSchedule++; });
+    return `<section class="attendance-kpi-grid-v146"><article><small>Alumnado con horario</small><strong>${withSchedule}</strong><span>${safe(monthLabel(month))}</span></article><article><small>Asistencias</small><strong>${present}</strong><span>registradas</span></article><article class="${absent?'is-warn':''}"><small>Faltas</small><strong>${absent}</strong><span>pendientes de revisar</span></article><article><small>Justificadas</small><strong>${justified}</strong><span>no computan como asistencia</span></article>${paused?`<article><small>Pausadas</small><strong>${paused}</strong><span>excluidas del cálculo</span></article>`:''}</section>`;
   }
   function paymentPausePanel(s, month){
     const active=activePauseFor(s.id); const pauses=pauseRecords(s.id); const upcoming=pauses.find(p=>p.active!==false && !pauseCoversDate(p) && String(p.start_date||'')>todayIso()); const editing=active||upcoming||{};
