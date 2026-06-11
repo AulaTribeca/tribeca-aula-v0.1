@@ -14368,3 +14368,55 @@ body .hero-card p {
   .profile-card-badges-v147{padding-left:0;}
   .profile-editor-v147 .t24-editor-head{align-items:flex-start;flex-direction:column;}
 }
+
+/* Tribeca Aula v148 · PDF de intentos y modelos de evaluación. */
+.exam-attempt-history-v148 ol{
+  display:grid;
+  gap:8px;
+  margin:10px 0 0;
+  padding-left:0;
+  list-style:none;
+}
+.exam-attempt-history-v148 li{
+  display:grid;
+  grid-template-columns:auto auto 1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:9px 10px;
+  border:1px solid rgba(20,64,39,.12);
+  border-radius:14px;
+  background:#fffdf8;
+}
+.exam-attempt-history-v148 li span{font-weight:900;color:#0b3d22;}
+.exam-attempt-history-v148 li strong{color:#172018;}
+.exam-attempt-history-v148 li small{color:#6e6557;font-weight:750;}
+.attempt-pdf-actions-v148{
+  margin-top:12px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.attempt-pdf-btn{
+  border:1px solid rgba(185,154,59,.42);
+  border-radius:999px;
+  background:#fbf3d8;
+  color:#0b3d22;
+  font-weight:950;
+  padding:7px 11px;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(22,32,24,.05);
+}
+.attempt-pdf-btn:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(22,32,24,.08);}
+.activity-attempt-table-v148 .attempt-pdf-btn{padding:6px 9px;font-size:.78rem;}
+.document-card-wide-v148{
+  grid-column:1 / -1;
+}
+.document-card-wide-v148 .inline-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+@media(max-width:720px){
+  .exam-attempt-history-v148 li{grid-template-columns:1fr;align-items:start;}
+  .activity-attempt-table-v148{min-width:760px;}
+}
