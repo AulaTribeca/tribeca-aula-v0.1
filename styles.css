@@ -14540,3 +14540,116 @@ body .hero-card p {
     text-align:left;
   }
 }
+
+/* Tribeca Aula v150 PWA instalable. */
+.tribeca-pwa-install-cta{
+  position:fixed;
+  right:18px;
+  bottom:86px;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:min(460px, calc(100vw - 28px));
+  padding:14px;
+  border:1px solid rgba(6,75,53,.18);
+  border-radius:24px;
+  background:rgba(255,252,244,.96);
+  box-shadow:0 18px 45px rgba(16,32,24,.16);
+  backdrop-filter:blur(16px);
+  color:#14231b;
+}
+.tribeca-pwa-install-cta[hidden]{
+  display:none !important;
+}
+.tribeca-pwa-install-cta > div{
+  min-width:0;
+  display:grid;
+  gap:2px;
+  flex:1 1 auto;
+}
+.tribeca-pwa-install-cta strong{
+  color:#064b35;
+  font-weight:950;
+  line-height:1.05;
+}
+.tribeca-pwa-install-cta span{
+  color:#536158;
+  font-size:.88rem;
+  line-height:1.25;
+}
+.tribeca-pwa-install-cta .primary-btn{
+  white-space:nowrap;
+  border-radius:999px;
+  padding:.78rem 1rem;
+}
+.tribeca-pwa-install-cta .ghost-btn{
+  width:34px;
+  height:34px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid rgba(6,75,53,.13);
+  background:#f4ecda;
+  color:#064b35;
+  font-weight:950;
+}
+.tribeca-pwa-help{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:grid;
+  place-items:center;
+  padding:22px;
+  background:rgba(14,24,18,.38);
+  backdrop-filter:blur(8px);
+}
+.tribeca-pwa-help-card{
+  position:relative;
+  width:min(520px, 100%);
+  border-radius:30px;
+  border:1px solid rgba(6,75,53,.18);
+  background:#fffdf6;
+  box-shadow:0 26px 60px rgba(9,19,14,.24);
+  padding:28px;
+  color:#18241c;
+}
+.tribeca-pwa-help-card h2{
+  margin:.2rem 0 .8rem;
+  color:#064b35;
+  font-size:clamp(1.45rem, 3vw, 2.05rem);
+}
+.tribeca-pwa-help-card p{
+  line-height:1.55;
+  color:#3f4c43;
+}
+.tribeca-pwa-help-close{
+  position:absolute;
+  top:14px;
+  right:14px;
+  width:36px;
+  height:36px;
+  border-radius:999px;
+  border:1px solid rgba(6,75,53,.14);
+  background:#f4ecda;
+  color:#064b35;
+  font-weight:950;
+}
+.profile-menu [data-pwa-install]{
+  color:#064b35;
+  font-weight:900;
+}
+@media (max-width:680px){
+  .tribeca-pwa-install-cta{
+    left:12px;
+    right:12px;
+    bottom:76px;
+    width:auto;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .tribeca-pwa-install-cta .primary-btn{
+    width:calc(100% - 46px);
+  }
+}

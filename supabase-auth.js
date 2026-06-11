@@ -98,6 +98,97 @@
   async function undoLast(){ const item = UndoStack.pop(); if(!item) return toast('No hay cambios recientes para deshacer.'); if(Date.now() - item.at > UNDO_TTL_MS) return toast('El plazo para deshacer este cambio ha caducado.'); try{ await item.fn(); await loadData(true); renderApp(); rerender(); toast(`Cambio deshecho: ${item.label}`); }catch(e){ console.error(e); toast(e.message || 'No se pudo deshacer el último cambio.'); } }
   window.TribecaUndoLastAction = undoLast;
 
+
+  const TRIBECA_PWA_DISMISSED_KEY = 'tribeca-pwa-install-dismissed-v150';
+  let tribecaDeferredInstallPrompt = null;
+  function isTribecaStandalone(){
+    return window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true;
+  }
+  function pwaText(key){
+    const dict={
+      install:{es:'Instalar Tribeca Aula',gl:'Instalar Tribeca Aula',en:'Install Tribeca Aula',fr:'Installer Tribeca Aula',pl:'Zainstaluj Tribeca Aula',de:'Tribeca Aula installieren',pt:'Instalar Tribeca Aula'},
+      installShort:{es:'Instalar app',gl:'Instalar app',en:'Install app',fr:'Installer l’app',pl:'Zainstaluj aplikację',de:'App installieren',pt:'Instalar app'},
+      ready:{es:'Abre Tribeca Aula como una app, con icono propio y sin la barra normal del navegador.',gl:'Abre Tribeca Aula como unha app, con icona propia e sen a barra normal do navegador.',en:'Open Tribeca Aula as an app, with its own icon and without the normal browser bar.',fr:'Ouvre Tribeca Aula comme une app, avec sa propre icône et sans la barre normale du navigateur.',pl:'Otwórz Tribeca Aula jak aplikację, z własną ikoną i bez zwykłego paska przeglądarki.',de:'Öffne Tribeca Aula als App, mit eigenem Symbol und ohne normale Browserleiste.',pt:'Abre a Tribeca Aula como uma app, com ícone próprio e sem a barra normal do navegador.'},
+      later:{es:'Ahora no',gl:'Agora non',en:'Not now',fr:'Pas maintenant',pl:'Nie teraz',de:'Jetzt nicht',pt:'Agora não'},
+      installed:{es:'Tribeca Aula ya está instalada en este dispositivo.',gl:'Tribeca Aula xa está instalada neste dispositivo.',en:'Tribeca Aula is already installed on this device.',fr:'Tribeca Aula est déjà installée sur cet appareil.',pl:'Tribeca Aula jest już zainstalowana na tym urządzeniu.',de:'Tribeca Aula ist auf diesem Gerät bereits installiert.',pt:'Tribeca Aula já está instalada neste dispositivo.'},
+      unavailableTitle:{es:'Instalación manual',gl:'Instalación manual',en:'Manual installation',fr:'Installation manuelle',pl:'Instalacja ręczna',de:'Manuelle Installation',pt:'Instalação manual'},
+      unavailableBody:{es:'Si no aparece el cuadro automático, abre el menú del navegador y elige “Instalar aplicación” o “Añadir a pantalla de inicio”. En iPhone o iPad, pulsa Compartir y después “Añadir a pantalla de inicio”.',gl:'Se non aparece o cadro automático, abre o menú do navegador e escolle “Instalar aplicación” ou “Engadir á pantalla de inicio”. En iPhone ou iPad, pulsa Compartir e despois “Engadir á pantalla de inicio”.',en:'If the automatic prompt does not appear, open the browser menu and choose “Install app” or “Add to Home screen”. On iPhone or iPad, tap Share and then “Add to Home Screen”.',fr:'Si la fenêtre automatique n’apparaît pas, ouvre le menu du navigateur et choisis “Installer l’application” ou “Ajouter à l’écran d’accueil”. Sur iPhone ou iPad, touche Partager puis “Ajouter à l’écran d’accueil”.',pl:'Jeśli automatyczny komunikat się nie pojawi, otwórz menu przeglądarki i wybierz „Zainstaluj aplikację” lub „Dodaj do ekranu głównego”. Na iPhonie lub iPadzie stuknij Udostępnij, a potem „Dodaj do ekranu początkowego”.',de:'Wenn der automatische Dialog nicht erscheint, öffne das Browsermenü und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“. Auf iPhone oder iPad: Teilen antippen und dann „Zum Home-Bildschirm“.',pt:'Se a janela automática não aparecer, abre o menu do navegador e escolhe “Instalar aplicação” ou “Adicionar ao ecrã inicial”. No iPhone ou iPad, toca em Partilhar e depois em “Adicionar ao ecrã principal”.'},
+      close:{es:'Cerrar',gl:'Pechar',en:'Close',fr:'Fermer',pl:'Zamknij',de:'Schließen',pt:'Fechar'},
+      offlineReady:{es:'Tribeca Aula queda preparada para abrir más rápido en este dispositivo.',gl:'Tribeca Aula queda preparada para abrir máis rápido neste dispositivo.',en:'Tribeca Aula is ready to open faster on this device.',fr:'Tribeca Aula est prête à s’ouvrir plus vite sur cet appareil.',pl:'Tribeca Aula jest gotowa do szybszego otwierania na tym urządzeniu.',de:'Tribeca Aula kann auf diesem Gerät nun schneller geöffnet werden.',pt:'Tribeca Aula está pronta para abrir mais depressa neste dispositivo.'}
+    };
+    let code='gl';
+    try{ code = typeof currentLangCode === 'function' ? currentLangCode() : (localStorage.getItem('tribeca-language') || 'gl'); }catch(_e){ code='gl'; }
+    return dict[key]?.[code] || dict[key]?.gl || dict[key]?.es || key;
+  }
+  function registerTribecaPwa(){
+    if(!('serviceWorker' in navigator)) return;
+    if(window.__tribecaPwaRegistered) return;
+    window.__tribecaPwaRegistered = true;
+    navigator.serviceWorker.register('./service-worker.js', { scope:'./' })
+      .then(reg=>{ try{ reg.update?.(); }catch(_e){} })
+      .catch(err=>console.warn('[Tribeca Aula] Service worker no registrado:', err));
+  }
+  function ensurePwaInstallCta(){
+    if(!document.body || document.getElementById('tribecaPwaInstallCta')) return;
+    const node=document.createElement('aside');
+    node.id='tribecaPwaInstallCta';
+    node.className='tribeca-pwa-install-cta';
+    node.setAttribute('aria-live','polite');
+    node.hidden=true;
+    node.innerHTML=`<div><strong>${safe(pwaText('install'))}</strong><span>${safe(pwaText('ready'))}</span></div><button type="button" class="primary-btn" data-pwa-install>${safe(pwaText('installShort'))}</button><button type="button" class="ghost-btn" data-pwa-install-dismiss aria-label="${safe(pwaText('later'))}">×</button>`;
+    document.body.appendChild(node);
+  }
+  function updatePwaInstallCta(){
+    if(!document.body) return;
+    ensurePwaInstallCta();
+    const node=document.getElementById('tribecaPwaInstallCta');
+    if(!node) return;
+    node.hidden = isTribecaStandalone() || !tribecaDeferredInstallPrompt || localStorage.getItem(TRIBECA_PWA_DISMISSED_KEY)==='1';
+    if(!node.hidden){
+      const strong=node.querySelector('strong'); if(strong) strong.textContent=pwaText('install');
+      const span=node.querySelector('span'); if(span) span.textContent=pwaText('ready');
+      const btn=node.querySelector('[data-pwa-install]'); if(btn) btn.textContent=pwaText('installShort');
+    }
+  }
+  async function handleTribecaPwaInstall(){
+    if(isTribecaStandalone()) return toast(pwaText('installed'));
+    if(tribecaDeferredInstallPrompt){
+      const promptEvent = tribecaDeferredInstallPrompt;
+      tribecaDeferredInstallPrompt = null;
+      updatePwaInstallCta();
+      try{
+        await promptEvent.prompt();
+        await promptEvent.userChoice;
+      }catch(err){
+        console.warn('[Tribeca Aula] Instalación PWA cancelada o no disponible:', err);
+      }
+      return;
+    }
+    showTribecaPwaInstructions();
+  }
+  function showTribecaPwaInstructions(){
+    document.getElementById('tribecaPwaHelp')?.remove();
+    const node=document.createElement('section');
+    node.id='tribecaPwaHelp';
+    node.className='tribeca-pwa-help';
+    node.setAttribute('role','dialog');
+    node.setAttribute('aria-modal','true');
+    node.innerHTML=`<div class="tribeca-pwa-help-card"><button type="button" class="tribeca-pwa-help-close" data-pwa-help-close aria-label="${safe(pwaText('close'))}">×</button><p class="eyebrow">Tribeca Aula</p><h2>${safe(pwaText('unavailableTitle'))}</h2><p>${safe(pwaText('unavailableBody'))}</p><button type="button" class="primary-btn" data-pwa-help-close>${safe(pwaText('close'))}</button></div>`;
+    document.body.appendChild(node);
+  }
+  window.addEventListener('beforeinstallprompt', ev=>{
+    ev.preventDefault();
+    tribecaDeferredInstallPrompt = ev;
+    localStorage.removeItem(TRIBECA_PWA_DISMISSED_KEY);
+    updatePwaInstallCta();
+  });
+  window.addEventListener('appinstalled', ()=>{
+    tribecaDeferredInstallPrompt = null;
+    localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY, '1');
+    updatePwaInstallCta();
+    toast(pwaText('offlineReady'));
+  });
+
   const A11Y_STORAGE_KEY = 'tribeca-accessibility-settings-v115';
   const A11Y_DEFAULTS = {
     background:'#f8f7f2',
@@ -855,6 +946,7 @@
     }
     const name=$('.profile-name'); if(name) name.textContent = 'Mi cuenta';
     simplifyTribecaNavigation();
+    updatePwaInstallCta();
     const menu=$('#profileMenu');
     if(menu){
       menu.innerHTML=accountMenuMarkup();
@@ -866,7 +958,8 @@
     const personalTools = roleTeacher()
       ? `<button type="button" data-t141-account-tool="guidance">Orientación académica</button>`
       : `<button type="button" data-t141-account-tool="guidance">Orientación académica</button><button type="button" data-t141-account-tool="grades">Calificaciones</button><button type="button" data-t141-account-tool="difficulties">Materias con dificultades</button>`;
-    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button>${personalTools}`;
+    const installTool = isTribecaStandalone() ? '' : `<button type="button" data-pwa-install>${safe(pwaText('install'))}</button>`;
+    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button>${personalTools}${installTool}`;
   }
   function toggleAccountMenu(){
     const menu=$('#profileMenu');
@@ -6353,6 +6446,9 @@ function classroomCard(c,i=0){
   function bindGlobal() {
     window.addEventListener('click', async ev=>{ const btn=ev.target.closest?.('[data-t24-save-student]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=btn.closest('form'); if(f) await saveStudentProfile(f); } }, true);
     document.addEventListener('click', async ev=>{
+      const pwaInstall=ev.target.closest?.('[data-pwa-install]'); if(pwaInstall){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); closeAccountMenu(); await handleTribecaPwaInstall(); return; }
+      const pwaDismiss=ev.target.closest?.('[data-pwa-install-dismiss]'); if(pwaDismiss){ ev.preventDefault(); ev.stopPropagation(); localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY,'1'); updatePwaInstallCta(); return; }
+      const pwaHelpClose=ev.target.closest?.('[data-pwa-help-close]'); if(pwaHelpClose){ ev.preventDefault(); ev.stopPropagation(); document.getElementById('tribecaPwaHelp')?.remove(); return; }
       const attemptPdf=ev.target.closest?.('[data-t148-attempt-pdf]'); if(attemptPdf){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); window.TribecaPrintAttemptPdf?.(attemptPdf.dataset.t148AttemptPdf); return; }
       const unitSave=ev.target.closest?.('[data-t126-save-unit]'); if(unitSave){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitSave.closest('form'); if(f) await saveClassUnit(f); return; }
       const unitAdd=ev.target.closest?.('[data-t126-add-unit]'); if(unitAdd){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitAdd.closest('form'); if(f) await addClassUnit(f); return; }
@@ -6891,8 +6987,9 @@ function classroomCard(c,i=0){
   }
   async function boot() {
     ensureLanguageDefault();
+    registerTribecaPwa();
     applyAccessibilitySettings();
-    setTimeout(()=>ensureAccessibilityWidget(), 0);
+    setTimeout(()=>{ ensureAccessibilityWidget(); updatePwaInstallCta(); }, 0);
     document.body.classList.remove('is-dark','dark-mode','theme-dark');
     try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
     document.querySelectorAll('.theme-toggle,[data-theme-toggle],#themeToggle,#themeSelect').forEach(el=>{ const wrap=el.closest('label,.select-wrap,.control-field')||el; wrap.remove(); });

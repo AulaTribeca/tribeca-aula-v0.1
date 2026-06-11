@@ -1,0 +1,30 @@
+{
+  "name": "Tribeca Aula",
+  "short_name": "Tribeca Aula",
+  "description": "Aula virtual de Tribeca Academia para alumnado y profesorado.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "lang": "gl",
+  "dir": "ltr",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#f8f6ee",
+  "theme_color": "#064b35",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "assets/tribeca-pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/tribeca-pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
