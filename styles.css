@@ -13802,3 +13802,102 @@ body .hero-card p {
   .teacher-documents-v144b .clean-hero{display:block;}
   .teacher-documents-v144b .teacher-season-switch-card{min-width:0;margin-top:14px;}
 }
+
+
+/* Tribeca Aula v145 · Panel docente, horarios y actividad autocorregible optimizados. */
+.teacher-workspace-grid,
+.t24-student-profiles{
+  display:grid;
+  grid-template-columns:minmax(280px,360px) minmax(0,1fr);
+  gap:22px;
+  align-items:start;
+}
+.teacher-workspace-grid > .window-panel,
+.t24-student-profiles > .window-panel{
+  min-width:0;
+  overflow:visible;
+}
+.t24-profile-list,
+.payments-students,
+.attendance-students{
+  position:sticky;
+  top:110px;
+  max-height:calc(100vh - 150px);
+  overflow:auto;
+}
+.t24-profile-editor,
+.attendance-editor-v144,
+.payments-detail,
+.activity-detail-v145{
+  min-width:0;
+  overflow:auto;
+}
+.premium-student-editor,
+.seasonal-schedule-editor,
+.attendance-editor-v144,
+.payment-editor-v144{
+  max-width:100%;
+  box-sizing:border-box;
+}
+.seasonal-schedule-columns{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;
+  align-items:start;
+}
+.schedule-preset-toolbar{
+  border:1px solid rgba(185,154,59,.22);
+  border-radius:18px;
+  background:linear-gradient(135deg,#fffaf0,#f5efe1);
+  padding:12px;
+  margin:10px 0 12px;
+  display:grid;
+  grid-template-columns:1fr repeat(3,minmax(110px,.45fr));
+  gap:10px;
+  align-items:end;
+}
+.schedule-preset-toolbar strong{color:#0b3d22;font-weight:900;align-self:center}.schedule-preset-toolbar label{font-size:12px}.schedule-preset-toolbar .inline-actions{grid-column:1 / -1;gap:8px}.t24-schedule-row{grid-template-columns:1.05fr .85fr .85fr .9fr 1.2fr!important;align-items:end}.t24-schedule-row input,.t24-schedule-row select{min-width:0;width:100%}
+.activity-analytics-v145{display:grid;gap:18px}.activity-main-students-v145 .section-heading{margin-bottom:12px}.activity-student-card-grid-v145{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.activity-student-card-v145{border:1px solid rgba(13,63,36,.16);border-radius:18px;background:#fffdf7;text-align:left;padding:14px;display:grid;gap:5px;box-shadow:0 10px 26px rgba(22,32,24,.05);cursor:pointer}.activity-student-card-v145 span{font-weight:900;color:#0b3d22}.activity-student-card-v145 strong{font-size:24px;color:#123c2a}.activity-student-card-v145 small{color:#6c6558;font-weight:700}.activity-student-card-v145 em{font-style:normal;border-radius:999px;background:#f2ead8;color:#0b3d22;width:max-content;max-width:100%;padding:4px 8px;font-size:12px;font-weight:800}.activity-student-card-v145.is-danger{border-color:#c98282;background:#fff7f5}.activity-student-card-v145.is-danger em{background:#f8dede;color:#7f1d1d}.activity-student-card-v145.is-warn{border-color:#d6b15c}.activity-student-card-v145.is-ok{border-color:#8fbf9d}.activity-student-card-v145.is-selected{outline:3px solid rgba(15,90,58,.18)}.activity-table-wrap-v145{overflow:auto}.activity-nav-link.linklike{border:0;background:transparent;color:#0b5f3a;text-decoration:underline;text-underline-offset:3px;font-weight:900;cursor:pointer;padding:0}.activity-attempt-table tr.is-low-score td{background:#fff7f5}.teacher-documents-v145 .document-card-v144 .inline-actions{display:flex;flex-wrap:wrap;gap:8px}.planning-pdf-table.is-filled-planning td strong{color:#0b3d22}.planning-pdf-table.is-blank-planning td{height:64px}.payments-v144,.attendance-v144{max-width:100%;overflow:visible}.payments-v144 .teacher-workspace-grid,.attendance-v144 .teacher-workspace-grid{grid-template-columns:minmax(280px,340px) minmax(0,1fr)}.payment-history-panel,.payment-total-card,.attendance-summary{overflow:auto}.window-panel{box-sizing:border-box}@media(max-width:980px){.teacher-workspace-grid,.t24-student-profiles,.seasonal-schedule-columns{grid-template-columns:1fr}.t24-profile-list,.payments-students,.attendance-students{position:relative;top:auto;max-height:none}.schedule-preset-toolbar{grid-template-columns:1fr 1fr}.t24-schedule-row{grid-template-columns:1fr 1fr!important}}
+
+/* v145 ajuste de distribución de pagos y asistencia */
+.finance-workspace-v144,
+.attendance-workspace-v144{
+  grid-template-columns:minmax(270px,340px) minmax(0,1fr);
+}
+.finance-workspace-v144 > .finance-hero-v144,
+.attendance-workspace-v144 > .finance-hero-v144{
+  grid-column:1 / -1;
+}
+.finance-workspace-v144 > .payments-summary,
+.attendance-workspace-v144 > .attendance-summary,
+.finance-workspace-v144 > .family-payment-card-v144,
+.finance-workspace-v144 > .finance-editor-v144,
+.attendance-workspace-v144 > .attendance-editor-v144{
+  grid-column:2;
+}
+.finance-workspace-v144 > .payments-students,
+.attendance-workspace-v144 > .payments-students{
+  grid-column:1;
+  grid-row:2 / span 5;
+}
+.finance-editor-v144 .window-grid,
+.attendance-editor-v144 .window-grid,
+.payment-month-nav .inline-actions{
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+}
+.finance-editor-v144 form,
+.attendance-editor-v144 form{
+  max-width:100%;
+}
+@media(max-width:980px){
+  .finance-workspace-v144 > .payments-summary,
+  .attendance-workspace-v144 > .attendance-summary,
+  .finance-workspace-v144 > .family-payment-card-v144,
+  .finance-workspace-v144 > .finance-editor-v144,
+  .attendance-workspace-v144 > .attendance-editor-v144,
+  .finance-workspace-v144 > .payments-students,
+  .attendance-workspace-v144 > .payments-students{
+    grid-column:1;
+    grid-row:auto;
+  }
+}
