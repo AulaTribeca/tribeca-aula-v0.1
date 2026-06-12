@@ -14909,3 +14909,60 @@ body.tribeca-account-menu-open .profile-menu:not([hidden]) {
     border-color: rgba(255,255,255,.16) !important;
   }
 }
+
+/* Tribeca Aula v158 · menú A miña conta en portal fijo para móvil */
+.profile-menu.tribeca-account-menu-portal {
+  position: fixed !important;
+  left: var(--tribeca-profile-menu-left, 1rem) !important;
+  top: var(--tribeca-profile-menu-top, 5rem) !important;
+  right: auto !important;
+  z-index: 2147483647 !important;
+  min-width: 22rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  background: #fffdf8 !important;
+  color: #1f1e1a !important;
+  opacity: 1 !important;
+  visibility: visible;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+body.is-dark .profile-menu.tribeca-account-menu-portal {
+  background: #1f1a10 !important;
+  color: #f8f1df !important;
+}
+body.tribeca-account-menu-open::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600 !important;
+  background: rgba(12, 22, 14, .28);
+  pointer-events: none;
+}
+body.tribeca-account-menu-open .profile-menu.tribeca-account-menu-portal:not([hidden]) {
+  display: block !important;
+  z-index: 2147483647 !important;
+}
+@media (max-width: 720px) {
+  .profile-menu.tribeca-account-menu-portal:not([hidden]) {
+    left: max(14px, env(safe-area-inset-left)) !important;
+    right: max(14px, env(safe-area-inset-right)) !important;
+    top: var(--tribeca-profile-mobile-top, 6rem) !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: var(--tribeca-profile-mobile-maxheight, calc(100dvh - 7rem)) !important;
+    padding: .75rem !important;
+    border-radius: 1.35rem !important;
+    border: 1px solid rgba(168, 135, 45, .38) !important;
+    box-shadow: 0 2rem 5rem rgba(5, 18, 10, .52) !important;
+  }
+  .profile-menu.tribeca-account-menu-portal button {
+    min-height: 3.65rem !important;
+    background: #fffaf0 !important;
+    border: 1px solid rgba(16, 63, 36, .14) !important;
+    box-shadow: none !important;
+  }
+}

@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 157 · Edge Function push compatible y menú móvil en primer plano
+/* Tribeca Aula · Versión 158 · Edge Function push sin bloqueo de despliegue y menú móvil portal
    Mejora: aclara el estado “permiso concedido, pero falta registrar”, permite reiniciar el dispositivo aunque falte el registro local y muestra errores persistentes de activación. */
 (() => {
   'use strict';
@@ -120,8 +120,8 @@
   const TRIBECA_PUSH_FUNCTION = 'tribeca-web-push-dispatch';
   const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
   const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
-  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v157';
-  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v157';
+  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v158';
+  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v158';
   const TRIBECA_PUSH_DEFAULT_PREFS = Object.freeze({ messages:true, calendar:true, announcements:true, materials:true });
 
   function tribecaDeviceId(){
@@ -292,6 +292,7 @@
     if(/Sesión|autenticada|session|jwt|JWT|Authorization/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
     if(/tribeca_web_push_subscriptions|relation.*does not exist|no existe/i.test(message)) return 'Falta ejecutar el SQL de la v151 en Supabase para crear las tablas de notificaciones.';
     if(/No se pudo conectar|Failed to fetch|NetworkError/i.test(message)) return 'No se pudo contactar con la Edge Function de Supabase. Revisa que esté desplegada y que el proyecto sea el correcto.';
+    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'La Edge Function se desplegó, pero falla al cargar el motor de envío push. Actualiza la función con el index_ts_para_copiar_en_supabase.txt de la v158.';
     if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-web-push-dispatch. Revisa el nombre exacto de la Edge Function.';
     if(/Edge Function/i.test(message)) return message;
     return message || 'No se pudo completar la comprobación de notificaciones.';
@@ -1332,8 +1333,40 @@
     const installTool = isTribecaStandalone() ? '' : `<button type="button" data-pwa-install>${safe(pwaText('install'))}</button>`;
     return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button>${personalTools}${installTool}`;
   }
+  function accountMenuElement(){ return document.getElementById('profileMenu'); }
+  function ensureAccountMenuPortal(){
+    const menu=accountMenuElement();
+    if(!menu) return null;
+    if(menu.parentElement !== document.body){
+      document.body.appendChild(menu);
+      menu.classList.add('tribeca-account-menu-portal');
+    }
+    return menu;
+  }
+  function positionAccountMenu(){
+    const menu=accountMenuElement();
+    const btn=document.getElementById('profileButton');
+    if(!menu || !btn || menu.hasAttribute('hidden')) return;
+    const rect=btn.getBoundingClientRect();
+    const vw=Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const vh=Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const mobile=window.matchMedia?.('(max-width: 720px)')?.matches || vw <= 720;
+    if(mobile){
+      menu.style.left='14px';
+      menu.style.right='14px';
+      menu.style.top=`${Math.max(12, rect.bottom + 8)}px`;
+      menu.style.maxHeight=`${Math.max(220, vh - Math.max(12, rect.bottom + 8) - 16)}px`;
+      return;
+    }
+    menu.style.right='auto';
+    menu.style.maxHeight=`${Math.max(260, vh - rect.bottom - 18)}px`;
+    const width=Math.max(menu.offsetWidth || 0, 352);
+    const left=Math.min(Math.max(12, rect.right - width), vw - width - 12);
+    menu.style.left=`${left}px`;
+    menu.style.top=`${Math.min(rect.bottom + 10, vh - 80)}px`;
+  }
   function toggleAccountMenu(){
-    const menu=$('#profileMenu');
+    const menu=ensureAccountMenuPortal();
     if(!menu) return;
     if(!menu.innerHTML.trim()) menu.innerHTML=accountMenuMarkup();
     const hidden=menu.hasAttribute('hidden');
@@ -1341,6 +1374,8 @@
       menu.removeAttribute('hidden');
       menu.setAttribute('aria-hidden','false');
       document.body.classList.add('tribeca-account-menu-open');
+      requestAnimationFrame(positionAccountMenu);
+      setTimeout(positionAccountMenu, 60);
     }
     else {
       menu.setAttribute('hidden','');
@@ -1349,7 +1384,7 @@
     }
   }
   function closeAccountMenu(){
-    const menu=$('#profileMenu');
+    const menu=accountMenuElement();
     if(menu){ menu.setAttribute('hidden',''); menu.setAttribute('aria-hidden','true'); }
     document.body.classList.remove('tribeca-account-menu-open');
   }
@@ -6822,6 +6857,9 @@ function classroomCard(c,i=0){
     });
   }
   function bindGlobal() {
+    window.addEventListener('resize', () => { if(document.body.classList.contains('tribeca-account-menu-open')) positionAccountMenu(); }, { passive:true });
+    window.addEventListener('orientationchange', () => setTimeout(positionAccountMenu, 180), { passive:true });
+    window.addEventListener('scroll', () => { if(document.body.classList.contains('tribeca-account-menu-open')) positionAccountMenu(); }, { passive:true });
     window.addEventListener('click', async ev=>{ const btn=ev.target.closest?.('[data-t24-save-student]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=btn.closest('form'); if(f) await saveStudentProfile(f); } }, true);
     document.addEventListener('click', async ev=>{
       const pwaInstall=ev.target.closest?.('[data-pwa-install]'); if(pwaInstall){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); closeAccountMenu(); await handleTribecaPwaInstall(); return; }
@@ -6841,7 +6879,7 @@ function classroomCard(c,i=0){
       const accountTool=ev.target.closest?.('[data-t141-account-tool]'); if(accountTool){ ev.preventDefault(); ev.stopImmediatePropagation(); const target=accountTool.dataset.t141AccountTool; closeAccountMenu(); if(target) openTool(target); return; }
       const accountPanel=ev.target.closest?.('[data-t73-account-panel]'); if(accountPanel){ ev.preventDefault(); ev.stopImmediatePropagation(); State.profilePanel=accountPanel.dataset.t73AccountPanel || 'profile'; closeAccountMenu(); openTool('profile'); return; }
       const prof=ev.target.closest?.('#profileButton'); if(prof){ ev.preventDefault(); ev.stopImmediatePropagation(); toggleAccountMenu(); return; }
-      if(document.body.classList.contains('tribeca-account-menu-open') && !ev.target.closest?.('.profile-area') && !ev.target.closest?.('#profileMenu')) closeAccountMenu();
+      if(document.body.classList.contains('tribeca-account-menu-open') && !ev.target.closest?.('#profileButton') && !ev.target.closest?.('#profileMenu')) closeAccountMenu();
       const navBtn=ev.target.closest?.('.main-nav .nav-btn');
       if(navBtn){
         if(navBtn.matches('[data-public-tool-link]')) return;
