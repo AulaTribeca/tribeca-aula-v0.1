@@ -14826,3 +14826,86 @@ body .hero-card p {
     max-height: min(72vh, calc(100vh - var(--header-h) - .6rem));
   }
 }
+
+
+/* Tribeca Aula v157 · menú de A miña conta siempre por encima en móvil */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 2147483000 !important;
+  isolation: isolate;
+}
+.header-inner,
+.utility-bar,
+.profile-area {
+  z-index: 2147483100 !important;
+  overflow: visible !important;
+}
+.profile-menu {
+  z-index: 2147483600 !important;
+  background: #fffdf8 !important;
+  color: #1f1e1a !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate;
+}
+body.is-dark .profile-menu {
+  background: #1f1a10 !important;
+  color: #f8f1df !important;
+}
+body.tribeca-account-menu-open::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483400;
+  background: rgba(12, 22, 14, .24);
+  pointer-events: none;
+}
+body.tribeca-account-menu-open .profile-menu:not([hidden]) {
+  display: block !important;
+  z-index: 2147483600 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+@media (max-width: 720px) {
+  body.tribeca-account-menu-open {
+    overflow-x: hidden;
+  }
+  body.tribeca-account-menu-open .app-header {
+    z-index: 2147483500 !important;
+  }
+  .profile-area {
+    position: static !important;
+    z-index: 2147483550 !important;
+  }
+  .profile-menu:not([hidden]) {
+    position: fixed !important;
+    left: max(14px, env(safe-area-inset-left)) !important;
+    right: max(14px, env(safe-area-inset-right)) !important;
+    top: max(14px, env(safe-area-inset-top)) !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: calc(100dvh - max(28px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom))) !important;
+    overflow-y: auto !important;
+    padding: .7rem !important;
+    border-radius: 1.35rem !important;
+    border: 1px solid rgba(168, 135, 45, .35) !important;
+    box-shadow: 0 2rem 5rem rgba(5, 18, 10, .46) !important;
+    transform: translate3d(0,0,0) !important;
+  }
+  .profile-menu button {
+    min-height: 3.55rem !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 1rem !important;
+    background: #fffaf0 !important;
+    border: 1px solid rgba(16, 63, 36, .12) !important;
+    margin: .25rem 0 !important;
+  }
+  body.is-dark .profile-menu button {
+    background: rgba(255,255,255,.06) !important;
+    border-color: rgba(255,255,255,.16) !important;
+  }
+}

@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 156 · activación push robusta, un botón y menú móvil corregido
+/* Tribeca Aula · Versión 157 · Edge Function push compatible y menú móvil en primer plano
    Mejora: aclara el estado “permiso concedido, pero falta registrar”, permite reiniciar el dispositivo aunque falte el registro local y muestra errores persistentes de activación. */
 (() => {
   'use strict';
@@ -120,8 +120,8 @@
   const TRIBECA_PUSH_FUNCTION = 'tribeca-web-push-dispatch';
   const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
   const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
-  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v155';
-  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v155';
+  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v157';
+  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v157';
   const TRIBECA_PUSH_DEFAULT_PREFS = Object.freeze({ messages:true, calendar:true, announcements:true, materials:true });
 
   function tribecaDeviceId(){
@@ -142,7 +142,7 @@
     return { ...TRIBECA_PUSH_DEFAULT_PREFS };
   }
   function tribecaPushSupported(){
-    return !!(configured && State.client?.functions?.invoke && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
+    return !!(configured && cfg.url && cfg.anonKey && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext !== false);
   }
   function tribecaBadgeSupported(){ return !!(navigator?.setAppBadge || navigator?.clearAppBadge); }
   function urlBase64ToUint8Array(base64String=''){
@@ -152,10 +152,35 @@
     return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
   }
   async function tribecaPushInvoke(body={}){
-    if(!State.client?.functions?.invoke) throw new Error('La función de notificaciones push no está disponible.');
-    const res = await State.client.functions.invoke(TRIBECA_PUSH_FUNCTION, { body });
-    if(res?.error) throw res.error;
-    return res?.data || null;
+    if(!configured || !cfg.url || !cfg.anonKey) throw new Error('Supabase no está configurado para notificaciones.');
+    let session = State.session || null;
+    try{
+      if(!session && State.client?.auth?.getSession){
+        const res = await State.client.auth.getSession();
+        session = res?.data?.session || null;
+        if(session) State.session = session;
+      }
+    }catch(_error){}
+    const endpoint = `${String(cfg.url).replace(/\/$/, '')}/functions/v1/${TRIBECA_PUSH_FUNCTION}`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': cfg.anonKey,
+      'Authorization': `Bearer ${session?.access_token || cfg.anonKey}`
+    };
+    let response;
+    try{
+      response = await fetch(endpoint, { method:'POST', headers, body: JSON.stringify(body || {}) });
+    }catch(error){
+      throw new Error(`No se pudo conectar con la Edge Function ${TRIBECA_PUSH_FUNCTION}: ${error?.message || error}`);
+    }
+    const text = await response.text().catch(()=> '');
+    let data = null;
+    try{ data = text ? JSON.parse(text) : null; }catch(_error){ data = text ? { error:text } : null; }
+    if(!response.ok){
+      const msg = data?.error || data?.message || data?.details || text || `HTTP ${response.status}`;
+      throw new Error(`Edge Function ${TRIBECA_PUSH_FUNCTION}: ${msg}`);
+    }
+    return data || {};
   }
   async function fetchTribecaVapidPublicKey(){
     const direct = String(cfg.vapidPublicKey || cfg.webPushPublicKey || '').trim();
@@ -193,7 +218,7 @@
   async function enableTribecaPushNotifications(options={}){
     const silent = !!options.silent;
     if(!tribecaPushSupported()) {
-      const msg = 'Las notificaciones de la app necesitan que la Edge Function tribeca-web-push-dispatch esté desplegada en Supabase.';
+      const msg = 'Este navegador o esta instalación de la app no permite notificaciones push web. Prueba desde la PWA instalada o revisa los permisos del sitio.';
       localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, msg);
       refreshProfileNotificationsPanel();
       if(!silent) toast(msg);
@@ -263,9 +288,12 @@
   function tribecaPushHumanError(error){
     const raw = error?.message || error?.error || error?.details || error;
     const message = String(raw || '').trim();
-    if(/VAPID/i.test(message)) return 'Faltan o no se leen bien las claves VAPID en Supabase.';
-    if(/Sesión|autenticada|session|jwt/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
-    if(/Failed to send|FunctionsHttpError|non-2xx|404|not found|function|Edge/i.test(message)) return 'Falta actualizar o desplegar en Supabase la Edge Function tribeca-web-push-dispatch.';
+    if(/VAPID|clave pública|clave privada|public key|private key/i.test(message)) return 'Faltan o no se leen bien las claves VAPID en Supabase. Revisa VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en Edge Function Secrets.';
+    if(/Sesión|autenticada|session|jwt|JWT|Authorization/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
+    if(/tribeca_web_push_subscriptions|relation.*does not exist|no existe/i.test(message)) return 'Falta ejecutar el SQL de la v151 en Supabase para crear las tablas de notificaciones.';
+    if(/No se pudo conectar|Failed to fetch|NetworkError/i.test(message)) return 'No se pudo contactar con la Edge Function de Supabase. Revisa que esté desplegada y que el proyecto sea el correcto.';
+    if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-web-push-dispatch. Revisa el nombre exacto de la Edge Function.';
+    if(/Edge Function/i.test(message)) return message;
     return message || 'No se pudo completar la comprobación de notificaciones.';
   }
 
@@ -279,7 +307,7 @@
 
   async function tribecaSendPushTestToCurrentUser(){
     if(!State.profile) return toast('Inicia sesión antes de probar las notificaciones.');
-    if(!tribecaPushSupported()) return toast('Las notificaciones de la app necesitan la Edge Function tribeca-web-push-dispatch en Supabase.');
+    if(!tribecaPushSupported()) return toast('Este navegador o esta instalación de la app no permite notificaciones push web.');
     try{
       await tribecaEnsurePushReadyBeforeTest();
       const result = await tribecaPushInvoke({
@@ -1294,6 +1322,7 @@
       menu.innerHTML=accountMenuMarkup();
       menu.setAttribute('hidden','');
       menu.setAttribute('aria-hidden','true');
+      document.body.classList.remove('tribeca-account-menu-open');
     }
   }
   function accountMenuMarkup(){
@@ -1308,12 +1337,21 @@
     if(!menu) return;
     if(!menu.innerHTML.trim()) menu.innerHTML=accountMenuMarkup();
     const hidden=menu.hasAttribute('hidden');
-    if(hidden){ menu.removeAttribute('hidden'); menu.setAttribute('aria-hidden','false'); }
-    else { menu.setAttribute('hidden',''); menu.setAttribute('aria-hidden','true'); }
+    if(hidden){
+      menu.removeAttribute('hidden');
+      menu.setAttribute('aria-hidden','false');
+      document.body.classList.add('tribeca-account-menu-open');
+    }
+    else {
+      menu.setAttribute('hidden','');
+      menu.setAttribute('aria-hidden','true');
+      document.body.classList.remove('tribeca-account-menu-open');
+    }
   }
   function closeAccountMenu(){
     const menu=$('#profileMenu');
     if(menu){ menu.setAttribute('hidden',''); menu.setAttribute('aria-hidden','true'); }
+    document.body.classList.remove('tribeca-account-menu-open');
   }
   function simplifyTribecaNavigation(){
     document.querySelectorAll('[data-public-tool-link], .public-tool-lumen, .public-tool-itinera, .main-nav [data-tool="guidance"], .main-nav [data-tool="badges"], .main-nav [data-tool="difficulties"], .main-nav [data-tool="grades"], .main-nav [data-tool="assignBadge"], [data-t16-tool="assignBadge"], [data-tool="badges"]').forEach(el=>el.remove?.());
@@ -3715,7 +3753,7 @@ render();
   const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
-    $('#profileMenu')?.setAttribute('hidden','');
+    closeAccountMenu();
     setTribecaHistory(id, opts || {});
     renderInlineSection(id, opts || {});
   }
@@ -6454,7 +6492,7 @@ function classroomCard(c,i=0){
     const pushMainAttr = pushEnabled ? 'data-t152-test-push' : 'data-t151-enable-push';
     const pushMainLabel = notificationPermission === 'denied' ? 'Notificaciones bloqueadas' : (pushEnabled ? 'Enviar prueba de notificación' : 'Activar notificaciones de la app');
     const resetLink = notificationPermission === 'granted' ? '<button type="button" class="tribeca-inline-reset-v155" data-t151-disable-push>Desactivar o reiniciar este dispositivo</button>' : '';
-    const supportWarning = tribecaPushSupported() ? '' : '<p class="tribeca-push-feedback-v154 is-error">Falta completar la Edge Function de notificaciones en Supabase. Sin esa función, ningún móvil puede registrarse.</p>';
+    const supportWarning = tribecaPushSupported() ? '' : '<p class="tribeca-push-feedback-v154 is-error">Este dispositivo no permite completar la activación push web. Comprueba que estés usando la PWA o Chrome/Android con permisos del sitio.</p>';
     const notificationsCard = `<section class="profile-tool-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🔔</span>
@@ -6803,6 +6841,7 @@ function classroomCard(c,i=0){
       const accountTool=ev.target.closest?.('[data-t141-account-tool]'); if(accountTool){ ev.preventDefault(); ev.stopImmediatePropagation(); const target=accountTool.dataset.t141AccountTool; closeAccountMenu(); if(target) openTool(target); return; }
       const accountPanel=ev.target.closest?.('[data-t73-account-panel]'); if(accountPanel){ ev.preventDefault(); ev.stopImmediatePropagation(); State.profilePanel=accountPanel.dataset.t73AccountPanel || 'profile'; closeAccountMenu(); openTool('profile'); return; }
       const prof=ev.target.closest?.('#profileButton'); if(prof){ ev.preventDefault(); ev.stopImmediatePropagation(); toggleAccountMenu(); return; }
+      if(document.body.classList.contains('tribeca-account-menu-open') && !ev.target.closest?.('.profile-area') && !ev.target.closest?.('#profileMenu')) closeAccountMenu();
       const navBtn=ev.target.closest?.('.main-nav .nav-btn');
       if(navBtn){
         if(navBtn.matches('[data-public-tool-link]')) return;
