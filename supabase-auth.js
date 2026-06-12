@@ -185,6 +185,46 @@
     toast('Notificaciones push desactivadas en este dispositivo.');
     refreshProfileNotificationsPanel();
   }
+  function tribecaPushHumanError(error){
+    const message = String(error?.message || error?.error || error || '').trim();
+    if(/VAPID/i.test(message)) return 'Faltan o no se leen bien las claves VAPID en Supabase.';
+    if(/Sesión|autenticada|session/i.test(message)) return 'No hay una sesión válida para enviar la prueba.';
+    if(/function|Edge/i.test(message)) return 'La Edge Function de notificaciones no está desplegada o no responde.';
+    return message || 'No se pudo completar la comprobación de notificaciones.';
+  }
+
+  async function tribecaSendPushTestToCurrentUser(){
+    if(!State.profile) return toast('Inicia sesión antes de probar las notificaciones.');
+    if(!tribecaPushSupported()) return toast('Este navegador no permite notificaciones push web o falta configurar la función de Supabase.');
+    if(Notification.permission !== 'granted') return toast('Primero debes permitir las notificaciones en este dispositivo.');
+    if(localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)!=='1') return toast('Primero pulsa “Activar en este dispositivo”.');
+    try{
+      await refreshTribecaPushSubscriptionIfEnabled();
+      const result = await tribecaPushInvoke({
+        action:'dispatch',
+        type:'test',
+        preferenceKey:'',
+        title:'Prueba de Tribeca Aula',
+        body:'Si ves este aviso, las notificaciones de la app funcionan en este dispositivo.',
+        recipientIds:[State.profile.id],
+        includeActor:true,
+        targetScope:'user',
+        url: tribecaHistoryUrl('profile', { panel:'notifications' }),
+        icon:'assets/tribeca-pwa-icon-192.png',
+        badge:'assets/tribeca-pwa-icon-192.png',
+        badgeCount:1
+      });
+      const sent = Number(result?.sent || 0);
+      const subscriptions = Number(result?.subscriptions || 0);
+      if(sent > 0) return toast('Prueba enviada. Debería aparecer en la cortina del móvil en unos segundos.');
+      if(subscriptions <= 0) return toast('No hay ningún dispositivo activo registrado para esta cuenta. Desactiva y vuelve a activar las notificaciones en este dispositivo.');
+      return toast('La prueba se ha intentado enviar, pero no ha llegado a ningún dispositivo. Revisa permisos del navegador y ahorro de batería.');
+    }catch(error){
+      console.warn('[Tribeca Aula] Prueba push fallida:', error);
+      toast(tribecaPushHumanError(error));
+    }
+  }
+
   async function refreshTribecaPushSubscriptionIfEnabled(){
     if(localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)!=='1') return;
     if(!tribecaPushSupported() || Notification.permission !== 'granted') return;
@@ -229,9 +269,7 @@
   }
   async function tribecaDispatchPushNotification(type, options={}){
     if(!State.profile || !State.client?.functions?.invoke) return null;
-    const prefs = tribecaNotificationPrefs(State.profile);
     const prefKey = options.preferenceKey || ({message:'messages', announcement:'announcements', calendar:'calendar', material:'materials'}[type] || 'messages');
-    if(prefKey && prefs[prefKey] === false && !roleTeacher()) return null;
     const section = options.section || tribecaNotificationSection(type);
     const url = options.url || tribecaHistoryUrl(section, options.opts || {});
     const body = {
@@ -254,13 +292,15 @@
       materialId: options.materialId || null,
       announcementId: options.announcementId || null,
       actorName: displayName(State.profile),
-      actorId: State.profile.id
+      actorId: State.profile.id,
+      includeActor: !!options.includeActor
     };
     try { return await tribecaPushInvoke(body); }
     catch(error){ console.warn('[Tribeca Aula] No se pudo enviar la notificación push:', error); return null; }
   }
   window.TribecaEnablePushNotifications = enableTribecaPushNotifications;
   window.TribecaDisablePushNotifications = disableTribecaPushNotifications;
+  window.TribecaSendPushTestToCurrentUser = tribecaSendPushTestToCurrentUser;
   window.TribecaSyncAppBadge = syncTribecaAppBadge;
 
   function bindTribecaServiceWorkerMessages(){
@@ -4077,7 +4117,7 @@ render();
     const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'exam');
     const currentScope = e?.scope || e?.target_scope || (currentType==='student_absence'?'user':'user');
     const titleRequired = teacher ? 'required' : '';
-    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form event-form-v112"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><div class="window-grid"><label>Tipo de evento<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><label>Título${teacher?'':' opcional'}<input name="title" value="${safe(e?.title||'')}" placeholder="${safe(eventDefaultTitle(currentType))}" ${titleRequired} ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" placeholder="Añade detalles si lo necesitas" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><p class="form-status is-info event-student-note" data-t121-event-status>${teacher?'':'El tipo “No asistiré este día a clases” se guarda como evento personal y avisa a la profesora.'}</p><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
+    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form event-form-v112"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><div class="window-grid"><label>Tipo de evento<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><label>Título${teacher?'':' opcional'}<input name="title" value="${safe(e?.title||'')}" placeholder="${safe(eventDefaultTitle(currentType))}" ${titleRequired} ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" placeholder="Añade detalles si lo necesitas" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><p class="form-status is-info event-student-note" data-t121-event-status>${teacher?'':'El tipo “No asistiré este día a clases” se guarda como evento personal y envía una notificación de la app a la profesora si la tiene activada.'}</p><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
 
   async function triggerEmailOutboxSend(eventType=''){
@@ -4094,68 +4134,14 @@ render();
     }
   }
 
-  async function queueCalendarEmailNotification(rec, isUpdate=false){
-    if(roleTeacher() || isUpdate) return;
-    try {
-      const payload = {
-        event_date: rec.event_date,
-        title: rec.title,
-        body: rec.body || '',
-        event_type: rec.event_type || '',
-        scope: rec.scope || '',
-        center: rec.center || State.profile?.center || '',
-        stage: rec.stage || State.profile?.stage || '',
-        course: rec.course || State.profile?.course || '',
-        actor_id: State.profile?.id || null,
-        actor_name: displayName(State.profile),
-        actor_username: State.profile?.username || '',
-        created_at: new Date().toISOString()
-      };
-      const rpc = await State.client.rpc('tribeca_queue_teacher_calendar_email_v63', { p_payload: payload });
-      if(rpc?.error) throw rpc.error;
-      const queued = Number(rpc?.data || 0);
-      if(queued > 0) {
-        await triggerEmailOutboxSend('calendar');
-        toast(`Fecha creada. Aviso por email enviado o preparado para ${queued} destinatario${queued===1?'':'s'}.`);
-      }
-    } catch(error) {
-      console.warn('[Tribeca Aula] No se pudo preparar el aviso por email del calendario:', error);
-      await maybe(table('notifications').insert({
-        target_role:'teacher',
-        tool:'calendar',
-        title:'Aviso pendiente de calendario',
-        body:`${displayName(State.profile)} ha añadido una fecha al calendario, pero no se pudo preparar el email automático. Revisa la configuración de notificaciones.`
-      }));
-      toast('Fecha creada. No se pudo preparar el email automático; revisa la configuración de notificaciones.');
-    }
+  async function queueCalendarEmailNotification(_rec, _isUpdate=false){
+    return 0;
   }
 
-  async function queueTeacherMessageEmailNotification(payload){
-    try {
-      const emailPayload = {
-        subject: payload.subject || 'Mensaje nuevo',
-        body: payload.body || '',
-        reason: payload.reason || '',
-        sender_id: payload.sender_id || State.profile?.id || null,
-        sender_name: payload.sender_name || displayName(State.profile),
-        sender_username: State.profile?.username || '',
-        recipient_id: payload.recipient_id || null,
-        created_at: new Date().toISOString()
-      };
-      const rpc = await State.client.rpc('tribeca_queue_teacher_message_email_v63', { p_payload: emailPayload });
-      if(rpc?.error) throw rpc.error;
-      const queued = Number(rpc?.data || 0);
-      if(queued > 0) await triggerEmailOutboxSend('message');
-    } catch(error) {
-      console.warn('[Tribeca Aula] No se pudo preparar el aviso por email del mensaje:', error);
-      await maybe(table('notifications').insert({
-        target_role:'teacher',
-        tool:'messages',
-        title:'Aviso pendiente de mensaje',
-        body:`${displayName(State.profile)} ha enviado un mensaje, pero no se pudo preparar el email automático.`
-      }));
-    }
+  async function queueTeacherMessageEmailNotification(_payload){
+    return 0;
   }
+
   function calendarEventPayloadFromForm(form){
     const fd=new FormData(form);
     const id=String(fd.get('id')||'').trim();
@@ -6355,10 +6341,12 @@ function classroomCard(c,i=0){
           <div class="tribeca-push-actions-v151">
             <button type="button" class="primary-btn" data-t151-enable-push ${pushEnabled?'disabled':''}>${pushEnabled?'Activadas':'Activar en este dispositivo'}</button>
             <button type="button" class="secondary-btn" data-t151-disable-push ${pushEnabled?'':'disabled'}>Desactivar</button>
+            <button type="button" class="secondary-btn" data-t152-test-push ${pushEnabled?'':'disabled'}>Enviar prueba</button>
           </div>
+          <small>Los avisos automáticos por email quedan desactivados; las novedades se avisarán desde la app cuando el dispositivo tenga permisos.</small>
         </div>
         <form id="t16ProfileNotificationsForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid">
-          <label>Email personal<input name="personalEmail" type="email" value="${safe(p.personal_email||'')}" placeholder="tuemail@ejemplo.com"></label>
+          <label>Email personal <small>solo como dato de contacto</small><input name="personalEmail" type="email" value="${safe(p.personal_email||'')}" placeholder="tuemail@ejemplo.com"></label>
           <div class="notification-options profile-notification-options">
             <label><input type="checkbox" name="messages" ${notify.messages!==false?'checked':''}> <span>Mensajes</span></label>
             <label><input type="checkbox" name="calendar" ${notify.calendar!==false?'checked':''}> <span>Calendario</span></label>
@@ -6681,6 +6669,7 @@ function classroomCard(c,i=0){
       const pwaHelpClose=ev.target.closest?.('[data-pwa-help-close]'); if(pwaHelpClose){ ev.preventDefault(); ev.stopPropagation(); document.getElementById('tribecaPwaHelp')?.remove(); return; }
       const enablePush=ev.target.closest?.('[data-t151-enable-push]'); if(enablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await enableTribecaPushNotifications(); return; }
       const disablePush=ev.target.closest?.('[data-t151-disable-push]'); if(disablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await disableTribecaPushNotifications(); return; }
+      const testPush=ev.target.closest?.('[data-t152-test-push]'); if(testPush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await tribecaSendPushTestToCurrentUser(); return; }
       const attemptPdf=ev.target.closest?.('[data-t148-attempt-pdf]'); if(attemptPdf){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); window.TribecaPrintAttemptPdf?.(attemptPdf.dataset.t148AttemptPdf); return; }
       const unitSave=ev.target.closest?.('[data-t126-save-unit]'); if(unitSave){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitSave.closest('form'); if(f) await saveClassUnit(f); return; }
       const unitAdd=ev.target.closest?.('[data-t126-add-unit]'); if(unitAdd){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitAdd.closest('form'); if(f) await addClassUnit(f); return; }

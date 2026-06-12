@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v151 · PWA, caché, push y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v151';
+/* Tribeca Aula · Service worker v152 · PWA, caché, push y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v152';
 const TRIBECA_ASSETS = [
   './',
   './index.html',
