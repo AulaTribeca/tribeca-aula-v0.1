@@ -14768,3 +14768,61 @@ body .hero-card p {
     justify-items: stretch;
   }
 }
+
+
+/* Tribeca Aula v156 · menú de perfil visible en móvil y panel push más claro */
+.app-header,
+.header-inner,
+.utility-bar,
+.profile-area {
+  overflow: visible !important;
+}
+.profile-area {
+  z-index: 3600;
+}
+.profile-menu {
+  z-index: 9000 !important;
+}
+.profile-menu[hidden] {
+  display: none !important;
+}
+.tribeca-push-panel-v156 .tribeca-push-feedback-v154 {
+  margin-top: .7rem;
+}
+.tribeca-push-panel-v156 .tribeca-push-main-btn-v155[disabled] {
+  opacity: .62;
+}
+@media (max-width: 720px) {
+  .profile-area {
+    position: static !important;
+  }
+  .profile-menu {
+    position: fixed !important;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    top: calc(var(--header-h) - 1.4rem);
+    min-width: 0 !important;
+    width: auto !important;
+    max-height: min(68vh, calc(100vh - var(--header-h) - 1rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 1.25rem;
+    box-shadow: 0 1.6rem 3.4rem rgba(12, 22, 14, .28);
+  }
+  .profile-menu button {
+    min-height: 3.25rem;
+    font-size: .98rem;
+  }
+  .tribeca-push-panel-v156 {
+    gap: .85rem;
+  }
+  .tribeca-push-panel-v156 small {
+    font-size: .9rem;
+  }
+}
+@media (max-width: 420px) {
+  .profile-menu {
+    top: calc(var(--header-h) - .9rem);
+    max-height: min(72vh, calc(100vh - var(--header-h) - .6rem));
+  }
+}
