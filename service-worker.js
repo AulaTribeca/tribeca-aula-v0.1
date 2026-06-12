@@ -1,12 +1,7 @@
-/* Tribeca Aula · Service worker v152 · PWA, caché, push y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v152';
-const TRIBECA_ASSETS = [
-  './',
-  './index.html',
-  './styles.css',
-  './app.js',
-  './supabase-auth.js',
-  './supabase-config.js',
+/* Tribeca Aula · Service worker v153 · PWA, caché ligera, push y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v153';
+const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico)$/i;
+const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
   './assets/tribeca-pwa-icon-512.png',
@@ -14,14 +9,16 @@ const TRIBECA_ASSETS = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(TRIBECA_CACHE)
-      .then(cache => Promise.allSettled(TRIBECA_ASSETS.map(url => fetch(url, { cache: 'reload' }).then(response => {
-        if (response && response.ok) return cache.put(url, response.clone());
-        return null;
-      }).catch(() => null))))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(TRIBECA_CACHE);
+    await Promise.allSettled(TRIBECA_INSTALL_ASSETS.map(async url => {
+      try {
+        const response = await fetch(url, { cache: 'reload' });
+        if (response && response.ok) await cache.put(url, response.clone());
+      } catch (_error) {}
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
@@ -39,10 +36,14 @@ function shouldHandle(request) {
   return true;
 }
 
-async function networkFirst(request, fallbackUrl) {
+function timeout(ms) {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error('network-timeout')), ms));
+}
+
+async function networkFirst(request, fallbackUrl, maxWait = 3500) {
   const cache = await caches.open(TRIBECA_CACHE);
   try {
-    const fresh = await fetch(request);
+    const fresh = await Promise.race([fetch(request), timeout(maxWait)]);
     if (fresh && fresh.ok) cache.put(request, fresh.clone());
     return fresh;
   } catch (_error) {
@@ -52,11 +53,27 @@ async function networkFirst(request, fallbackUrl) {
       const fallback = await caches.match(fallbackUrl);
       if (fallback) return fallback;
     }
-    return new Response('Tribeca Aula no está disponible sin conexión en este momento.', {
-      status: 503,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-    });
+    try {
+      const fresh = await fetch(request);
+      if (fresh && fresh.ok) cache.put(request, fresh.clone());
+      return fresh;
+    } catch (_finalError) {
+      return new Response('Tribeca Aula no está disponible sin conexión en este momento.', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
+    }
   }
+}
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(TRIBECA_CACHE);
+  const cached = await caches.match(request);
+  const freshPromise = fetch(request).then(response => {
+    if (response && response.ok) cache.put(request, response.clone());
+    return response;
+  }).catch(() => null);
+  return cached || freshPromise || new Response('', { status: 504 });
 }
 
 async function setTribecaBadge(count = 0) {
@@ -74,11 +91,11 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, './index.html'));
+    event.respondWith(networkFirst(request, './index.html', 3000));
     return;
   }
-  if (/\.(?:html|css|js|webmanifest|png|webp|svg|ico)$/i.test(url.pathname)) {
-    event.respondWith(networkFirst(request));
+  if (TRIBECA_STATIC_MATCH.test(url.pathname)) {
+    event.respondWith(staleWhileRevalidate(request));
   }
 });
 

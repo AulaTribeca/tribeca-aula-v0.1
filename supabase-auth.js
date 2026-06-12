@@ -1,6 +1,5 @@
-/* Tribeca Aula · Versión 32 · insignias, etiquetas de publicaciones y contraste docente
-   Mejora: reorganiza la asignación manual de insignias, añade etiquetas cromáticas por tipo de publicación
-   y refuerza el contraste de las tarjetas de materias en la vista docente. */
+/* Tribeca Aula · Versión 153 · optimización de carga y notificaciones solo app
+   Mejora: difiere tareas PWA/push no críticas, evita bloqueos por consultas lentas y mantiene desactivados los avisos automáticos por email. */
 (() => {
   'use strict';
   if (location.search && /(firstName|lastName|fullName|username|eventDate|monthlyFee|subject)=/.test(location.search)) {
@@ -22,6 +21,25 @@
   const fmtLongDate = iso => parseIso(iso).toLocaleDateString('es-ES', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   const fmtDT = iso => iso ? new Date(iso).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
   const toast = (msg) => typeof window.showToast === 'function' ? window.showToast(msg) : alert(msg);
+  const TRIBECA_QUERY_TIMEOUT_MS = 9000;
+  function tribecaTimeoutPromise(ms=TRIBECA_QUERY_TIMEOUT_MS, label='operación') {
+    return new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} ha tardado demasiado. Se continúa con la carga básica.`)), ms));
+  }
+  function tribecaWithTimeout(promise, ms=TRIBECA_QUERY_TIMEOUT_MS, label='operación') {
+    return Promise.race([promise, tribecaTimeoutPromise(ms, label)]);
+  }
+  function deferTribecaBackgroundTask(task, delay=900) {
+    const runner = () => {
+      try {
+        const result = task?.();
+        if(result && typeof result.catch === 'function') result.catch(error => console.warn('[Tribeca Aula] Tarea en segundo plano:', error?.message || error));
+      } catch(error) {
+        console.warn('[Tribeca Aula] Tarea en segundo plano:', error?.message || error);
+      }
+    };
+    if('requestIdleCallback' in window) window.requestIdleCallback(runner, { timeout: Math.max(1200, delay + 700) });
+    else setTimeout(runner, delay);
+  }
 
   const State = {
     client: null,
@@ -151,7 +169,7 @@
     if(!tribecaPushSupported()) return toast('Este navegador no permite notificaciones push web o falta desplegar la función de Supabase.');
     const permission = await Notification.requestPermission();
     if(permission !== 'granted') return toast('No se han activado las notificaciones porque el permiso no fue concedido.');
-    registerTribecaPwa();
+    await registerTribecaPwa({ immediate:true });
     const reg = await navigator.serviceWorker.ready;
     const publicKey = await fetchTribecaVapidPublicKey();
     let subscription = await reg.pushManager.getSubscription();
@@ -267,6 +285,14 @@
       console.warn('[Tribeca Aula] No se pudo actualizar el distintivo del icono:', error);
     }
   }
+  let tribecaBadgeSyncTimer = null;
+  function scheduleTribecaAppBadgeSync(forcedCount=null){
+    if(tribecaBadgeSyncTimer) clearTimeout(tribecaBadgeSyncTimer);
+    tribecaBadgeSyncTimer = setTimeout(() => {
+      tribecaBadgeSyncTimer = null;
+      syncTribecaAppBadge(forcedCount).catch(()=>{});
+    }, 650);
+  }
   async function tribecaDispatchPushNotification(type, options={}){
     if(!State.profile || !State.client?.functions?.invoke) return null;
     const prefKey = options.preferenceKey || ({message:'messages', announcement:'announcements', calendar:'calendar', material:'materials'}[type] || 'messages');
@@ -339,13 +365,22 @@
     try{ code = typeof currentLangCode === 'function' ? currentLangCode() : (localStorage.getItem('tribeca-language') || 'gl'); }catch(_e){ code='gl'; }
     return dict[key]?.[code] || dict[key]?.gl || dict[key]?.es || key;
   }
-  function registerTribecaPwa(){
-    if(!('serviceWorker' in navigator)) return;
-    if(window.__tribecaPwaRegistered) return;
-    window.__tribecaPwaRegistered = true;
-    navigator.serviceWorker.register('./service-worker.js', { scope:'./' })
-      .then(reg=>{ try{ reg.update?.(); }catch(_e){} })
-      .catch(err=>console.warn('[Tribeca Aula] Service worker no registrado:', err));
+  let tribecaPwaRegistrationPromise = null;
+  function registerTribecaPwa(options={}){
+    if(!('serviceWorker' in navigator)) return Promise.resolve(null);
+    const run = () => {
+      if(!tribecaPwaRegistrationPromise){
+        tribecaPwaRegistrationPromise = navigator.serviceWorker.register('./service-worker.js', { scope:'./' })
+          .then(reg=>{ try{ reg.update?.(); }catch(_e){} return reg; })
+          .catch(err=>{ console.warn('[Tribeca Aula] Service worker no registrado:', err); return null; });
+      }
+      return tribecaPwaRegistrationPromise;
+    };
+    if(options.immediate) return run();
+    if(window.__tribecaPwaRegistrationScheduled) return tribecaPwaRegistrationPromise || Promise.resolve(null);
+    window.__tribecaPwaRegistrationScheduled = true;
+    deferTribecaBackgroundTask(run, 1100);
+    return Promise.resolve(null);
   }
   function ensurePwaInstallCta(){
     if(!document.body || document.getElementById('tribecaPwaInstallCta')) return;
@@ -787,7 +822,16 @@
     return subjectOverride(stage, course, subject)?.active === false;
   }
   const table = name => State.client.from(name);
-  async function maybe(promise, fallback=null) { try { const {data,error} = await promise; if(error) throw error; return data ?? fallback; } catch(e) { console.warn('[Tribeca Aula]', e.message || e); return fallback; } }
+  async function maybe(promise, fallback=null) {
+    try {
+      const {data,error} = await tribecaWithTimeout(promise, TRIBECA_QUERY_TIMEOUT_MS, 'Consulta de Supabase');
+      if(error) throw error;
+      return data ?? fallback;
+    } catch(e) {
+      console.warn('[Tribeca Aula]', e.message || e);
+      return fallback;
+    }
+  }
   function beep(kind='message') {
     if(!State.sound) return;
     try {
@@ -1250,7 +1294,7 @@
       setBadge('#teacherAlertsBadge', Math.max(0, alertCount-seen));
     }
     scrubZeroBadges();
-    syncTribecaAppBadge().catch(()=>{});
+    scheduleTribecaAppBadgeSync();
   }
   function teacherAlertIgnoreKey(key){ return `tribeca-teacher-alert-ignore-${State.profile?.id||'teacher'}-${key}`; }
   function teacherAlertIgnored(key){ return !!localStorage.getItem(teacherAlertIgnoreKey(key)); }
@@ -7241,8 +7285,8 @@ function classroomCard(c,i=0){
       else renderApp();
       applySeasonalLogos(document);
       handleInitialOpenRequest();
-      refreshTribecaPushSubscriptionIfEnabled().catch(()=>{});
-      syncTribecaAppBadge().catch(()=>{});
+      deferTribecaBackgroundTask(() => refreshTribecaPushSubscriptionIfEnabled(), 1400);
+      deferTribecaBackgroundTask(() => syncTribecaAppBadge(), 1900);
     } else { showLogin(); applySeasonalLogos(document); }
     setInterval(async()=>{ if(!State.profile) return; await updatePresence(); updateBadges(); }, 45000);
   }
