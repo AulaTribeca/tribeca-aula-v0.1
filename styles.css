@@ -14653,3 +14653,47 @@ body .hero-card p {
     width:calc(100% - 46px);
   }
 }
+
+/* Tribeca Aula v151 · panel de notificaciones push */
+.tribeca-push-panel-v151 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid rgba(11, 61, 34, .14);
+  border-radius: 1.15rem;
+  background: linear-gradient(135deg, rgba(11,61,34,.06), rgba(185,154,59,.08));
+  padding: 1rem 1.1rem;
+  margin: .25rem 0 1rem;
+}
+.tribeca-push-panel-v151 strong {
+  display: block;
+  color: var(--green, #0b3d22);
+  font-weight: 900;
+  margin-bottom: .25rem;
+}
+.tribeca-push-panel-v151 p {
+  margin: 0;
+  color: var(--text, #172018);
+  font-weight: 750;
+}
+.tribeca-push-panel-v151 small {
+  display: block;
+  margin-top: .3rem;
+  color: var(--muted, #6a6458);
+  line-height: 1.35;
+}
+.tribeca-push-actions-v151 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .55rem;
+}
+.tribeca-push-actions-v151 button[disabled] {
+  opacity: .58;
+  cursor: not-allowed;
+}
+@media (max-width: 760px) {
+  .tribeca-push-panel-v151 { grid-template-columns: 1fr; }
+  .tribeca-push-actions-v151 { justify-content: flex-start; }
+}

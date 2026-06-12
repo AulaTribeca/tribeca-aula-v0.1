@@ -7,5 +7,8 @@
 */
 window.TRIBECA_SUPABASE = {
   url: 'https://fuhkvjyfwkggjaqxfsgv.supabase.co',
-  anonKey: 'sb_publishable_yGmv_IkjLrNrJrX8aOPi6A_GtOk8C_2'
+  anonKey: 'sb_publishable_yGmv_IkjLrNrJrX8aOPi6A_GtOk8C_2',
+  // Opcional: si no quieres que el cliente pida la clave pública a la Edge Function,
+  // puedes pegar aquí la VAPID public key generada para Web Push.
+  vapidPublicKey: ''
 };

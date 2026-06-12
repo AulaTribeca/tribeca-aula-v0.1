@@ -99,6 +99,185 @@
   window.TribecaUndoLastAction = undoLast;
 
 
+  const TRIBECA_PUSH_FUNCTION = 'tribeca-web-push-dispatch';
+  const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
+  const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
+
+  function tribecaDeviceId(){
+    let id = localStorage.getItem(TRIBECA_PUSH_DEVICE_KEY);
+    if(!id){ id = uid(); localStorage.setItem(TRIBECA_PUSH_DEVICE_KEY, id); }
+    return id;
+  }
+  function tribecaNotificationPrefs(profile=State.profile){
+    const raw = profile?.notification_preferences || {};
+    return {
+      messages: raw.messages !== false,
+      calendar: raw.calendar !== false,
+      announcements: raw.announcements !== false,
+      materials: raw.materials !== false
+    };
+  }
+  function tribecaPushSupported(){
+    return !!(configured && State.client?.functions?.invoke && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
+  }
+  function tribecaBadgeSupported(){ return !!(navigator?.setAppBadge || navigator?.clearAppBadge); }
+  function urlBase64ToUint8Array(base64String=''){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+  }
+  async function tribecaPushInvoke(body={}){
+    if(!State.client?.functions?.invoke) throw new Error('La función de notificaciones push no está disponible.');
+    const res = await State.client.functions.invoke(TRIBECA_PUSH_FUNCTION, { body });
+    if(res?.error) throw res.error;
+    return res?.data || null;
+  }
+  async function fetchTribecaVapidPublicKey(){
+    const direct = String(cfg.vapidPublicKey || cfg.webPushPublicKey || '').trim();
+    if(direct) return direct;
+    const data = await tribecaPushInvoke({ action:'publicKey' });
+    const key = String(data?.publicKey || '').trim();
+    if(!key) throw new Error('Falta la clave pública VAPID de Tribeca Aula.');
+    return key;
+  }
+  function tribecaPushStatusText(){
+    if(!tribecaPushSupported()) return 'No disponible en este navegador o falta configurar Supabase.';
+    if(Notification.permission === 'granted') return localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' ? 'Activadas en este dispositivo.' : 'Permiso concedido, pero falta registrar este dispositivo.';
+    if(Notification.permission === 'denied') return 'Bloqueadas por el navegador. Debes permitirlas desde los ajustes del sitio.';
+    return 'Pendientes de activar en este dispositivo.';
+  }
+  async function enableTribecaPushNotifications(){
+    if(!tribecaPushSupported()) return toast('Este navegador no permite notificaciones push web o falta desplegar la función de Supabase.');
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted') return toast('No se han activado las notificaciones porque el permiso no fue concedido.');
+    registerTribecaPwa();
+    const reg = await navigator.serviceWorker.ready;
+    const publicKey = await fetchTribecaVapidPublicKey();
+    let subscription = await reg.pushManager.getSubscription();
+    if(!subscription){
+      subscription = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(publicKey) });
+    }
+    await tribecaPushInvoke({
+      action:'subscribe',
+      deviceId: tribecaDeviceId(),
+      subscription: subscription.toJSON(),
+      preferences: tribecaNotificationPrefs(),
+      userAgent: navigator.userAgent || ''
+    });
+    localStorage.setItem(TRIBECA_PUSH_ENABLED_KEY, '1');
+    await syncTribecaAppBadge();
+    toast('Notificaciones push activadas en este dispositivo.');
+    refreshProfileNotificationsPanel();
+  }
+  async function disableTribecaPushNotifications(){
+    try{
+      const reg = await navigator.serviceWorker?.ready;
+      const subscription = await reg?.pushManager?.getSubscription?.();
+      const endpoint = subscription?.endpoint || '';
+      if(endpoint) await tribecaPushInvoke({ action:'unsubscribe', endpoint, deviceId:tribecaDeviceId() }).catch(()=>{});
+      await subscription?.unsubscribe?.();
+    } catch(error) {
+      console.warn('[Tribeca Aula] No se pudo desactivar completamente la suscripción push:', error);
+    }
+    localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY);
+    await syncTribecaAppBadge(0);
+    toast('Notificaciones push desactivadas en este dispositivo.');
+    refreshProfileNotificationsPanel();
+  }
+  async function refreshTribecaPushSubscriptionIfEnabled(){
+    if(localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)!=='1') return;
+    if(!tribecaPushSupported() || Notification.permission !== 'granted') return;
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.getSubscription();
+      if(subscription){
+        await tribecaPushInvoke({ action:'subscribe', deviceId:tribecaDeviceId(), subscription:subscription.toJSON(), preferences:tribecaNotificationPrefs(), userAgent:navigator.userAgent || '' });
+      }
+    } catch(error){
+      console.warn('[Tribeca Aula] No se pudo sincronizar la suscripción push:', error);
+    }
+  }
+  function refreshProfileNotificationsPanel(){
+    if(State.activeInlineSection === 'profile') renderInlineSection('profile', State.activeInlineOptions || {});
+  }
+  function tribecaNotificationSection(type=''){
+    if(type === 'message') return 'messages';
+    if(type === 'announcement') return 'announcements';
+    if(type === 'calendar') return 'calendar';
+    if(type === 'material') return State.currentClassSubjectId ? 'classSubjectDetail' : 'subjects';
+    return 'home';
+  }
+  function tribecaAppBadgeCount(){
+    if(!State.profile) return 0;
+    const unreadMessages = (State.data.messages||[]).filter(m=>m.recipient_id===State.profile?.id && !m.read_at && !m.archived && !m.deleted_by_recipient).length;
+    const unreadAnnouncements = (typeof visibleAnnouncements === 'function') ? visibleAnnouncements().filter(a=>!announcementIsRead(a)).length : 0;
+    const teacherAlerts = roleTeacher() ? Math.max(0, teacherAlertCount() - Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0)) : 0;
+    return Math.max(0, unreadMessages + unreadAnnouncements + teacherAlerts);
+  }
+  async function syncTribecaAppBadge(forcedCount=null){
+    const count = forcedCount === null ? tribecaAppBadgeCount() : Number(forcedCount||0);
+    try{
+      if(navigator?.setAppBadge && navigator?.clearAppBadge){
+        if(count > 0) await navigator.setAppBadge(Math.min(count, 99));
+        else await navigator.clearAppBadge();
+      }
+      navigator.serviceWorker?.controller?.postMessage?.({ type:'TRIBECA_BADGE_COUNT', count:Math.max(0, Math.min(count, 99)) });
+    } catch(error){
+      console.warn('[Tribeca Aula] No se pudo actualizar el distintivo del icono:', error);
+    }
+  }
+  async function tribecaDispatchPushNotification(type, options={}){
+    if(!State.profile || !State.client?.functions?.invoke) return null;
+    const prefs = tribecaNotificationPrefs(State.profile);
+    const prefKey = options.preferenceKey || ({message:'messages', announcement:'announcements', calendar:'calendar', material:'materials'}[type] || 'messages');
+    if(prefKey && prefs[prefKey] === false && !roleTeacher()) return null;
+    const section = options.section || tribecaNotificationSection(type);
+    const url = options.url || tribecaHistoryUrl(section, options.opts || {});
+    const body = {
+      action:'dispatch',
+      type,
+      preferenceKey: prefKey,
+      title: options.title || 'Tribeca Aula',
+      body: options.body || '',
+      url,
+      icon: 'assets/tribeca-pwa-icon-192.png',
+      badge: 'assets/tribeca-pwa-icon-192.png',
+      badgeCount: Math.max(1, tribecaAppBadgeCount() + 1),
+      targetRole: options.targetRole || null,
+      recipientIds: options.recipientIds || options.targetUserIds || [],
+      targetScope: options.targetScope || options.scope || 'all',
+      center: options.center || null,
+      stage: options.stage || null,
+      course: options.course || null,
+      classId: options.classId || null,
+      materialId: options.materialId || null,
+      announcementId: options.announcementId || null,
+      actorName: displayName(State.profile),
+      actorId: State.profile.id
+    };
+    try { return await tribecaPushInvoke(body); }
+    catch(error){ console.warn('[Tribeca Aula] No se pudo enviar la notificación push:', error); return null; }
+  }
+  window.TribecaEnablePushNotifications = enableTribecaPushNotifications;
+  window.TribecaDisablePushNotifications = disableTribecaPushNotifications;
+  window.TribecaSyncAppBadge = syncTribecaAppBadge;
+
+  function bindTribecaServiceWorkerMessages(){
+    if(!navigator.serviceWorker || window.__tribecaPushMessageBound) return;
+    window.__tribecaPushMessageBound = true;
+    navigator.serviceWorker.addEventListener('message', ev=>{
+      const data = ev.data || {};
+      if(data.type === 'TRIBECA_NOTIFICATION_OPEN' && data.url){
+        try { location.href = data.url; } catch(_e) { location.href = './'; }
+        return;
+      }
+      if(data.type === 'TRIBECA_PUSH_RECEIVED'){
+        loadData(true).then(()=>{ updateBadges(); if(State.activeInlineSection) rerender(); }).catch(()=>{});
+      }
+    });
+  }
+
   const TRIBECA_PWA_DISMISSED_KEY = 'tribeca-pwa-install-dismissed-v150';
   let tribecaDeferredInstallPrompt = null;
   function isTribecaStandalone(){
@@ -1031,6 +1210,7 @@
       setBadge('#teacherAlertsBadge', Math.max(0, alertCount-seen));
     }
     scrubZeroBadges();
+    syncTribecaAppBadge().catch(()=>{});
   }
   function teacherAlertIgnoreKey(key){ return `tribeca-teacher-alert-ignore-${State.profile?.id||'teacher'}-${key}`; }
   function teacherAlertIgnored(key){ return !!localStorage.getItem(teacherAlertIgnoreKey(key)); }
@@ -3832,8 +4012,9 @@ render();
     const payload = isAnnouncement
       ? {...rec, announcement_type:'announcement', attachments}
       : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), badge_codes:[], attachments, embed_url:String(fd.get('embedUrl')||'').trim()||null, embed_code:String(fd.get('embedCode')||'').trim()||null, embed_height:Number(fd.get('embedHeight')||520)};
+    let linked={classSubjectId:null, classUnitId:null};
     if(!isAnnouncement && classId){
-      const linked=await ensureClassSubjectAndUnit(classId, subject, unit);
+      linked=await ensureClassSubjectAndUnit(classId, subject, unit);
       payload.class_id=classId;
       payload.class_subject_id=linked.classSubjectId;
       payload.class_unit_id=linked.classUnitId;
@@ -3841,6 +4022,20 @@ render();
     if(editId) { delete payload.created_by; delete payload.hidden; }
     await persistSupabaseRecord(tableName, payload, editId || null);
     await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName, class_id:classId||null});
+    if(!editId){
+      await tribecaDispatchPushNotification(isAnnouncement ? 'announcement' : 'material', {
+        title: isAnnouncement ? `Nuevo anuncio: ${rec.title || 'Tribeca Aula'}` : `Material nuevo: ${rec.title || 'Tribeca Aula'}`,
+        body: String(rec.body || '').slice(0, 180) || (isAnnouncement ? 'Hay un nuevo anuncio en Tribeca Aula.' : `${subject || 'Materia'} · ${unit || 'Unidad'}`),
+        targetScope: payload.target_scope || scope,
+        center: payload.center || null,
+        stage: payload.stage || null,
+        course: payload.course || null,
+        classId: classId || null,
+        materialId: isAnnouncement ? null : null,
+        section: isAnnouncement ? 'announcements' : (linked.classSubjectId ? 'classSubjectDetail' : 'subjects'),
+        opts: isAnnouncement ? {} : (linked.classSubjectId ? {classSubjectId:linked.classSubjectId, classId:classId, subject} : {})
+      });
+    }
     State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationUnit=null; State.prefillPublicationClassId=null; State.prefillPublicationClassSubjectId=null; State.prefillPublicationClassUnitId=null; State.prefillPublicationKind=null;
     await loadData(true);
     toast(isAnnouncement ? (editId?'Anuncio modificado.':'Anuncio publicado.') : (editId?'Material modificado.':'Material publicado en la clase.'));
@@ -4010,6 +4205,22 @@ render();
       await saveCalendarEventViaRpcOrTable(rec);
       await log('calendar', rec.id?'Fecha actualizada':'Fecha creada', {title:rec.title,date:rec.event_date});
       await queueCalendarEmailNotification(rec, !!rec.id);
+      if(!rec.id){
+        await tribecaDispatchPushNotification('calendar', roleTeacher() ? {
+          title: `Nueva fecha: ${rec.title}`,
+          body: [rec.event_date, rec.body || 'Nueva fecha en el calendario de Tribeca Aula.'].filter(Boolean).join(' · '),
+          targetScope: rec.scope || rec.target_scope || 'all',
+          center: rec.center || null,
+          stage: rec.stage || null,
+          course: rec.course || null,
+          section: 'calendar'
+        } : {
+          title: `Aviso de calendario de ${displayName(State.profile)}`,
+          body: [rec.event_date, rec.title, rec.body].filter(Boolean).join(' · '),
+          targetRole: 'teacher',
+          section: 'calendar'
+        });
+      }
       await loadData(true);
       State.selectedDate=rec.event_date;
       State.selectedEventId=null;
@@ -4644,6 +4855,12 @@ render();
     const rpc=await State.client.rpc('tribeca_send_private_message_v28',{p_payload:payload});
     if(rpc.error) throw rpc.error;
     await log('message','Mensaje enviado',{subject:payload.subject});
+    await tribecaDispatchPushNotification('message', {
+      title: `Nuevo mensaje de ${displayName(State.profile)}`,
+      body: payload.subject || payload.body || 'Tienes un mensaje nuevo en Tribeca Aula.',
+      recipientIds: [recipientId],
+      section: 'messages'
+    });
     if(!teacher) await queueTeacherMessageEmailNotification(payload);
     await loadData(true);
     toast('Mensaje enviado.');
@@ -6119,21 +6336,34 @@ function classroomCard(c,i=0){
           <button class="primary-btn" type="submit">Guardar perfil</button>
         </form>
       </section>`;
+    const pushStatus = tribecaPushStatusText();
+    const pushEnabled = localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' && typeof Notification !== 'undefined' && Notification.permission === 'granted';
     const notificationsCard = `<section class="profile-tool-card">
         <header class="profile-tool-head">
-          <span class="profile-tool-icon">✉️</span>
+          <span class="profile-tool-icon">🔔</span>
           <div>
             <h3>Ajustes de notificaciones</h3>
-            <p>Indica un correo personal y marca qué avisos quieres recibir.</p>
+            <p>Activa los avisos del móvil y el distintivo del icono de la app instalada.</p>
           </div>
         </header>
+        <div class="tribeca-push-panel-v151">
+          <div>
+            <strong>Notificaciones push del dispositivo</strong>
+            <p>${safe(pushStatus)}</p>
+            <small>${tribecaBadgeSupported()?'El navegador permite mostrar contador o distintivo en el icono de la app.':'El contador del icono dependerá del navegador y del sistema operativo.'}</small>
+          </div>
+          <div class="tribeca-push-actions-v151">
+            <button type="button" class="primary-btn" data-t151-enable-push ${pushEnabled?'disabled':''}>${pushEnabled?'Activadas':'Activar en este dispositivo'}</button>
+            <button type="button" class="secondary-btn" data-t151-disable-push ${pushEnabled?'':'disabled'}>Desactivar</button>
+          </div>
+        </div>
         <form id="t16ProfileNotificationsForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid">
           <label>Email personal<input name="personalEmail" type="email" value="${safe(p.personal_email||'')}" placeholder="tuemail@ejemplo.com"></label>
           <div class="notification-options profile-notification-options">
-            <label><input type="checkbox" name="messages" ${notify.messages?'checked':''}> <span>Mensajes</span></label>
-            <label><input type="checkbox" name="calendar" ${notify.calendar?'checked':''}> <span>Calendario</span></label>
-            <label><input type="checkbox" name="announcements" ${notify.announcements?'checked':''}> <span>Anuncios</span></label>
-            <label><input type="checkbox" name="materials" ${notify.materials?'checked':''}> <span>Materiales</span></label>
+            <label><input type="checkbox" name="messages" ${notify.messages!==false?'checked':''}> <span>Mensajes</span></label>
+            <label><input type="checkbox" name="calendar" ${notify.calendar!==false?'checked':''}> <span>Calendario</span></label>
+            <label><input type="checkbox" name="announcements" ${notify.announcements!==false?'checked':''}> <span>Anuncios</span></label>
+            <label><input type="checkbox" name="materials" ${notify.materials!==false?'checked':''}> <span>Materiales</span></label>
           </div>
           <button class="secondary-btn" type="submit">Guardar notificaciones</button>
         </form>
@@ -6170,7 +6400,7 @@ function classroomCard(c,i=0){
   }
 
   async function saveProfileIcon(form){ const fd=new FormData(form); const patch={avatar_icon:fd.get('avatarIcon')||'💡'}; if(roleTeacher()) patch.avatar_image_url=fd.get('avatarImageUrl') || TRIBECA_TEACHER_PROFILE_IMAGE; const {error}=await table('profiles').update(patch).eq('id',State.profile.id); if(error) throw error; Object.assign(State.profile,patch); updateTopProfile(); await updatePresence(); toast('Perfil actualizado correctamente.'); }
-  async function saveProfileNotifications(form){ const fd=new FormData(form); const prefs={messages:!!fd.get('messages'),calendar:!!fd.get('calendar'),announcements:!!fd.get('announcements'),materials:!!fd.get('materials')}; const patch={personal_email:fd.get('personalEmail')||null,notification_preferences:prefs}; await maybe(table('profiles').update(patch).eq('id',State.profile.id)); Object.assign(State.profile,patch); toast('Preferencias guardadas.'); }
+  async function saveProfileNotifications(form){ const fd=new FormData(form); const prefs={messages:!!fd.get('messages'),calendar:!!fd.get('calendar'),announcements:!!fd.get('announcements'),materials:!!fd.get('materials')}; const patch={personal_email:fd.get('personalEmail')||null,notification_preferences:prefs}; await maybe(table('profiles').update(patch).eq('id',State.profile.id)); Object.assign(State.profile,patch); await refreshTribecaPushSubscriptionIfEnabled(); toast('Preferencias guardadas.'); refreshProfileNotificationsPanel(); }
   async function changePassword(form){ const fd=new FormData(form); if(fd.get('password')!==fd.get('repeat')) return toast('Las contraseñas no coinciden.'); if(!confirm('¿Quieres modificar tu contraseña?')) return; const {error}=await State.client.auth.updateUser({password:fd.get('password')}); if(error) toast('No se pudo modificar la contraseña.'); else {toast('Contraseña modificada correctamente.'); form.reset();} }
 
   function difficultiesContent(){ const rows=State.data.difficulties||[]; return `<div class="window-grid"><section class="window-panel"><h3>Añadir o modificar materia</h3><form id="t16DifficultyForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="id"><label>Materia<select name="subject">${subjectList().map(s=>`<option>${safe(s)}</option>`).join('')}</select></label><label>Nivel de dificultad<select name="level"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Muy alta</option></select></label><label>Explica las dificultades<textarea name="notes" rows="4" placeholder="Describe qué contenidos, tareas o situaciones te resultan difíciles."></textarea></label><button class="primary-btn" type="submit">Guardar</button></form></section><section class="window-panel"><h3>Mis materias con dificultades</h3>${rows.length?rows.map(d=>`<article class="list-item"><strong>${safe(d.subject)}</strong><p>${safe(d.level)} · ${safe(d.notes||'')}</p><button data-t16-edit-diff="${d.id}">Editar</button><button data-t16-delete-diff="${d.id}">Eliminar</button></article>`).join(''):'<div class="empty-state">No has indicado materias con dificultades.</div>'}</section></div>`; }
@@ -6449,6 +6679,8 @@ function classroomCard(c,i=0){
       const pwaInstall=ev.target.closest?.('[data-pwa-install]'); if(pwaInstall){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); closeAccountMenu(); await handleTribecaPwaInstall(); return; }
       const pwaDismiss=ev.target.closest?.('[data-pwa-install-dismiss]'); if(pwaDismiss){ ev.preventDefault(); ev.stopPropagation(); localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY,'1'); updatePwaInstallCta(); return; }
       const pwaHelpClose=ev.target.closest?.('[data-pwa-help-close]'); if(pwaHelpClose){ ev.preventDefault(); ev.stopPropagation(); document.getElementById('tribecaPwaHelp')?.remove(); return; }
+      const enablePush=ev.target.closest?.('[data-t151-enable-push]'); if(enablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await enableTribecaPushNotifications(); return; }
+      const disablePush=ev.target.closest?.('[data-t151-disable-push]'); if(disablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await disableTribecaPushNotifications(); return; }
       const attemptPdf=ev.target.closest?.('[data-t148-attempt-pdf]'); if(attemptPdf){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); window.TribecaPrintAttemptPdf?.(attemptPdf.dataset.t148AttemptPdf); return; }
       const unitSave=ev.target.closest?.('[data-t126-save-unit]'); if(unitSave){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitSave.closest('form'); if(f) await saveClassUnit(f); return; }
       const unitAdd=ev.target.closest?.('[data-t126-add-unit]'); if(unitAdd){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitAdd.closest('form'); if(f) await addClassUnit(f); return; }
@@ -6988,6 +7220,7 @@ function classroomCard(c,i=0){
   async function boot() {
     ensureLanguageDefault();
     registerTribecaPwa();
+    bindTribecaServiceWorkerMessages();
     applyAccessibilitySettings();
     setTimeout(()=>{ ensureAccessibilityWidget(); updatePwaInstallCta(); }, 0);
     document.body.classList.remove('is-dark','dark-mode','theme-dark');
@@ -7019,6 +7252,8 @@ function classroomCard(c,i=0){
       else renderApp();
       applySeasonalLogos(document);
       handleInitialOpenRequest();
+      refreshTribecaPushSubscriptionIfEnabled().catch(()=>{});
+      syncTribecaAppBadge().catch(()=>{});
     } else { showLogin(); applySeasonalLogos(document); }
     setInterval(async()=>{ if(!State.profile) return; await updatePresence(); updateBadges(); }, 45000);
   }
