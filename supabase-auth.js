@@ -1,5 +1,5 @@
-/* Tribeca Aula · Versión 153 · optimización de carga y notificaciones solo app
-   Mejora: difiere tareas PWA/push no críticas, evita bloqueos por consultas lentas y mantiene desactivados los avisos automáticos por email. */
+/* Tribeca Aula · Versión 154 · activación push guiada y sin emails automáticos
+   Mejora: aclara el estado “permiso concedido, pero falta registrar”, permite reiniciar el dispositivo aunque falte el registro local y muestra errores persistentes de activación. */
 (() => {
   'use strict';
   if (location.search && /(firstName|lastName|fullName|username|eventDate|monthlyFee|subject)=/.test(location.search)) {
@@ -120,6 +120,9 @@
   const TRIBECA_PUSH_FUNCTION = 'tribeca-web-push-dispatch';
   const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
   const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
+  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v155';
+  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v155';
+  const TRIBECA_PUSH_DEFAULT_PREFS = Object.freeze({ messages:true, calendar:true, announcements:true, materials:true });
 
   function tribecaDeviceId(){
     let id = localStorage.getItem(TRIBECA_PUSH_DEVICE_KEY);
@@ -134,6 +137,9 @@
       announcements: raw.announcements !== false,
       materials: raw.materials !== false
     };
+  }
+  function tribecaAllAppNotificationPrefs(){
+    return { ...TRIBECA_PUSH_DEFAULT_PREFS };
   }
   function tribecaPushSupported(){
     return !!(configured && State.client?.functions?.invoke && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
@@ -161,36 +167,73 @@
   }
   function tribecaPushStatusText(){
     if(!tribecaPushSupported()) return 'No disponible en este navegador o falta configurar Supabase.';
-    if(Notification.permission === 'granted') return localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' ? 'Activadas en este dispositivo.' : 'Permiso concedido, pero falta registrar este dispositivo.';
+    if(Notification.permission === 'granted') return localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' ? 'Activadas en este dispositivo.' : 'Permiso del móvil concedido. Falta pulsar el botón de activación de Tribeca Aula.';
     if(Notification.permission === 'denied') return 'Bloqueadas por el navegador. Debes permitirlas desde los ajustes del sitio.';
     return 'Pendientes de activar en este dispositivo.';
   }
+  function tribecaPushLastError(){ return String(localStorage.getItem(TRIBECA_PUSH_LAST_ERROR_KEY) || '').trim(); }
+  function tribecaPushLastOk(){ return String(localStorage.getItem(TRIBECA_PUSH_LAST_OK_KEY) || '').trim(); }
+  function tribecaSetPushLastError(error){
+    const message = tribecaPushHumanError(error);
+    localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, message);
+    localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
+    return message;
+  }
+  function tribecaSetPushLastOk(message){
+    localStorage.setItem(TRIBECA_PUSH_LAST_OK_KEY, message);
+    localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
+  }
+  function tribecaWithTimeout(promise, ms=12000, label='La operación de notificaciones tardó demasiado.'){
+    return Promise.race([promise, new Promise((_, reject)=>setTimeout(()=>reject(new Error(label)), ms))]);
+  }
+  async function tribecaServiceWorkerReady(){
+    await registerTribecaPwa({ immediate:true });
+    return await tribecaWithTimeout(navigator.serviceWorker.ready, 12000, 'El service worker de la app no terminó de activarse. Cierra y vuelve a abrir Tribeca Aula.');
+  }
   async function enableTribecaPushNotifications(){
     if(!tribecaPushSupported()) return toast('Este navegador no permite notificaciones push web o falta desplegar la función de Supabase.');
-    const permission = await Notification.requestPermission();
-    if(permission !== 'granted') return toast('No se han activado las notificaciones porque el permiso no fue concedido.');
-    await registerTribecaPwa({ immediate:true });
-    const reg = await navigator.serviceWorker.ready;
-    const publicKey = await fetchTribecaVapidPublicKey();
-    let subscription = await reg.pushManager.getSubscription();
-    if(!subscription){
-      subscription = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(publicKey) });
+    try{
+      localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
+      const permission = await Notification.requestPermission();
+      if(permission !== 'granted') throw new Error('No se han activado las notificaciones porque el permiso no fue concedido.');
+      const reg = await tribecaServiceWorkerReady();
+      const publicKey = await tribecaWithTimeout(fetchTribecaVapidPublicKey(), 12000, 'No se pudo obtener la clave pública VAPID desde Supabase.');
+      let subscription = await tribecaWithTimeout(reg.pushManager.getSubscription(), 8000, 'No se pudo leer la suscripción push del navegador.');
+      if(!subscription){
+        subscription = await tribecaWithTimeout(reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(publicKey) }), 15000, 'El navegador no terminó de crear la suscripción push.');
+      }
+      const preferences = tribecaAllAppNotificationPrefs();
+      await tribecaWithTimeout(tribecaPushInvoke({
+        action:'subscribe',
+        deviceId: tribecaDeviceId(),
+        subscription: subscription.toJSON(),
+        preferences,
+        userAgent: navigator.userAgent || ''
+      }), 15000, 'La suscripción se creó en el móvil, pero no se pudo guardar en Supabase.');
+      if(State.profile?.id){
+        const patch = { notification_preferences: preferences };
+        try{
+          await maybe(table('profiles').update(patch).eq('id', State.profile.id));
+          Object.assign(State.profile, patch);
+        }catch(prefError){
+          console.warn('[Tribeca Aula] La suscripción push quedó activa, pero no se pudieron guardar las preferencias generales:', prefError);
+        }
+      }
+      localStorage.setItem(TRIBECA_PUSH_ENABLED_KEY, '1');
+      tribecaSetPushLastOk('Notificaciones activadas. Recibirás avisos de mensajes, calendario, anuncios y materiales en este dispositivo.');
+      await syncTribecaAppBadge();
+      toast('Notificaciones de la app activadas.');
+    } catch(error) {
+      console.warn('[Tribeca Aula] Activación push fallida:', error);
+      localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY);
+      toast(tribecaSetPushLastError(error));
+    } finally {
+      refreshProfileNotificationsPanel();
     }
-    await tribecaPushInvoke({
-      action:'subscribe',
-      deviceId: tribecaDeviceId(),
-      subscription: subscription.toJSON(),
-      preferences: tribecaNotificationPrefs(),
-      userAgent: navigator.userAgent || ''
-    });
-    localStorage.setItem(TRIBECA_PUSH_ENABLED_KEY, '1');
-    await syncTribecaAppBadge();
-    toast('Notificaciones push activadas en este dispositivo.');
-    refreshProfileNotificationsPanel();
   }
   async function disableTribecaPushNotifications(){
     try{
-      const reg = await navigator.serviceWorker?.ready;
+      const reg = await tribecaWithTimeout(navigator.serviceWorker?.ready, 8000, 'No se pudo acceder al service worker para desactivar.');
       const subscription = await reg?.pushManager?.getSubscription?.();
       const endpoint = subscription?.endpoint || '';
       if(endpoint) await tribecaPushInvoke({ action:'unsubscribe', endpoint, deviceId:tribecaDeviceId() }).catch(()=>{});
@@ -199,6 +242,8 @@
       console.warn('[Tribeca Aula] No se pudo desactivar completamente la suscripción push:', error);
     }
     localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY);
+    localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
+    localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
     await syncTribecaAppBadge(0);
     toast('Notificaciones push desactivadas en este dispositivo.');
     refreshProfileNotificationsPanel();
@@ -234,12 +279,19 @@
       });
       const sent = Number(result?.sent || 0);
       const subscriptions = Number(result?.subscriptions || 0);
-      if(sent > 0) return toast('Prueba enviada. Debería aparecer en la cortina del móvil en unos segundos.');
-      if(subscriptions <= 0) return toast('No hay ningún dispositivo activo registrado para esta cuenta. Desactiva y vuelve a activar las notificaciones en este dispositivo.');
-      return toast('La prueba se ha intentado enviar, pero no ha llegado a ningún dispositivo. Revisa permisos del navegador y ahorro de batería.');
+      if(sent > 0){
+        tribecaSetPushLastOk('Prueba enviada correctamente. Debería aparecer en la cortina del móvil en unos segundos.');
+        refreshProfileNotificationsPanel();
+        return toast('Prueba enviada. Debería aparecer en la cortina del móvil en unos segundos.');
+      }
+      const msg = subscriptions <= 0 ? 'No hay ningún dispositivo activo registrado para esta cuenta. Pulsa “Activar notificaciones de la app”.' : 'La prueba se ha intentado enviar, pero no ha llegado a ningún dispositivo. Revisa permisos del navegador y ahorro de batería.';
+      localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, msg);
+      refreshProfileNotificationsPanel();
+      return toast(msg);
     }catch(error){
       console.warn('[Tribeca Aula] Prueba push fallida:', error);
-      toast(tribecaPushHumanError(error));
+      toast(tribecaSetPushLastError(error));
+      refreshProfileNotificationsPanel();
     }
   }
 
@@ -251,6 +303,7 @@
       const subscription = await reg.pushManager.getSubscription();
       if(subscription){
         await tribecaPushInvoke({ action:'subscribe', deviceId:tribecaDeviceId(), subscription:subscription.toJSON(), preferences:tribecaNotificationPrefs(), userAgent:navigator.userAgent || '' });
+        localStorage.setItem(TRIBECA_PUSH_ENABLED_KEY, '1');
       }
     } catch(error){
       console.warn('[Tribeca Aula] No se pudo sincronizar la suscripción push:', error);
@@ -6337,7 +6390,6 @@ function classroomCard(c,i=0){
 
   function profileContent(){
     const p = State.profile || {};
-    const notify = p.notification_preferences || {};
     const currentIcon = p.avatar_icon || '💡';
     const photo = teacherProfileImageUrl(p);
     const academic = academicLine(p);
@@ -6367,38 +6419,36 @@ function classroomCard(c,i=0){
         </form>
       </section>`;
     const pushStatus = tribecaPushStatusText();
-    const pushEnabled = localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+    const notificationPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+    const pushEnabled = localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' && notificationPermission === 'granted';
+    const lastPushError = tribecaPushLastError();
+    const lastPushOk = tribecaPushLastOk();
+    const pushNotice = lastPushError ? `<p class="tribeca-push-feedback-v154 is-error">${safe(lastPushError)}</p>` : lastPushOk ? `<p class="tribeca-push-feedback-v154 is-ok">${safe(lastPushOk)}</p>` : (!pushEnabled && notificationPermission === 'granted' ? '<p class="tribeca-push-feedback-v154 is-info">Permiso del móvil concedido. Pulsa el botón para terminar la activación en Tribeca Aula.</p>' : '');
+    const pushMainDisabled = !tribecaPushSupported() || notificationPermission === 'denied';
+    const pushMainAttr = pushEnabled ? 'data-t152-test-push' : 'data-t151-enable-push';
+    const pushMainLabel = notificationPermission === 'denied' ? 'Notificaciones bloqueadas' : (pushEnabled ? 'Enviar prueba de notificación' : 'Activar notificaciones de la app');
+    const resetLink = (notificationPermission === 'granted' || pushEnabled) ? '<button type="button" class="tribeca-inline-reset-v155" data-t151-disable-push>Reiniciar activación de este dispositivo</button>' : '';
     const notificationsCard = `<section class="profile-tool-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🔔</span>
           <div>
-            <h3>Ajustes de notificaciones</h3>
-            <p>Activa los avisos del móvil y el distintivo del icono de la app instalada.</p>
+            <h3>Notificaciones de la app</h3>
+            <p>Un solo botón activa en este dispositivo los avisos de mensajes, calendario, anuncios y materiales.</p>
           </div>
         </header>
-        <div class="tribeca-push-panel-v151">
+        <div class="tribeca-push-panel-v151 tribeca-push-panel-v155">
           <div>
-            <strong>Notificaciones push del dispositivo</strong>
+            <strong>Estado</strong>
             <p>${safe(pushStatus)}</p>
-            <small>${tribecaBadgeSupported()?'El navegador permite mostrar contador o distintivo en el icono de la app.':'El contador del icono dependerá del navegador y del sistema operativo.'}</small>
+            <small>${pushEnabled ? 'Ya puedes recibir avisos de Tribeca Aula en este dispositivo.' : 'Cada persona lo activa una vez en su propio móvil o navegador. Tú no tienes que configurarlo alumno por alumno.'}</small>
+            ${pushNotice}
           </div>
-          <div class="tribeca-push-actions-v151">
-            <button type="button" class="primary-btn" data-t151-enable-push ${pushEnabled?'disabled':''}>${pushEnabled?'Activadas':'Activar en este dispositivo'}</button>
-            <button type="button" class="secondary-btn" data-t151-disable-push ${pushEnabled?'':'disabled'}>Desactivar</button>
-            <button type="button" class="secondary-btn" data-t152-test-push ${pushEnabled?'':'disabled'}>Enviar prueba</button>
+          <div class="tribeca-push-actions-v151 tribeca-push-single-actions-v155">
+            <button type="button" class="primary-btn tribeca-push-main-btn-v155" ${pushMainAttr} ${pushMainDisabled?'disabled':''}>${safe(pushMainLabel)}</button>
+            ${resetLink}
           </div>
-          <small>Los avisos automáticos por email quedan desactivados; las novedades se avisarán desde la app cuando el dispositivo tenga permisos.</small>
+          <small>Los avisos automáticos por email permanecen desactivados. El contador del icono depende de Android/iOS y del navegador, por eso puede no mostrarse siempre aunque la notificación llegue a la cortina del móvil.</small>
         </div>
-        <form id="t16ProfileNotificationsForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid">
-          <label>Email personal <small>solo como dato de contacto</small><input name="personalEmail" type="email" value="${safe(p.personal_email||'')}" placeholder="tuemail@ejemplo.com"></label>
-          <div class="notification-options profile-notification-options">
-            <label><input type="checkbox" name="messages" ${notify.messages!==false?'checked':''}> <span>Mensajes</span></label>
-            <label><input type="checkbox" name="calendar" ${notify.calendar!==false?'checked':''}> <span>Calendario</span></label>
-            <label><input type="checkbox" name="announcements" ${notify.announcements!==false?'checked':''}> <span>Anuncios</span></label>
-            <label><input type="checkbox" name="materials" ${notify.materials!==false?'checked':''}> <span>Materiales</span></label>
-          </div>
-          <button class="secondary-btn" type="submit">Guardar notificaciones</button>
-        </form>
       </section>`;
     const passwordCard = `<section class="profile-tool-card">
         <header class="profile-tool-head">
@@ -6432,7 +6482,7 @@ function classroomCard(c,i=0){
   }
 
   async function saveProfileIcon(form){ const fd=new FormData(form); const patch={avatar_icon:fd.get('avatarIcon')||'💡'}; if(roleTeacher()) patch.avatar_image_url=fd.get('avatarImageUrl') || TRIBECA_TEACHER_PROFILE_IMAGE; const {error}=await table('profiles').update(patch).eq('id',State.profile.id); if(error) throw error; Object.assign(State.profile,patch); updateTopProfile(); await updatePresence(); toast('Perfil actualizado correctamente.'); }
-  async function saveProfileNotifications(form){ const fd=new FormData(form); const prefs={messages:!!fd.get('messages'),calendar:!!fd.get('calendar'),announcements:!!fd.get('announcements'),materials:!!fd.get('materials')}; const patch={personal_email:fd.get('personalEmail')||null,notification_preferences:prefs}; await maybe(table('profiles').update(patch).eq('id',State.profile.id)); Object.assign(State.profile,patch); await refreshTribecaPushSubscriptionIfEnabled(); toast('Preferencias guardadas.'); refreshProfileNotificationsPanel(); }
+  async function saveProfileNotifications(form){ const fd=new FormData(form); const prefs=tribecaAllAppNotificationPrefs(); const patch={personal_email:fd.get('personalEmail')||State.profile?.personal_email||null,notification_preferences:prefs}; await maybe(table('profiles').update(patch).eq('id',State.profile.id)); Object.assign(State.profile,patch); await refreshTribecaPushSubscriptionIfEnabled(); toast('Preferencias de la app guardadas.'); refreshProfileNotificationsPanel(); }
   async function changePassword(form){ const fd=new FormData(form); if(fd.get('password')!==fd.get('repeat')) return toast('Las contraseñas no coinciden.'); if(!confirm('¿Quieres modificar tu contraseña?')) return; const {error}=await State.client.auth.updateUser({password:fd.get('password')}); if(error) toast('No se pudo modificar la contraseña.'); else {toast('Contraseña modificada correctamente.'); form.reset();} }
 
   function difficultiesContent(){ const rows=State.data.difficulties||[]; return `<div class="window-grid"><section class="window-panel"><h3>Añadir o modificar materia</h3><form id="t16DifficultyForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="id"><label>Materia<select name="subject">${subjectList().map(s=>`<option>${safe(s)}</option>`).join('')}</select></label><label>Nivel de dificultad<select name="level"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Muy alta</option></select></label><label>Explica las dificultades<textarea name="notes" rows="4" placeholder="Describe qué contenidos, tareas o situaciones te resultan difíciles."></textarea></label><button class="primary-btn" type="submit">Guardar</button></form></section><section class="window-panel"><h3>Mis materias con dificultades</h3>${rows.length?rows.map(d=>`<article class="list-item"><strong>${safe(d.subject)}</strong><p>${safe(d.level)} · ${safe(d.notes||'')}</p><button data-t16-edit-diff="${d.id}">Editar</button><button data-t16-delete-diff="${d.id}">Eliminar</button></article>`).join(''):'<div class="empty-state">No has indicado materias con dificultades.</div>'}</section></div>`; }

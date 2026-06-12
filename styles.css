@@ -14697,3 +14697,74 @@ body .hero-card p {
   .tribeca-push-panel-v151 { grid-template-columns: 1fr; }
   .tribeca-push-actions-v151 { justify-content: flex-start; }
 }
+
+/* Tribeca Aula v154 · feedback persistente de activación push */
+.tribeca-push-feedback-v154 {
+  margin-top: .65rem;
+  padding: .7rem .85rem;
+  border-radius: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.tribeca-push-feedback-v154.is-info {
+  background: rgba(176, 143, 54, .12);
+  border: 1px solid rgba(176, 143, 54, .28);
+  color: #6f5613;
+}
+.tribeca-push-feedback-v154.is-ok {
+  background: rgba(8, 84, 48, .1);
+  border: 1px solid rgba(8, 84, 48, .24);
+  color: #085430;
+}
+.tribeca-push-feedback-v154.is-error {
+  background: rgba(156, 54, 40, .1);
+  border: 1px solid rgba(156, 54, 40, .28);
+  color: #8f2f22;
+}
+.notification-options-title-v154 {
+  font-weight: 800;
+  color: #104b2f;
+  margin: .35rem 0 -.25rem;
+}
+.tribeca-push-actions-v151 button[disabled] {
+  cursor: not-allowed;
+}
+
+/* Tribeca Aula v155 · activación de notificaciones con un único botón */
+.tribeca-push-panel-v155 {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+}
+.tribeca-push-single-actions-v155 {
+  display: grid;
+  justify-items: stretch;
+  gap: .55rem;
+}
+.tribeca-push-main-btn-v155 {
+  width: 100%;
+  min-height: 3.2rem;
+  border-radius: 1rem;
+  font-weight: 900;
+}
+.tribeca-inline-reset-v155 {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(11, 61, 34, .78);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 750;
+  cursor: pointer;
+  padding: .2rem;
+}
+.tribeca-inline-reset-v155:hover,
+.tribeca-inline-reset-v155:focus-visible {
+  color: #0b3d22;
+}
+@media (max-width: 760px) {
+  .tribeca-push-panel-v155 {
+    grid-template-columns: 1fr;
+  }
+  .tribeca-push-single-actions-v155 {
+    justify-items: stretch;
+  }
+}
