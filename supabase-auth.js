@@ -1,5 +1,5 @@
-/* Tribeca Aula · Versión 159 · notificaciones push compatibles con Supabase Dashboard y menú móvil modal.
-   Mejora: activación robusta, reparación de suscripciones con VAPID cambiado, Edge Function sin dependencias externas y favicon Tribeca restaurado. */
+/* Tribeca Aula · Versión 160 · push sin preflight para Supabase Dashboard, mensajes no técnicos para alumnado y favicon restaurado.
+   Mejora: Edge Function pública con verificación interna de sesión, compatible con publishable keys de Supabase. */
 (() => {
   'use strict';
   if (location.search && /(firstName|lastName|fullName|username|eventDate|monthlyFee|subject)=/.test(location.search)) {
@@ -120,8 +120,8 @@
   const TRIBECA_PUSH_FUNCTION = 'tribeca-web-push-dispatch';
   const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
   const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
-  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v159';
-  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v159';
+  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v160';
+  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v160';
   const TRIBECA_PUSH_DEFAULT_PREFS = Object.freeze({ messages:true, calendar:true, announcements:true, materials:true });
 
   function tribecaDeviceId(){
@@ -177,14 +177,20 @@
       }
     }catch(_error){}
     const endpoint = `${String(cfg.url).replace(/\/$/, '')}/functions/v1/${TRIBECA_PUSH_FUNCTION}`;
-    const headers = {
-      'Content-Type': 'application/json',
-      'apikey': cfg.anonKey,
-      'Authorization': `Bearer ${session?.access_token || cfg.anonKey}`
-    };
+    const payload = { ...(body || {}) };
+    if(session?.access_token) payload.accessToken = session.access_token;
+    /*
+      v160: llamada sin cabeceras personalizadas y sin Content-Type explícito.
+      Con las nuevas claves sb_publishable_ de Supabase, la función debe tener Verify JWT desactivado
+      y validar la sesión dentro de la propia función. Así evitamos el bloqueo CORS/preflight en móviles.
+    */
     let response;
     try{
-      response = await fetch(endpoint, { method:'POST', headers, body: JSON.stringify(body || {}) });
+      response = await fetch(endpoint, {
+        method:'POST',
+        body: JSON.stringify(payload),
+        cache:'no-store'
+      });
     }catch(error){
       throw new Error(`No se pudo conectar con la Edge Function ${TRIBECA_PUSH_FUNCTION}: ${error?.message || error}`);
     }
@@ -307,11 +313,19 @@
   function tribecaPushHumanError(error){
     const raw = error?.message || error?.error || error?.details || error;
     const message = String(raw || '').trim();
+    const teacher = State.profile?.role === 'teacher';
+    const generic = 'No se pudo completar la activación de notificaciones en este momento. Inténtalo más tarde o avisa a la profesora.';
+    if(!teacher){
+      if(/permiso no fue concedido|bloqueadas|Permission|denied/i.test(message)) return 'Las notificaciones están bloqueadas en este dispositivo. Revisa los permisos del sitio o de la app.';
+      if(/no permite notificaciones|PushManager|service worker|secure/i.test(message)) return 'Este dispositivo no permite activar notificaciones de la app.';
+      if(/sesión|autenticada|session/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
+      return generic;
+    }
+    if(/Verify JWT|JWT Verification|publishable|sb_publishable|preflight|CORS|Failed to fetch|NetworkError|No se pudo conectar/i.test(message)) return 'La Edge Function existe, pero el navegador no puede llamarla. En Supabase debes entrar en Edge Functions > tribeca-web-push-dispatch > Settings y desactivar Verify JWT / JWT Verification. La v160 verifica la sesión dentro de la función.';
     if(/VAPID|clave pública|clave privada|public key|private key/i.test(message)) return 'Faltan o no se leen bien las claves VAPID en Supabase. Revisa VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en Edge Function Secrets.';
     if(/Sesión|autenticada|session|jwt|JWT|Authorization/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
     if(/tribeca_web_push_subscriptions|relation.*does not exist|no existe/i.test(message)) return 'Falta ejecutar el SQL de la v151 en Supabase para crear las tablas de notificaciones.';
-    if(/No se pudo conectar|Failed to fetch|NetworkError/i.test(message)) return 'No se pudo contactar con la Edge Function de Supabase. Revisa que esté desplegada y que el proyecto sea el correcto.';
-    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'La Edge Function antigua sigue usando dependencias externas. Sustitúyela por el index_ts_para_copiar_en_supabase.txt de la v159 y pulsa Deploy.';
+    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'La Edge Function antigua sigue usando dependencias externas. Sustitúyela por el index_ts_para_copiar_en_supabase.txt de la v160 y pulsa Deploy.';
     if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-web-push-dispatch. Revisa que el nombre sea exacto y que esté desplegada en el mismo proyecto conectado a la web.';
     if(/Push service HTTP 401|Push service HTTP 403|vapid|aud|signature/i.test(message)) return 'La suscripción del móvil no coincide con las claves VAPID actuales. Pulsa “Desactivar o reiniciar este dispositivo” y después “Activar notificaciones de la app”.';
     if(/Edge Function/i.test(message)) return message;
@@ -6569,7 +6583,7 @@ function classroomCard(c,i=0){
           <div>
             <strong>Estado</strong>
             <p>${safe(pushStatus)}</p>
-            <small>${pushEnabled ? 'Este dispositivo está registrado. El botón principal enviará una prueba.' : 'Cada persona lo activa una sola vez en su propio móvil o navegador. Tú no tienes que configurarlo alumno por alumno.'}</small>
+            <small>${safe(pushEnabled ? 'Este dispositivo está registrado. El botón principal enviará una prueba.' : (roleTeacher() ? 'Activa este móvil con tu cuenta docente para recibir avisos del alumnado. El alumnado puede activarlo en su propio móvil si quiere recibir avisos.' : 'Pulsa el botón principal para activar los avisos de Tribeca Aula en este dispositivo.'))}</small>
             ${supportWarning}
             ${pushNotice}
           </div>

@@ -1,11 +1,12 @@
-/* Tribeca Aula · Service worker v159 · PWA, caché ligera, push genérico sin payload y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v159';
+/* Tribeca Aula · Service worker v160 · PWA, caché ligera, push genérico sin payload y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v160';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
   './assets/tribeca-pwa-icon-512.png',
-  './assets/favicon.png'
+  './assets/favicon.png',
+  './assets/favicon.ico'
 ];
 
 self.addEventListener('install', event => {
