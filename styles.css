@@ -15136,3 +15136,36 @@ body.is-dark .profile-menu.tribeca-account-menu-portal {
     color: #f8f1df !important;
   }
 }
+
+/* Tribeca Aula v161 · refuerzo definitivo del menú móvil de A miña conta */
+.profile-area,
+.header-inner,
+.app-shell,
+.app-header,
+.topbar,
+.utility-bar {
+  overflow: visible !important;
+}
+body > #profileMenu.profile-menu.tribeca-account-menu-portal {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+  isolation: isolate !important;
+}
+body.tribeca-account-menu-open .app-shell,
+body.tribeca-account-menu-open main,
+body.tribeca-account-menu-open .tool-window:not(.profile-window),
+body.tribeca-account-menu-open .window-panel,
+body.tribeca-account-menu-open .footer-brand,
+body.tribeca-account-menu-open .bottom-sheet,
+body.tribeca-account-menu-open .modal:not(#profileMenu) {
+  transform: none !important;
+}
+@media (max-width: 820px) {
+  body.tribeca-account-menu-open > *:not(#profileMenu):not(script):not(style) {
+    pointer-events: none !important;
+  }
+  body.tribeca-account-menu-open > #profileMenu.profile-menu.tribeca-account-menu-portal {
+    pointer-events: auto !important;
+  }
+}
