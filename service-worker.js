@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v158 · PWA, caché ligera, push y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v158';
+/* Tribeca Aula · Service worker v159 · PWA, caché ligera, push genérico sin payload y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v159';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
@@ -108,7 +108,7 @@ self.addEventListener('message', event => {
 self.addEventListener('push', event => {
   const fallback = {
     title: 'Tribeca Aula',
-    body: 'Tienes una novedad en Tribeca Aula.',
+    body: 'Tienes una novedad en Tribeca Aula. Abre la app para verla.',
     url: './',
     icon: './assets/tribeca-pwa-icon-192.png',
     badge: './assets/tribeca-pwa-icon-192.png',

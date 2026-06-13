@@ -1,5 +1,5 @@
-/* Tribeca Aula · Versión 158 · Edge Function push sin bloqueo de despliegue y menú móvil portal
-   Mejora: aclara el estado “permiso concedido, pero falta registrar”, permite reiniciar el dispositivo aunque falte el registro local y muestra errores persistentes de activación. */
+/* Tribeca Aula · Versión 159 · notificaciones push compatibles con Supabase Dashboard y menú móvil modal.
+   Mejora: activación robusta, reparación de suscripciones con VAPID cambiado, Edge Function sin dependencias externas y favicon Tribeca restaurado. */
 (() => {
   'use strict';
   if (location.search && /(firstName|lastName|fullName|username|eventDate|monthlyFee|subject)=/.test(location.search)) {
@@ -120,8 +120,8 @@
   const TRIBECA_PUSH_FUNCTION = 'tribeca-web-push-dispatch';
   const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
   const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
-  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v158';
-  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v158';
+  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v159';
+  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v159';
   const TRIBECA_PUSH_DEFAULT_PREFS = Object.freeze({ messages:true, calendar:true, announcements:true, materials:true });
 
   function tribecaDeviceId(){
@@ -150,6 +150,21 @@
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const rawData = atob(base64);
     return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+  }
+  function uint8ArrayToUrlBase64(bytes){
+    const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+    let raw = '';
+    arr.forEach(b => { raw += String.fromCharCode(b); });
+    return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+  function tribecaSubscriptionMatchesVapid(subscription, publicKey){
+    try{
+      const current = subscription?.options?.applicationServerKey;
+      if(!current) return true;
+      return uint8ArrayToUrlBase64(current) === String(publicKey || '').trim();
+    }catch(_error){
+      return true;
+    }
   }
   async function tribecaPushInvoke(body={}){
     if(!configured || !cfg.url || !cfg.anonKey) throw new Error('Supabase no está configurado para notificaciones.');
@@ -233,6 +248,10 @@
       const reg = await tribecaServiceWorkerReady();
       const publicKey = await tribecaWithTimeout(fetchTribecaVapidPublicKey(), 12000, 'No se pudo obtener la clave pública VAPID desde Supabase. Revisa la Edge Function y los secretos VAPID.');
       let subscription = await tribecaWithTimeout(reg.pushManager.getSubscription(), 8000, 'No se pudo leer la suscripción push del navegador.');
+      if(subscription && !tribecaSubscriptionMatchesVapid(subscription, publicKey)){
+        try{ await subscription.unsubscribe(); }catch(_error){}
+        subscription = null;
+      }
       if(!subscription){
         subscription = await tribecaWithTimeout(reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(publicKey) }), 15000, 'El navegador no terminó de crear la suscripción push.');
       }
@@ -292,8 +311,9 @@
     if(/Sesión|autenticada|session|jwt|JWT|Authorization/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
     if(/tribeca_web_push_subscriptions|relation.*does not exist|no existe/i.test(message)) return 'Falta ejecutar el SQL de la v151 en Supabase para crear las tablas de notificaciones.';
     if(/No se pudo conectar|Failed to fetch|NetworkError/i.test(message)) return 'No se pudo contactar con la Edge Function de Supabase. Revisa que esté desplegada y que el proyecto sea el correcto.';
-    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'La Edge Function se desplegó, pero falla al cargar el motor de envío push. Actualiza la función con el index_ts_para_copiar_en_supabase.txt de la v158.';
-    if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-web-push-dispatch. Revisa el nombre exacto de la Edge Function.';
+    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'La Edge Function antigua sigue usando dependencias externas. Sustitúyela por el index_ts_para_copiar_en_supabase.txt de la v159 y pulsa Deploy.';
+    if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-web-push-dispatch. Revisa que el nombre sea exacto y que esté desplegada en el mismo proyecto conectado a la web.';
+    if(/Push service HTTP 401|Push service HTTP 403|vapid|aud|signature/i.test(message)) return 'La suscripción del móvil no coincide con las claves VAPID actuales. Pulsa “Desactivar o reiniciar este dispositivo” y después “Activar notificaciones de la app”.';
     if(/Edge Function/i.test(message)) return message;
     return message || 'No se pudo completar la comprobación de notificaciones.';
   }
@@ -328,9 +348,9 @@
       const sent = Number(result?.sent || 0);
       const subscriptions = Number(result?.subscriptions || 0);
       if(sent > 0){
-        tribecaSetPushLastOk('Prueba enviada correctamente. Debería aparecer en la cortina del móvil en unos segundos.');
+        tribecaSetPushLastOk('Prueba enviada correctamente. Debería aparecer como aviso de Tribeca Aula en la cortina del móvil en unos segundos.');
         refreshProfileNotificationsPanel();
-        return toast('Prueba enviada. Debería aparecer en la cortina del móvil en unos segundos.');
+        return toast('Prueba enviada. Debería aparecer como aviso de Tribeca Aula en la cortina del móvil en unos segundos.');
       }
       const msg = subscriptions <= 0 ? 'No hay ningún dispositivo activo registrado para esta cuenta. Pulsa “Activar notificaciones de la app”.' : 'La prueba se ha intentado enviar, pero no ha llegado a ningún dispositivo. Revisa permisos del navegador y ahorro de batería.';
       localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, msg);
@@ -1352,14 +1372,23 @@
     const vh=Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
     const mobile=window.matchMedia?.('(max-width: 720px)')?.matches || vw <= 720;
     if(mobile){
+      menu.style.position='fixed';
       menu.style.left='14px';
       menu.style.right='14px';
-      menu.style.top=`${Math.max(12, rect.bottom + 8)}px`;
-      menu.style.maxHeight=`${Math.max(220, vh - Math.max(12, rect.bottom + 8) - 16)}px`;
+      menu.style.top='14px';
+      menu.style.bottom='14px';
+      menu.style.width='auto';
+      menu.style.minWidth='0';
+      menu.style.maxWidth='none';
+      menu.style.maxHeight='calc(100dvh - 28px)';
+      menu.style.zIndex='2147483647';
       return;
     }
+    menu.style.position='fixed';
     menu.style.right='auto';
+    menu.style.bottom='auto';
     menu.style.maxHeight=`${Math.max(260, vh - rect.bottom - 18)}px`;
+    menu.style.zIndex='2147483647';
     const width=Math.max(menu.offsetWidth || 0, 352);
     const left=Math.min(Math.max(12, rect.right - width), vw - width - 12);
     menu.style.left=`${left}px`;
