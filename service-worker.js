@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v161 · PWA, caché ligera, push genérico sin payload y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v161';
+/* Tribeca Aula · Service worker v163 · PWA, caché ligera, push con payload cifrado y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v163';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
@@ -125,7 +125,7 @@ self.addEventListener('push', event => {
     body: data.body || fallback.body,
     icon: data.icon || fallback.icon,
     badge: data.badge || fallback.badge,
-    tag: data.tag || `tribeca-${data.type || 'notice'}`,
+    tag: data.tag || `tribeca-${data.type || 'notice'}-${Date.now()}`,
     renotify: true,
     vibrate: [80, 40, 80],
     data: {

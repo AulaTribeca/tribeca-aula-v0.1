@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 160 · push sin preflight para Supabase Dashboard, mensajes no técnicos para alumnado y favicon restaurado.
+/* Tribeca Aula · Versión 163 · push cifrado, calendario por clases y feedback docente.
    Mejora: Edge Function pública con verificación interna de sesión, compatible con publishable keys de Supabase. */
 (() => {
   'use strict';
@@ -117,11 +117,11 @@
   window.TribecaUndoLastAction = undoLast;
 
 
-  const TRIBECA_PUSH_FUNCTION = 'tribeca-push-v161';
+  const TRIBECA_PUSH_FUNCTION = 'tribeca-push-v163';
   const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
   const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
-  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v161';
-  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v161';
+  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v163';
+  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v163';
   const TRIBECA_PUSH_DEFAULT_PREFS = Object.freeze({ messages:true, calendar:true, announcements:true, materials:true });
 
   function tribecaDeviceId(){
@@ -181,7 +181,7 @@
     if(session?.access_token) payload.accessToken = session.access_token;
     /*
       v161: llamada sin cabeceras personalizadas y sin Content-Type explícito.
-      La función nueva tribeca-push-v161 debe tener Verify JWT desactivado
+      La función nueva tribeca-push-v163 debe tener Verify JWT desactivado
       y valida la sesión dentro de la propia función.
     */
     let response;
@@ -248,12 +248,12 @@
     try{
       localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
       localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
-      ['tribeca-push-last-error-v159','tribeca-push-last-ok-v159','tribeca-push-last-error-v160','tribeca-push-last-ok-v160'].forEach(k=>localStorage.removeItem(k));
+      ['tribeca-push-last-error-v159','tribeca-push-last-ok-v159','tribeca-push-last-error-v160','tribeca-push-last-ok-v160','tribeca-push-last-error-v161','tribeca-push-last-ok-v161'].forEach(k=>localStorage.removeItem(k));
       refreshProfileNotificationsPanel();
       const permission = await Notification.requestPermission();
       if(permission !== 'granted') throw new Error('No se han activado las notificaciones porque el permiso no fue concedido.');
       const reg = await tribecaServiceWorkerReady();
-      const publicKey = await tribecaWithTimeout(fetchTribecaVapidPublicKey(), 12000, 'No se pudo obtener la clave pública VAPID desde Supabase. Revisa la función tribeca-push-v161 y los secretos VAPID.');
+      const publicKey = await tribecaWithTimeout(fetchTribecaVapidPublicKey(), 12000, 'No se pudo obtener la clave pública VAPID desde Supabase. Revisa la función tribeca-push-v163 y los secretos VAPID.');
       let subscription = await tribecaWithTimeout(reg.pushManager.getSubscription(), 8000, 'No se pudo leer la suscripción push del navegador.');
       if(subscription && !tribecaSubscriptionMatchesVapid(subscription, publicKey)){
         try{ await subscription.unsubscribe(); }catch(_error){}
@@ -269,7 +269,7 @@
         subscription: subscription.toJSON(),
         preferences,
         userAgent: navigator.userAgent || ''
-      }), 15000, 'La suscripción se creó en el móvil, pero no se pudo guardar en Supabase. Revisa la Edge Function tribeca-push-v161.');
+      }), 15000, 'La suscripción se creó en el móvil, pero no se pudo guardar en Supabase. Revisa la Edge Function tribeca-push-v163.');
       if(State.profile?.id){
         const patch = { notification_preferences: preferences };
         try{
@@ -322,12 +322,12 @@
       if(/sesión|autenticada|session/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
       return generic;
     }
-    if(/Verify JWT|JWT Verification|publishable|sb_publishable|preflight|CORS|Failed to fetch|NetworkError|No se pudo conectar/i.test(message)) return 'La función de notificaciones existe, pero el navegador no puede llamarla. En Supabase debes entrar en Edge Functions > tribeca-push-v161 > Settings y desactivar Verify JWT / JWT Verification. La v161 verifica la sesión dentro de la función.';
+    if(/Verify JWT|JWT Verification|publishable|sb_publishable|preflight|CORS|Failed to fetch|NetworkError|No se pudo conectar/i.test(message)) return 'La función de notificaciones existe, pero el navegador no puede llamarla. En Supabase debes entrar en Edge Functions > tribeca-push-v163 > Settings y desactivar Verify JWT / JWT Verification. La v163 verifica la sesión dentro de la función.';
     if(/VAPID|clave pública|clave privada|public key|private key/i.test(message)) return 'Faltan o no se leen bien las claves VAPID en Supabase. Revisa VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en Edge Function Secrets.';
     if(/Sesión|autenticada|session|jwt|JWT|Authorization/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
     if(/tribeca_web_push_subscriptions|relation.*does not exist|no existe/i.test(message)) return 'Falta ejecutar el SQL de la v151 en Supabase para crear las tablas de notificaciones.';
-    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'Está contestando una función antigua o distinta. Crea una Edge Function nueva llamada tribeca-push-v161, pega el index_ts_para_copiar_en_supabase.txt de la v161 y pulsa Deploy. No edites la función antigua.';
-    if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-push-v161. Crea esa Edge Function nueva con ese nombre exacto en el mismo proyecto conectado a la web.';
+    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'Está contestando una función antigua o distinta. Crea una Edge Function nueva llamada tribeca-push-v163, pega el index_ts_para_copiar_en_supabase.txt de la v163 y pulsa Deploy. No edites las funciones antiguas.';
+    if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-push-v163. Crea esa Edge Function nueva con ese nombre exacto en el mismo proyecto conectado a la web.';
     if(/Push service HTTP 401|Push service HTTP 403|vapid|aud|signature/i.test(message)) return 'La suscripción del móvil no coincide con las claves VAPID actuales. Pulsa “Desactivar o reiniciar este dispositivo” y después “Activar notificaciones de la app”.';
     if(/Edge Function/i.test(message)) return message;
     return message || 'No se pudo completar la comprobación de notificaciones.';
@@ -358,16 +358,18 @@
         url: tribecaHistoryUrl('profile', { panel:'notifications' }),
         icon:'assets/tribeca-pwa-icon-192.png',
         badge:'assets/tribeca-pwa-icon-192.png',
-        badgeCount:1
+        badgeCount:1,
+        tag:`tribeca-test-${Date.now()}`
       });
       const sent = Number(result?.sent || 0);
       const subscriptions = Number(result?.subscriptions || 0);
       if(sent > 0){
-        tribecaSetPushLastOk('Prueba enviada correctamente. Debería aparecer como aviso de Tribeca Aula en la cortina del móvil en unos segundos.');
+        tribecaSetPushLastOk('Prueba enviada correctamente con payload cifrado. Debería aparecer como aviso de Tribeca Aula en la cortina del móvil en unos segundos.');
         refreshProfileNotificationsPanel();
         return toast('Prueba enviada. Debería aparecer como aviso de Tribeca Aula en la cortina del móvil en unos segundos.');
       }
-      const msg = subscriptions <= 0 ? 'No hay ningún dispositivo activo registrado para esta cuenta. Pulsa “Activar notificaciones de la app”.' : 'La prueba se ha intentado enviar, pero no ha llegado a ningún dispositivo. Revisa permisos del navegador y ahorro de batería.';
+      const detail = Array.isArray(result?.errors) && result.errors.length ? ` Detalle técnico: ${result.errors.map(e=>e.message||e.status).filter(Boolean).join(' · ')}` : '';
+      const msg = subscriptions <= 0 ? 'No hay ningún dispositivo activo registrado para esta cuenta. Pulsa “Activar notificaciones de la app”.' : 'La prueba se ha intentado enviar, pero el servicio push no la ha aceptado para ningún dispositivo.' + (roleTeacher()?detail:'');
       localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, msg);
       refreshProfileNotificationsPanel();
       return toast(msg);
@@ -436,8 +438,8 @@
     }, 650);
   }
   async function tribecaDispatchPushNotification(type, options={}){
-    if(!State.profile || !State.client?.functions?.invoke) return null;
-    const prefKey = options.preferenceKey || ({message:'messages', announcement:'announcements', calendar:'calendar', material:'materials'}[type] || 'messages');
+    if(!State.profile) return null;
+    const prefKey = Object.prototype.hasOwnProperty.call(options,'preferenceKey') ? options.preferenceKey : ({message:'messages', announcement:'announcements', calendar:'calendar', material:'materials'}[type] || 'messages');
     const section = options.section || tribecaNotificationSection(type);
     const url = options.url || tribecaHistoryUrl(section, options.opts || {});
     const body = {
@@ -457,6 +459,8 @@
       stage: options.stage || null,
       course: options.course || null,
       classId: options.classId || null,
+      classIds: options.classIds || options.targetClassIds || [],
+      targetClassIds: options.targetClassIds || options.classIds || [],
       materialId: options.materialId || null,
       announcementId: options.announcementId || null,
       actorName: displayName(State.profile),
@@ -1158,6 +1162,21 @@
   function activeClassAssignmentFor(studentId, classId){
     return (State.data.classStudents||[]).find(a=>String(a.user_id)===String(studentId) && String(a.class_id)===String(classId) && a.active!==false) || null;
   }
+  function activeClassIdsForStudent(studentId){
+    return (State.data.classStudents||[])
+      .filter(a=>String(a.user_id)===String(studentId) && a.active!==false && classById(a.class_id))
+      .map(a=>String(a.class_id));
+  }
+  function targetClassIds(item={}){
+    return parseArrayField(item.target_class_ids || item.class_ids || item.classIds || []);
+  }
+  function visibleByTargetClasses(item={}, p=State.profile){
+    const ids = targetClassIds(item);
+    if(!ids.length) return false;
+    if(roleTeacher()) return true;
+    const own = new Set(activeClassIdsForStudent(p?.id));
+    return ids.some(id=>own.has(String(id)));
+  }
   function visibleByClassHierarchy(item={}, p=State.profile){
     if(!item?.class_id) return true;
     const c=classById(item.class_id);
@@ -1195,7 +1214,12 @@
     if(scope === 'all') return true;
     if(['selected','user'].includes(scope)) return ids.includes(String(p.id));
     if(scope === 'center') return item.center === p.center;
-    if(scope === 'class') return item.center === p.center && item.stage === p.stage && item.course === p.course;
+    if(['classes','class_ids','classrooms'].includes(scope)) return visibleByTargetClasses(item,p);
+    if(scope === 'class') {
+      const ids = targetClassIds(item);
+      if(ids.length) return visibleByTargetClasses(item,p);
+      return item.center === p.center && item.stage === p.stage && item.course === p.course;
+    }
     return true;
   }
   function focusModeEnabledForProfile(profile = State.profile){
@@ -1257,14 +1281,19 @@
       if(e.created_by === p.id || e.user_id === p.id) return true;
       if(scope==='all') return true;
       if(scope==='center') return e.center===p.center;
-      if(scope==='class') return e.center===p.center && e.stage===p.stage && e.course===p.course;
+      if(['classes','class_ids','classrooms'].includes(scope)) return visibleByTargetClasses(e,p);
+      if(scope==='class') {
+        const cids=targetClassIds(e);
+        if(cids.length) return visibleByTargetClasses(e,p);
+        return e.center===p.center && e.stage===p.stage && e.course===p.course;
+      }
       if(['selected','user'].includes(scope)) return ids.includes(String(p.id));
       return true;
     }).map(e=>({...e, date:e.event_date || e.date, type:e.event_type || e.type || 'personal'}));
     const official = officialEvents.filter(Boolean).filter(e=> roleTeacher() || ['national','galicia','local','school','school-proposal'].includes(e.type) || ((p?.center||'').includes('Cee') && e.type==='local-cee') || ((p?.center||'').includes('Fisterra') && e.type==='local-fisterra'));
     return [...official, ...db].filter(e=>e && (!e.hidden || e.official || roleTeacher() || e.created_by===p?.id));
   }
-  function canEditEvent(e) { const p=State.profile; if(!p || e.official) return false; if(roleTeacher()) return true; if(e.created_by === p.id) return true; if((e.scope||e.target_scope)==='class' && e.center===p.center && e.stage===p.stage && e.course===p.course) return true; return false; }
+  function canEditEvent(e) { const p=State.profile; if(!p || e.official) return false; if(roleTeacher()) return true; if(e.created_by === p.id) return true; const scope=e.scope||e.target_scope; if(['classes','class_ids','classrooms'].includes(scope)) return visibleByTargetClasses(e,p); if(scope==='class' && e.center===p.center && e.stage===p.stage && e.course===p.course) return true; return false; }
 
   function pauseRecords(userId){ return (State.data.studentPauses||[]).filter(x=>String(x.user_id)===String(userId)); }
   function pauseCoversDate(pause, iso=todayIso()){
@@ -2723,7 +2752,8 @@
     if(!count && !opts.showEmpty) return '';
     const rows=attempts.map((a,i)=>{
       const when=a.completed_at ? new Date(a.completed_at).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'sin fecha';
-      return `<li><span>Intento ${count-i}</span><strong>${Number(a.score||0).toFixed(2)}/10</strong><small>${safe(when)}</small>${attemptPrintButton(a,'Descargar PDF')}</li>`;
+      const teacherNote=(a.teacher_feedback||a.teacher_comment)?`<p class="attempt-teacher-note-v163"><strong>Comentario de la profesora:</strong> ${safe(a.teacher_feedback||a.teacher_comment)}</p>`:'';
+      return `<li><span>Intento ${count-i}</span><strong>${Number(a.score||0).toFixed(2)}/10</strong><small>${safe(when)}</small>${teacherNote}${attemptPrintButton(a,'Descargar PDF')}</li>`;
     }).join('');
     return `<details class="exam-attempt-history exam-attempt-history-v148"><summary>Intentos realizados${count?` (${count})`:''}</summary>${count?`<ol>${rows}</ol>`:'<p>Todavía no hay intentos guardados.</p>'}</details>`;
   }
@@ -2768,7 +2798,7 @@
     return `<h1>Actividad realizada</h1><p class="muted">Documento de intento autocorregible generado desde Tribeca Aula. Este documento no forma parte de las calificaciones oficiales del centro educativo.</p>
       <table><tbody><tr><th>Alumno/a</th><td>${safe(displayName(st)||'Alumno/a')}</td><th>Intento</th><td>${safe(attemptNo)}</td></tr><tr><th>Materia</th><td>${safe(subject)}</td><th>Unidad</th><td>${safe(unit)}</td></tr><tr><th>Actividad</th><td>${safe(title)}</td><th>Fecha</th><td>${safe(when?fmtDT(when):'Sin fecha')}</td></tr><tr><th>Resultado</th><td><strong>${score.toFixed(2)}/10</strong></td><th>Porcentaje</th><td>${safe(a.percent ?? Math.round(score*10))}%</td></tr></tbody></table>
       <h2>Respuestas y corrección</h2><table class="attempt-pdf-table"><thead><tr><th>N.º</th><th>Pregunta</th><th>Respuesta dada</th><th>Respuesta correcta</th><th>Resultado</th><th>Feedback</th></tr></thead><tbody>${attemptRowsForPdf(a)}</tbody></table>
-      <h2>Observación pedagógica</h2><div class="field">${score<5?'Conviene revisar la actividad con apoyo docente y comprobar si el error se debe a comprensión, técnica de estudio, lectura del enunciado o falta de consolidación.':score<7?'Resultado suficiente, aunque conviene repasar los errores para consolidar el aprendizaje.':'Buen resultado. Puede usarse como evidencia de avance y consolidación.'}</div>`;
+      <h2>Observación pedagógica</h2><div class="field">${score<5?'Conviene revisar la actividad con apoyo docente y comprobar si el error se debe a comprensión, técnica de estudio, lectura del enunciado o falta de consolidación.':score<7?'Resultado suficiente, aunque conviene repasar los errores para consolidar el aprendizaje.':'Buen resultado. Puede usarse como evidencia de avance y consolidación.'}</div>${(a.teacher_feedback||a.teacher_comment)?`<h2>Comentario de la profesora</h2><div class="field"><strong>Retroalimentación:</strong> ${safe(a.teacher_feedback||'Sin retroalimentación específica.')}<br><strong>Comentario:</strong> ${safe(a.teacher_comment||'Sin comentario adicional.')}</div>`:''}`;
   }
   function printAttemptPdf(ref=''){
     const a=attemptByPrintRef(ref);
@@ -3002,13 +3032,27 @@
       percent:Math.round((Number(result.score||0)/10)*100),
       answers:result.answers || [],
       correction:result,
+      teacher_feedback: result.teacher_feedback || null,
+      teacher_comment: result.teacher_comment || null,
       completed_at:result.completed_at || new Date().toISOString()
     };
     const inserted = await maybe(table('exam_attempts').insert(row).select('*').single(), null);
     await maybe(table('material_completions').upsert({user_id:State.profile.id, material_id:materialId, completed_at:row.completed_at},{onConflict:'user_id,material_id'}));
+    const savedAttempt = inserted || row;
+    if(Number(row.score||0) <= 5){
+      await tribecaDispatchPushNotification('activity', {
+        preferenceKey:'',
+        title:`Actividad con nota baja: ${displayName(State.profile)}`,
+        body:`${row.title || 'Actividad'} · ${Number(row.score||0).toFixed(2)}/10. Conviene revisar el intento.`,
+        targetRole:'teacher',
+        section:'activityAnalytics',
+        url:tribecaHistoryUrl('activityAnalytics', {studentId:State.profile.id}),
+        includeActor:false
+      });
+    }
     await loadData(true);
     toast(`Ejercicio corregido: ${Number(row.score).toFixed(2)}/10. Intento guardado.`);
-    return inserted || row;
+    return savedAttempt;
   }
 
   function hydrateNativeExams(root=document){
@@ -4311,6 +4355,8 @@ render();
         stage: payload.stage || null,
         course: payload.course || null,
         classId: classId || null,
+        classIds: classId ? [classId] : [],
+        targetClassIds: classId ? [classId] : [],
         materialId: isAnnouncement ? null : null,
         section: isAnnouncement ? 'announcements' : (linked.classSubjectId ? 'classSubjectDetail' : 'subjects'),
         opts: isAnnouncement ? {} : (linked.classSubjectId ? {classSubjectId:linked.classSubjectId, classId:classId, subject} : {})
@@ -4341,9 +4387,35 @@ render();
     return `<div class="t16-calendar-layout premium-calendar calendar-clean-v107"><section class="window-panel calendar-main-panel">${calendarGrid()}</section><section class="window-panel calendar-side-panel">${closed.length?`<div class="closed-alert"><strong>Tribeca Academia no abre este día</strong><p>${closed.map(e=>safe(e.title)).join(' · ')}</p></div>`:''}<h3>Eventos del día · ${fmtDate(State.selectedDate)}</h3><div class="item-list">${selected.length?selected.map(e=>eventCard(e)).join(''):'<div class="empty-state">No hay eventos este día.</div>'}</div><details class="teacher-option-drawer calendar-form-drawer" ${forceCreate||edit?'open':''}><summary><span>${edit?'Editar fecha':'Añadir fecha'}</span><em>${safe(State.selectedDate)}</em></summary>${eventForm(edit)}</details></section><section class="window-panel upcoming-panel"><h3>Próximas fechas <span class="meta">7 días</span></h3><div class="item-list">${upcoming.map(e=>`<article class="list-item event-${safe(eventColorType(e))}" data-t16-event="${safe(e.id)}"><strong>${fmtDate(e.date)} · ${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))}</small></article>`).join('')||'<div class="empty-state">Sin próximas fechas en los próximos 7 días.</div>'}</div></section></div>`;
   }
   function eventLabel(e){ const t=eventColorType(e); return ({national:'Nacional',galicia:'Galicia',corcubion:'Corcubión',local:'Local',school:'Escolar',exam:'Examen',delivery:'Entrega de trabajo',presentation:'Presentación',excursion:'Excursión',personal:'Personal',teacher:'Profesora',closed:'Tribeca cerrado',class:'Grupo-clase',student_absence:'No asistiré este día a clases','school-proposal':'Escolar'}[t] || t || 'Evento'); }
-  function eventCard(e){ const actions=canEditEvent(e)?`<div class="inline-actions"><button type="button" data-t16-event="${safe(e.id)}">Editar</button><button type="button" data-t16-hide-event="${safe(e.id)}">${e.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-event="${safe(e.id)}">Eliminar</button></div>`:''; return `<article class="list-item event-${safe(eventColorType(e))}"><strong>${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(eventLabel(e))} · Añadido por ${safe(e.author_name||e.created_by_name||studentName(e.created_by)||'Tribeca Aula')}</small>${actions}</article>`; }
+  function eventCard(e){ const actions=canEditEvent(e)?`<div class="inline-actions"><button type="button" data-t16-event="${safe(e.id)}">Editar</button><button type="button" data-t16-hide-event="${safe(e.id)}">${e.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-event="${safe(e.id)}">Eliminar</button></div>`:''; return `<article class="list-item event-${safe(eventColorType(e))}"><strong>${safe(e.title)}</strong><p>${safe(e.body||e.description||'')}</p><small>${safe(calendarEventVisibilityLabel(e))} · Añadido por ${safe(e.author_name||e.created_by_name||studentName(e.created_by)||'Tribeca Aula')}</small>${actions}</article>`; }
   function eventDefaultTitle(type='personal'){
     return ({exam:'Examen',delivery:'Entrega de trabajo',presentation:'Presentación',excursion:'Excursión',student_absence:'No asistiré este día a clases',personal:'Evento personal',class:'Evento de grupo',teacher:'Profesora',closed:'Tribeca cerrado',school:'Escolar'}[String(type||'personal')] || 'Evento');
+  }
+  function eventScopeIsChecked(e={}, value=''){
+    const scope=e?.scope || e?.target_scope || '';
+    if(value==='classes') return ['classes','class_ids','classrooms'].includes(scope) || (scope==='class' && targetClassIds(e).length>0);
+    if(value==='user') return ['user','personal','private'].includes(scope);
+    return scope===value;
+  }
+  function calendarClassSelector(e=null, can=true){
+    const classes=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(classroomLabel(a)||'').localeCompare(String(classroomLabel(b)||''),'es'));
+    const selected=new Set(targetClassIds(e));
+    const showClasses = eventScopeIsChecked(e,'classes');
+    const hiddenAttr = showClasses ? '' : ' hidden';
+    const disabled=can?'':'disabled';
+    if(!classes.length) return `<div class="calendar-class-targets-v163 is-empty" data-calendar-class-targets${hiddenAttr}><p class="meta">Aún no hay clases activas para seleccionar.</p></div>`;
+    return `<div class="calendar-class-targets-v163" data-calendar-class-targets${hiddenAttr}><p class="meta">Marca una o varias clases. Solo el alumnado asignado a esas clases verá la fecha y recibirá el aviso de la app.</p><div class="calendar-class-grid-v163">${classes.map(c=>`<label><input type="checkbox" name="targetClassIds" value="${safe(c.id)}" ${selected.has(String(c.id))?'checked':''} ${disabled}><span><strong>${safe(classroomLabel(c))}</strong><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></span></label>`).join('')}</div></div>`;
+  }
+  function calendarEventVisibilityLabel(e={}){
+    const scope=e.scope||e.target_scope||'all';
+    if(['user','personal','private'].includes(scope)) return 'Solo para mí';
+    if(['classes','class_ids','classrooms'].includes(scope) || (scope==='class' && targetClassIds(e).length)){
+      const labels=targetClassIds(e).map(id=>classroomLabel(classById(id)||{})).filter(Boolean);
+      return labels.length ? `Visible para: ${labels.join(', ')}` : 'Visible por clases';
+    }
+    if(scope==='class') return [e.center,e.stage,e.course].filter(Boolean).join(' · ') || 'Grupo-clase';
+    if(scope==='all') return 'Visible para todo el alumnado';
+    return eventLabel(e);
   }
   function eventForm(e=null){
     const can=!e||canEditEvent(e);
@@ -4352,12 +4424,12 @@ render();
       ? [['teacher','Profesora'],['closed','Tribeca cerrado'],['personal','Personal'],['class','Clase'],['exam','Examen'],['delivery','Entrega'],['presentation','Presentación'],['excursion','Excursión'],['school','Escolar']]
       : [['exam','Examen'],['delivery','Entrega de trabajo'],['presentation','Presentación'],['excursion','Excursión'],['student_absence','No asistiré este día a clases']];
     const scopeOptions = teacher
-      ? [['all','Todo el alumnado'],['class','Grupo-clase'],['user','Personal']]
+      ? [['user','Solo para mí'],['all','Todo el alumnado'],['classes','Por clases concretas']]
       : [['user','solo para mí'],['class','toda mi clase']];
     const currentType = e?.event_type || e?.type || (teacher ? 'teacher' : 'exam');
-    const currentScope = e?.scope || e?.target_scope || (currentType==='student_absence'?'user':'user');
+    const currentScope = e?.scope || e?.target_scope || (teacher ? 'user' : (currentType==='student_absence'?'user':'user'));
     const titleRequired = teacher ? 'required' : '';
-    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form event-form-v112"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><div class="window-grid"><label>Tipo de evento<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${currentScope===v?'selected':''}>${l}</option>`).join('')}</select></label></div><label>Título${teacher?'':' opcional'}<input name="title" value="${safe(e?.title||'')}" placeholder="${safe(eventDefaultTitle(currentType))}" ${titleRequired} ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" placeholder="Añade detalles si lo necesitas" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><p class="form-status is-info event-student-note" data-t121-event-status>${teacher?'':'El tipo “No asistiré este día a clases” se guarda como evento personal y envía una notificación de la app a la profesora si la tiene activada.'}</p><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
+    return `<form id="t16EventForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid premium-event-form event-form-v112 event-form-v163"><input type="hidden" name="id" value="${safe(e?.id||'')}"><label>Fecha<input name="eventDate" type="date" value="${safe(e?.date||State.selectedDate)}" required ${can?'':'disabled'}></label><div class="window-grid"><label>Tipo de evento<select name="eventType" ${can?'':'disabled'}>${typeOptions.map(([v,l])=>`<option value="${v}" ${currentType===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Visibilidad<select name="scope" data-calendar-scope-select ${can?'':'disabled'}>${scopeOptions.map(([v,l])=>`<option value="${v}" ${(currentScope===v || (v==='classes' && eventScopeIsChecked(e,'classes')))?'selected':''}>${l}</option>`).join('')}</select></label></div>${teacher?calendarClassSelector(e,can):''}<label>Título${teacher?'':' opcional'}<input name="title" value="${safe(e?.title||'')}" placeholder="${safe(eventDefaultTitle(currentType))}" ${titleRequired} ${can?'':'disabled'}></label><label>Descripción<textarea name="body" rows="3" placeholder="Añade detalles si lo necesitas" ${can?'':'disabled'}>${safe(e?.body||e?.description||'')}</textarea></label><p class="form-status is-info event-student-note" data-t121-event-status>${teacher?'Elige si la fecha será privada, visible para todo el alumnado o visible solo para una o varias clases. Las fechas privadas no generan notificación al alumnado.':'El tipo “No asistiré este día a clases” se guarda como evento personal y envía una notificación de la app a la profesora si la tiene activada.'}</p><button class="primary-btn" type="button" data-t25-save-event onclick="return window.TribecaSaveCalendarEventDirect(this,event)" ${can?'':'disabled'}>${e?'Guardar cambios':'Añadir evento'}</button></form>`;
   }
 
   async function triggerEmailOutboxSend(eventType=''){
@@ -4386,29 +4458,56 @@ render();
     const fd=new FormData(form);
     const id=String(fd.get('id')||'').trim();
     const type=String(fd.get('eventType')||'personal').trim() || 'personal';
-    const rawScope = fd.get('scope') || (roleTeacher() ? 'all' : 'user');
-    const scope = roleTeacher() ? (type==='closed'?'all':rawScope) : (type==='student_absence'?'user':(rawScope==='class'?'class':'user'));
+    const rawScope = fd.get('scope') || (roleTeacher() ? 'user' : 'user');
+    const classIds=[...new Set(fd.getAll('targetClassIds').map(String).map(x=>x.trim()).filter(Boolean))];
+    let scope;
+    if(roleTeacher()) scope = type==='closed' ? 'all' : String(rawScope||'user');
+    else scope = type==='student_absence' ? 'user' : (rawScope==='class'?'class':'user');
+    if(scope==='classes' && !classIds.length) throw new Error('Selecciona al menos una clase o cambia la visibilidad.');
     const title=String(fd.get('title')||'').trim() || eventDefaultTitle(type);
     const body=String(fd.get('body')||'').trim() || (type==='student_absence'?'Aviso creado por el alumnado: no asistirá este día a clases.':'');
     const event_date=String(fd.get('eventDate')||'').slice(0,10);
-    const payload={ id:id||null, event_date, title, body, event_type:type, scope, center:State.profile.center, stage:State.profile.stage, course:State.profile.course, created_by:State.profile.id, user_id:(scope==='user'?State.profile.id:null), target_user_ids:[], hidden:false };
+    const firstClass = classIds.length ? classById(classIds[0]) : null;
+    const personalScope = ['user','personal','private'].includes(scope);
+    const payload={
+      id:id||null,
+      event_date,
+      title,
+      body,
+      event_type:type,
+      scope,
+      center: scope==='class' ? State.profile.center : (firstClass?.center || (scope==='all'?State.profile.center:null)),
+      stage: scope==='class' ? State.profile.stage : (firstClass?.stage || (scope==='all'?State.profile.stage:null)),
+      course: scope==='class' ? State.profile.course : (firstClass?.course || (scope==='all'?State.profile.course:null)),
+      target_class_ids: classIds,
+      created_by:State.profile.id,
+      user_id: personalScope ? State.profile.id : null,
+      target_user_ids:[],
+      hidden:false
+    };
     return payload;
   }
   async function saveCalendarEventViaRpcOrTable(rec){
+    const classIds = parseArrayField(rec.target_class_ids || []);
+    const useDirect = ['classes','class_ids','classrooms'].includes(rec.scope || rec.target_scope || '') || classIds.length > 0;
+    const directSave = async(fallbackError=null)=>{
+      const row={...rec};
+      delete row.id;
+      if(rec.id){
+        delete row.created_by;
+        const direct=await table('calendar_events').update(row).eq('id', rec.id);
+        if(direct.error) throw fallbackError || direct.error;
+        return direct;
+      }
+      const direct=await table('calendar_events').insert(row);
+      if(direct.error) throw fallbackError || direct.error;
+      return direct;
+    };
+    if(useDirect) return await directSave();
     const rpc=await State.client.rpc('tribeca_save_calendar_event_v27',{p_payload:rec});
     if(!rpc?.error) return rpc;
     console.warn('[Tribeca Aula] RPC calendario falló, se intenta guardado directo:', rpc.error?.message || rpc.error);
-    const row={...rec};
-    delete row.id;
-    if(rec.id){
-      delete row.created_by;
-      const direct=await table('calendar_events').update(row).eq('id', rec.id);
-      if(direct.error) throw rpc.error || direct.error;
-      return direct;
-    }
-    const direct=await table('calendar_events').insert(row);
-    if(direct.error) throw rpc.error || direct.error;
-    return direct;
+    return await directSave(rpc.error);
   }
   async function saveEvent(form){
     const btn = form?.querySelector?.('[data-t25-save-event], [type="submit"]');
@@ -4432,20 +4531,29 @@ render();
       await log('calendar', rec.id?'Fecha actualizada':'Fecha creada', {title:rec.title,date:rec.event_date});
       await queueCalendarEmailNotification(rec, !!rec.id);
       if(!rec.id){
-        await tribecaDispatchPushNotification('calendar', roleTeacher() ? {
-          title: `Nueva fecha: ${rec.title}`,
-          body: [rec.event_date, rec.body || 'Nueva fecha en el calendario de Tribeca Aula.'].filter(Boolean).join(' · '),
-          targetScope: rec.scope || rec.target_scope || 'all',
-          center: rec.center || null,
-          stage: rec.stage || null,
-          course: rec.course || null,
-          section: 'calendar'
-        } : {
-          title: `Aviso de calendario de ${displayName(State.profile)}`,
-          body: [rec.event_date, rec.title, rec.body].filter(Boolean).join(' · '),
-          targetRole: 'teacher',
-          section: 'calendar'
-        });
+        if(roleTeacher()){
+          if(!['user','personal','private'].includes(rec.scope || rec.target_scope || '')){
+            await tribecaDispatchPushNotification('calendar', {
+              title: `Nueva fecha: ${rec.title}`,
+              body: [rec.event_date, rec.body || 'Nueva fecha en el calendario de Tribeca Aula.'].filter(Boolean).join(' · '),
+              targetScope: rec.scope || rec.target_scope || 'all',
+              center: rec.center || null,
+              stage: rec.stage || null,
+              course: rec.course || null,
+              classIds: rec.target_class_ids || [],
+              targetClassIds: rec.target_class_ids || [],
+              section: 'calendar'
+            });
+          }
+        } else {
+          await tribecaDispatchPushNotification('calendar', {
+            title: `Aviso de calendario de ${displayName(State.profile)}`,
+            body: [rec.event_date, rec.title, rec.body].filter(Boolean).join(' · '),
+            targetRole: 'teacher',
+            preferenceKey:'',
+            section: 'calendar'
+          });
+        }
       }
       await loadData(true);
       State.selectedDate=rec.event_date;
@@ -4586,8 +4694,26 @@ render();
   }
   function activityStudentAttemptsTable(rows=[]){
     if(!rows.length) return '<div class="empty-state">Este alumno todavía no tiene intentos guardados.</div>';
-    return `<div class="activity-table-wrap-v145"><table class="premium-table activity-attempt-table activity-attempt-table-v148"><thead><tr><th>Fecha</th><th>Materia</th><th>Unidad</th><th>Actividad</th><th>Nota</th><th>Intento</th><th>PDF</th></tr></thead><tbody>${rows.map((a,idx)=>{ const mat=materialById(a.material_id); const same=rows.filter(x=>String(x.material_id||x.title)===String(a.material_id||a.title)); const attemptNo=same.slice().reverse().findIndex(x=>String(x.id||x.completed_at)===String(a.id||a.completed_at))+1 || (same.length-idx); const score=Number(a.score||0); const title=a.title||mat.title||'Actividad'; return `<tr class="${score<5?'is-low-score':''}"><td>${safe(fmtDT(a.completed_at||a.created_at||''))}</td><td>${attemptSubjectButton(a,mat)}</td><td>${attemptUnitButton(a,mat)}</td><td>${mat.id?`<button type="button" class="linklike activity-nav-link" data-t33-open-mat="${safe(mat.id)}">${safe(title)}</button>`:safe(title)}</td><td><strong>${score.toFixed(2)}/10</strong></td><td>${attemptNo}</td><td>${attemptPrintButton(a,'PDF')}</td></tr>`; }).join('')}</tbody></table></div>`;
+    return `<div class="activity-table-wrap-v145"><table class="premium-table activity-attempt-table activity-attempt-table-v148 activity-attempt-table-v163"><thead><tr><th>Fecha</th><th>Materia</th><th>Unidad</th><th>Actividad</th><th>Nota</th><th>Intento</th><th>PDF</th><th>Retroalimentación docente</th></tr></thead><tbody>${rows.map((a,idx)=>{ const mat=materialById(a.material_id); const same=rows.filter(x=>String(x.material_id||x.title)===String(a.material_id||a.title)); const attemptNo=same.slice().reverse().findIndex(x=>String(x.id||x.completed_at)===String(a.id||a.completed_at))+1 || (same.length-idx); const score=Number(a.score||0); const title=a.title||mat.title||'Actividad'; const ref=safe(a.id||''); const feedback=safe(a.teacher_feedback||''); const comment=safe(a.teacher_comment||''); return `<tr class="${score<=5?'is-low-score':''}"><td>${safe(fmtDT(a.completed_at||a.created_at||''))}</td><td>${attemptSubjectButton(a,mat)}</td><td>${attemptUnitButton(a,mat)}</td><td>${mat.id?`<button type="button" class="linklike activity-nav-link" data-t33-open-mat="${safe(mat.id)}">${safe(title)}</button>`:safe(title)}</td><td><strong>${score.toFixed(2)}/10</strong></td><td>${attemptNo}</td><td>${attemptPrintButton(a,'PDF')}</td><td>${ref?`<form class="attempt-feedback-form-v163" data-attempt-feedback-form="${ref}"><label>Retroalimentación<textarea name="teacherFeedback" rows="2" maxlength="1200" placeholder="Orientaciones para mejorar este intento">${feedback}</textarea></label><label>Comentario<textarea name="teacherComment" rows="2" maxlength="1200" placeholder="Comentario adicional">${comment}</textarea></label><button type="button" class="secondary-btn" data-t163-save-attempt-feedback="${ref}">Guardar</button></form>`:'Intento sin identificador'}</td></tr>`; }).join('')}</tbody></table></div>`;
   }
+  async function saveAttemptTeacherFeedback(attemptId, form){
+    if(!roleTeacher()) return toast('Solo la profesora puede añadir retroalimentación.');
+    const id=String(attemptId||'').trim();
+    if(!id) return toast('No se encontró el intento.');
+    const fd=new FormData(form);
+    const patch={
+      teacher_feedback:String(fd.get('teacherFeedback')||'').trim() || null,
+      teacher_comment:String(fd.get('teacherComment')||'').trim() || null,
+      teacher_feedback_by:State.profile.id,
+      teacher_feedback_at:new Date().toISOString()
+    };
+    const { error } = await table('exam_attempts').update(patch).eq('id', id);
+    if(error) throw error;
+    await loadData(true);
+    toast('Retroalimentación guardada en el intento.');
+    rerender();
+  }
+
   function teacherDocumentsContent(){
     const month=State.billingMonth||defaultBillingMonth();
     const selected=(State.data.students||[]).find(s=>s.id===State.selectedStudentId)||(State.data.students||[])[0];
@@ -5087,7 +5213,7 @@ render();
       recipientIds: [recipientId],
       section: 'messages'
     });
-    if(!teacher) await queueTeacherMessageEmailNotification(payload);
+    // v163: los avisos automáticos por email quedan desactivados; se usa solo notificación de la app.
     await loadData(true);
     toast('Mensaje enviado.');
     form.reset();
@@ -6909,6 +7035,7 @@ function classroomCard(c,i=0){
       const pwaInstall=ev.target.closest?.('[data-pwa-install]'); if(pwaInstall){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); closeAccountMenu(); await handleTribecaPwaInstall(); return; }
       const pwaDismiss=ev.target.closest?.('[data-pwa-install-dismiss]'); if(pwaDismiss){ ev.preventDefault(); ev.stopPropagation(); localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY,'1'); updatePwaInstallCta(); return; }
       const pwaHelpClose=ev.target.closest?.('[data-pwa-help-close]'); if(pwaHelpClose){ ev.preventDefault(); ev.stopPropagation(); document.getElementById('tribecaPwaHelp')?.remove(); return; }
+      const saveAttemptFeedback=ev.target.closest?.('[data-t163-save-attempt-feedback]'); if(saveAttemptFeedback){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const form=saveAttemptFeedback.closest('form'); const oldText=saveAttemptFeedback.textContent; saveAttemptFeedback.disabled=true; saveAttemptFeedback.textContent='Guardando…'; try{ await saveAttemptTeacherFeedback(saveAttemptFeedback.dataset.t163SaveAttemptFeedback, form); } catch(error){ toast(error?.message || 'No se pudo guardar la retroalimentación.'); } finally { saveAttemptFeedback.disabled=false; saveAttemptFeedback.textContent=oldText; } return; }
       const enablePush=ev.target.closest?.('[data-t151-enable-push]'); if(enablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const oldText=enablePush.textContent; enablePush.disabled=true; enablePush.textContent='Activando…'; try{ await enableTribecaPushNotifications(); } finally { enablePush.disabled=false; enablePush.textContent=oldText; } return; }
       const disablePush=ev.target.closest?.('[data-t151-disable-push]'); if(disablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const oldText=disablePush.textContent; disablePush.disabled=true; disablePush.textContent='Reiniciando…'; try{ await disableTribecaPushNotifications(); } finally { disablePush.disabled=false; disablePush.textContent=oldText; } return; }
       const testPush=ev.target.closest?.('[data-t152-test-push]'); if(testPush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const oldText=testPush.textContent; testPush.disabled=true; testPush.textContent='Enviando…'; try{ await tribecaSendPushTestToCurrentUser(); } finally { testPush.disabled=false; testPush.textContent=oldText; } return; }
@@ -7023,7 +7150,7 @@ function classroomCard(c,i=0){
     document.addEventListener('click', ev=>{ const btn=ev.target.closest?.('.native-exam-form [data-t129-grade-exam]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); const form=btn.closest('form'); form?.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); } }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; try{ const url=await studentPhotoFileToDataUrl(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=`${file.name} · optimizada a ${prettyBytes(approxDataUrlBytes(url))}`; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; toast('Foto optimizada y cargada. Pulsa Guardar cambios para conservarla.'); }catch(err){ toast(err?.message || 'No se pudo procesar la foto.'); ev.target.value=''; } } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.matches?.('[data-calendar-scope-select]')){ const form=ev.target.closest('form'); const box=form?.querySelector?.('[data-calendar-class-targets]'); if(box) box.hidden = ev.target.value !== 'classes'; return; } if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; try{ const url=await studentPhotoFileToDataUrl(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=`${file.name} · optimizada a ${prettyBytes(approxDataUrlBytes(url))}`; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; toast('Foto optimizada y cargada. Pulsa Guardar cambios para conservarla.'); }catch(err){ toast(err?.message || 'No se pudo procesar la foto.'); ev.target.value=''; } } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
