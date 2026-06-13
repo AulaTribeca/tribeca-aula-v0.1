@@ -117,11 +117,11 @@
   window.TribecaUndoLastAction = undoLast;
 
 
-  const TRIBECA_PUSH_FUNCTION = 'tribeca-push-v163';
+  const TRIBECA_PUSH_FUNCTION = 'tribeca-push-v164';
   const TRIBECA_PUSH_DEVICE_KEY = 'tribeca-push-device-id-v151';
   const TRIBECA_PUSH_ENABLED_KEY = 'tribeca-push-enabled-v151';
-  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v163';
-  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v163';
+  const TRIBECA_PUSH_LAST_ERROR_KEY = 'tribeca-push-last-error-v164';
+  const TRIBECA_PUSH_LAST_OK_KEY = 'tribeca-push-last-ok-v164';
   const TRIBECA_PUSH_DEFAULT_PREFS = Object.freeze({ messages:true, calendar:true, announcements:true, materials:true });
 
   function tribecaDeviceId(){
@@ -181,7 +181,7 @@
     if(session?.access_token) payload.accessToken = session.access_token;
     /*
       v161: llamada sin cabeceras personalizadas y sin Content-Type explícito.
-      La función nueva tribeca-push-v163 debe tener Verify JWT desactivado
+      La función nueva tribeca-push-v164 debe tener Verify JWT desactivado
       y valida la sesión dentro de la propia función.
     */
     let response;
@@ -248,12 +248,12 @@
     try{
       localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
       localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
-      ['tribeca-push-last-error-v159','tribeca-push-last-ok-v159','tribeca-push-last-error-v160','tribeca-push-last-ok-v160','tribeca-push-last-error-v161','tribeca-push-last-ok-v161'].forEach(k=>localStorage.removeItem(k));
+      ['tribeca-push-last-error-v159','tribeca-push-last-ok-v159','tribeca-push-last-error-v160','tribeca-push-last-ok-v160','tribeca-push-last-error-v161','tribeca-push-last-ok-v161','tribeca-push-last-error-v163','tribeca-push-last-ok-v163'].forEach(k=>localStorage.removeItem(k));
       refreshProfileNotificationsPanel();
       const permission = await Notification.requestPermission();
       if(permission !== 'granted') throw new Error('No se han activado las notificaciones porque el permiso no fue concedido.');
       const reg = await tribecaServiceWorkerReady();
-      const publicKey = await tribecaWithTimeout(fetchTribecaVapidPublicKey(), 12000, 'No se pudo obtener la clave pública VAPID desde Supabase. Revisa la función tribeca-push-v163 y los secretos VAPID.');
+      const publicKey = await tribecaWithTimeout(fetchTribecaVapidPublicKey(), 12000, 'No se pudo obtener la clave pública VAPID desde Supabase. Revisa la función tribeca-push-v164 y los secretos VAPID.');
       let subscription = await tribecaWithTimeout(reg.pushManager.getSubscription(), 8000, 'No se pudo leer la suscripción push del navegador.');
       if(subscription && !tribecaSubscriptionMatchesVapid(subscription, publicKey)){
         try{ await subscription.unsubscribe(); }catch(_error){}
@@ -269,7 +269,7 @@
         subscription: subscription.toJSON(),
         preferences,
         userAgent: navigator.userAgent || ''
-      }), 15000, 'La suscripción se creó en el móvil, pero no se pudo guardar en Supabase. Revisa la Edge Function tribeca-push-v163.');
+      }), 15000, 'La suscripción se creó en el móvil, pero no se pudo guardar en Supabase. Revisa la Edge Function tribeca-push-v164.');
       if(State.profile?.id){
         const patch = { notification_preferences: preferences };
         try{
@@ -322,12 +322,12 @@
       if(/sesión|autenticada|session/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
       return generic;
     }
-    if(/Verify JWT|JWT Verification|publishable|sb_publishable|preflight|CORS|Failed to fetch|NetworkError|No se pudo conectar/i.test(message)) return 'La función de notificaciones existe, pero el navegador no puede llamarla. En Supabase debes entrar en Edge Functions > tribeca-push-v163 > Settings y desactivar Verify JWT / JWT Verification. La v163 verifica la sesión dentro de la función.';
-    if(/VAPID|clave pública|clave privada|public key|private key/i.test(message)) return 'Faltan o no se leen bien las claves VAPID en Supabase. Revisa VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en Edge Function Secrets.';
+    if(/Verify JWT|JWT Verification|publishable|sb_publishable|preflight|CORS|Failed to fetch|NetworkError|No se pudo conectar/i.test(message)) return 'La función de notificaciones existe, pero el navegador no puede llamarla. En Supabase debes entrar en Edge Functions > tribeca-push-v164 > Settings y desactivar Verify JWT / JWT Verification. La v164 verifica la sesión dentro de la función.';
+    if(/invalid b64 coordinate|base64url coordinate|Invalid JWK|JWK EC key|VAPID|clave pública|clave privada|public key|private key/i.test(message)) return 'Las claves VAPID existen, pero una estaba guardada en un formato que Supabase no podía firmar. Sustituye la Edge Function por tribeca-push-v164. Si persiste, revisa que VAPID_PRIVATE_KEY contenga solo la clave privada, no la clave pública ni texto añadido.';
     if(/Sesión|autenticada|session|jwt|JWT|Authorization/i.test(message)) return 'No hay una sesión válida. Cierra sesión y vuelve a entrar.';
     if(/tribeca_web_push_subscriptions|relation.*does not exist|no existe/i.test(message)) return 'Falta ejecutar el SQL de la v151 en Supabase para crear las tablas de notificaciones.';
-    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'Está contestando una función antigua o distinta. Crea una Edge Function nueva llamada tribeca-push-v163, pega el index_ts_para_copiar_en_supabase.txt de la v163 y pulsa Deploy. No edites las funciones antiguas.';
-    if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-push-v163. Crea esa Edge Function nueva con ese nombre exacto en el mismo proyecto conectado a la web.';
+    if(/web-push|esm\.sh|module|Import|dependency|Cannot find module|Relative import path|dinamicamente|dinámico/i.test(message)) return 'Está contestando una función antigua o distinta. Crea una Edge Function nueva llamada tribeca-push-v164, pega el index_ts_para_copiar_en_supabase.txt de la v164 y pulsa Deploy. No edites las funciones antiguas.';
+    if(/HTTP 404|not found|Function not found/i.test(message)) return 'Supabase no encuentra la función tribeca-push-v164. Crea esa Edge Function nueva con ese nombre exacto en el mismo proyecto conectado a la web.';
     if(/Push service HTTP 401|Push service HTTP 403|vapid|aud|signature/i.test(message)) return 'La suscripción del móvil no coincide con las claves VAPID actuales. Pulsa “Desactivar o reiniciar este dispositivo” y después “Activar notificaciones de la app”.';
     if(/Edge Function/i.test(message)) return message;
     return message || 'No se pudo completar la comprobación de notificaciones.';
