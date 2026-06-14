@@ -15250,3 +15250,355 @@ body.tribeca-account-menu-open .modal:not(#profileMenu) {
   .activity-table-wrap-v145 { overflow-x: auto; }
   .attempt-feedback-form-v163 { min-width: 240px; }
 }
+
+/* =========================================================
+   Tribeca Aula v166 · interfaz móvil, mensajes modo concentración,
+   calendario app y modo oscuro integral
+   ========================================================= */
+:root {
+  color-scheme: light;
+}
+html[data-theme="dark"],
+body.is-dark,
+body.dark-mode,
+body.theme-dark {
+  color-scheme: dark;
+}
+body.is-dark,
+body.dark-mode,
+body.theme-dark,
+body[data-theme="dark"] {
+  --bg: #070805;
+  --bg-soft: #0f100b;
+  --panel: rgba(21, 22, 15, .94);
+  --panel-solid: #15160f;
+  --text: #fff7df;
+  --muted: #d8ca9e;
+  --muted-2: #a99c76;
+  --green: #f1c95f;
+  --green-2: #0a2c1c;
+  --gold: #d9b24a;
+  --gold-soft: rgba(217, 178, 74, .22);
+  --line: rgba(247, 220, 139, .18);
+  --clean-border: rgba(247, 220, 139, .17);
+  --clean-bg: rgba(21, 22, 15, .78);
+  --header-blur: rgba(7, 8, 5, .88);
+  background:
+    radial-gradient(circle at 9% 4%, rgba(217, 178, 74, .16), transparent 27rem),
+    radial-gradient(circle at 91% 8%, rgba(6, 75, 53, .30), transparent 30rem),
+    linear-gradient(135deg, #050604 0%, #0b0d08 48%, #151007 100%) !important;
+  color: var(--text) !important;
+}
+body.is-dark .app-header,
+body.dark-mode .app-header,
+body.theme-dark .app-header {
+  background: linear-gradient(180deg, rgba(7,8,5,.94), rgba(12,13,8,.82)) !important;
+  border-bottom-color: rgba(247, 220, 139, .16) !important;
+}
+body.is-dark .main-nav,
+body.is-dark .profile-button,
+body.is-dark .logout-button,
+body.is-dark .theme-toggle,
+body.is-dark .control-field,
+body.is-dark .window-panel,
+body.is-dark .panel,
+body.is-dark .hero-card,
+body.is-dark .subject-card,
+body.is-dark .subject-detail-head,
+body.is-dark .list-item,
+body.is-dark .teacher-option-drawer,
+body.is-dark .clean-primary-section,
+body.is-dark .clean-editor-head,
+body.is-dark .clean-main-summary,
+body.is-dark .profile-tool-card,
+body.is-dark .profile-summary-card,
+body.is-dark .tribeca-push-panel-v151,
+body.is-dark .t16-tool-card,
+body.is-dark .summary-card,
+body.is-dark .mail-card,
+body.is-dark .calendar-day,
+body.is-dark .calendar-grid,
+body.is-dark .t16-calendar-grid,
+body.is-dark .calendar-main-panel,
+body.is-dark .calendar-side-panel,
+body.is-dark .upcoming-panel,
+body.is-dark .premium-event-form,
+body.is-dark .premium-table,
+body.is-dark .teacher-season-switch-card,
+body.is-dark .tribeca-a11y-panel {
+  background: linear-gradient(135deg, rgba(22,23,16,.96), rgba(13,15,10,.92)) !important;
+  color: var(--text) !important;
+  border-color: rgba(247, 220, 139, .18) !important;
+  box-shadow: 0 20px 54px rgba(0,0,0,.34) !important;
+}
+body.is-dark input,
+body.is-dark select,
+body.is-dark textarea {
+  background: #0d0f0a !important;
+  color: #fff7df !important;
+  border-color: rgba(247, 220, 139, .22) !important;
+}
+body.is-dark input::placeholder,
+body.is-dark textarea::placeholder { color: rgba(255,247,223,.52) !important; }
+body.is-dark h1,
+body.is-dark h2,
+body.is-dark h3,
+body.is-dark h4,
+body.is-dark strong,
+body.is-dark .brand-copy strong,
+body.is-dark .profile-summary-card h2,
+body.is-dark .clean-hero h2,
+body.is-dark .teacher-tool-card strong { color: #fff7df !important; }
+body.is-dark p,
+body.is-dark small,
+body.is-dark .meta,
+body.is-dark .muted,
+body.is-dark .brand-copy small,
+body.is-dark .profile-tool-head p,
+body.is-dark .mail-card header span,
+body.is-dark .mail-card footer small { color: var(--muted) !important; }
+body.is-dark .primary-btn,
+body.is-dark button.primary-btn,
+body.is-dark .mail-tab.is-active,
+body.is-dark .nav-btn.is-active {
+  background: linear-gradient(135deg, #0a4c31, #083321) !important;
+  color: #fffaf0 !important;
+  border-color: rgba(247, 220, 139, .34) !important;
+}
+body.is-dark .secondary-btn,
+body.is-dark .inline-actions button,
+body.is-dark td button,
+body.is-dark .mail-tab,
+body.is-dark .nav-btn {
+  background: rgba(255,247,223,.055) !important;
+  color: #fff7df !important;
+  border-color: rgba(247, 220, 139, .18) !important;
+}
+body.is-dark .theme-toggle .theme-dot { background: #d9b24a !important; box-shadow: 0 0 0 6px rgba(217,178,74,.15); }
+body.is-dark .brand-logo,
+body.is-dark .footer-academia-logo,
+body.is-dark img[src*="logo-tribeca"],
+body.is-dark img[src*="favicon"] { filter: drop-shadow(0 0 10px rgba(217,178,74,.22)); }
+body.is-dark .subject-card,
+body.is-dark .subject-detail-head {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--subject-color, #064b35) 62%, #050604 38%), #0d110b) !important;
+}
+body.is-dark .site-footer,
+body.is-dark .tribeca-footer-v41 {
+  background: linear-gradient(135deg, rgba(14,15,10,.94), rgba(23,18,8,.90)) !important;
+  color: #fff7df !important;
+  border-color: rgba(247, 220, 139, .18) !important;
+}
+
+/* Mensajes: estilo concentración, limpio y usable en móvil */
+.tribeca-messages-v166 {
+  display: grid;
+  grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.messages-focus-hero-v166 {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  border-left: 7px solid #2f7d68 !important;
+  background: linear-gradient(135deg, #fffdf6 0%, #edf7f2 100%) !important;
+  box-shadow: none !important;
+}
+.messages-focus-hero-v166 h3 { margin: .15rem 0 .25rem; font-size: clamp(1.45rem, 2vw, 2.05rem); color: #153521; }
+.messages-focus-hero-v166 p { margin: 0; line-height: 1.5; color: #536056; font-weight: 750; }
+.messages-focus-hero-v166 > span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: .55rem .85rem;
+  background: rgba(47, 125, 104, .12);
+  color: #174d3f;
+  font-weight: 950;
+}
+.messages-sidebar-v166 {
+  position: sticky;
+  top: calc(var(--header-h, 108px) + 1rem);
+  display: grid;
+  gap: .5rem;
+}
+.messages-sidebar-v166 h3 { margin: 0 0 .35rem; }
+.tribeca-messages-v166 .mail-tab {
+  min-height: 3.5rem;
+  border-radius: 999px;
+  padding: .65rem .85rem;
+  box-shadow: none;
+}
+.messages-list-v166 { min-height: 26rem; }
+.messages-box-head-v166 {
+  display: flex;
+  justify-content: space-between;
+  gap: .8rem;
+  align-items: center;
+  margin-bottom: .75rem;
+  padding-bottom: .65rem;
+  border-bottom: 1px solid var(--line);
+}
+.messages-box-head-v166 h3 { margin: 0; }
+.message-card-v166 {
+  display: grid;
+  grid-template-columns: 3rem minmax(0,1fr);
+  gap: .75rem;
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  border-left-width: 1px !important;
+  background: #fffdf5 !important;
+}
+.message-card-v166.is-unread { border-left: 7px solid #2f7d68 !important; background: #f7fbf5 !important; }
+.message-avatar-v166 {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
+  background: rgba(47,125,104,.13);
+  color: #174d3f;
+  font-weight: 950;
+}
+.message-card-main-v166 { min-width: 0; }
+.message-card-v166 header,
+.message-card-v166 footer { align-items: center; }
+.message-card-v166 p { margin: .65rem 0; line-height: 1.6; }
+.messages-compose-v166 { grid-column: 1 / -1; }
+.messages-compose-v166[open] { border-color: rgba(47,125,104,.32) !important; }
+.focus-message-compose {
+  display: grid;
+  grid-template-columns: minmax(12rem,.75fr) minmax(0,1.25fr);
+  gap: .9rem;
+  padding: 1rem;
+}
+.focus-message-compose label { display: grid; gap: .35rem; font-weight: 900; }
+.focus-message-compose .focus-message-body,
+.focus-message-compose .focus-message-attachment,
+.focus-message-compose button { grid-column: 1 / -1; }
+.focus-message-compose textarea { min-height: 12rem; line-height: 1.55; }
+body.is-dark .messages-focus-hero-v166 {
+  background: linear-gradient(135deg, rgba(18,28,22,.95), rgba(16,18,11,.95)) !important;
+  border-left-color: #d9b24a !important;
+}
+body.is-dark .messages-focus-hero-v166 h3 { color: #fff7df !important; }
+body.is-dark .messages-focus-hero-v166 > span,
+body.is-dark .message-avatar-v166 { background: rgba(217,178,74,.13); color: #f1c95f; }
+body.is-dark .message-card-v166 { background: #12140d !important; }
+body.is-dark .message-card-v166.is-unread { background: #17180f !important; border-left-color: #d9b24a !important; }
+
+/* Calendario en app/móvil: siempre visible, proporcionado y legible */
+@media (max-width: 760px) {
+  .t16-calendar-layout,
+  .t16-calendar-layout.premium-calendar,
+  body.is-pwa-standalone .t16-calendar-layout,
+  body.is-pwa-standalone .t16-calendar-layout.premium-calendar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: .85rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+  .calendar-main-panel { order: 1; min-width: 0 !important; overflow: visible !important; }
+  .calendar-side-panel { order: 2; min-width: 0 !important; }
+  .upcoming-panel { order: 3; min-width: 0 !important; }
+  .t16-calendar-head { gap: .5rem; margin-bottom: .55rem !important; }
+  .t16-calendar-head button { width: 3.1rem !important; height: 3.1rem !important; }
+  .t40-calendar-month-button { width: auto !important; min-width: 0 !important; flex: 1 1 auto; padding-inline: .7rem !important; font-size: .95rem !important; }
+  .event-legend { display: flex !important; overflow-x: auto; flex-wrap: nowrap !important; gap: .35rem !important; padding-bottom: .25rem; }
+  .event-legend span { white-space: nowrap; font-size: .72rem !important; }
+  .t16-calendar-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: .28rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .t16-calendar-grid .calendar-weekday { display: block !important; padding: .32rem .1rem !important; font-size: .72rem !important; text-align: center; }
+  .t16-calendar-grid .calendar-day {
+    display: grid !important;
+    min-height: 5.2rem !important;
+    padding: .34rem .25rem !important;
+    border-radius: 12px !important;
+    align-content: start !important;
+    overflow: hidden !important;
+  }
+  .t16-calendar-grid .day-number { font-size: .82rem; font-weight: 950; }
+  .t16-calendar-grid .day-event-label {
+    display: flex !important;
+    align-items: center;
+    gap: .12rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .54rem !important;
+    line-height: 1.1;
+    padding: .08rem .12rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.58);
+  }
+  .calendar-side-panel .item-list,
+  .upcoming-panel .item-list { max-height: none !important; overflow: visible !important; }
+}
+
+/* Cabecera móvil: botones ordenados y eficientes */
+@media (max-width: 760px) {
+  body { padding-top: calc(var(--header-h) + .65rem) !important; }
+  .app-header { padding: .55rem .75rem .65rem !important; }
+  .header-inner { display: grid !important; grid-template-columns: 1fr !important; gap: .55rem !important; }
+  .brand { justify-self: start !important; }
+  .brand-logo { width: 3.25rem !important; height: 3.25rem !important; }
+  .brand-copy strong { font-size: 1.35rem !important; }
+  .main-nav {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+    width: 100% !important;
+    gap: .25rem !important;
+    padding: .32rem !important;
+    border-radius: 1.35rem !important;
+    overflow: visible !important;
+  }
+  .main-nav .nav-btn { min-width: 0 !important; width: 100% !important; justify-content: center !important; padding: .72rem .35rem !important; font-size: .82rem !important; }
+  .main-nav .public-tool-btn { display: none !important; }
+  .utility-bar {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) auto !important;
+    gap: .45rem !important;
+    width: 100% !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .utility-bar .theme-toggle { grid-column: 1; min-height: 3.15rem; width: 100%; }
+  .profile-area { grid-column: 1 / -1 !important; width: 100%; order: -1; }
+  .profile-button { min-height: 3.35rem !important; width: 100% !important; justify-content: center !important; }
+  .logout-button { grid-column: 2; min-height: 3.15rem !important; padding-inline: .8rem !important; white-space: nowrap; }
+  .profile-menu {
+    position: fixed !important;
+    left: .75rem !important;
+    right: .75rem !important;
+    top: calc(var(--header-h, 108px) - .2rem) !important;
+    width: auto !important;
+    max-height: calc(100vh - var(--header-h, 108px) - 1rem) !important;
+    overflow: auto !important;
+    z-index: 12000 !important;
+    border-radius: 22px !important;
+    background: var(--panel-solid) !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,.24) !important;
+  }
+}
+
+/* Modo oscuro para logos estacionales y paneles de accesibilidad */
+body.is-dark .tribeca-a11y-button,
+body.is-dark .math-calc-fab,
+body.is-dark .tribeca-pwa-install-cta,
+body.is-dark .tribeca-pwa-help-card {
+  background: #15160f !important;
+  color: #fff7df !important;
+  border-color: rgba(247, 220, 139, .20) !important;
+}
+body.is-dark .tribeca-a11y-panel select,
+body.is-dark .tribeca-a11y-panel button,
+body.is-dark .tribeca-pwa-help-card p { color: #fff7df !important; }

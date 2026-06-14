@@ -1,5 +1,5 @@
-/* Tribeca Aula · Versión 165 · notificaciones sin depuración visible para alumnado.
-   Mejora: Edge Function pública con verificación interna de sesión, compatible con publishable keys de Supabase. */
+/* Tribeca Aula · Versión 166 · interfaz móvil, mensajes modo concentración, calendario app y modo oscuro integral.
+   Base: notificaciones push v164 funcionales, sin depuración visible para alumnado. */
 (() => {
   'use strict';
   if (location.search && /(firstName|lastName|fullName|username|eventDate|monthlyFee|subject)=/.test(location.search)) {
@@ -39,6 +39,54 @@
     };
     if('requestIdleCallback' in window) window.requestIdleCallback(runner, { timeout: Math.max(1200, delay + 700) });
     else setTimeout(runner, delay);
+  }
+
+  const TRIBECA_THEME_KEY = 'tribeca-theme';
+  function tribecaPreferredTheme(){
+    const saved = localStorage.getItem(TRIBECA_THEME_KEY) || localStorage.getItem('theme') || '';
+    if(saved === 'dark' || saved === 'light') return saved;
+    try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    catch(_error){ return 'light'; }
+  }
+  function applyTribecaTheme(theme = tribecaPreferredTheme()){
+    const dark = theme === 'dark';
+    document.body.classList.toggle('is-dark', dark);
+    document.body.classList.toggle('dark-mode', dark);
+    document.body.classList.toggle('theme-dark', dark);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.body.dataset.theme = dark ? 'dark' : 'light';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', dark ? '#070805' : '#064b35');
+    const txt = document.getElementById('themeText');
+    if(txt) txt.textContent = dark ? 'Oscuro' : 'Claro';
+    const toggle = document.getElementById('themeToggle');
+    if(toggle){
+      toggle.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      toggle.setAttribute('title', dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+    }
+  }
+  function setTribecaTheme(theme){
+    const clean = theme === 'dark' ? 'dark' : 'light';
+    localStorage.setItem(TRIBECA_THEME_KEY, clean);
+    applyTribecaTheme(clean);
+  }
+  function bindTribecaThemeControls(){
+    applyTribecaTheme();
+    const toggle = document.getElementById('themeToggle');
+    if(toggle && !toggle.dataset.t166ThemeBound){
+      toggle.dataset.t166ThemeBound = '1';
+      toggle.addEventListener('click', ev=>{
+        ev.preventDefault();
+        ev.stopPropagation();
+        setTribecaTheme(document.body.classList.contains('is-dark') ? 'light' : 'dark');
+      }, true);
+    }
+  }
+  function syncTribecaStandaloneClass(){
+    try{
+      const standalone = window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true;
+      document.body.classList.toggle('is-pwa-standalone', !!standalone);
+    }catch(_error){ document.body.classList.remove('is-pwa-standalone'); }
   }
 
   const State = {
@@ -1356,8 +1404,8 @@
   }
 
   function renderApp() {
-    document.body.classList.remove('is-dark','dark-mode','theme-dark');
-    try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
+    bindTribecaThemeControls();
+    syncTribecaStandaloneClass();
     if(!State.profile) { showLogin(); return; }
     const p=State.profile;
     const main = $('#inicio');
@@ -5191,16 +5239,31 @@ render();
 
 
   function messagesContent(){
-    const p=State.profile; const all=(State.data.messages||[]).filter(m=>!(m.sender_id===p.id&&m.deleted_by_sender) && !(m.recipient_id===p.id&&m.deleted_by_recipient));
-    const inbox=all.filter(m=>m.recipient_id===p.id&&!m.archived), sent=all.filter(m=>m.sender_id===p.id), archived=all.filter(m=>m.archived && (m.sender_id===p.id||m.recipient_id===p.id));
-    const compose = roleTeacher() ? `<form id="t16TeacherMessageForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid email-compose"><label>Alumno/a<select name="recipientId" required>${(State.data.students||[]).map(s=>`<option value="${s.id}">${safe(displayName(s))}</option>`).join('')}</select></label><label>Asunto<input name="subject" maxlength="100" required></label><div class="window-grid"><label>Tamaño<select name="fontSize"><option>14</option><option selected>16</option><option>18</option><option>20</option></select></label><label>Color<select name="textColor"><option value="#1d251d">Negro</option><option value="#0b3d22">Verde Tribeca</option><option value="#8a5a00">Dorado oscuro</option><option value="#9b1c1c">Rojo</option><option value="#234e8f">Azul</option></select></label></div><label>Mensaje<textarea name="body" maxlength="3000" rows="7" required></textarea></label><label>Adjuntar documentos o imágenes<input name="messageFiles" type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"><input type="hidden" name="attachmentsJson" value=""><small data-message-file-name></small></label><button class="primary-btn" type="submit">Enviar</button></form>` : `<form id="t16StudentMessageForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid email-compose"><label>Motivo<select name="reason"><option>Necesito ayuda</option><option>No puedo asistir a clase</option><option>Tengo una duda sobre una tarea</option><option>Quiero revisar una calificación</option><option>Otro motivo</option></select></label><label>Asunto<input name="subject" maxlength="100" required></label><div class="window-grid"><label>Tamaño<select name="fontSize"><option>14</option><option selected>16</option><option>18</option><option>20</option></select></label><label>Color<select name="textColor"><option value="#1d251d">Negro</option><option value="#0b3d22">Verde Tribeca</option><option value="#8a5a00">Dorado oscuro</option><option value="#9b1c1c">Rojo</option><option value="#234e8f">Azul</option></select></label></div><label>Mensaje<textarea name="body" maxlength="2000" rows="7" required></textarea></label><label>Adjuntar documentos o imágenes<input name="messageFiles" type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"><input type="hidden" name="attachmentsJson" value=""><small data-message-file-name></small></label><button class="primary-btn" type="submit">Enviar a la profesora</button></form>`;
-    return `<div class="mail-app mail-app-v107">
-      <aside class="mail-sidebar window-panel"><h3>Mensajes</h3><button class="mail-tab is-active" type="button" data-mail-box="inbox">Recibidos <span>${inbox.filter(m=>!m.read_at).length}</span></button><button class="mail-tab" type="button" data-mail-box="sent">Enviados <span>${sent.length}</span></button><button class="mail-tab" type="button" data-mail-box="archived">Archivados <span>${archived.length}</span></button></aside>
-      <section class="window-panel mail-list-panel mail-list-panel-v107"><div class="mail-box" data-mail-box-view="inbox"><h3>Bandeja de entrada</h3>${inbox.length?inbox.map(messageCard).join(''):'<div class="empty-state">No hay mensajes recibidos.</div>'}</div><div class="mail-box" data-mail-box-view="sent" hidden><h3>Enviados</h3>${sent.length?sent.map(messageCard).join(''):'<div class="empty-state">No hay mensajes enviados.</div>'}</div><div class="mail-box" data-mail-box-view="archived" hidden><h3>Archivados</h3>${archived.length?archived.map(messageCard).join(''):'<div class="empty-state">No hay mensajes archivados.</div>'}</div></section>
-      <details class="window-panel teacher-option-drawer mail-compose-drawer"><summary><span>${roleTeacher()?'Escribir mensaje privado':'Mensaje para la profesora'}</span><em>Nuevo</em></summary><p class="meta">Los mensajes son privados entre profesora y alumno/a.</p>${compose}</details>
+    const p=State.profile;
+    const all=(State.data.messages||[]).filter(m=>!(m.sender_id===p.id&&m.deleted_by_sender) && !(m.recipient_id===p.id&&m.deleted_by_recipient));
+    const inbox=all.filter(m=>m.recipient_id===p.id&&!m.archived);
+    const sent=all.filter(m=>m.sender_id===p.id);
+    const archived=all.filter(m=>m.archived && (m.sender_id===p.id||m.recipient_id===p.id));
+    const unread=inbox.filter(m=>!m.read_at).length;
+    const studentOptions=(State.data.students||[]).map(s=>`<option value="${safe(s.id)}">${safe(displayName(s))}${s.course?` · ${safe(s.course)}`:''}</option>`).join('');
+    const compose = roleTeacher()
+      ? `<form id="t16TeacherMessageForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="focus-message-compose email-compose"><label>Alumno/a<select name="recipientId" required>${studentOptions}</select></label><label>Asunto<input name="subject" maxlength="100" required placeholder="Escribe un asunto claro"></label><input type="hidden" name="fontSize" value="16"><input type="hidden" name="textColor" value="#1d251d"><label class="focus-message-body">Mensaje<textarea name="body" maxlength="3000" rows="7" required placeholder="Escribe el mensaje privado para el alumno o alumna"></textarea></label><label class="focus-message-attachment">Adjuntar documentos o imágenes<input name="messageFiles" type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"><input type="hidden" name="attachmentsJson" value=""><small data-message-file-name></small></label><button class="primary-btn" type="submit">Enviar mensaje</button></form>`
+      : `<form id="t16StudentMessageForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="focus-message-compose email-compose"><label>Motivo<select name="reason"><option>Necesito ayuda</option><option>No puedo asistir a clase</option><option>Tengo una duda sobre una tarea</option><option>Quiero revisar una calificación</option><option>Otro motivo</option></select></label><label>Asunto<input name="subject" maxlength="100" required placeholder="Resume el motivo"></label><input type="hidden" name="fontSize" value="16"><input type="hidden" name="textColor" value="#1d251d"><label class="focus-message-body">Mensaje<textarea name="body" maxlength="2000" rows="7" required placeholder="Explica tu duda o aviso"></textarea></label><label class="focus-message-attachment">Adjuntar documentos o imágenes<input name="messageFiles" type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"><input type="hidden" name="attachmentsJson" value=""><small data-message-file-name></small></label><button class="primary-btn" type="submit">Enviar a la profesora</button></form>`;
+    const box = (name, title, rows, empty) => `<div class="mail-box" data-mail-box-view="${name}" ${name==='inbox'?'':'hidden'}><header class="messages-box-head-v166"><h3>${title}</h3><small>${rows.length} mensaje${rows.length===1?'':'s'}</small></header>${rows.length?rows.map(messageCard).join(''):`<div class="empty-state">${empty}</div>`}</div>`;
+    return `<div class="mail-app mail-app-v107 tribeca-messages-v166">
+      <section class="messages-focus-hero-v166 window-panel"><div><p class="eyebrow">Mensajes privados</p><h3>${roleTeacher()?'Comunicación directa con el alumnado':'Comunicación directa con la profesora'}</h3><p>Interfaz limpia, lectura cómoda y avisos por app cuando el dispositivo tiene las notificaciones activadas.</p></div><span>${unread?`${unread} sin leer`:'Todo al día'}</span></section>
+      <aside class="mail-sidebar messages-sidebar-v166 window-panel"><h3>Mensajes</h3><button class="mail-tab is-active" type="button" data-mail-box="inbox">Recibidos <span>${unread}</span></button><button class="mail-tab" type="button" data-mail-box="sent">Enviados <span>${sent.length}</span></button><button class="mail-tab" type="button" data-mail-box="archived">Archivados <span>${archived.length}</span></button></aside>
+      <section class="window-panel mail-list-panel mail-list-panel-v107 messages-list-v166">${box('inbox','Bandeja de entrada',inbox,'No hay mensajes recibidos.')}${box('sent','Enviados',sent,'No hay mensajes enviados.')}${box('archived','Archivados',archived,'No hay mensajes archivados.')}</section>
+      <details class="window-panel teacher-option-drawer mail-compose-drawer messages-compose-v166"><summary><span>${roleTeacher()?'Escribir mensaje privado':'Mensaje para la profesora'}</span><em>Nuevo</em></summary><p class="meta">Los mensajes son privados. Si el destinatario ha activado las notificaciones de la app, recibirá un aviso push.</p>${compose}</details>
     </div>`;
   }
-  function messageCard(m){ const mine=m.sender_id===State.profile?.id; const atts=Array.isArray(m.attachments)?m.attachments:[]; return `<article class="mail-card ${!m.read_at && !mine?'is-unread':''}"><header><strong>${safe(m.subject||'Sin asunto')}</strong><span>${mine?'Enviado a '+safe(m.recipient_name||studentName(m.recipient_id)):'De '+safe(m.sender_name||studentName(m.sender_id))}</span></header><p style="font-size:${Number(m.font_size||16)}px;color:${safe(m.text_color||'inherit')}">${safe(m.body||'')}</p>${atts.length?`<div class="attachment-list">${atts.map(a=>`<a href="${safe(a.url)}" target="_blank" rel="noopener">📎 ${safe(a.name||'Archivo')}</a>`).join('')}</div>`:''}<footer><small>${fmtDT(m.created_at)}</small><div class="inline-actions">${!mine&&!m.read_at?`<button type="button" data-t28-mark-read="${safe(m.id)}">Marcar como leído</button>`:''}<button type="button" data-t16-archive-message="${safe(m.id)}">Archivar</button><button type="button" data-t28-delete-message="${safe(m.id)}">Eliminar</button></div></footer></article>`; }
+  function messageCard(m){
+    const mine=m.sender_id===State.profile?.id;
+    const atts=Array.isArray(m.attachments)?m.attachments:[];
+    const who=mine?`Para ${safe(m.recipient_name||studentName(m.recipient_id))}`:`De ${safe(m.sender_name||studentName(m.sender_id))}`;
+    const initial=(mine?(m.recipient_name||studentName(m.recipient_id)):(m.sender_name||studentName(m.sender_id))||'T').trim().charAt(0).toUpperCase() || 'T';
+    return `<article class="mail-card message-card-v166 ${!m.read_at && !mine?'is-unread':''}"><div class="message-avatar-v166">${safe(initial)}</div><div class="message-card-main-v166"><header><strong>${safe(m.subject||'Sin asunto')}</strong><span>${who}</span></header><p style="font-size:${Number(m.font_size||16)}px;color:${safe(m.text_color||'inherit')}">${safe(m.body||'')}</p>${atts.length?`<div class="attachment-list">${atts.map(a=>`<a href="${safe(a.url)}" target="_blank" rel="noopener">📎 ${safe(a.name||'Archivo')}</a>`).join('')}</div>`:''}<footer><small>${fmtDT(m.created_at)}</small><div class="inline-actions">${!mine&&!m.read_at?`<button type="button" data-t28-mark-read="${safe(m.id)}">Marcar como leído</button>`:''}<button type="button" data-t16-archive-message="${safe(m.id)}">Archivar</button><button type="button" data-t28-delete-message="${safe(m.id)}">Eliminar</button></div></footer></div></article>`;
+  }
   async function sendMessage(form, teacher=false){
     const fd=new FormData(form);
     let recipientId=fd.get('recipientId');
@@ -5234,15 +5297,16 @@ render();
     const rpc=await State.client.rpc('tribeca_send_private_message_v28',{p_payload:payload});
     if(rpc.error) throw rpc.error;
     await log('message','Mensaje enviado',{subject:payload.subject});
-    await tribecaDispatchPushNotification('message', {
+    const pushResult = await tribecaDispatchPushNotification('message', {
       title: `Nuevo mensaje de ${displayName(State.profile)}`,
       body: payload.subject || payload.body || 'Tienes un mensaje nuevo en Tribeca Aula.',
       recipientIds: [recipientId],
       section: 'messages'
     });
-    // v163: los avisos automáticos por email quedan desactivados; se usa solo notificación de la app.
+    // v166: los avisos automáticos por email quedan desactivados; se usa solo notificación de la app.
     await loadData(true);
-    toast('Mensaje enviado.');
+    if(roleTeacher() && pushResult && Number(pushResult.sent||0) <= 0) toast('Mensaje enviado. El alumno/a lo verá al abrir Tribeca Aula; para recibir aviso en la cortina debe activar las notificaciones de la app en su dispositivo.');
+    else toast('Mensaje enviado.');
     form.reset();
     rerender();
   }
@@ -7610,11 +7674,10 @@ function classroomCard(c,i=0){
     bindTribecaServiceWorkerMessages();
     applyAccessibilitySettings();
     setTimeout(()=>{ ensureAccessibilityWidget(); updatePwaInstallCta(); }, 0);
-    document.body.classList.remove('is-dark','dark-mode','theme-dark');
-    try { localStorage.removeItem('tribeca-theme'); localStorage.removeItem('theme'); } catch(_) {}
-    document.querySelectorAll('.theme-toggle,[data-theme-toggle],#themeToggle,#themeSelect').forEach(el=>{ const wrap=el.closest('label,.select-wrap,.control-field')||el; wrap.remove(); });
+    bindTribecaThemeControls();
+    syncTribecaStandaloneClass();
     State.client = configured && window.supabase?.createClient ? window.supabase.createClient(cfg.url, cfg.anonKey, { auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true} }) : null;
-    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); applySeasonalLogos(n); syncFocusModeClass(); } }))).observe(document.body,{childList:true,subtree:true}); applySeasonalLogos(document); syncFocusModeClass();
+    bindGlobal(); wireManagedForms(); new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{ if(n.nodeType===1){ wireManagedForms(n); applyTranslations(n); applySeasonalLogos(n); bindTribecaThemeControls(); syncTribecaStandaloneClass(); syncFocusModeClass(); } }))).observe(document.body,{childList:true,subtree:true}); applySeasonalLogos(document); syncFocusModeClass();
     if(!window.__tribecaHistoryBound){
       window.__tribecaHistoryBound=true;
       window.addEventListener('popstate', ev=>{
