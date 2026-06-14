@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 166 · interfaz móvil, mensajes modo concentración, calendario app y modo oscuro integral.
+/* Tribeca Aula · Versión 167 · calendario app corregido, cabecera móvil compacta y modo oscuro accesible.
    Base: notificaciones push v164 funcionales, sin depuración visible para alumnado. */
 (() => {
   'use strict';
@@ -1243,6 +1243,7 @@
       .map(a=>String(a.class_id));
   }
   function targetClassIds(item={}){
+    item = item && typeof item === 'object' ? item : {};
     return parseArrayField(item.target_class_ids || item.class_ids || item.classIds || []);
   }
   function visibleByTargetClasses(item={}, p=State.profile){
@@ -1470,7 +1471,8 @@
       ? `<button type="button" data-t141-account-tool="guidance">Orientación académica</button>`
       : `<button type="button" data-t141-account-tool="guidance">Orientación académica</button><button type="button" data-t141-account-tool="grades">Calificaciones</button><button type="button" data-t141-account-tool="difficulties">Materias con dificultades</button>`;
     const installTool = isTribecaStandalone() ? '' : `<button type="button" data-pwa-install>${safe(pwaText('install'))}</button>`;
-    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button>${personalTools}${installTool}`;
+    const themeLabel = document.body.classList.contains('is-dark') ? 'Modo claro' : 'Modo oscuro';
+    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button><button type="button" data-t73-account-panel="appearance">Apariencia</button><button type="button" data-t167-toggle-theme>${safe(themeLabel)}</button>${personalTools}${installTool}`;
   }
   function accountMenuElement(){ return document.getElementById('profileMenu'); }
   function ensureAccountMenuPortal(){
@@ -4467,6 +4469,7 @@ render();
     return ({exam:'Examen',delivery:'Entrega de trabajo',presentation:'Presentación',excursion:'Excursión',student_absence:'No asistiré este día a clases',personal:'Evento personal',class:'Evento de grupo',teacher:'Profesora',closed:'Tribeca cerrado',school:'Escolar'}[String(type||'personal')] || 'Evento');
   }
   function eventScopeIsChecked(e={}, value=''){
+    e = e && typeof e === 'object' ? e : {};
     const scope=e?.scope || e?.target_scope || '';
     if(value==='classes') return ['classes','class_ids','classrooms'].includes(scope) || (scope==='class' && targetClassIds(e).length>0);
     if(value==='user') return ['user','personal','private'].includes(scope);
@@ -4482,6 +4485,7 @@ render();
     return `<div class="calendar-class-targets-v163" data-calendar-class-targets${hiddenAttr}><p class="meta">Marca una o varias clases. Solo el alumnado asignado a esas clases verá la fecha y recibirá el aviso de la app.</p><div class="calendar-class-grid-v163">${classes.map(c=>`<label><input type="checkbox" name="targetClassIds" value="${safe(c.id)}" ${selected.has(String(c.id))?'checked':''} ${disabled}><span><strong>${safe(classroomLabel(c))}</strong><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></span></label>`).join('')}</div></div>`;
   }
   function calendarEventVisibilityLabel(e={}){
+    e = e && typeof e === 'object' ? e : {};
     const scope=e.scope||e.target_scope||'all';
     if(['user','personal','private'].includes(scope)) return 'Solo para mí';
     if(['classes','class_ids','classrooms'].includes(scope) || (scope==='class' && targetClassIds(e).length)){
@@ -6762,7 +6766,7 @@ function classroomCard(c,i=0){
           <p>${safe(p.role === 'teacher' ? 'Profesora' : academic)}</p>
         </div>
       </section>`;
-    const tabs = `<div class="profile-account-tabs"><button type="button" data-t74-profile-tab="profile" class="${panel==='profile'?'is-active':''}">Mi perfil</button><button type="button" data-t74-profile-tab="password" class="${panel==='password'?'is-active':''}">Ajustes de contraseña</button><button type="button" data-t74-profile-tab="notifications" class="${panel==='notifications'?'is-active':''}">Ajustes de notificaciones</button></div>`;
+    const tabs = `<div class="profile-account-tabs"><button type="button" data-t74-profile-tab="profile" class="${panel==='profile'?'is-active':''}">Mi perfil</button><button type="button" data-t74-profile-tab="password" class="${panel==='password'?'is-active':''}">Ajustes de contraseña</button><button type="button" data-t74-profile-tab="notifications" class="${panel==='notifications'?'is-active':''}">Ajustes de notificaciones</button><button type="button" data-t74-profile-tab="appearance" class="${panel==='appearance'?'is-active':''}">Apariencia</button></div>`;
     const profileCard = `<section class="profile-tool-card profile-avatar-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🎨</span>
@@ -6840,7 +6844,20 @@ function classroomCard(c,i=0){
         </header>
         <p class="meta">Estos datos solo puede modificarlos la profesora.</p>
       </section>`:'';
-    const selected = panel==='password' ? passwordCard : panel==='notifications' ? notificationsCard : profileCard + academicCard;
+    const appearanceCard = `<section class="profile-tool-card appearance-tool-card-v167">
+        <header class="profile-tool-head">
+          <span class="profile-tool-icon">🌓</span>
+          <div>
+            <h3>Apariencia</h3>
+            <p>Elige el modo claro u oscuro. El cambio se guarda en este dispositivo y funciona igual en la web y en la app instalada.</p>
+          </div>
+        </header>
+        <div class="theme-choice-grid-v167" role="group" aria-label="Apariencia de Tribeca Aula">
+          <button type="button" class="theme-choice-card-v167 ${document.body.classList.contains('is-dark')?'':'is-selected'}" data-t167-set-theme="light"><span>☀️</span><strong>Modo claro</strong><small>Fondo marfil, verde Tribeca y dorado clásico.</small></button>
+          <button type="button" class="theme-choice-card-v167 ${document.body.classList.contains('is-dark')?'is-selected':''}" data-t167-set-theme="dark"><span>🌙</span><strong>Modo oscuro</strong><small>Negro suave, dorado y contraste alto para uso prolongado.</small></button>
+        </div>
+      </section>`;
+    const selected = panel==='password' ? passwordCard : panel==='notifications' ? notificationsCard : panel==='appearance' ? appearanceCard : profileCard + academicCard;
     return `<div class="profile-hub">${summary}${tabs}${selected}</div>`;
   }
 
@@ -7136,6 +7153,8 @@ function classroomCard(c,i=0){
       const unitAdd=ev.target.closest?.('[data-t126-add-unit]'); if(unitAdd){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitAdd.closest('form'); if(f) await addClassUnit(f); return; }
       const guidanceLink=ev.target.closest?.('[data-t119-guidance-link]'); if(guidanceLink){ recordGuidanceLinkClick(guidanceLink.dataset.t119GuidanceLink, guidanceLink.dataset.t119GuidanceUrl || guidanceLink.href); return; }
       const mailTab=ev.target.closest?.('[data-mail-box]'); if(mailTab){ const box=mailTab.dataset.mailBox; const root=mailTab.closest('.mail-app'); root?.querySelectorAll('.mail-tab').forEach(b=>b.classList.toggle('is-active', b===mailTab)); root?.querySelectorAll('[data-mail-box-view]').forEach(v=>v.hidden=v.dataset.mailBoxView!==box); return; }
+      const themeSet=ev.target.closest?.('[data-t167-set-theme]'); if(themeSet){ ev.preventDefault(); ev.stopPropagation(); const value=themeSet.dataset.t167SetTheme === 'dark' ? 'dark' : 'light'; setTribecaTheme(value); updateTopProfile(); rerender(); toast(value === 'dark' ? 'Modo oscuro activado.' : 'Modo claro activado.'); return; }
+      const themeToggleAccount=ev.target.closest?.('[data-t167-toggle-theme]'); if(themeToggleAccount){ ev.preventDefault(); ev.stopPropagation(); const next=document.body.classList.contains('is-dark') ? 'light' : 'dark'; setTribecaTheme(next); closeAccountMenu(); updateTopProfile(); toast(next === 'dark' ? 'Modo oscuro activado.' : 'Modo claro activado.'); return; }
       const profileTab=ev.target.closest?.('[data-t74-profile-tab]'); if(profileTab){ ev.preventDefault(); ev.stopPropagation(); State.profilePanel=profileTab.dataset.t74ProfileTab || 'profile'; rerender(); return; }
       const monthNav=ev.target.closest?.('[data-t51-month-nav]'); if(monthNav){ ev.preventDefault(); ev.stopPropagation(); State.billingMonth=monthNav.dataset.t51MonthNav; rerender(); return; }
       const logout=ev.target.closest?.('#logoutButton,[data-action="logout"]'); if(logout){ ev.preventDefault(); ev.stopImmediatePropagation(); signOut(); return; }

@@ -15602,3 +15602,88 @@ body.is-dark .tribeca-pwa-help-card {
 body.is-dark .tribeca-a11y-panel select,
 body.is-dark .tribeca-a11y-panel button,
 body.is-dark .tribeca-pwa-help-card p { color: #fff7df !important; }
+
+/* Tribeca Aula v167 · calendario app, cabecera móvil compacta y modo oscuro localizable */
+/* Desde v157 el encabezado es sticky, por tanto el body no debe reservar hueco superior. */
+body {
+  padding-top: 0 !important;
+}
+@media (max-width: 760px) {
+  :root { --header-h: 0px; }
+  body,
+  body.is-pwa-standalone,
+  body.tribeca-standalone {
+    padding-top: 0 !important;
+  }
+  .app-header {
+    position: sticky !important;
+    top: 0 !important;
+    padding-top: max(.55rem, env(safe-area-inset-top)) !important;
+  }
+  .page-shell,
+  main.page-shell {
+    margin-top: .75rem !important;
+  }
+  .utility-bar {
+    grid-template-columns: minmax(0,1fr) auto !important;
+    align-items: center !important;
+  }
+  .utility-bar .theme-toggle {
+    display: inline-flex !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    min-height: 3.15rem !important;
+    width: 100% !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  .utility-bar .logout-button,
+  .logout-button {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+  }
+  .profile-area {
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+  }
+  body > #profileMenu.profile-menu.tribeca-account-menu-portal:not([hidden]),
+  .profile-menu:not([hidden]) {
+    top: calc(env(safe-area-inset-top) + .75rem) !important;
+    max-height: calc(100vh - env(safe-area-inset-top) - 1.5rem) !important;
+  }
+}
+.theme-choice-grid-v167 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: .9rem;
+}
+.theme-choice-card-v167 {
+  display: grid;
+  gap: .45rem;
+  text-align: left;
+  border: 1px solid rgba(22, 61, 38, .16);
+  border-radius: 18px;
+  background: rgba(255,253,247,.88);
+  color: var(--text);
+  padding: 1rem;
+  box-shadow: none;
+}
+.theme-choice-card-v167 span { font-size: 1.6rem; }
+.theme-choice-card-v167 strong { font-size: 1.05rem; }
+.theme-choice-card-v167 small { color: var(--muted); line-height: 1.45; }
+.theme-choice-card-v167.is-selected {
+  border-color: rgba(11, 75, 51, .45);
+  background: linear-gradient(135deg, rgba(255,253,247,.98), rgba(236,246,240,.96));
+  box-shadow: inset 0 0 0 2px rgba(11,75,51,.10);
+}
+body.is-dark .theme-choice-card-v167 {
+  background: rgba(18,19,13,.96);
+  border-color: rgba(247,220,139,.18);
+  color: #fff7df;
+}
+body.is-dark .theme-choice-card-v167.is-selected {
+  border-color: rgba(217,178,74,.55);
+  background: linear-gradient(135deg, rgba(33,29,18,.98), rgba(20,21,14,.98));
+  box-shadow: inset 0 0 0 2px rgba(217,178,74,.14);
+}
+body.is-dark .theme-choice-card-v167 small { color: #d9cba5; }
