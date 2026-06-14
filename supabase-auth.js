@@ -274,8 +274,15 @@
   }
   function tribecaSetPushEnabled(value){
     const key = tribecaPushUserStorageKey(TRIBECA_PUSH_ENABLED_KEY);
-    if(value){ localStorage.setItem(key, '1'); tribecaSetPushEnabled(true); }
-    else { localStorage.removeItem(key); localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY); }
+    if(value){
+      localStorage.setItem(key, '1');
+      // Marca heredada solo para compatibilidad con instalaciones anteriores.
+      // No debe llamarse recursivamente: eso bloqueaba la activación push en móvil.
+      localStorage.setItem(TRIBECA_PUSH_ENABLED_KEY, '1');
+    } else {
+      localStorage.removeItem(key);
+      localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY);
+    }
   }
   function tribecaPushStatusText(){
     if(!tribecaPushSupported()) return roleTeacher() ? 'No disponible en este navegador o falta configurar Supabase.' : 'No disponible en este dispositivo.';
