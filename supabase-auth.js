@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 163 · push cifrado, calendario por clases y feedback docente.
+/* Tribeca Aula · Versión 165 · notificaciones sin depuración visible para alumnado.
    Mejora: Edge Function pública con verificación interna de sesión, compatible con publishable keys de Supabase. */
 (() => {
   'use strict';
@@ -211,23 +211,51 @@
     if(!key) throw new Error('Falta la clave pública VAPID de Tribeca Aula.');
     return key;
   }
+  function tribecaPushUserStorageKey(base){
+    const id = String(State.profile?.id || 'anonymous').trim();
+    return `${base}-${id || 'anonymous'}`;
+  }
+  function tribecaPushEnabled(){
+    const key = tribecaPushUserStorageKey(TRIBECA_PUSH_ENABLED_KEY);
+    if(localStorage.getItem(key) === '1') return true;
+    if(roleTeacher() && localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY) === '1'){
+      localStorage.setItem(key, '1');
+      return true;
+    }
+    return false;
+  }
+  function tribecaSetPushEnabled(value){
+    const key = tribecaPushUserStorageKey(TRIBECA_PUSH_ENABLED_KEY);
+    if(value){ localStorage.setItem(key, '1'); tribecaSetPushEnabled(true); }
+    else { localStorage.removeItem(key); localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY); }
+  }
   function tribecaPushStatusText(){
-    if(!tribecaPushSupported()) return 'No disponible en este navegador o falta configurar Supabase.';
-    if(Notification.permission === 'granted') return localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' ? 'Activadas en este dispositivo.' : 'Permiso del móvil concedido. Falta pulsar el botón de activación de Tribeca Aula.';
+    if(!tribecaPushSupported()) return roleTeacher() ? 'No disponible en este navegador o falta configurar Supabase.' : 'No disponible en este dispositivo.';
+    if(Notification.permission === 'granted') return tribecaPushEnabled() ? 'Activadas en este dispositivo.' : 'Permiso del móvil concedido. Falta pulsar el botón de activación.';
     if(Notification.permission === 'denied') return 'Bloqueadas por el navegador. Debes permitirlas desde los ajustes del sitio.';
     return 'Pendientes de activar en este dispositivo.';
   }
-  function tribecaPushLastError(){ return String(localStorage.getItem(TRIBECA_PUSH_LAST_ERROR_KEY) || '').trim(); }
-  function tribecaPushLastOk(){ return String(localStorage.getItem(TRIBECA_PUSH_LAST_OK_KEY) || '').trim(); }
+  function tribecaPushLastError(){ return String(localStorage.getItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_ERROR_KEY)) || '').trim(); }
+  function tribecaPushLastOk(){ return String(localStorage.getItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_OK_KEY)) || '').trim(); }
   function tribecaSetPushLastError(error){
     const message = tribecaPushHumanError(error);
-    localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, message);
+    localStorage.setItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_ERROR_KEY), message);
+    localStorage.removeItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_OK_KEY));
+    localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
     localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
     return message;
   }
   function tribecaSetPushLastOk(message){
-    localStorage.setItem(TRIBECA_PUSH_LAST_OK_KEY, message);
+    localStorage.setItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_OK_KEY), message);
+    localStorage.removeItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_ERROR_KEY));
     localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
+    localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
+  }
+  function tribecaClearPushFeedback(){
+    localStorage.removeItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_ERROR_KEY));
+    localStorage.removeItem(tribecaPushUserStorageKey(TRIBECA_PUSH_LAST_OK_KEY));
+    localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
+    localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
   }
   function tribecaWithTimeout(promise, ms=12000, label='La operación de notificaciones tardó demasiado.'){
     return Promise.race([promise, new Promise((_, reject)=>setTimeout(()=>reject(new Error(label)), ms))]);
@@ -239,15 +267,14 @@
   async function enableTribecaPushNotifications(options={}){
     const silent = !!options.silent;
     if(!tribecaPushSupported()) {
-      const msg = 'Este navegador o esta instalación de la app no permite notificaciones push web. Prueba desde la PWA instalada o revisa los permisos del sitio.';
-      localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, msg);
+      const msg = roleTeacher() ? 'Este navegador o esta instalación de la app no permite notificaciones push web. Prueba desde la PWA instalada o revisa los permisos del sitio.' : 'Este dispositivo no permite activar las notificaciones de la app.';
+      tribecaSetPushLastError(msg);
       refreshProfileNotificationsPanel();
       if(!silent) toast(msg);
       throw new Error(msg);
     }
     try{
-      localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
-      localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
+      tribecaClearPushFeedback();
       ['tribeca-push-last-error-v159','tribeca-push-last-ok-v159','tribeca-push-last-error-v160','tribeca-push-last-ok-v160','tribeca-push-last-error-v161','tribeca-push-last-ok-v161','tribeca-push-last-error-v163','tribeca-push-last-ok-v163'].forEach(k=>localStorage.removeItem(k));
       refreshProfileNotificationsPanel();
       const permission = await Notification.requestPermission();
@@ -279,14 +306,14 @@
           console.warn('[Tribeca Aula] La suscripción push quedó activa, pero no se pudieron guardar las preferencias generales:', prefError);
         }
       }
-      localStorage.setItem(TRIBECA_PUSH_ENABLED_KEY, '1');
+      tribecaSetPushEnabled(true);
       tribecaSetPushLastOk('Notificaciones activadas en este dispositivo.');
       await syncTribecaAppBadge();
       if(!silent) toast('Notificaciones de la app activadas.');
       return true;
     } catch(error) {
       console.warn('[Tribeca Aula] Activación push fallida:', error);
-      localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY);
+      tribecaSetPushEnabled(false);
       const msg = tribecaSetPushLastError(error);
       if(!silent) toast(msg);
       throw error;
@@ -304,9 +331,8 @@
     } catch(error) {
       console.warn('[Tribeca Aula] No se pudo desactivar completamente la suscripción push:', error);
     }
-    localStorage.removeItem(TRIBECA_PUSH_ENABLED_KEY);
-    localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
-    localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
+    tribecaSetPushEnabled(false);
+    tribecaClearPushFeedback();
     await syncTribecaAppBadge(0);
     toast('Notificaciones push desactivadas en este dispositivo.');
     refreshProfileNotificationsPanel();
@@ -334,7 +360,7 @@
   }
 
   async function tribecaEnsurePushReadyBeforeTest(){
-    if(Notification.permission !== 'granted' || localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)!=='1') {
+    if(Notification.permission !== 'granted' || !tribecaPushEnabled()) {
       await enableTribecaPushNotifications({ silent:true });
       return;
     }
@@ -342,6 +368,7 @@
   }
 
   async function tribecaSendPushTestToCurrentUser(){
+    if(!roleTeacher()) return toast('Las notificaciones de la app están activas si este dispositivo quedó registrado.');
     if(!State.profile) return toast('Inicia sesión antes de probar las notificaciones.');
     if(!tribecaPushSupported()) return toast('Este navegador o esta instalación de la app no permite notificaciones push web.');
     try{
@@ -370,7 +397,7 @@
       }
       const detail = Array.isArray(result?.errors) && result.errors.length ? ` Detalle técnico: ${result.errors.map(e=>e.message||e.status).filter(Boolean).join(' · ')}` : '';
       const msg = subscriptions <= 0 ? 'No hay ningún dispositivo activo registrado para esta cuenta. Pulsa “Activar notificaciones de la app”.' : 'La prueba se ha intentado enviar, pero el servicio push no la ha aceptado para ningún dispositivo.' + (roleTeacher()?detail:'');
-      localStorage.setItem(TRIBECA_PUSH_LAST_ERROR_KEY, msg);
+      tribecaSetPushLastError(msg);
       refreshProfileNotificationsPanel();
       return toast(msg);
     }catch(error){
@@ -381,20 +408,20 @@
   }
 
   async function tribecaResetPushFeedback(){
-    localStorage.removeItem(TRIBECA_PUSH_LAST_ERROR_KEY);
-    localStorage.removeItem(TRIBECA_PUSH_LAST_OK_KEY);
+    if(!roleTeacher()) return;
+    tribecaClearPushFeedback();
     refreshProfileNotificationsPanel();
   }
 
   async function refreshTribecaPushSubscriptionIfEnabled(){
-    if(localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)!=='1') return;
+    if(!tribecaPushEnabled()) return;
     if(!tribecaPushSupported() || Notification.permission !== 'granted') return;
     try{
       const reg = await navigator.serviceWorker.ready;
       const subscription = await reg.pushManager.getSubscription();
       if(subscription){
         await tribecaPushInvoke({ action:'subscribe', deviceId:tribecaDeviceId(), subscription:subscription.toJSON(), preferences:tribecaNotificationPrefs(), userAgent:navigator.userAgent || '' });
-        localStorage.setItem(TRIBECA_PUSH_ENABLED_KEY, '1');
+        tribecaSetPushEnabled(true);
       }
     } catch(error){
       console.warn('[Tribeca Aula] No se pudo sincronizar la suscripción push:', error);
@@ -6689,15 +6716,16 @@ function classroomCard(c,i=0){
       </section>`;
     const pushStatus = tribecaPushStatusText();
     const notificationPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
-    const pushEnabled = localStorage.getItem(TRIBECA_PUSH_ENABLED_KEY)==='1' && notificationPermission === 'granted';
+    const teacherAccount = roleTeacher();
+    const pushEnabled = tribecaPushEnabled() && notificationPermission === 'granted';
     const lastPushError = tribecaPushLastError();
     const lastPushOk = tribecaPushLastOk();
-    const pushNotice = lastPushError ? `<p class="tribeca-push-feedback-v154 is-error">${safe(lastPushError)}</p>` : lastPushOk ? `<p class="tribeca-push-feedback-v154 is-ok">${safe(lastPushOk)}</p>` : (!pushEnabled && notificationPermission === 'granted' ? '<p class="tribeca-push-feedback-v154 is-info">El permiso del móvil ya está concedido. Pulsa el botón principal para terminar el registro del dispositivo en Tribeca Aula.</p>' : '');
-    const pushMainDisabled = !tribecaPushSupported() || notificationPermission === 'denied';
-    const pushMainAttr = pushEnabled ? 'data-t152-test-push' : 'data-t151-enable-push';
-    const pushMainLabel = notificationPermission === 'denied' ? 'Notificaciones bloqueadas' : (pushEnabled ? 'Enviar prueba de notificación' : 'Activar notificaciones de la app');
-    const resetLink = notificationPermission === 'granted' ? '<button type="button" class="tribeca-inline-reset-v155" data-t151-disable-push>Desactivar o reiniciar este dispositivo</button>' : '';
-    const supportWarning = tribecaPushSupported() ? '' : '<p class="tribeca-push-feedback-v154 is-error">Este dispositivo no permite completar la activación push web. Comprueba que estés usando la PWA o Chrome/Android con permisos del sitio.</p>';
+    const pushNotice = lastPushError ? `<p class="tribeca-push-feedback-v154 is-error">${safe(lastPushError)}</p>` : lastPushOk ? `<p class="tribeca-push-feedback-v154 is-ok">${safe(lastPushOk)}</p>` : (!pushEnabled && notificationPermission === 'granted' ? '<p class="tribeca-push-feedback-v154 is-info">El permiso del móvil ya está concedido. Pulsa el botón principal para terminar la activación.</p>' : '');
+    const pushMainDisabled = !tribecaPushSupported() || notificationPermission === 'denied' || (pushEnabled && !teacherAccount);
+    const pushMainAttr = pushEnabled ? (teacherAccount ? 'data-t152-test-push' : '') : 'data-t151-enable-push';
+    const pushMainLabel = notificationPermission === 'denied' ? 'Notificaciones bloqueadas' : (pushEnabled ? (teacherAccount ? 'Enviar prueba de notificación' : 'Notificaciones activadas') : 'Activar notificaciones de la app');
+    const resetLink = teacherAccount && notificationPermission === 'granted' ? '<button type="button" class="tribeca-inline-reset-v155" data-t151-disable-push>Desactivar o reiniciar este dispositivo</button>' : '';
+    const supportWarning = tribecaPushSupported() ? '' : `<p class="tribeca-push-feedback-v154 is-error">${safe(teacherAccount ? 'Este dispositivo no permite completar la activación push web. Comprueba que estés usando la PWA o Chrome/Android con permisos del sitio.' : 'Este dispositivo no permite activar notificaciones de la app.')}</p>`;
     const notificationsCard = `<section class="profile-tool-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🔔</span>
@@ -6710,7 +6738,7 @@ function classroomCard(c,i=0){
           <div>
             <strong>Estado</strong>
             <p>${safe(pushStatus)}</p>
-            <small>${safe(pushEnabled ? 'Este dispositivo está registrado. El botón principal enviará una prueba.' : (roleTeacher() ? 'Activa este móvil con tu cuenta docente para recibir avisos del alumnado. El alumnado puede activarlo en su propio móvil si quiere recibir avisos.' : 'Pulsa el botón principal para activar los avisos de Tribeca Aula en este dispositivo.'))}</small>
+            <small>${safe(pushEnabled ? (teacherAccount ? 'Este dispositivo está registrado. El botón principal enviará una prueba.' : 'Este dispositivo está registrado para recibir avisos de Tribeca Aula.') : (teacherAccount ? 'Activa este móvil con tu cuenta docente para recibir avisos del alumnado. El alumnado puede activarlo en su propio móvil si quiere recibir avisos.' : 'Pulsa el botón principal para activar los avisos de Tribeca Aula en este dispositivo.'))}</small>
             ${supportWarning}
             ${pushNotice}
           </div>
@@ -6718,7 +6746,7 @@ function classroomCard(c,i=0){
             <button type="button" class="primary-btn tribeca-push-main-btn-v155" ${pushMainAttr} ${pushMainDisabled?'disabled':''}>${safe(pushMainLabel)}</button>
             ${resetLink}
           </div>
-          <small>Los avisos por email quedan desactivados. El numerito del icono depende de Android/iOS y del navegador; la prueba válida es que la notificación llegue a la cortina del móvil.</small>
+          <small>${safe(teacherAccount ? 'Los avisos por email quedan desactivados. El numerito del icono depende de Android/iOS y del navegador; la prueba válida es que la notificación llegue a la cortina del móvil.' : 'Recibirás avisos de Tribeca Aula cuando haya novedades dirigidas a ti.')}</small>
         </div>
       </section>`;
     const passwordCard = `<section class="profile-tool-card">
@@ -7037,8 +7065,8 @@ function classroomCard(c,i=0){
       const pwaHelpClose=ev.target.closest?.('[data-pwa-help-close]'); if(pwaHelpClose){ ev.preventDefault(); ev.stopPropagation(); document.getElementById('tribecaPwaHelp')?.remove(); return; }
       const saveAttemptFeedback=ev.target.closest?.('[data-t163-save-attempt-feedback]'); if(saveAttemptFeedback){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const form=saveAttemptFeedback.closest('form'); const oldText=saveAttemptFeedback.textContent; saveAttemptFeedback.disabled=true; saveAttemptFeedback.textContent='Guardando…'; try{ await saveAttemptTeacherFeedback(saveAttemptFeedback.dataset.t163SaveAttemptFeedback, form); } catch(error){ toast(error?.message || 'No se pudo guardar la retroalimentación.'); } finally { saveAttemptFeedback.disabled=false; saveAttemptFeedback.textContent=oldText; } return; }
       const enablePush=ev.target.closest?.('[data-t151-enable-push]'); if(enablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const oldText=enablePush.textContent; enablePush.disabled=true; enablePush.textContent='Activando…'; try{ await enableTribecaPushNotifications(); } finally { enablePush.disabled=false; enablePush.textContent=oldText; } return; }
-      const disablePush=ev.target.closest?.('[data-t151-disable-push]'); if(disablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const oldText=disablePush.textContent; disablePush.disabled=true; disablePush.textContent='Reiniciando…'; try{ await disableTribecaPushNotifications(); } finally { disablePush.disabled=false; disablePush.textContent=oldText; } return; }
-      const testPush=ev.target.closest?.('[data-t152-test-push]'); if(testPush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const oldText=testPush.textContent; testPush.disabled=true; testPush.textContent='Enviando…'; try{ await tribecaSendPushTestToCurrentUser(); } finally { testPush.disabled=false; testPush.textContent=oldText; } return; }
+      const disablePush=ev.target.closest?.('[data-t151-disable-push]'); if(disablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(!roleTeacher()) return; const oldText=disablePush.textContent; disablePush.disabled=true; disablePush.textContent='Reiniciando…'; try{ await disableTribecaPushNotifications(); } finally { disablePush.disabled=false; disablePush.textContent=oldText; } return; }
+      const testPush=ev.target.closest?.('[data-t152-test-push]'); if(testPush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(!roleTeacher()) return; const oldText=testPush.textContent; testPush.disabled=true; testPush.textContent='Enviando…'; try{ await tribecaSendPushTestToCurrentUser(); } finally { testPush.disabled=false; testPush.textContent=oldText; } return; }
       const attemptPdf=ev.target.closest?.('[data-t148-attempt-pdf]'); if(attemptPdf){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); window.TribecaPrintAttemptPdf?.(attemptPdf.dataset.t148AttemptPdf); return; }
       const unitSave=ev.target.closest?.('[data-t126-save-unit]'); if(unitSave){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitSave.closest('form'); if(f) await saveClassUnit(f); return; }
       const unitAdd=ev.target.closest?.('[data-t126-add-unit]'); if(unitAdd){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=unitAdd.closest('form'); if(f) await addClassUnit(f); return; }
