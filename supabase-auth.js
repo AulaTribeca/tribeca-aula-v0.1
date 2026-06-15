@@ -3616,6 +3616,12 @@
     if(quiz) return {src:'', mode:'quiz', html:'', quiz, exam:null};
     const schemaActivity=parseSchemaActivityFromInteractiveCode(clean);
     if(schemaActivity) return {src:'', mode:'schemaActivity', html:'', quiz:null, exam:null, activity:schemaActivity};
+    const presentationKind=normalizeMaterialKind(m.material_type || m.type)==='presentation';
+    if(clean && presentationKind){
+      const iframeSrc=extractIframeSrc(clean);
+      if(iframeSrc) return {src:iframeSrc, mode:'presentation', html:'', quiz:null, exam:null};
+      return {src:'', mode:'presentationHtml', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null};
+    }
     if(clean){
       if(/^\s*[\[{]/.test(clean) || clean.startsWith('tribeca-exam-json::') || clean.startsWith('tribeca-schema-json::')) return {src:'', mode:'quizError', html:'', quiz:null, exam:null};
       const iframeSrc=extractIframeSrc(clean);
@@ -3629,6 +3635,7 @@
     }
     if(url){
       const v=normalizeVideoUrl(url);
+      if(presentationKind) return {src:url, mode:'presentation', html:'', quiz:null, exam:null};
       if(videoKind || isVideoEmbedSource(url)) return {src:v.src || url, mode:'video', html:'', quiz:null, exam:null, direct:!!v.direct, provider:v.provider};
       return {src:url, mode:'url', html:'', quiz:null, exam:null};
     }
@@ -3651,6 +3658,13 @@
     if(!quiz?.questions?.length) return '';
     return `<section class="material-embed-block native-quiz-shell"><div><strong>Recurso interactivo</strong><small>Test autocorregible de Tribeca Aula</small></div><div class="native-quiz-block" data-t99-quiz="${safe(encodeBase64Utf8(JSON.stringify(quiz)))}" data-material-id="${safe(m.id||'')}"><p>Cargando test…</p></div></section>`;
   }
+  function presentationEmbedMarkup(source={}, m={}){
+    const height=Math.max(420, Math.min(Number(m.embed_height||720), 1800));
+    const title=safe(m.title||'Presentación');
+    const encoded=source.html ? encodeBase64Utf8(source.html||'') : '';
+    const srcAttr=source.html ? ` src="data:text/html;charset=utf-8;base64,${encoded}"` : (source.src ? ` src="${safe(source.src)}"` : ' src="about:blank"');
+    return `<section class="material-embed-block material-presentation-block"><div><strong>Presentación</strong><small>Diapositivas embebidas en la materia</small></div><iframe title="${title}" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation allow-downloads" allow="fullscreen; clipboard-write; autoplay; encrypted-media; web-share" allowfullscreen${srcAttr} style="min-height:${height}px"></iframe>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir presentación en pestaña nueva</a>`:''}</section>`;
+  }
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
     if(source.mode==='exam') return nativeExamMarkup(source.exam, m);
@@ -3658,6 +3672,7 @@
     if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test, simulacro o esquema interactivo. Comprueba que contiene <code>type: "tribeca-activity"</code>, <code>type: "tribeca-exam"</code> o <code>questions</code> con ejercicios compatibles.</p></section>`;
     if(source.mode==='schemaActivity') return schemaActivityMarkup(source.activity, m);
     if(source.mode==='video' || source.mode==='videoHtml') return videoEmbedMarkup(source, m);
+    if(source.mode==='presentation' || source.mode==='presentationHtml') return presentationEmbedMarkup(source, m);
     if(!source.src && !source.html) return '';
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const encoded=source.html ? encodeBase64Utf8(source.html) : '';
@@ -4166,6 +4181,7 @@ render();
     if(!v) return 'material';
     if(['announcement','notice','news','anuncio','aviso','noticia'].includes(v)) return 'announcement';
     if(['video','vídeo','videoclase','video_clase','clase_video','clase en vídeo','clase en video'].includes(v) || /v[ií]deo|video|videoclase/.test(v)) return 'video';
+    if(['presentation','presentacion','presentación','slides','slide','diapositivas','powerpoint','power point','canva','genially','google slides'].includes(v) || /presentaci[oó]n|diapositiva|power.?point|canva|genially|google.?slides|slides?/.test(v)) return 'presentation';
     if(['schema','scheme','esquema','esquema_interactivo','interactive_schema','drag_drop_schema','fill_schema','complete_schema','mapa_conceptual'].includes(v) || /esquema|schema|mapa.?conceptual/.test(v)) return 'schema';
     if(['game','juego','jocs','play','gamified','ludico','lúdico'].includes(v) || /juego|game|l[uú]dic/.test(v)) return 'game';
     if(['exam','simulacro','mock_exam','simulacro_examen','mock','examen'].includes(v) || /simulacro|mock.?exam|examen/.test(v)) return 'exam';
@@ -4176,7 +4192,7 @@ render();
   }
   function dbMaterialType(kind='material') {
     const k = normalizeMaterialKind(kind);
-    return ({ material:'apuntes', task:'tarea', test:'test', exam:'simulacro', game:'juego', video:'video', schema:'esquema' }[k] || 'apuntes');
+    return ({ material:'apuntes', task:'tarea', test:'test', exam:'simulacro', game:'juego', video:'video', schema:'esquema', presentation:'presentacion' }[k] || 'apuntes');
   }
   function materialTypeMeta(value='material') {
     const k = normalizeMaterialKind(value);
@@ -4187,6 +4203,7 @@ render();
       exam: { key:'exam', label:'Simulacro de examen', icon:'📝' },
       game: { key:'game', label:'Juego', icon:'🎮' },
       video: { key:'video', label:'Vídeo', icon:'🎥' },
+      presentation: { key:'presentation', label:'Presentación', icon:'🖥️' },
       schema: { key:'schema', label:'Esquema', icon:'🧩' },
       announcement: { key:'announcement', label:'Anuncio', icon:'📣' }
     };
@@ -4195,7 +4212,7 @@ render();
   function selectedAttr(a,b){ return String(a||'')===String(b||'') ? 'selected' : ''; }
   async function persistSupabaseRecord(tableName, payload, id=null) {
     let current = {...payload};
-    const materialFallbacks = ['apuntes','tarea','test','simulacro','juego','video','esquema','actividad','recurso','documento','document','link','material'];
+    const materialFallbacks = ['presentacion','apuntes','tarea','test','simulacro','juego','video','esquema','actividad','recurso','documento','document','link','material'];
     for(let attempt=0; attempt<12; attempt++) {
       const res = id ? await table(tableName).update(current).eq('id', id) : await table(tableName).insert(current);
       if(!res.error) return res;
@@ -4297,7 +4314,7 @@ render();
       <section class="window-panel t18-publish-main">
         <h3>${editing?'Editar publicación':'1. Contenido'}</h3>
         ${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}
-        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('video','🎥','Vídeo','Vídeo embebido de YouTube, Vimeo, Drive o URL directa.')}${typeCard('schema','🧩','Esquema','Completar un esquema escribiendo o arrastrando conceptos.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con resultado sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
+        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('video','🎥','Vídeo','Vídeo embebido de YouTube, Vimeo, Drive o URL directa.')}${typeCard('presentation','🖥️','Presentación','PowerPoint, Canva, Genially, Google Slides o HTML de diapositivas.')}${typeCard('schema','🧩','Esquema','Completar un esquema escribiendo o arrastrando conceptos.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con resultado sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
         ${publicationClassroomSelector(item)}
         <div class="window-grid">
           <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
@@ -4328,8 +4345,8 @@ render();
           </label>
         </div>
         <div class="interactive-embed-panel interactive-embed-panel-v99">
-          <h4>Recurso embebido: esquema, vídeo, test o juego</h4>
-          <p class="meta">Para esquemas, sube un JSON de tipo tribeca-activity. Para vídeos, pega la URL de YouTube, Vimeo, Google Drive, Streamable o un iframe. Para tests, sube JSON o HTML.</p>
+          <h4>Recurso embebido: presentación, esquema, vídeo, test o juego</h4>
+          <p class="meta">Para presentaciones, pega un iframe de Canva/PowerPoint/Google Slides/Genially o una URL embebible. Para esquemas, sube un JSON de tipo tribeca-activity. Para vídeos, pega la URL de YouTube, Vimeo, Google Drive, Streamable o un iframe. Para tests, sube JSON o HTML.</p>
           <label class="publication-upload-card interactive-file-card">
             <strong>Subir recurso interactivo</strong>
             <small>JSON, HTML, HTM o TXT. El JSON es la opción más limpia para esquemas, tests y simulacros.</small>
@@ -4337,11 +4354,11 @@ render();
             <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún recurso interactivo seleccionado.</span>
           </label>
           <div class="window-grid">
-            <label>URL embebible o vídeo<input name="embedUrl" type="url" placeholder="https://youtube.com/... · https://vimeo.com/... · https://drive.google.com/..." value="${safe(embedUrl)}"></label>
+            <label>URL embebible<input name="embedUrl" type="url" placeholder="https://www.canva.com/.../view?embed · https://docs.google.com/presentation/.../embed · https://..." value="${safe(embedUrl)}"></label>
             <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
           </div>
-          <label>Código HTML, JSON, iframe o vídeo<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo, iframe de vídeo o etiqueta video. Para vídeos, también puedes pegar solo la URL arriba.">${safe(embedCode)}</textarea></label>
-          <p class="meta">Si eliges Esquema, se mostrará como actividad autocorregible dentro de la publicación. Si eliges Vídeo, se mostrará embebido. Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo.</p>
+          <label>Código HTML, JSON, iframe, presentación o vídeo<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo, iframe de Canva/PowerPoint/Slides/Genially, iframe de vídeo o etiqueta video.">${safe(embedCode)}</textarea></label>
+          <p class="meta">Si eliges Presentación, se verá como visor de diapositivas dentro de la materia. Si eliges Esquema, se mostrará como actividad autocorregible. Si eliges Vídeo, se mostrará embebido. Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo.</p>
         </div>
       </section>
       <footer class="publish-sticky-footer"><button class="primary-btn" type="submit">${editing?'Guardar cambios':'Publicar ahora'}</button>${editing?'<button class="secondary-btn" type="button" data-t32-cancel-publication-edit>Cancelar edición</button>':''}</footer>
@@ -5556,7 +5573,7 @@ render();
         ${repositoryClassificationFields(ctx,'repoNew')}
         <label>Materia<select name="subject" required><option value="">Seleccionar materia</option>${allSubjects.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('')}</select></label>
         <label>Unidad didáctica<input name="unit" value="Unidad 1" placeholder="Unidad 1"></label>
-        <label>Tipo<select name="materialType"><option value="apuntes">Material</option><option value="tarea">Tarea o actividad</option><option value="test">Test externo</option><option value="juego">Juego</option></select></label>
+        <label>Tipo<select name="materialType"><option value="apuntes">Material</option><option value="presentacion">Presentación</option><option value="tarea">Tarea o actividad</option><option value="test">Test externo</option><option value="juego">Juego</option></select></label>
         <label>Título<input name="title" maxlength="120" required placeholder="Título del material"></label>
         <label class="full-row">Contenido<textarea name="body" rows="5" maxlength="1800" placeholder="Descripción o instrucciones del material"></textarea></label>
         <label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..."></label>
