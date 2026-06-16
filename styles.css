@@ -15906,3 +15906,236 @@ body.is-dark .theme-choice-card-v167 small { color: #d9cba5; }
   .video-class-card-v173 { grid-template-columns:1fr; }
   .video-class-icon-v173 { width:2.6rem; height:2.6rem; }
 }
+
+/* Tribeca Aula v174 · foco real en videoclases, tarjetas docentes clicables y modo verano premium */
+.videoclasses-focus-v174 {
+  display: grid;
+  gap: 1.15rem;
+}
+.video-class-hero-v174 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1.15rem, 2vw, 1.65rem) !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(184,148,58,.16), transparent 34%),
+    linear-gradient(135deg, rgba(6,75,53,.10), rgba(255,255,255,.84)) !important;
+}
+.video-class-hero-v174 h2 {
+  margin: .15rem 0 .35rem;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  letter-spacing: -.045em;
+  color: var(--tribeca-green-dark, #063f2c);
+}
+.videoclass-hero-badge-v174 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 7.5rem;
+  padding: .8rem 1rem;
+  border-radius: 999px;
+  background: #064b35;
+  color: #fff;
+  font-weight: 900;
+  box-shadow: 0 18px 36px rgba(6,75,53,.18);
+}
+.videoclass-focus-composer-v174 {
+  padding: 1rem !important;
+  border-radius: 30px !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(249,246,237,.90)) !important;
+  border: 1px solid rgba(6,75,53,.13) !important;
+}
+.videoclass-composer-head-v174 {
+  display:flex;
+  align-items:center;
+  gap:1rem;
+  margin-bottom:1rem;
+  padding:.9rem;
+  border-radius:24px;
+  background:linear-gradient(135deg, rgba(6,75,53,.08), rgba(184,148,58,.12));
+}
+.videoclass-composer-head-v174 h3 { margin:.1rem 0 .25rem; font-size: clamp(1.25rem,2vw,1.7rem); }
+.videoclass-composer-head-v174 p { margin:0; color:var(--muted,#665f52); line-height:1.5; }
+.videoclass-form-row-v174 {
+  display:grid;
+  grid-template-columns: minmax(0,1fr) minmax(220px,.6fr);
+  gap: .9rem;
+  align-items:end;
+}
+.videoclass-form-tip-v174 {
+  display:flex;
+  flex-direction:column;
+  gap:.2rem;
+  padding:.8rem .95rem;
+  border-radius:18px;
+  background:rgba(6,75,53,.06);
+  border:1px solid rgba(6,75,53,.10);
+  color:var(--muted,#665f52);
+  font-size:.92rem;
+}
+.videoclass-save-bar-v174 {
+  display:flex;
+  align-items:center;
+  gap:1rem;
+  justify-content:space-between;
+  margin-top:.7rem;
+  padding:.75rem;
+  border-radius:22px;
+  background:rgba(255,255,255,.68);
+  border:1px solid rgba(6,75,53,.10);
+}
+.videoclass-save-bar-v174 span { color:var(--muted,#665f52); font-weight:700; font-size:.9rem; }
+.videoclass-list-panel-v174 {
+  border-radius:30px !important;
+  padding:1rem !important;
+}
+.video-class-grid-v174 { margin-top:.7rem; }
+.videoclass-history-v174 { border-radius:26px !important; }
+.video-class-card-v173 {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.video-class-card-v173:hover {
+  transform: translateY(-2px);
+  border-color: rgba(6,75,53,.22) !important;
+  box-shadow: 0 22px 48px rgba(22,31,24,.10) !important;
+}
+.profile-hero-v174 {
+  display:flex;
+  justify-content:space-between;
+  gap:1rem;
+  align-items:center;
+}
+.profile-quick-actions-v174 {
+  display:flex;
+  gap:.65rem;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.profile-kpi-grid-v174 {
+  align-items:stretch;
+}
+.profile-kpi-grid-v174 .profile-kpi-card-v174 {
+  appearance:none;
+  text-align:left;
+  cursor:pointer;
+  font:inherit;
+  color:inherit;
+  padding:1.15rem;
+  border-radius:24px;
+  border:1px solid rgba(6,75,53,.13);
+  background:rgba(255,255,255,.76);
+  box-shadow:0 16px 34px rgba(28,33,24,.06);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
+}
+.profile-kpi-grid-v174 .profile-kpi-card-v174:hover,
+.profile-kpi-grid-v174 .profile-kpi-card-v174:focus-visible {
+  transform: translateY(-2px);
+  border-color:rgba(6,75,53,.28);
+  box-shadow:0 22px 46px rgba(28,33,24,.10);
+  outline:none;
+}
+.profile-kpi-grid-v174 .profile-kpi-card-v174.is-active {
+  border-color:#064b35;
+  background:linear-gradient(135deg, rgba(6,75,53,.10), rgba(184,148,58,.10));
+}
+.profile-kpi-grid-v174 .profile-kpi-card-v174.is-warn {
+  border-color:#d6b15c;
+  background:#fff8e6;
+}
+.profile-kpi-grid-v174 .profile-kpi-card-v174 small { display:block;text-transform:uppercase;letter-spacing:.07em;font-size:.72rem;font-weight:900;color:#746b59; }
+.profile-kpi-grid-v174 .profile-kpi-card-v174 strong { display:block;margin:.25rem 0;font-size:clamp(1.6rem,3vw,2.35rem);line-height:1;color:#0b3d22; }
+.profile-kpi-grid-v174 .profile-kpi-card-v174 span { color:#665f52;font-weight:700;font-size:.9rem; }
+.profile-toolbar-v174 {
+  display:flex;
+  align-items:end;
+  gap:.75rem;
+  flex-wrap:wrap;
+}
+.profile-toolbar-v174 label { flex:1 1 360px; }
+
+.is-summer-mode {
+  --tribeca-green:#078c95;
+  --tribeca-green-dark:#065f6c;
+  --tribeca-gold:#f4b64f;
+  --surface:#fff8e9;
+  --surface-soft:#e9fbf8;
+  --surface-strong:#d7f7f3;
+  --text:#123633;
+  --muted:#55736d;
+  --border:rgba(7,140,149,.24);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255,193,87,.34), transparent 32%),
+    radial-gradient(circle at 92% 10%, rgba(31,194,202,.30), transparent 30%),
+    linear-gradient(180deg, #eafeff 0%, #fff6df 48%, #f8fff8 100%) !important;
+}
+.is-summer-mode .teacher-welcome-panel,
+.is-summer-mode .hero-card,
+.is-summer-mode .focus-hero-card {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255,193,87,.32), transparent 30%),
+    radial-gradient(circle at 88% 10%, rgba(16,165,173,.18), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,.83), rgba(227,250,246,.78)) !important;
+}
+.is-summer-mode .teacher-welcome-copy h2::after,
+.is-summer-mode .hero-main h1::after {
+  content:'  🥥 🌺 🌊';
+  letter-spacing:.08em;
+  filter: drop-shadow(0 6px 12px rgba(7,140,149,.16));
+}
+.is-summer-mode .summer-hero-icons { display:none !important; }
+.is-summer-mode .main-nav,
+.is-summer-mode .teacher-season-switch-card {
+  background: rgba(255,255,255,.70) !important;
+  border-color: rgba(7,140,149,.24) !important;
+}
+.is-summer-mode .topbar,
+.is-summer-mode .mobile-status-bar,
+.is-summer-mode .app-header {
+  background: linear-gradient(120deg, #078c95 0%, #10aeb6 46%, #f4b64f 100%) !important;
+}
+.is-summer-mode .main-nav .nav-btn.is-active,
+.is-summer-mode .primary-btn,
+.is-summer-mode button.primary-btn {
+  background: linear-gradient(135deg, #066b73, #0aa4aa) !important;
+  color:#fff !important;
+}
+.is-summer-mode .teacher-dashboard .t16-tool-card,
+.is-summer-mode .video-class-card-v173,
+.is-summer-mode .announcement-card,
+.is-summer-mode .profile-kpi-card-v174 {
+  background: linear-gradient(135deg, rgba(255,255,255,.90), rgba(236,252,248,.82)) !important;
+  border-color: rgba(7,140,149,.22) !important;
+}
+.is-summer-mode .teacher-season-switch-card strong::before { content:'🌊 '; }
+.is-summer-mode .teacher-season-switch-card p { color:#3d6e68 !important; }
+
+.is-dark .videoclass-focus-composer-v174,
+.is-dark .videoclass-list-panel-v174,
+.is-dark .profile-kpi-card-v174,
+.is-dark .profile-toolbar-v174 {
+  background: rgba(15,17,13,.92) !important;
+  border-color: rgba(225,199,125,.20) !important;
+}
+.is-dark .videoclass-composer-head-v174,
+.is-dark .videoclass-form-tip-v174,
+.is-dark .videoclass-save-bar-v174,
+.is-dark .profile-kpi-card-v174.is-active {
+  background: linear-gradient(135deg, rgba(225,199,125,.12), rgba(6,75,53,.18)) !important;
+}
+.is-dark .profile-kpi-card-v174 small,
+.is-dark .profile-kpi-card-v174 span,
+.is-dark .videoclass-save-bar-v174 span { color: rgba(248,241,220,.72) !important; }
+.is-dark .profile-kpi-card-v174 strong { color:#f1d486 !important; }
+
+@media (max-width: 780px){
+  .video-class-hero-v174,
+  .profile-hero-v174 { flex-direction:column; align-items:flex-start; }
+  .videoclass-hero-badge-v174 { min-width:0; }
+  .videoclass-form-row-v174 { grid-template-columns: 1fr; }
+  .videoclass-save-bar-v174 { flex-direction:column; align-items:stretch; }
+  .profile-quick-actions-v174 { width:100%; justify-content:stretch; }
+  .profile-quick-actions-v174 > * { flex: 1 1 140px; }
+}

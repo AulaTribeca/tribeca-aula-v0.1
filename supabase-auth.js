@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 173 · anuncios, videoclases, programación y modo verano.
+/* Tribeca Aula · Versión 174 · videoclases foco, filtros docentes, verano premium y push alumnado.
    Base: notificaciones push v164 funcionales, alumnado sin depuración visible. */
 (() => {
   'use strict';
@@ -479,15 +479,17 @@
     refreshProfileNotificationsPanel();
   }
 
-  async function refreshTribecaPushSubscriptionIfEnabled(){
-    if(!tribecaPushEnabled()) return;
+  async function refreshTribecaPushSubscriptionIfEnabled(options={}){
+    const force = !!options.force;
+    if(!force && !tribecaPushEnabled()) return;
     if(!tribecaPushSupported() || Notification.permission !== 'granted') return;
     try{
       const reg = await tribecaServiceWorkerReady();
       const subscription = await reg.pushManager.getSubscription();
       if(subscription){
-        await tribecaPushInvoke({ action:'subscribe', deviceId:tribecaDeviceId(), subscription:subscription.toJSON(), preferences:tribecaNotificationPrefs(), userAgent:navigator.userAgent || '' });
+        await tribecaPushInvoke({ action:'subscribe', deviceId:tribecaDeviceId(), subscription:subscription.toJSON(), preferences:tribecaAllAppNotificationPrefs(), userAgent:navigator.userAgent || '' });
         tribecaSetPushEnabled(true);
+        if(State.profile?.id){ try{ const patch={notification_preferences:tribecaAllAppNotificationPrefs()}; await maybe(table('profiles').update(patch).eq('id', State.profile.id)); Object.assign(State.profile, patch); }catch(_prefError){} }
       }
     } catch(error){
       console.warn('[Tribeca Aula] No se pudo sincronizar la suscripción push:', error);
@@ -497,11 +499,11 @@
   async function tribecaAutoRegisterPushIfPermissionGranted(){
     if(tribecaAutoPushRegistering) return;
     if(!State.profile || !tribecaPushSupported() || Notification.permission !== 'granted') return;
-    if(tribecaPushEnabled()) { await refreshTribecaPushSubscriptionIfEnabled(); return; }
     tribecaAutoPushRegistering = true;
     try{
-      await enableTribecaPushNotifications({ silent:true });
-      console.info('[Tribeca Aula] Dispositivo registrado automáticamente para push tras permiso ya concedido.');
+      if(tribecaPushEnabled()) await refreshTribecaPushSubscriptionIfEnabled({ force:true });
+      else await enableTribecaPushNotifications({ silent:true });
+      console.info('[Tribeca Aula] Dispositivo registrado para push tras permiso concedido.');
     }catch(error){
       if(roleTeacher()) console.warn('[Tribeca Aula] No se pudo registrar automáticamente push:', error?.message || error);
     }finally{
@@ -2124,10 +2126,24 @@
     return `<div class="video-class-targets-v173"><p class="meta">Puedes hacerla visible para todo el alumnado o limitarla a clases concretas.</p><div class="calendar-class-grid-v163">${classes.map(c=>`<label><input type="checkbox" name="targetClassIds" value="${safe(c.id)}" ${selected.has(String(c.id))?'checked':''}><span><strong>${safe(classroomLabel(c))}</strong><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></span></label>`).join('')}</div></div>`;
   }
   function videoclassesContent(){
-    const rows=visibleVideoClasses();
     const teacher=roleTeacher();
-    const form=teacher?`<details class="teacher-option-drawer video-class-form-drawer-v173" open><summary><span>Programar videoclase</span><em>Google Meet</em></summary><form class="video-class-form-v173 form-grid" method="post" action="javascript:void(0)" onsubmit="return false;"><div class="window-grid"><label>Título<input name="title" required placeholder="Ej.: Repaso de matemáticas online"></label><label>Fecha y hora<input name="startsAt" type="datetime-local" required></label></div><label>Enlace de Google Meet<input name="meetUrl" type="url" required placeholder="https://meet.google.com/..."></label><label>Descripción o documentos que se proyectarán<textarea name="description" rows="3" placeholder="Indica qué veremos, qué debe preparar el alumno/a o qué documento se proyectará."></textarea></label><label>Visibilidad<select name="scope"><option value="all">Todo el alumnado</option><option value="classes">Por clases concretas</option><option value="user">Solo para mí</option></select></label>${videoClassTargetSelector()}<button type="button" class="primary-btn" data-t173-save-video-class>Guardar videoclase</button><p class="meta">La videoclase aparece en la pantalla principal del alumnado destinatario y puede enviar notificación de la app.</p></form></details>`:'';
-    return `<section class="videoclasses-panel-v173"><div class="window-panel video-class-hero-v173"><p class="eyebrow">Google Meet</p><h3>Videoclases</h3><p>${teacher?'Programa enlaces de Meet para cuando una alumna o alumno no pueda asistir presencialmente.':'Aquí verás tus videoclases programadas con enlace directo.'}</p></div>${form}<div class="video-class-grid-v173">${rows.length?rows.map(v=>videoClassCard(v, teacher)).join(''):'<div class="empty-state">No hay videoclases programadas.</div>'}</div></section>`;
+    const rows=visibleVideoClasses();
+    const next=rows.filter(v=>{ const t=Date.parse(videoClassStartsAt(v)); return !Number.isFinite(t) || t >= Date.now()-30*60*1000; });
+    const past=rows.filter(v=>{ const t=Date.parse(videoClassStartsAt(v)); return Number.isFinite(t) && t < Date.now()-30*60*1000; });
+    const form=teacher?`<section class="videoclass-focus-composer-v174 window-panel">
+      <div class="videoclass-composer-head-v174"><span class="teacher-legacy-icon">🎥</span><div><p class="eyebrow">Google Meet</p><h3>Programar videoclase</h3><p>Enlace claro para clases online, recuperación puntual o proyección de documentos cuando un alumno no puede venir presencialmente.</p></div></div>
+      <form class="video-class-form-v173 video-class-form-v174 form-grid" method="post" action="javascript:void(0)" onsubmit="return false;">
+        <div class="videoclass-form-row-v174"><label>Título<input name="title" required placeholder="Ej.: Repaso de matemáticas online"></label><label>Fecha y hora<input name="startsAt" type="datetime-local" required></label></div>
+        <label>Enlace de Google Meet<input name="meetUrl" type="url" required placeholder="https://meet.google.com/..."></label>
+        <label>Descripción o documentos que se proyectarán<textarea name="description" rows="4" placeholder="Indica qué veremos, qué debe preparar el alumno/a o qué documento se proyectará."></textarea></label>
+        <div class="videoclass-form-row-v174"><label>Visibilidad<select name="scope"><option value="all">Todo el alumnado</option><option value="classes">Por clases concretas</option><option value="user">Solo para mí</option></select></label><div class="videoclass-form-tip-v174"><strong>Consejo</strong><span>Si eliges clases concretas, marca abajo una o varias. El alumnado destinatario verá la videoclase en su pantalla principal.</span></div></div>
+        ${videoClassTargetSelector()}
+        <div class="videoclass-save-bar-v174"><button type="button" class="primary-btn" data-t173-save-video-class>Guardar videoclase</button><span>Se enviará notificación de la app al alumnado destinatario si tiene el dispositivo registrado.</span></div>
+      </form>
+    </section>`:'';
+    const upcomingHtml=next.length?next.map(v=>videoClassCard(v, teacher)).join(''):'<div class="empty-state premium-empty">No hay videoclases próximas.</div>';
+    const pastHtml=past.length?`<details class="teacher-option-drawer videoclass-history-v174"><summary><span>Videoclases anteriores</span><em>${past.length}</em></summary><div class="video-class-grid-v173">${past.map(v=>videoClassCard(v, teacher)).join('')}</div></details>`:'';
+    return `<section class="videoclasses-panel-v173 videoclasses-focus-v174"><div class="window-panel video-class-hero-v173 video-class-hero-v174"><div><p class="eyebrow">Videoclases</p><h2>${teacher?'Videoclases con Google Meet':'Tus videoclases'}</h2><p>${teacher?'Programa, revisa y abre enlaces de Meet desde un panel limpio y rápido, con avisos visibles para el alumnado.':'Aquí verás las videoclases que la profesora haya programado para ti.'}</p></div><span class="videoclass-hero-badge-v174">${next.length} próxima${next.length===1?'':'s'}</span></div>${form}<section class="window-panel videoclass-list-panel-v174"><div class="section-heading"><h3>Próximas videoclases</h3><span>${next.length}</span></div><div class="video-class-grid-v173 video-class-grid-v174">${upcomingHtml}</div></section>${pastHtml}</section>`;
   }
   async function saveVideoClass(form){
     if(!roleTeacher()) return;
@@ -4997,20 +5013,33 @@ render();
 
   function passwordRequestsContent(){ const rows=State.data.passwordRequests||[]; return `<section class="window-panel"><h3>Solicitudes de recuperación de contraseña</h3>${rows.length?rows.map(r=>`<article class="list-item"><strong>${safe(r.username||r.display_name)}</strong><p>${safe(r.display_name||'')} · ${safe(r.status||'pending')}</p><small>${fmtDT(r.created_at)}</small><button data-t16-pass-done="${safe(r.id)}">Marcar como atendida</button></article>`).join(''):'<div class="empty-state">No hay solicitudes pendientes.</div>'}</section>`; }
 
+  function profileFilterLabel(filter='all'){
+    return ({all:'Todo el alumnado', scheduled:'Con horario', paused:'Pausas', support:'Apoyos', focus:'Modo concentración'})[filter] || 'Todo el alumnado';
+  }
+  function studentMatchesProfileFilter(s, filter='all'){
+    if(filter==='scheduled') return (State.data.schedules||[]).some(x=>String(x.user_id)===String(s.id) && x.active!==false);
+    if(filter==='paused') return !!pauseStatusText(s.id);
+    if(filter==='support') return !!supportSummary(s).flags.length;
+    if(filter==='focus') return !!focusModeEnabledForProfile(s);
+    return true;
+  }
   function studentProfilesContent(){
     const students = State.data.students || [];
-    const selected = students.find(s => String(s.id) === String(State.selectedStudentId)) || students[0] || null;
-    if(!State.selectedStudentId && selected) State.selectedStudentId = selected.id;
+    const currentFilter = State.profileKpiFilter || 'all';
+    const filteredStudents = students.filter(s=>studentMatchesProfileFilter(s, currentFilter));
+    const selectedPool = filteredStudents.length ? filteredStudents : students;
+    const selected = selectedPool.find(s => String(s.id) === String(State.selectedStudentId)) || selectedPool[0] || null;
+    if(selected && !State.selectedStudentId) State.selectedStudentId = selected.id;
     const active = students.filter(s=>!pauseStatusText(s.id)).length;
     const paused = students.length - active;
     const focusCount = students.filter(s=>focusModeEnabledForProfile(s)).length;
     const withSchedule = students.filter(s=>(State.data.schedules||[]).some(x=>String(x.user_id)===String(s.id) && x.active!==false)).length;
     const supportCount = students.filter(s=>supportSummary(s).flags.length).length;
     const selectedFamily = selected ? String(selected.family_name || selected.family_group_id || '').trim() : '';
-    const list = groups(students).map(g => `<details class="profile-group-v147" open><summary><span>${safe(g.label)}</span><em>${g.items.length}</em></summary><div class="profile-card-grid-v147">${g.items.map(s => {
+    const kpi=(filter,title,value,caption,tone='')=>`<button type="button" class="profile-kpi-card-v174 ${tone} ${currentFilter===filter?'is-active':''}" data-profile-kpi-filter="${safe(filter)}"><small>${safe(title)}</small><strong>${safe(value)}</strong><span>${safe(caption)}</span></button>`;
+    const list = groups(filteredStudents).map(g => `<details class="profile-group-v147" open><summary><span>${safe(g.label)}</span><em>${g.items.length}</em></summary><div class="profile-card-grid-v147">${g.items.map(s => {
       const pause=pauseStatusText(s.id);
       const sup=supportSummary(s);
-      const photo=studentPhotoUrl(s);
       const selectedClass=String(selected?.id||'')===String(s.id)?'is-selected':'';
       const focus=focusModeEnabledForProfile(s);
       const family=String(s.family_name || s.family_group_id || '').trim();
@@ -5021,18 +5050,18 @@ render();
         <span class="profile-card-badges-v147">${pause?`<em class="danger">Pausa</em>`:''}${focus?`<em>Concentración</em>`:''}${sup.flags.length?`<em>${safe(sup.flags[0])}</em>`:''}</span>
       </button>`;
     }).join('')}</div></details>`).join('');
-    return `<section class="teacher-profiles-v147">
-      <header class="finance-hero-clean-v146 profile-hero-v147 window-panel"><div><p class="eyebrow">Seguimiento pedagógico</p><h2>Perfiles del alumnado</h2><p>Fichas completas, horarios, apoyos, familia y datos profesionales en una vista limpia y fácil de revisar.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button></header>
-      <section class="profile-kpi-grid-v147">
-        <article><small>Total</small><strong>${students.length}</strong><span>perfiles activos</span></article>
-        <article><small>Con horario</small><strong>${withSchedule}</strong><span>alumnos con clases registradas</span></article>
-        <article class="${paused?'is-warn':''}"><small>Pausas</small><strong>${paused}</strong><span>perfiles temporalmente pausados</span></article>
-        <article><small>Apoyos</small><strong>${supportCount}</strong><span>con NEAE, NEE o notas relevantes</span></article>
-        <article><small>Modo concentración</small><strong>${focusCount}</strong><span>vista simplificada activa</span></article>
+    return `<section class="teacher-profiles-v147 teacher-profiles-v174">
+      <header class="finance-hero-clean-v146 profile-hero-v147 profile-hero-v174 window-panel"><div><p class="eyebrow">Seguimiento pedagógico</p><h2>Perfiles del alumnado</h2><p>Fichas completas, horarios, apoyos, familia y datos profesionales en una vista limpia y fácil de revisar.</p></div><div class="profile-quick-actions-v174"><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="payments">Ir a pagos</button></div></header>
+      <section class="profile-kpi-grid-v147 profile-kpi-grid-v174">
+        ${kpi('all','Total',students.length,'perfiles activos')}
+        ${kpi('scheduled','Con horario',withSchedule,'alumnos con clases registradas')}
+        ${kpi('paused','Pausas',paused,'perfiles temporalmente pausados',paused?'is-warn':'')}
+        ${kpi('support','Apoyos',supportCount,'con NEAE, NEE o notas relevantes')}
+        ${kpi('focus','Modo concentración',focusCount,'vista simplificada activa')}
       </section>
-      <section class="window-panel profile-toolbar-v147"><label>Buscar alumnado<input class="t16-search" type="search" placeholder="Filtrar por nombre, usuario, curso o familia..." data-t16-student-search></label>${selectedFamily?`<span class="profile-family-pill-v147">${safe(selectedFamily)}</span>`:''}</section>
+      <section class="window-panel profile-toolbar-v147 profile-toolbar-v174"><label>Buscar alumnado<input class="t16-search" type="search" placeholder="Filtrar por nombre, usuario, curso o familia..." data-t16-student-search></label><span class="profile-family-pill-v147">Filtro: ${safe(profileFilterLabel(currentFilter))} · ${filteredStudents.length}/${students.length}</span>${selectedFamily?`<span class="profile-family-pill-v147">${safe(selectedFamily)}</span>`:''}</section>
       <div class="profile-layout-v147">
-        <section class="window-panel profile-list-v147"><div class="section-heading"><h3>Alumnado</h3><span>${students.length}</span></div>${list || '<div class="empty-state">No hay alumnado cargado.</div>'}</section>
+        <section class="window-panel profile-list-v147"><div class="section-heading"><h3>Alumnado</h3><span>${filteredStudents.length}</span></div>${list || '<div class="empty-state">No hay alumnado en esta categoría.</div>'}</section>
         <section class="window-panel profile-editor-v147"><div class="section-heading"><h3>${selected?`Ficha de ${safe(displayName(selected))}`:'Ficha del alumnado'}</h3><span>${selected?safe(academicLine(selected)):''}</span></div>${selected ? studentEditForm(selected) : '<div class="empty-state">Selecciona un alumno.</div>'}</section>
       </div>
     </section>`;
@@ -7392,6 +7421,7 @@ function classroomCard(c,i=0){
       const eventBtn=ev.target.closest?.('[data-t16-event]'); if(eventBtn){ State.selectedEventId=eventBtn.dataset.t16Event; const e=relevantEvents().find(x=>x.id===State.selectedEventId); if(e){State.selectedDate=e.date;State.calendarMonth=startMonth(parseIso(e.date));} refreshCalendarAfterNavigation(); return; }
       const hideE=ev.target.closest?.('[data-t16-hide-event]'); if(hideE){ await maybe(table('calendar_events').update({hidden:true}).eq('id',hideE.dataset.t16HideEvent)); await loadData(true); rerender(); return; }
       const delE=ev.target.closest?.('[data-t16-delete-event]'); if(delE){ if(confirm('¿Eliminar esta fecha?')){ await maybe(table('calendar_events').delete().eq('id',delE.dataset.t16DeleteEvent)); await loadData(true); rerender(); } return; }
+      const profileKpi=ev.target.closest?.('[data-profile-kpi-filter]'); if(profileKpi){ ev.preventDefault(); ev.stopPropagation(); State.profileKpiFilter=profileKpi.dataset.profileKpiFilter || 'all'; State.selectedStudentId=null; rerender(); return; }
       const st=ev.target.closest?.('[data-t16-select-student]'); if(st){ State.selectedStudentId=st.dataset.t16SelectStudent; rerender(); return; }
       const attToggle=ev.target.closest?.('[data-t22-attendance-toggle]'); if(attToggle && !ev.target.closest('button')){ await toggleAttendance(attToggle); return; }
       const attBtn=ev.target.closest?.('[data-t16-attendance]'); if(attBtn){ await saveAttendance(attBtn); return; }
@@ -7902,7 +7932,7 @@ function classroomCard(c,i=0){
       applySeasonalLogos(document);
       handleInitialOpenRequest();
       deferTribecaBackgroundTask(() => tribecaAutoRegisterPushIfPermissionGranted(), 900);
-      deferTribecaBackgroundTask(() => refreshTribecaPushSubscriptionIfEnabled(), 1600);
+      deferTribecaBackgroundTask(() => refreshTribecaPushSubscriptionIfEnabled({ force: (typeof Notification !== 'undefined' && Notification.permission === 'granted') }), 1600);
       deferTribecaBackgroundTask(() => syncTribecaAppBadge(), 1900);
     } else { showLogin(); applySeasonalLogos(document); }
     setInterval(async()=>{ if(!State.profile) return; await updatePresence(); updateBadges(); }, 45000);
