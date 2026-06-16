@@ -1545,8 +1545,9 @@
     const vw=Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
     const vh=Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
     const mobile=window.matchMedia?.('(max-width: 720px)')?.matches || vw <= 720;
+    menu.style.position='fixed';
+    menu.style.zIndex='2147483647';
     if(mobile){
-      menu.style.position='fixed';
       menu.style.left='14px';
       menu.style.right='14px';
       menu.style.top='14px';
@@ -1555,18 +1556,24 @@
       menu.style.minWidth='0';
       menu.style.maxWidth='none';
       menu.style.maxHeight='calc(100dvh - 28px)';
-      menu.style.zIndex='2147483647';
+      menu.style.setProperty('--tribeca-profile-menu-left', '14px');
+      menu.style.setProperty('--tribeca-profile-menu-top', '14px');
+      menu.style.setProperty('--tribeca-profile-menu-right', '14px');
       return;
     }
-    menu.style.position='fixed';
     menu.style.right='auto';
     menu.style.bottom='auto';
+    menu.style.minWidth='18rem';
+    menu.style.maxWidth='min(24rem, calc(100vw - 24px))';
     menu.style.maxHeight=`${Math.max(260, vh - rect.bottom - 18)}px`;
-    menu.style.zIndex='2147483647';
-    const width=Math.max(menu.offsetWidth || 0, 352);
+    const width=Math.max(menu.offsetWidth || 0, 288);
     const left=Math.min(Math.max(12, rect.right - width), vw - width - 12);
+    const top=Math.min(rect.bottom + 10, vh - 80);
     menu.style.left=`${left}px`;
-    menu.style.top=`${Math.min(rect.bottom + 10, vh - 80)}px`;
+    menu.style.top=`${top}px`;
+    menu.style.setProperty('--tribeca-profile-menu-left', `${left}px`);
+    menu.style.setProperty('--tribeca-profile-menu-top', `${top}px`);
+    menu.style.setProperty('--tribeca-profile-menu-right', 'auto');
   }
   function toggleAccountMenu(){
     const menu=ensureAccountMenuPortal();

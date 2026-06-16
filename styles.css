@@ -16195,3 +16195,40 @@ body.is-dark .video-class-empty-card-v175 small { color:rgba(248,241,220,.68); }
   .active-schedule-selector-v175 { align-items:stretch; flex-direction:column; }
   .active-schedule-selector-v175 strong { margin-right:0; }
 }
+
+
+/* Tribeca Aula v176 · desplegable de A miña conta correctamente anclado en web */
+@media (min-width: 821px) {
+  body > #profileMenu.profile-menu.tribeca-account-menu-portal:not([hidden]) {
+    position: fixed !important;
+    left: var(--tribeca-profile-menu-left, auto) !important;
+    top: var(--tribeca-profile-menu-top, 4.75rem) !important;
+    right: var(--tribeca-profile-menu-right, auto) !important;
+    bottom: auto !important;
+    width: min(24rem, calc(100vw - 24px)) !important;
+    min-width: 18rem !important;
+    max-width: 24rem !important;
+    max-height: calc(100vh - var(--tribeca-profile-menu-top, 4.75rem) - 1rem) !important;
+    overflow-y: auto !important;
+    display: grid !important;
+    gap: .35rem !important;
+    padding: .7rem !important;
+    border-radius: 1.15rem !important;
+    box-shadow: 0 1.4rem 3.5rem rgba(7, 22, 13, .26) !important;
+  }
+  body.tribeca-account-menu-open::before {
+    background: rgba(8, 18, 12, .16) !important;
+    pointer-events: auto !important;
+  }
+  body > #profileMenu.profile-menu.tribeca-account-menu-portal:not([hidden])::before {
+    content: none !important;
+  }
+  body > #profileMenu.profile-menu.tribeca-account-menu-portal:not([hidden]) button {
+    width: 100% !important;
+    min-height: 2.85rem !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    margin: 0 !important;
+    border-radius: .85rem !important;
+  }
+}
