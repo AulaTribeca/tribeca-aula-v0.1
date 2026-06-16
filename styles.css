@@ -15745,3 +15745,164 @@ body.is-dark .theme-choice-card-v167 small { color: #d9cba5; }
   .material-presentation-block iframe{ min-height: 520px !important; border-radius:16px; }
   .material-presentation-block > div:first-child{ flex-direction:column; align-items:flex-start; }
 }
+
+/* Tribeca Aula v173 · anuncios foco, videoclases, programación y modo verano */
+.is-summer-mode {
+  --tribeca-green:#0f8f95;
+  --tribeca-green-dark:#076873;
+  --tribeca-gold:#f3b74a;
+  --surface:#fffaf0;
+  --surface-soft:#fff2d9;
+  --surface-strong:#e4fbff;
+  --text:#153331;
+  --muted:#5b7974;
+  --border:#b8e1d9;
+  background:
+    radial-gradient(circle at 12% 5%, rgba(255, 183, 77, .30), transparent 30%),
+    radial-gradient(circle at 88% 6%, rgba(28, 181, 185, .22), transparent 28%),
+    linear-gradient(180deg, #f4fcfb 0%, #fff7e6 46%, #eefbf8 100%) !important;
+}
+.is-summer-mode .app-shell,
+.is-summer-mode .panel,
+.is-summer-mode .window-panel,
+.is-summer-mode .hero-card,
+.is-summer-mode .student-classroom-card,
+.is-summer-mode .subject-card,
+.is-summer-mode .teacher-welcome-panel {
+  border-color: rgba(15, 143, 149, .22) !important;
+  box-shadow: 0 18px 45px rgba(8, 114, 122, .10) !important;
+}
+.is-summer-mode .topbar,
+.is-summer-mode .mobile-status-bar,
+.is-summer-mode .app-header {
+  background: linear-gradient(135deg, #08766f, #10a5ad 55%, #f0b64b) !important;
+}
+.is-summer-mode .main-nav .nav-btn.is-active,
+.is-summer-mode .primary-btn,
+.is-summer-mode button.primary-btn,
+.is-summer-mode .publish-sticky-footer .primary-btn {
+  background: linear-gradient(135deg, #08766f, #0f8f95) !important;
+  color: #fff !important;
+}
+.summer-hero-icons { display:none; margin-left:.35rem; letter-spacing:.12rem; filter: drop-shadow(0 4px 10px rgba(15,143,149,.18)); }
+.is-summer-mode .summer-hero-icons { display:inline-flex; }
+.is-summer-mode .hero-wave { transform: rotate(-8deg); }
+.is-summer-mode .teacher-season-switch-card,
+.is-summer-mode .focus-next-step,
+.is-summer-mode .video-classes-home-v173 {
+  background: linear-gradient(135deg, rgba(15,143,149,.12), rgba(255,193,87,.18)) !important;
+}
+
+.publication-schedule-panel-v173 {
+  border-style: dashed !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(245,240,226,.75));
+}
+.schedule-publication-check-v173 {
+  display:flex !important;
+  align-items:center;
+  gap:.7rem;
+  font-weight:800;
+}
+.schedule-date-field-v173 { margin-top:.8rem; }
+.schedule-date-field-v173 input { max-width: 320px; }
+
+.announcements-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(249,246,237,.95));
+}
+.announcements-focus-head-v173 {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:1rem;
+  padding:1rem;
+  margin-bottom:1rem;
+  border-radius:24px;
+  background: linear-gradient(135deg, rgba(6,75,53,.08), rgba(184,148,58,.10));
+  border:1px solid rgba(6,75,53,.12);
+}
+.announcements-head-actions-v173 { display:flex; gap:.6rem; flex-wrap:wrap; justify-content:flex-end; }
+.announcement-card {
+  border-radius:24px !important;
+  border:1px solid rgba(6,75,53,.13) !important;
+  background: rgba(255,255,255,.88) !important;
+  box-shadow: 0 18px 42px rgba(28,33,24,.07) !important;
+  padding:1.15rem !important;
+}
+.announcement-card h3 { font-size: clamp(1.15rem, 2vw, 1.55rem); }
+.announcement-card p { line-height:1.65; }
+.new-announcement-tag {
+  display:inline-flex;
+  align-items:center;
+  padding:.18rem .55rem;
+  border-radius:999px;
+  background:#064b35;
+  color:#fff;
+  font-weight:800;
+  margin-right:.25rem;
+}
+
+.video-classes-home-v173,
+.videoclasses-panel-v173 .window-panel,
+.video-class-card-v173 {
+  border-radius:28px;
+}
+.video-classes-home-v173 {
+  display:grid;
+  gap:1rem;
+  margin:1rem 0;
+}
+.video-class-grid-v173 {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap:1rem;
+}
+.video-class-card-v173 {
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:1rem;
+  align-items:start;
+  padding:1rem;
+  background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(246,241,228,.88));
+  border:1px solid rgba(6,75,53,.12);
+  box-shadow: 0 18px 40px rgba(22,31,24,.07);
+}
+.video-class-icon-v173 {
+  width:3rem;
+  height:3rem;
+  border-radius:1.1rem;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg,#064b35,#b8943a);
+  color:#fff;
+  font-size:1.35rem;
+  box-shadow:0 14px 26px rgba(6,75,53,.18);
+}
+.video-class-card-v173 h3 { margin:.15rem 0 .35rem; }
+.video-class-card-v173 p { margin:.25rem 0 .45rem; line-height:1.55; }
+.video-class-hero-v173 {
+  background: linear-gradient(135deg, rgba(6,75,53,.10), rgba(184,148,58,.10));
+}
+.video-class-form-v173 {
+  margin-top:1rem;
+}
+.video-class-targets-v173 { margin-top:.5rem; }
+
+.is-dark .announcements-panel,
+.is-dark .announcement-card,
+.is-dark .video-class-card-v173,
+.is-dark .publication-schedule-panel-v173 {
+  background: rgba(15, 17, 13, .92) !important;
+  border-color: rgba(225, 199, 125, .20) !important;
+}
+.is-dark .announcements-focus-head-v173,
+.is-dark .video-class-hero-v173 {
+  background: linear-gradient(135deg, rgba(225,199,125,.13), rgba(6,75,53,.18)) !important;
+}
+
+@media (max-width: 720px){
+  .announcements-focus-head-v173 { flex-direction:column; border-radius:20px; }
+  .announcements-head-actions-v173 { width:100%; justify-content:stretch; }
+  .announcements-head-actions-v173 > * { flex:1 1 160px; }
+  .video-class-card-v173 { grid-template-columns:1fr; }
+  .video-class-icon-v173 { width:2.6rem; height:2.6rem; }
+}
