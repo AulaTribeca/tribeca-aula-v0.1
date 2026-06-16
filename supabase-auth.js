@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 174 · videoclases foco, filtros docentes, verano premium y push alumnado.
+/* Tribeca Aula · Versión 175 · sin modo verano, videoclases visibles para alumnado y horarios activos por perfil.
    Base: notificaciones push v164 funcionales, alumnado sin depuración visible. */
 (() => {
   'use strict';
@@ -114,43 +114,27 @@
     prefillPublicationKind: null,
     teacherTasksOpen: false,
     pendingTeacherTaskEdit: null,
-    scheduleSeason: localStorage.getItem('tribeca-schedule-season-v144') || 'school',
+    scheduleSeason: 'school',
     historyNavigating: false,
     suppressHistoryPush: false
   };
   window.TribecaAuth = State;
   const TRIBECA_TEACHER_PROFILE_IMAGE = 'assets/patricia-trillo-perfil.webp';
   const TRIBECA_LOGO_DEFAULT = 'assets/logo-tribeca.png';
-  const TRIBECA_SEASONAL_LOGOS = {
-    default: TRIBECA_LOGO_DEFAULT,
-    summer: 'assets/logo-tribeca-verano.png',
-    halloween: 'assets/logo-tribeca-halloween.png',
-    christmas: 'assets/logo-tribeca-navidad.png'
-  };
-  function seasonalLogoVariant(date = new Date()){
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    if(month === 12 || (month === 1 && day <= 6)) return 'christmas';
-    if(month === 10 && (day === 30 || day === 31)) return 'halloween';
-    if((month === 6 && day >= 19) || month === 7 || month === 8) return 'summer';
-    return 'default';
-  }
-  function seasonalLogoPath(){
-    try{
-      if((State?.scheduleSeason || localStorage.getItem('tribeca-schedule-season-v144')) === 'summer') return TRIBECA_SEASONAL_LOGOS.summer || TRIBECA_LOGO_DEFAULT;
-    }catch(_error){}
-    return TRIBECA_SEASONAL_LOGOS[seasonalLogoVariant()] || TRIBECA_LOGO_DEFAULT;
-  }
+  const TRIBECA_SEASONAL_LOGOS = { default: TRIBECA_LOGO_DEFAULT };
+  function seasonalLogoVariant(_date = new Date()){ return 'default'; }
+  function seasonalLogoPath(){ return TRIBECA_LOGO_DEFAULT; }
   function applyTribecaSeasonMode(){
-    const summer = String(State?.scheduleSeason || localStorage.getItem('tribeca-schedule-season-v144') || 'school') === 'summer';
-    document.body.classList.toggle('is-summer-mode', !!summer);
-    document.documentElement.classList.toggle('is-summer-mode', !!summer);
+    document.body.classList.remove('is-summer-mode');
+    document.documentElement.classList.remove('is-summer-mode');
+    State.scheduleSeason = 'school';
+    try{ localStorage.removeItem('tribeca-schedule-season-v144'); }catch(_error){}
     const meta = document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute('content', summer ? '#0f8f95' : (document.body.classList.contains('is-dark') ? '#070805' : '#064b35'));
+    if(meta) meta.setAttribute('content', document.body.classList.contains('is-dark') ? '#070805' : '#064b35');
     applySeasonalLogos(document);
   }
   function applySeasonalLogos(root = document){
-    const desired = seasonalLogoPath();
+    const desired = TRIBECA_LOGO_DEFAULT;
     const nodes = [];
     const pushNode = node => { if(node && node.nodeType === 1 && node.tagName === 'IMG') nodes.push(node); };
     if(root?.nodeType === 1) pushNode(root);
@@ -158,10 +142,8 @@
     nodes.forEach(img => {
       const current = String(img.getAttribute('src') || '');
       if(!/assets\/logo-tribeca(?:-(?:verano|halloween|navidad))?\.png(?:[?#].*)?$/i.test(current)) return;
-      if(current !== desired){
-        img.setAttribute('src', desired);
-      }
-      img.dataset.tribecaSeasonalLogo = seasonalLogoVariant();
+      if(current !== desired) img.setAttribute('src', desired);
+      img.dataset.tribecaSeasonalLogo = 'default';
     });
   }
   function teacherProfileImageUrl(profile = State.profile) {
@@ -1959,38 +1941,39 @@
     const raw=String(row.schedule_season || row.season || row.scheduleMode || row.mode || 'school').toLowerCase();
     return raw==='summer' || raw==='verano' ? 'summer' : 'school';
   }
-  function activeScheduleSeason(){
-    const raw=String(State.scheduleSeason || localStorage.getItem('tribeca-schedule-season-v144') || 'school').toLowerCase();
-    return raw==='summer' ? 'summer' : 'school';
+  function activeScheduleSeason(){ return 'school'; }
+  function activeScheduleSeasonForStudent(studentId){
+    const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId));
+    const summerActive=rows.some(x=>scheduleRecordSeason(x)==='summer' && x.active!==false);
+    const schoolActive=rows.some(x=>scheduleRecordSeason(x)==='school' && x.active!==false);
+    return summerActive && !schoolActive ? 'summer' : 'school';
   }
-  function scheduleSeasonLabel(season=activeScheduleSeason()){
-    return season==='summer' ? 'modo verano' : 'modo curso escolar';
+  function scheduleSeasonLabel(season='school'){
+    return season==='summer' ? 'horario de verano' : 'horario de curso escolar';
   }
-  function setScheduleSeason(season='school'){
-    const next=String(season||'school')==='summer' ? 'summer' : 'school';
-    State.scheduleSeason=next;
-    try{ localStorage.setItem('tribeca-schedule-season-v144', next); }catch(_e){}
+  function setScheduleSeason(_season='school'){
+    State.scheduleSeason='school';
+    try{ localStorage.removeItem('tribeca-schedule-season-v144'); }catch(_e){}
     applyTribecaSeasonMode();
-    toast(next==='summer' ? 'Modo verano activado: paleta veraniega, logo de verano y horarios de mañana.' : 'Modo curso escolar activado.');
+    toast('El modo verano global se ha eliminado. Activa el horario de cada alumno desde su perfil.');
     renderApp();
     rerender();
   }
   window.TribecaToggleScheduleSeason=function(input,ev){
-    ev?.preventDefault?.();
-    ev?.stopPropagation?.();
-    setScheduleSeason(input?.checked ? 'summer' : 'school');
+    ev?.preventDefault?.(); ev?.stopPropagation?.();
+    if(input) input.checked=false;
+    setScheduleSeason('school');
     return false;
   };
-  function teacherScheduleModeSwitch(){
-    const summer=activeScheduleSeason()==='summer';
-    return `<article class="teacher-season-switch-card"><div><strong>${summer?'Modo verano':'Modo curso escolar'}</strong><p>${summer?'Se usan horarios de verano, logo veraniego y paleta más luminosa.':'Se usan los horarios ordinarios del curso escolar y la estética habitual.'}</p></div><label class="tribeca-switch"><input type="checkbox" ${summer?'checked':''} onchange="return window.TribecaToggleScheduleSeason(this,event)"><span></span></label></article>`;
-  }
-  function studentScheduleRows(studentId, season=activeScheduleSeason()){
+  function teacherScheduleModeSwitch(){ return ''; }
+  function studentScheduleRows(studentId, season=activeScheduleSeasonForStudent(studentId)){
     return (State.data.schedules||[])
       .filter(x=>String(x.user_id)===String(studentId) && x.active!==false && scheduleRecordSeason(x)===season)
       .sort((a,b)=>Number(a.weekday||0)-Number(b.weekday||0) || String(a.start_time||'').localeCompare(String(b.start_time||'')));
   }
   function buildStudentScheduleFromFormData(fd, prefix='schoolSchedule', season='school'){
+    const activeSeason=String(fd.get('activeScheduleSeason')||'school')==='summer' ? 'summer' : 'school';
+    const isActive=season===activeSeason;
     const weekdays=fd.getAll(`${prefix}Weekday`), starts=fd.getAll(`${prefix}Start`), ends=fd.getAll(`${prefix}End`), types=fd.getAll(`${prefix}Type`), notes=fd.getAll(`${prefix}Notes`);
     return weekdays.map((w,i)=>({
       weekday:Number(w),
@@ -1999,7 +1982,8 @@
       class_type:String(types[i]||'group').trim() || 'group',
       notes:String(notes[i]||'').trim(),
       schedule_season:season,
-      season
+      season,
+      active:isActive
     })).filter(r=>r.weekday && r.start_time && r.end_time);
   }
   function scheduleRowsEditor(rows=[], prefix='schoolSchedule'){
@@ -2065,7 +2049,7 @@
     const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state teacher-week-empty">No hay eventos previstos esta semana.</div>';
     const pending=todayTeacherTasks().length;
     const birthdayNotice=teacherBirthdayNotice(today);
-    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia <span class="summer-hero-icons" aria-hidden="true">🥥 🌺 🌊</span></h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span>${birthdayNotice}${teacherScheduleModeSwitch()}</div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><article class="teacher-tasks-summary" data-t114-open-tasks role="button" tabindex="0" aria-label="Abrir tareas pendientes"><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</article></section>`;
+    return `<section class="teacher-welcome-panel window-panel teacher-welcome-panel-v114"><div class="teacher-welcome-copy"><p class="eyebrow">Tribeca Aula</p><h2>Buenos días, Patricia </h2><p>${safe(dateText.charAt(0).toUpperCase()+dateText.slice(1))}</p><span>Semana natural: ${safe(fmtDate(start))} - ${safe(fmtDate(end))}</span>${birthdayNotice}${teacherScheduleModeSwitch()}</div><div class="teacher-week-summary"><h3>Eventos de la semana</h3>${summary}</div><article class="teacher-tasks-summary" data-t114-open-tasks role="button" tabindex="0" aria-label="Abrir tareas pendientes"><div><h3>Tareas pendientes</h3><p>${pending?`${pending} tarea${pending===1?'':'s'} para hoy`:'Sin tareas para hoy'}</p></div>${teacherTasksSummary()}</article></section>`;
   }
   function activeClassroomsQuickAccess(){
     const rows=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}) || String(a.name||'').localeCompare(String(b.name||''),'es'));
@@ -2117,8 +2101,8 @@
   }
   function videoClassesHomePanel(){
     const rows=upcomingVideoClasses(roleTeacher()?4:2);
-    if(!rows.length) return '';
-    return `<section class="video-classes-home-v173 window-panel"><div><p class="eyebrow">Videoclases</p><h2>${roleTeacher()?'Próximas videoclases':'Tus próximas videoclases'}</h2><p class="meta">Enlaces de Google Meet visibles desde la pantalla principal.</p></div><div class="video-class-grid-v173">${rows.map(v=>videoClassCard(v, roleTeacher())).join('')}</div><button type="button" class="secondary-btn" data-t16-tool="videoclasses">Ver todas</button></section>`;
+    const emptyText=roleTeacher() ? 'Todavía no tienes videoclases próximas programadas.' : 'Todavía no hay videoclases programadas para ti.';
+    return `<section class="video-classes-home-v173 video-classes-home-v175 window-panel"><div><p class="eyebrow">Videoclases</p><h2>${roleTeacher()?'Próximas videoclases':'Tus videoclases'}</h2><p class="meta">Enlaces de Google Meet disponibles desde el aula virtual.</p></div><div class="video-class-grid-v173">${rows.length?rows.map(v=>videoClassCard(v, roleTeacher())).join(''):`<article class="video-class-card-v173 video-class-empty-card-v175"><div class="video-class-icon-v173">🎥</div><div><p class="eyebrow">Google Meet</p><h3>Sin videoclases próximas</h3><p>${safe(emptyText)}</p><small>Cuando se programe una videoclase aparecerá aquí y en el apartado Videoclases.</small></div></article>`}</div><button type="button" class="secondary-btn" data-t16-tool="videoclasses">Abrir videoclases</button></section>`;
   }
   function videoClassTargetSelector(v=null){
     const classes=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>classroomLabel(a).localeCompare(classroomLabel(b),'es'));
@@ -2281,7 +2265,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
     const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span><span class="summer-hero-icons" aria-hidden="true">🥥 🌺 🌊</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}`;
   }
 
   function uiLocale(){
@@ -2317,7 +2301,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(studentFocusModeEnabled(p)) return focusStudentHome();
     const subjects=subjectList(p);
     const dateLabel = new Intl.DateTimeFormat(uiLocale(), {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
-    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span><span class="summer-hero-icons" aria-hidden="true">🥥 🌺 🌊</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
@@ -4989,7 +4973,7 @@ render();
     const month=State.billingMonth||defaultBillingMonth();
     const selected=(State.data.students||[]).find(s=>s.id===State.selectedStudentId)||(State.data.students||[])[0];
     const season=activeScheduleSeason();
-    return `<section class="teacher-documents-v144 teacher-documents-v144b teacher-documents-v145"><div class="window-panel clean-hero"><div><p class="eyebrow">Documentos rápidos</p><h2>Descargas y plantillas PDF</h2><p>Genera documentos limpios con estética Tribeca desde los datos actuales del aula. Activo: <strong>${safe(scheduleSeasonLabel(season))}</strong>.</p></div>${teacherScheduleModeSwitch()}</div><div class="document-card-grid-v144"><article class="window-panel document-card-v144"><h3>Pagos y recibís</h3><p>Recibís e históricos mensual, trimestral, anual, total, por alumno o por familia.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-month',{month:'${safe(month)}'})">Histórico mensual</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-year',{month:'${safe(month)}'})">Histórico anual</button>${selected?`<button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(selected.id)}','${safe(month)}')">Recibí alumno seleccionado</button>`:''}</div></article><article class="window-panel document-card-v144"><h3>Planificario con horas</h3><p>Descarga el planning con los horarios actuales ya cubiertos o una plantilla en blanco para cubrir a mano.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'school',blank:false})">Curso escolar cubierto</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'summer',blank:false})">Verano cubierto</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'school',blank:true})">Plantilla curso</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'summer',blank:true})">Plantilla verano</button></div></article><article class="window-panel document-card-v144"><h3>Ficha persoal do alumnado</h3><p>Formulario imprimible para familias, con datos persoais, familiares, académicos y hoja médica.</p><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('student-form')">Descargar ficha en blanco</button></article><article class="window-panel document-card-v144"><h3>Seguimiento pedagógico</h3><p>Plantilla para tutoría, objetivos, acuerdos y evolución.</p><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('pedagogical-followup')">Descargar plantilla</button></article><article class="window-panel document-card-v144 document-card-wide-v148"><h3>Instrumentos de evaluación</h3><p>Modelos propios para observar, valorar y autoevaluar sin generar datos innecesarios en la web.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('checklist')">Lista de control</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('rating-scale')">Escala de valoración</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('rubric')">Rúbrica</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('evaluation-target')">Diana de evaluación</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('self-assessment')">Autoevaluación</button></div></article></div></section>`;
+    return `<section class="teacher-documents-v144 teacher-documents-v144b teacher-documents-v145"><div class="window-panel clean-hero"><div><p class="eyebrow">Documentos rápidos</p><h2>Descargas y plantillas PDF</h2><p>Genera documentos limpios con estética Tribeca desde los datos actuales del aula.</p></div></div><div class="document-card-grid-v144"><article class="window-panel document-card-v144"><h3>Pagos y recibís</h3><p>Recibís e históricos mensual, trimestral, anual, total, por alumno o por familia.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-month',{month:'${safe(month)}'})">Histórico mensual</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-year',{month:'${safe(month)}'})">Histórico anual</button>${selected?`<button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(selected.id)}','${safe(month)}')">Recibí alumno seleccionado</button>`:''}</div></article><article class="window-panel document-card-v144"><h3>Planificario con horas</h3><p>Descarga el planning con los horarios actuales ya cubiertos o una plantilla en blanco para cubrir a mano.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'school',blank:false})">Curso escolar cubierto</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'summer',blank:false})">Verano cubierto</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'school',blank:true})">Plantilla curso</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('schedule',{season:'summer',blank:true})">Plantilla verano</button></div></article><article class="window-panel document-card-v144"><h3>Ficha persoal do alumnado</h3><p>Formulario imprimible para familias, con datos persoais, familiares, académicos y hoja médica.</p><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('student-form')">Descargar ficha en blanco</button></article><article class="window-panel document-card-v144"><h3>Seguimiento pedagógico</h3><p>Plantilla para tutoría, objetivos, acuerdos y evolución.</p><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('pedagogical-followup')">Descargar plantilla</button></article><article class="window-panel document-card-v144 document-card-wide-v148"><h3>Instrumentos de evaluación</h3><p>Modelos propios para observar, valorar y autoevaluar sin generar datos innecesarios en la web.</p><div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('checklist')">Lista de control</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('rating-scale')">Escala de valoración</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('rubric')">Rúbrica</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('evaluation-target')">Diana de evaluación</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('self-assessment')">Autoevaluación</button></div></article></div></section>`;
   }
   function tribecaPrintableShell(title='', body=''){
     const today=new Date().toLocaleDateString('es-ES');
@@ -5078,9 +5062,10 @@ render();
   function birthDateInputValue(value=''){ const raw=String(value||'').trim(); if(!raw) return ''; return raw.slice(0,10); }
 
   function studentEditForm(s){
-    const schedAll = (State.data.schedules || []).filter(x => x.user_id === s.id && x.active !== false);
+    const schedAll = (State.data.schedules || []).filter(x => x.user_id === s.id);
     const schoolSched = schedAll.filter(x=>scheduleRecordSeason(x)==='school');
     const summerSched = schedAll.filter(x=>scheduleRecordSeason(x)==='summer');
+    const activeSchedSeason = activeScheduleSeasonForStudent(s.id);
     const selectedNee = Array.isArray(s.nee_types) ? s.nee_types : [];
     const selectedNeae = Array.isArray(s.neae_types) ? s.neae_types : [];
     const selectedHealth = Array.isArray(s.health_conditions) ? s.health_conditions : [];
@@ -5116,8 +5101,8 @@ render();
       <details class="teacher-option-drawer" open><summary><span>Contacto e itinerario</span><em>Datos útiles</em></summary>
         <section class="premium-form-section"><div class="window-grid"><label>Email interno<input name="authEmail" type="email" value="${safe(s.auth_email||'')}"></label><label>Email personal<input name="personalEmail" type="email" value="${safe(s.personal_email||'')}"></label></div><label>Modalidad / itinerario<input name="track" value="${safe(s.track||'')}"></label></section>
       </details>
-      <details class="teacher-option-drawer" open><summary><span>Horarios de asistencia</span><em>${schoolSched.length} curso · ${summerSched.length} verano</em></summary>
-        <section class="premium-form-section seasonal-schedule-editor"><p class="meta">Puedes registrar horarios de curso escolar y horarios de verano por separado. Cambiar uno no modifica el otro. Usa el rellenado rápido para aplicar la misma hora a varios días sin escribirla cada vez.</p><div class="seasonal-schedule-columns"><article><h5>Curso escolar</h5><p class="meta">Horario ordinario de tarde.</p>${schoolSchedulePreset}<div class="t24-schedule-grid">${scheduleRows}</div></article><article><h5>Verano</h5><p class="meta">Horario especial de mañana.</p>${summerSchedulePreset}<div class="t24-schedule-grid">${summerScheduleRows}</div></article></div></section>
+      <details class="teacher-option-drawer" open><summary><span>Horarios de asistencia</span><em>${scheduleSeasonLabel(activeSchedSeason)} activo</em></summary>
+        <section class="premium-form-section seasonal-schedule-editor"><p class="meta">Registra los horarios de curso escolar y verano por separado. Elige cuál está activo para calcular pagos, asistencia y próximos horarios de este alumno. Esta elección no cambia la estética ni el logo del aula.</p><div class="active-schedule-selector-v175"><strong>Horario activo para este alumno</strong><label><input type="radio" name="activeScheduleSeason" value="school" ${activeSchedSeason==='school'?'checked':''}> Curso escolar</label><label><input type="radio" name="activeScheduleSeason" value="summer" ${activeSchedSeason==='summer'?'checked':''}> Verano</label></div><div class="seasonal-schedule-columns"><article class="${activeSchedSeason==='school'?'is-active-schedule-v175':''}"><h5>Curso escolar</h5><p class="meta">Horario ordinario de tarde.</p>${schoolSchedulePreset}<div class="t24-schedule-grid">${scheduleRows}</div></article><article class="${activeSchedSeason==='summer'?'is-active-schedule-v175':''}"><h5>Verano</h5><p class="meta">Horario especial de mañana.</p>${summerSchedulePreset}<div class="t24-schedule-grid">${summerScheduleRows}</div></article></div></section>
       </details>
       <details class="teacher-option-drawer"><summary><span>Perfil pedagógico profesional</span><em>Seguimiento</em></summary>
         <section class="premium-form-section"><div class="window-grid"><label>Tutor/a del centro educativo<input name="schoolTutor" value="${safe(s.school_tutor||'')}"></label><label>Motivo principal de apoyo<input name="supportReason" value="${safe(s.support_reason||'')}"></label></div><label>Objetivos pedagógicos<textarea name="learningGoals" rows="3">${safe(s.learning_goals||'')}</textarea></label><label>Observaciones de evaluación inicial<textarea name="initialAssessment" rows="3">${safe(s.initial_assessment||'')}</textarea></label><label>Indicaciones familiares o coordinación externa<textarea name="familyCoordination" rows="3">${safe(s.family_coordination||'')}</textarea></label><label>Notas sensibles o clínicas relevantes para la intervención educativa<textarea name="diagnosisNotes" rows="3">${safe(s.diagnosis_notes||'')}</textarea></label></section>
@@ -5377,7 +5362,7 @@ render();
     const status=active?`<div class="pause-active-card"><strong>Asistencia pausada</strong><p>${safe(pauseStatusText(s.id))}. El acceso del alumno al aula virtual queda bloqueado mientras dure la pausa.</p></div>`:(upcoming?`<div class="pause-active-card is-upcoming"><strong>Pausa programada</strong><p>Programada desde ${safe(fmtDate(upcoming.start_date))}${upcoming.end_date?` hasta ${safe(fmtDate(upcoming.end_date))}`:' hasta reactivación manual'}.</p></div>`:'<p class="meta">Puedes programar una pausa por fechas o dejarla abierta para activarla y desactivarla manualmente. La pausa se crea solo si marcas expresamente “Pausa activa”.</p>');
     return `<section class="student-pause-panel"><h4>Pausa temporal de asistencia y acceso</h4>${status}<form id="t50PauseForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="pauseId" value="${safe(editing.id||'')}"><input type="hidden" name="userId" value="${safe(s.id)}"><div class="window-grid"><label>Tipo de pausa<select name="mode"><option value="scheduled" ${editing.mode!=='manual'?'selected':''}>Programada por fechas</option><option value="manual" ${editing.mode==='manual'?'selected':''}>Manual, hasta reactivación</option></select></label><label class="check-line"><input type="checkbox" name="active" ${(active || (editing.id && editing.active!==false))?'checked':''}> Pausa activa</label></div><div class="window-grid"><label>Fecha de inicio<input name="startDate" type="date" value="${safe(editing.start_date||todayIso())}" required></label><label>Fecha de fin<input name="endDate" type="date" value="${safe(editing.end_date||'')}"><small>Déjala en blanco si la pausa será manual.</small></label></div><label>Motivo o nota visible para el alumno cuando intente iniciar sesión<textarea name="reason" rows="2" placeholder="Ej.: pausa de verano, viaje familiar, descanso temporal... El alumno verá este texto al intentar entrar en el aula.">${safe(editing.reason||'')}</textarea><small class="field-help">No escribas aquí nada que no quieras que el alumno vea en la pantalla de acceso pausado.</small></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar pausa</button>${active?`<button class="danger-btn" type="button" data-t50-end-pause="${safe(active.id)}">Reanudar asistencia desde hoy</button>`:''}</div></form>${pauses.length?`<details class="pause-history"><summary>Histórico de pausas (${pauses.length})</summary><table class="premium-table compact"><thead><tr><th>Inicio</th><th>Fin</th><th>Estado</th><th>Motivo visible</th></tr></thead><tbody>${pauses.map(p=>`<tr><td>${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.end_date?fmtDate(p.end_date):'Abierta'}</td><td>${pauseCoversDate(p)?'Activa':'Finalizada/programada'}</td><td>${safe(p.reason||'—')}</td></tr>`).join('')}</tbody></table></details>`:''}</section>`;
   }
-  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const season=opts.season||activeScheduleSeason(); const sched=(State.data.schedules||[]).filter(x=>x.user_id===userId && x.active!==false && (opts.allSeasons || scheduleRecordSeason(x)===season)); const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), paused:isPaused})); } return out; }
+  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const season=opts.season||activeScheduleSeasonForStudent(userId); const sched=(State.data.schedules||[]).filter(x=>x.user_id===userId && x.active!==false && (opts.allSeasons || scheduleRecordSeason(x)===season)); const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), paused:isPaused})); } return out; }
   function calculatePaymentAmount(userId,month){ const bill=(State.data.billing||[]).find(b=>b.user_id===userId)||{}; const allDays=monthScheduleDays(userId,month,{includePaused:true}); const activeDays=allDays.filter(d=>!d.paused); const att=(State.data.attendance||[]).filter(a=>a.user_id===userId && String(a.class_date||'').startsWith(month) && !pausedOnDate(userId,a.class_date)); const present=att.filter(a=>a.status==='present').length; const absent=att.filter(a=>a.status==='absent').length; const justified=att.filter(a=>a.status==='justified').length; const fixed=Number(bill.monthly_fee||0); const rate=Number(bill.class_rate||0); const individualPresent=activeDays.filter(d=>d.type==='individual' && att.some(a=>a.status==='present' && a.class_date===d.date && String(a.scheduled_start||'').slice(0,5)===d.start)).length; const totalGroupDays=allDays.filter(d=>d.type!=='individual').length; const activeGroupDays=activeDays.filter(d=>d.type!=='individual').length; const paused=allDays.filter(d=>d.paused).length; const fixedProrated=totalGroupDays>0 && activeGroupDays<totalGroupDays ? fixed*(activeGroupDays/totalGroupDays) : fixed; let amount=0, detail=''; if(bill.tariff_type==='individual'){ amount=present*rate; detail=`${present} asistencias activas × ${money(rate)}`; } else if(bill.tariff_type==='mixed'){ amount=fixedProrated+(individualPresent*rate); detail=`Cuota ${activeGroupDays<totalGroupDays?'prorrateada ':''}${money(fixedProrated)} + ${individualPresent} clases individuales × ${money(rate)}`; } else { amount=fixedProrated; detail=activeGroupDays<totalGroupDays?`Cuota fija prorrateada: ${activeGroupDays}/${totalGroupDays} clases activas`:'Cuota fija mensual'; } if(paused && amount===0) detail='Mes en pausa, sin clases facturables'; return {amount,detail,present,individualPresent,fixedGroupDays:activeGroupDays,absent,justified,paused,totalDays:allDays.length,activeDays:activeDays.length}; }
   function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); return `<strong>Total calculado: ${money(c.amount)}</strong><p>${safe(c.detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
   function paymentStudentHistory(userId){

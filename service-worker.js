@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v174 · PWA, caché ligera, push con payload cifrado y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v174';
+/* Tribeca Aula · Service worker v175 · PWA, caché ligera, push con payload cifrado y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v175';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
@@ -7,7 +7,6 @@ const TRIBECA_INSTALL_ASSETS = [
   './assets/tribeca-pwa-icon-512.png',
   './assets/favicon.png',
   './assets/favicon.ico',
-  './assets/logo-tribeca-verano.png',
   './assets/ius/presentations/ius-01-bienvenida.html',
   './assets/ius/presentations/ius-02-de-facto-de-iure.html',
   './assets/ius/presentations/ius-03-fuentes-derecho.html'

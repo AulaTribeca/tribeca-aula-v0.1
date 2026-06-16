@@ -16139,3 +16139,59 @@ body.is-dark .theme-choice-card-v167 small { color: #d9cba5; }
   .profile-quick-actions-v174 { width:100%; justify-content:stretch; }
   .profile-quick-actions-v174 > * { flex: 1 1 140px; }
 }
+
+/* Tribeca Aula v175 · sin modo verano global y videoclases siempre visibles */
+html.is-summer-mode,
+body.is-summer-mode { --tribeca-green:#064b35; --accent:#b99235; --surface:#f8f4e8; --cream:#f8f4e8; }
+.summer-hero-icons { display:none !important; }
+.teacher-season-switch-card { display:none !important; }
+.video-classes-home-v175 { display:grid; gap:1rem; border-radius:28px; padding:1.15rem; }
+.video-classes-home-v175 > div:first-child { display:flex; flex-direction:column; gap:.15rem; }
+.video-class-empty-card-v175 { opacity:.95; border-style:dashed !important; }
+.video-class-empty-card-v175 h3 { margin:.2rem 0 .35rem; }
+.video-class-empty-card-v175 small { color:var(--muted,#6d665b); }
+.active-schedule-selector-v175 {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:.7rem;
+  padding:1rem;
+  border-radius:22px;
+  background:linear-gradient(135deg, rgba(6,75,53,.08), rgba(185,146,53,.10));
+  border:1px solid rgba(6,75,53,.16);
+  margin:.75rem 0 1rem;
+}
+.active-schedule-selector-v175 strong { margin-right:auto; color:var(--tribeca-green,#064b35); }
+.active-schedule-selector-v175 label {
+  display:inline-flex;
+  align-items:center;
+  gap:.45rem;
+  padding:.62rem .85rem;
+  border-radius:999px;
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(6,75,53,.16);
+  font-weight:800;
+  cursor:pointer;
+}
+.active-schedule-selector-v175 input { accent-color:var(--tribeca-green,#064b35); }
+.seasonal-schedule-columns article.is-active-schedule-v175 {
+  outline:2px solid rgba(6,75,53,.32);
+  box-shadow:0 16px 42px rgba(6,75,53,.10);
+}
+.seasonal-schedule-columns article.is-active-schedule-v175 h5::after {
+  content:' · activo';
+  color:var(--tribeca-green,#064b35);
+  font-weight:900;
+}
+body.is-dark .active-schedule-selector-v175 {
+  background:linear-gradient(135deg, rgba(248,241,220,.08), rgba(185,146,53,.12));
+  border-color:rgba(248,241,220,.16);
+}
+body.is-dark .active-schedule-selector-v175 strong { color:rgba(248,241,220,.94); }
+body.is-dark .active-schedule-selector-v175 label { background:rgba(255,255,255,.08); border-color:rgba(248,241,220,.16); }
+body.is-dark .video-class-empty-card-v175 small { color:rgba(248,241,220,.68); }
+@media (max-width:760px){
+  .video-classes-home-v175 { border-radius:24px; padding:1rem; }
+  .active-schedule-selector-v175 { align-items:stretch; flex-direction:column; }
+  .active-schedule-selector-v175 strong { margin-right:0; }
+}
