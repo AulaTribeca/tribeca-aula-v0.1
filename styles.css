@@ -16232,3 +16232,43 @@ body.is-dark .video-class-empty-card-v175 small { color:rgba(248,241,220,.68); }
     border-radius: .85rem !important;
   }
 }
+
+
+/* Tribeca Aula v177 · visor de publicaciones embebidas más ancho en escritorio */
+@media (min-width: 1024px) {
+  body.is-standalone-page .page-shell,
+  body.is-standalone-page .t36-standalone-tool,
+  body.is-standalone-page .t36-standalone-tool > .window-panel {
+    width: min(96vw, 1480px);
+    max-width: min(96vw, 1480px);
+  }
+
+  .material-embed-block.material-presentation-block,
+  .material-embed-block.material-embed-block-v98,
+  .material-embed-block.material-embed-block-v95,
+  .material-embed-block.material-video-block,
+  .material-embed-block.schema-activity-shell,
+  .material-embed-block.native-exam-shell,
+  .material-embed-block.exam-preview-shell {
+    width: 100%;
+  }
+
+  .material-presentation-block iframe,
+  .material-embed-block-v98 iframe,
+  .material-embed-block-v95 iframe,
+  .material-video-block iframe,
+  .schema-activity-shell iframe,
+  .native-exam-shell iframe,
+  .exam-preview-shell iframe {
+    min-height: clamp(560px, 74vh, 980px) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body.is-standalone-page .page-shell,
+  body.is-standalone-page .t36-standalone-tool,
+  body.is-standalone-page .t36-standalone-tool > .window-panel {
+    width: min(calc(100% - 1rem), 960px);
+    max-width: min(calc(100% - 1rem), 960px);
+  }
+}
