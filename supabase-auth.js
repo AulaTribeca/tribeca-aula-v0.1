@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 175 · sin modo verano, videoclases visibles para alumnado y horarios activos por perfil.
+/* Tribeca Aula · Versión 178 · pausas de verano 2026 y excepción 29 de junio.
    Base: notificaciones push v164 funcionales, alumnado sin depuración visible. */
 (() => {
   'use strict';
@@ -981,7 +981,7 @@
     ['2026-09-09','Inicio de actividades lectivas 2026/27','school-proposal','Fecha propuesta de inicio del curso 2026/27.'],
     ['2027-06-21','Fin de actividades lectivas 2026/27','school-proposal','Fecha propuesta de finalización del curso 2026/27.'],
     ['2026-01-01','Año Nuevo','national','Tribeca Academia no abre este día.'],['2026-01-06','Epifanía del Señor, Reyes','national','Tribeca Academia no abre este día.'],['2026-03-19','San José','galicia','Tribeca Academia no abre este día.'],['2026-04-02','Jueves Santo','galicia','Tribeca Academia no abre este día.'],['2026-04-03','Viernes Santo','national','Tribeca Academia no abre este día.'],['2026-05-01','Fiesta del Trabajo','national','Tribeca Academia no abre este día.'],['2026-06-24','San Juan','galicia','Tribeca Academia no abre este día.'],['2026-07-25','Día Nacional de Galicia','galicia','Tribeca Academia no abre este día.'],['2026-08-15','Asunción de la Virgen','national','Tribeca Academia no abre este día.'],['2026-10-12','Fiesta Nacional de España','national','Tribeca Academia no abre este día.'],['2026-12-08','Inmaculada Concepción','national','Tribeca Academia no abre este día.'],['2026-12-25','Natividad del Señor','national','Tribeca Academia no abre este día.'],
-    ['2026-06-29','San Pedro, Corcubión','local','Tribeca Academia no abre este día.'],['2026-07-16','Fiesta del Carmen, Corcubión','local','Tribeca Academia no abre este día.'],
+    ['2026-06-29','San Pedro, Corcubión · hay clases de verano','local','Aunque es festivo local en Corcubión, Tribeca Academia mantiene las clases de verano programadas ese día.'],['2026-07-16','Fiesta del Carmen, Corcubión','local','Tribeca Academia no abre este día.'],
     ['2026-04-06','Lunes de Pascua, Cee','local-cee','Festivo local del centro educativo.'],['2026-06-16','San Adrián, Cee','local-cee','Festivo local del centro educativo.'],['2026-09-08','Fiesta local de Fisterra','local-fisterra','Festivo local del centro educativo.'],
     ['2025-10-31','Día de la Enseñanza','school','Día no lectivo.'],['2025-11-03','Día no lectivo','school','Día no lectivo.'],
     ['2025-12-22','Vacaciones de Navidad, inicio','school','Período no lectivo.'],['2026-01-07','Vacaciones de Navidad, fin','school','Período no lectivo.'],
@@ -5353,11 +5353,12 @@ render();
     const days=monthScheduleDays(s.id,month,{includePaused:true});
     const calc=calculatePaymentAmount(s.id,month);
     const grouped=days.reduce((map,d)=>{ const k=String(d.date).slice(0,7); if(!map[k]) map[k]=[]; map[k].push(d); return map; },{});
-    const dayCards=days.length?days.map(d=>{ const rec=(State.data.attendance||[]).find(a=>String(a.user_id)===String(s.id) && a.class_date===d.date && String(a.scheduled_start||'').slice(0,5)===d.start); const status=d.paused?'paused':(rec?.status||'absent'); return `<article class="attendance-day-v146 is-${safe(status)} is-${safe(d.type)}" ${d.paused?'data-paused="true"':''} data-t22-attendance-toggle data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}" data-current="${safe(status)}"><header><strong>${fmtLongDate(d.date)}</strong><span>${safe(d.start)}-${safe(d.end)}</span></header><p>${d.type==='individual'?'Clase individual':'Clase grupal'}</p><em>${status==='present'?'Asistió':status==='justified'?'Justificada':status==='paused'?'Pausa':'Falta'}</em>${d.paused?'<small>Bloqueada por pausa</small>':`<div class="attendance-actions-v146"><button type="button" data-t16-attendance="present" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Asistió</button><button type="button" data-t16-attendance="absent" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Falta</button><button type="button" data-t16-attendance="justified" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Justificada</button></div>`}</article>`; }).join(''):'<div class="empty-state">Este alumno no tiene horario asignado para este mes.</div>';
+    const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
+    const dayCards=days.length?days.map(d=>{ const rec=attendanceRecordForScheduledDay(s.id,d); const status=effectiveAttendanceStatus(s.id,d,bill); const assumed=!rec && status==='present'; return `<article class="attendance-day-v146 is-${safe(status)} is-${safe(d.type)} ${assumed?'is-assumed-present':''}" ${d.paused?'data-paused="true"':''} data-t22-attendance-toggle data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}" data-current="${safe(status)}"><header><strong>${fmtLongDate(d.date)}</strong><span>${safe(d.start)}-${safe(d.end)}</span></header><p>${d.type==='individual'?'Clase individual':'Clase grupal'}</p><em>${status==='present'?(assumed?'Asistencia presunta':'Asistió'):status==='justified'?'Justificada':status==='paused'?'Pausa':'Falta'}</em>${assumed?'<small>Se cobra por defecto. Registra falta solo si no asistió.</small>':''}${d.paused?'<small>Bloqueada por pausa</small>':`<div class="attendance-actions-v146"><button type="button" data-t16-attendance="present" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Asistió</button><button type="button" data-t16-attendance="absent" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Falta</button><button type="button" data-t16-attendance="justified" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Justificada</button></div>`}</article>`; }).join(''):'<div class="empty-state">Este alumno no tiene horario asignado para este mes.</div>';
     return `<section class="attendance-editor-clean-v146">
       <div class="attendance-stats-v146"><article><small>Asistencias</small><strong>${calc.present}</strong></article><article><small>Faltas</small><strong>${calc.absent}</strong></article><article><small>Justificadas</small><strong>${calc.justified}</strong></article><article><small>Pausadas</small><strong>${calc.paused||0}</strong></article><article><small>Importe asociado</small><strong>${money(calc.amount)}</strong></article></div>
       <details class="pause-drawer-v146"><summary>Pausas temporales de asistencia y acceso</summary>${paymentPausePanel(s,month)}</details>
-      <div class="attendance-help-v146"><strong>Registro rápido</strong><p>Usa los botones de cada día. Los cambios se guardan al momento y actualizan el cálculo económico.</p></div>
+      <div class="attendance-help-v146"><strong>Registro rápido</strong><p>En alumnado con tarifa individual, la asistencia queda presupuesta por defecto. Solo registra una falta o justificación cuando no haya asistido; los cambios se guardan al momento y actualizan el cálculo económico.</p></div>
       <div class="attendance-month-grid-v146">${dayCards}</div>
     </section>`;
   }
@@ -5373,7 +5374,57 @@ render();
     return `<section class="student-pause-panel"><h4>Pausa temporal de asistencia y acceso</h4>${status}<form id="t50PauseForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="pauseId" value="${safe(editing.id||'')}"><input type="hidden" name="userId" value="${safe(s.id)}"><div class="window-grid"><label>Tipo de pausa<select name="mode"><option value="scheduled" ${editing.mode!=='manual'?'selected':''}>Programada por fechas</option><option value="manual" ${editing.mode==='manual'?'selected':''}>Manual, hasta reactivación</option></select></label><label class="check-line"><input type="checkbox" name="active" ${(active || (editing.id && editing.active!==false))?'checked':''}> Pausa activa</label></div><div class="window-grid"><label>Fecha de inicio<input name="startDate" type="date" value="${safe(editing.start_date||todayIso())}" required></label><label>Fecha de fin<input name="endDate" type="date" value="${safe(editing.end_date||'')}"><small>Déjala en blanco si la pausa será manual.</small></label></div><label>Motivo o nota visible para el alumno cuando intente iniciar sesión<textarea name="reason" rows="2" placeholder="Ej.: pausa de verano, viaje familiar, descanso temporal... El alumno verá este texto al intentar entrar en el aula.">${safe(editing.reason||'')}</textarea><small class="field-help">No escribas aquí nada que no quieras que el alumno vea en la pantalla de acceso pausado.</small></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar pausa</button>${active?`<button class="danger-btn" type="button" data-t50-end-pause="${safe(active.id)}">Reanudar asistencia desde hoy</button>`:''}</div></form>${pauses.length?`<details class="pause-history"><summary>Histórico de pausas (${pauses.length})</summary><table class="premium-table compact"><thead><tr><th>Inicio</th><th>Fin</th><th>Estado</th><th>Motivo visible</th></tr></thead><tbody>${pauses.map(p=>`<tr><td>${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.end_date?fmtDate(p.end_date):'Abierta'}</td><td>${pauseCoversDate(p)?'Activa':'Finalizada/programada'}</td><td>${safe(p.reason||'—')}</td></tr>`).join('')}</tbody></table></details>`:''}</section>`;
   }
   function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const season=opts.season||activeScheduleSeasonForStudent(userId); const sched=(State.data.schedules||[]).filter(x=>x.user_id===userId && x.active!==false && (opts.allSeasons || scheduleRecordSeason(x)===season)); const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), paused:isPaused})); } return out; }
-  function calculatePaymentAmount(userId,month){ const bill=(State.data.billing||[]).find(b=>b.user_id===userId)||{}; const allDays=monthScheduleDays(userId,month,{includePaused:true}); const activeDays=allDays.filter(d=>!d.paused); const att=(State.data.attendance||[]).filter(a=>a.user_id===userId && String(a.class_date||'').startsWith(month) && !pausedOnDate(userId,a.class_date)); const present=att.filter(a=>a.status==='present').length; const absent=att.filter(a=>a.status==='absent').length; const justified=att.filter(a=>a.status==='justified').length; const fixed=Number(bill.monthly_fee||0); const rate=Number(bill.class_rate||0); const individualPresent=activeDays.filter(d=>d.type==='individual' && att.some(a=>a.status==='present' && a.class_date===d.date && String(a.scheduled_start||'').slice(0,5)===d.start)).length; const totalGroupDays=allDays.filter(d=>d.type!=='individual').length; const activeGroupDays=activeDays.filter(d=>d.type!=='individual').length; const paused=allDays.filter(d=>d.paused).length; const fixedProrated=totalGroupDays>0 && activeGroupDays<totalGroupDays ? fixed*(activeGroupDays/totalGroupDays) : fixed; let amount=0, detail=''; if(bill.tariff_type==='individual'){ amount=present*rate; detail=`${present} asistencias activas × ${money(rate)}`; } else if(bill.tariff_type==='mixed'){ amount=fixedProrated+(individualPresent*rate); detail=`Cuota ${activeGroupDays<totalGroupDays?'prorrateada ':''}${money(fixedProrated)} + ${individualPresent} clases individuales × ${money(rate)}`; } else { amount=fixedProrated; detail=activeGroupDays<totalGroupDays?`Cuota fija prorrateada: ${activeGroupDays}/${totalGroupDays} clases activas`:'Cuota fija mensual'; } if(paused && amount===0) detail='Mes en pausa, sin clases facturables'; return {amount,detail,present,individualPresent,fixedGroupDays:activeGroupDays,absent,justified,paused,totalDays:allDays.length,activeDays:activeDays.length}; }
+  function attendanceRecordForScheduledDay(userId,d){
+    return (State.data.attendance||[]).find(a=>String(a.user_id)===String(userId) && String(a.class_date||'').slice(0,10)===String(d.date||'').slice(0,10) && String(a.scheduled_start||'').slice(0,5)===String(d.start||'').slice(0,5));
+  }
+  function defaultPresentForScheduledDay(userId,d,bill=null){
+    const b=bill || (State.data.billing||[]).find(x=>String(x.user_id)===String(userId)) || {};
+    const tariff=String(b.tariff_type||'group');
+    if(tariff==='individual') return true;
+    if(tariff==='mixed' && String(d?.type||'group')==='individual') return true;
+    return false;
+  }
+  function effectiveAttendanceStatus(userId,d,bill=null){
+    if(d?.paused) return 'paused';
+    const rec=attendanceRecordForScheduledDay(userId,d);
+    if(rec?.status) return String(rec.status);
+    return defaultPresentForScheduledDay(userId,d,bill) ? 'present' : 'absent';
+  }
+  function calculatePaymentAmount(userId,month){
+    const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(userId))||{};
+    const allDays=monthScheduleDays(userId,month,{includePaused:true});
+    const activeDays=allDays.filter(d=>!d.paused);
+    const att=(State.data.attendance||[]).filter(a=>String(a.user_id)===String(userId) && String(a.class_date||'').startsWith(month) && !pausedOnDate(userId,a.class_date));
+    const absent=att.filter(a=>a.status==='absent').length;
+    const justified=att.filter(a=>a.status==='justified').length;
+    const explicitPresent=att.filter(a=>a.status==='present').length;
+    const fixed=Number(bill.monthly_fee||0);
+    const rate=Number(bill.class_rate||0);
+    const tariff=String(bill.tariff_type||'group');
+    const billablePerClassDays=activeDays.filter(d=>effectiveAttendanceStatus(userId,d,bill)==='present');
+    const scheduledExplicitPresent=activeDays.filter(d=>attendanceRecordForScheduledDay(userId,d)?.status==='present').length;
+    const extraExplicitPresent=Math.max(0, explicitPresent-scheduledExplicitPresent);
+    const present=(tariff==='individual') ? (billablePerClassDays.length+extraExplicitPresent) : (tariff==='mixed' ? Math.max(explicitPresent, activeDays.filter(d=>defaultPresentForScheduledDay(userId,d,bill) && effectiveAttendanceStatus(userId,d,bill)==='present').length) : explicitPresent);
+    const individualPresent=activeDays.filter(d=>String(d.type||'group')==='individual' && effectiveAttendanceStatus(userId,d,bill)==='present').length;
+    const totalGroupDays=allDays.filter(d=>d.type!=='individual').length;
+    const activeGroupDays=activeDays.filter(d=>d.type!=='individual').length;
+    const paused=allDays.filter(d=>d.paused).length;
+    const fixedProrated=totalGroupDays>0 && activeGroupDays<totalGroupDays ? fixed*(activeGroupDays/totalGroupDays) : fixed;
+    let amount=0, detail='';
+    if(tariff==='individual'){
+      const count=billablePerClassDays.length+extraExplicitPresent;
+      amount=count*rate;
+      detail=`${count} clases previstas/asistidas × ${money(rate)}${absent||justified?` · ${absent+justified} falta/s descontada/s`:''}`;
+    } else if(tariff==='mixed'){
+      amount=fixedProrated+(individualPresent*rate);
+      detail=`Cuota ${activeGroupDays<totalGroupDays?'prorrateada ':''}${money(fixedProrated)} + ${individualPresent} clases individuales previstas/asistidas × ${money(rate)}`;
+    } else {
+      amount=fixedProrated;
+      detail=activeGroupDays<totalGroupDays?`Cuota fija prorrateada: ${activeGroupDays}/${totalGroupDays} clases activas`:'Cuota fija mensual';
+    }
+    if(paused && amount===0) detail='Mes en pausa, sin clases facturables';
+    return {amount,detail,present,individualPresent,fixedGroupDays:activeGroupDays,absent,justified,paused,totalDays:allDays.length,activeDays:activeDays.length,assumedPresent:tariff==='individual'||tariff==='mixed'};
+  }
   function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); return `<strong>Total calculado: ${money(c.amount)}</strong><p>${safe(c.detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
   function paymentStudentHistory(userId){
     const pauseMonths=pauseRecords(userId).flatMap(p=>{ const start=String(p.start_date||todayIso()).slice(0,7); const end=String(p.end_date||start).slice(0,7); return [start,end]; });
