@@ -16287,3 +16287,20 @@ body.is-dark .video-class-empty-card-v175 small { color:rgba(248,241,220,.68); }
 .is-dark .material-drag-handle-v180,.is-dark .material-reorder-actions-v180 button[data-t180-move-material]{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#f2df9f}
 .is-dark .subject-material-list.is-drag-over-v180{background:rgba(211,185,111,.08);box-shadow:inset 0 0 0 2px rgba(211,185,111,.18)}
 @media (max-width:780px){.material-drag-handle-v180{display:none}.material-reorder-actions-v180 button[data-t180-move-material]{display:none}.publication-order-grid-v180{grid-template-columns:1fr}}
+
+
+/* v181 · Promoción automática, histórico de actividad y documentos por alumno */
+.classroom-top-actions-v181{display:flex;flex-wrap:wrap;gap:.7rem;align-items:center;justify-content:flex-end}
+.classroom-promote-v181{box-shadow:0 12px 30px rgba(11,61,34,.18)}
+.activity-analytics-v181 .activity-filter-panel-v181{border:1px solid rgba(185,154,59,.24);background:linear-gradient(135deg,rgba(255,252,244,.96),rgba(248,241,225,.92));box-shadow:0 18px 44px rgba(33,44,36,.08)}
+.activity-filter-panel-v181 .window-grid{align-items:end}
+.activity-attempt-table-v181 th:last-child,.activity-attempt-table-v181 td:last-child{min-width:120px}
+.attempt-manage-actions-v181{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.attempt-manage-actions-v181 .compact-btn{padding:.42rem .6rem;font-size:.78rem;border-radius:999px}
+.teacher-documents-v181 .documents-selector-v181{border:1px solid rgba(11,61,34,.15);background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(247,241,229,.92));box-shadow:0 18px 46px rgba(13,40,25,.08)}
+.teacher-documents-v181 .documents-selector-v181 select,.teacher-documents-v181 .documents-selector-v181 input{min-height:44px}
+.teacher-documents-v181 .document-card-v144 .inline-actions{gap:.55rem}
+.teacher-documents-v181 .document-card-v144 .primary-btn,.teacher-documents-v181 .document-card-v144 .secondary-btn{white-space:normal;text-align:center}
+.is-dark .activity-analytics-v181 .activity-filter-panel-v181,
+.is-dark .teacher-documents-v181 .documents-selector-v181{background:linear-gradient(135deg,rgba(21,29,24,.96),rgba(31,37,32,.93));border-color:rgba(221,193,116,.22);box-shadow:0 18px 46px rgba(0,0,0,.28)}
+@media (max-width: 760px){.classroom-top-actions-v181{justify-content:stretch}.classroom-top-actions-v181 button{width:100%}.activity-attempt-table-v181{min-width:980px}.teacher-documents-v181 .document-card-grid-v144{grid-template-columns:1fr}.attempt-manage-actions-v181{flex-direction:column;align-items:stretch}}
