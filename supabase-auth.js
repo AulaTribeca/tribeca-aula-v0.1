@@ -1,5 +1,5 @@
-/* Tribeca Aula · Versión 178 · pausas de verano 2026 y excepción 29 de junio.
-   Base: notificaciones push v164 funcionales, alumnado sin depuración visible. */
+/* Tribeca Aula · Versión 180 · orden manual de publicaciones y limpieza de promoción.
+   Base: v179 con asistencia presunta en individuales y push funcional. */
 (() => {
   'use strict';
   if (location.search && /(firstName|lastName|fullName|username|eventDate|monthlyFee|subject)=/.test(location.search)) {
@@ -1368,7 +1368,49 @@
     const t=raw ? Date.parse(raw) : NaN;
     return Number.isFinite(t) ? t : 0;
   }
+  function normalizeOrderLabel(value=''){
+    return String(value||'').trim().replace(/^n[ºo]?\s*/i,'').replace(/[,;]/g,'.').replace(/\s+/g,' ');
+  }
+  function inferredMaterialOrderLabel(m={}){
+    const explicit = normalizeOrderLabel(m.display_order || m.order_label || m.publication_order || m.lesson_order || '');
+    if(explicit) return explicit;
+    const title = String(m.title || '').trim();
+    const match = title.match(/^\s*(\d+(?:[.\-]\d+)*(?:[a-z])?)\b/i);
+    return match ? normalizeOrderLabel(match[1].replace(/-/g,'.')) : '';
+  }
+  function materialSortNumberFromLabel(label=''){
+    const clean = normalizeOrderLabel(label);
+    if(!clean) return NaN;
+    const parts = clean.match(/\d+|[a-z]+/gi) || [];
+    if(!parts.length) return NaN;
+    let value = 0;
+    parts.slice(0,8).forEach((part, index)=>{
+      const n = /^\d+$/.test(part) ? Number(part) : (part.toLowerCase().charCodeAt(0)-96);
+      value += (Number.isFinite(n) ? n : 0) / Math.pow(1000, index);
+    });
+    return value;
+  }
+  function materialManualSortValue(m={}){
+    const raw = m.sort_order ?? m.order_index ?? m.position ?? m.display_index;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : NaN;
+  }
   function materialOrderAsc(a={}, b={}){
+    const am=materialManualSortValue(a), bm=materialManualSortValue(b);
+    if(Number.isFinite(am) || Number.isFinite(bm)){
+      if(!Number.isFinite(am)) return 1;
+      if(!Number.isFinite(bm)) return -1;
+      if(am!==bm) return am-bm;
+    }
+    const al=inferredMaterialOrderLabel(a), bl=inferredMaterialOrderLabel(b);
+    if(al || bl){
+      if(!al) return 1;
+      if(!bl) return -1;
+      const an=materialSortNumberFromLabel(al), bn=materialSortNumberFromLabel(bl);
+      if(Number.isFinite(an) && Number.isFinite(bn) && an!==bn) return an-bn;
+      const natural=al.localeCompare(bl,'es',{numeric:true,sensitivity:'base'});
+      if(natural) return natural;
+    }
     const d=materialDateValue(a)-materialDateValue(b);
     if(d) return d;
     return String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true,sensitivity:'base'});
@@ -1379,6 +1421,46 @@
   }
   function sortMaterialsAsc(items=[]){
     return [...items].sort(materialOrderAsc);
+  }
+  function materialOrderScopeKey(m={}){
+    return [m.class_unit_id||'', m.class_subject_id||'', m.class_id||'', m.subject||'', m.unit_title||m.unit||''].map(String).join('|');
+  }
+  function materialSiblingsForOrder(m={}){
+    const key=materialOrderScopeKey(m);
+    return sortMaterialsAsc((State.data.materials||[]).filter(x=>visibleForProfile(x) && materialOrderScopeKey(x)===key));
+  }
+  async function saveMaterialOrderForIds(ids=[]){
+    if(!roleTeacher()) return false;
+    const clean=[...new Set(ids.map(String).filter(Boolean))];
+    if(clean.length<1) return false;
+    for(let i=0;i<clean.length;i+=1){
+      const order=(i+1)*10;
+      const id=clean[i];
+      const local=(State.data.materials||[]).find(m=>String(m.id)===String(id));
+      if(local) local.sort_order=order;
+      await maybe(table('subject_materials').update({sort_order:order}).eq('id',id), null);
+    }
+    return true;
+  }
+  async function moveMaterialWithinUnit(materialId='', direction='down'){
+    const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
+    if(!m) return;
+    const siblings=materialSiblingsForOrder(m);
+    const idx=siblings.findIndex(x=>String(x.id)===String(materialId));
+    const nextIdx=direction==='up' ? idx-1 : idx+1;
+    if(idx<0 || nextIdx<0 || nextIdx>=siblings.length) return;
+    const ids=siblings.map(x=>String(x.id));
+    const [item]=ids.splice(idx,1);
+    ids.splice(nextIdx,0,item);
+    await saveMaterialOrderForIds(ids);
+    await loadData(true);
+    toast('Orden actualizado.');
+    rerender();
+  }
+  async function saveDraggedMaterialOrder(listEl){
+    if(!roleTeacher() || !listEl) return;
+    const ids=[...listEl.querySelectorAll('[data-t180-material-card]')].map(el=>el.dataset.t180MaterialCard).filter(Boolean);
+    if(ids.length){ await saveMaterialOrderForIds(ids); await loadData(true); toast('Orden guardado.'); rerender(); }
   }
   function visibleMaterials(subject='') { return sortMaterialsAsc((State.data.materials||[]).filter(x=>visibleForProfile(x) && (!subject || x.subject===subject))); }
   async function processDueScheduledPublications(){
@@ -4472,7 +4554,10 @@ render();
           <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
           <label>Unidad didáctica<input name="unit" placeholder="Unidad 1" value="${safe(unitValue)}"></label>
         </div>
-        <label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label>
+        <div class="window-grid publication-order-grid-v180">
+          <label>Título<input name="title" class="title-input" maxlength="120" required placeholder="Título claro de la publicación" value="${safe(item.title||'')}"></label>
+          <label>Numeración / lugar dentro de la unidad<input name="displayOrder" maxlength="24" placeholder="Ej.: 1.1, 1.1.1, 2.3" value="${safe(item.display_order || item.order_label || inferredMaterialOrderLabel(item) || '')}"><small>Sirve para ordenar. También puedes arrastrar publicaciones dentro de la unidad.</small></label>
+        </div>
         <label>Indicaciones para el alumnado<textarea name="body" rows="6" maxlength="1800" placeholder="Explica qué debe hacer el alumnado, qué debe leer o cómo debe usar el recurso.">${safe(item.body||item.description||item.content||item.text||'')}</textarea></label>
         <div class="t16-emoji-row">${['😀','🙂','👏','💡','⭐','📌','📚','🧠','🎯','🏅','✅','🔥','⚠️','📝','🔗'].map(e=>`<button type="button" data-t16-emoji="${e}">${e}</button>`).join('')}</div>
         <div class="window-grid"><label>Tamaño de texto<select name="fontSize">${[15,16,18,20,22].map(n=>`<option ${Number(item.font_size||16)===n?'selected':''}>${n}</option>`).join('')}</select></label><label>Enlace externo<input name="linkUrl" type="url" placeholder="https://..." value="${safe(item.link_url||item.url||'')}"></label></div>
@@ -4596,9 +4681,11 @@ render();
     const tableName = isAnnouncement ? 'announcements' : 'subject_materials';
     const subject=fd.get('subject')||'Apoyo personalizado';
     const unit=fd.get('unit')||'Unidad 1';
+    const displayOrder=normalizeOrderLabel(fd.get('displayOrder') || '');
+    const inferredOrder=displayOrder || inferredMaterialOrderLabel({title:rec.title});
     const payload = isAnnouncement
       ? {...rec, announcement_type:'announcement', attachments}
-      : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), badge_codes:[], attachments, embed_url:String(fd.get('embedUrl')||'').trim()||null, embed_code:String(fd.get('embedCode')||'').trim()||null, embed_height:Number(fd.get('embedHeight')||520)};
+      : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), display_order:inferredOrder || null, sort_order:Number.isFinite(materialSortNumberFromLabel(inferredOrder)) ? materialSortNumberFromLabel(inferredOrder) : null, badge_codes:[], attachments, embed_url:String(fd.get('embedUrl')||'').trim()||null, embed_code:String(fd.get('embedCode')||'').trim()||null, embed_height:Number(fd.get('embedHeight')||520)};
     let linked={classSubjectId:null, classUnitId:null};
     if(!isAnnouncement && classId){
       linked=await ensureClassSubjectAndUnit(classId, subject, unit);
@@ -5122,9 +5209,6 @@ render();
       </details>
       <details class="teacher-option-drawer focus-mode-drawer" ${focusActive?'open':''}><summary><span>Modo concentración</span><em>${focusActive?'Activo':'Inactivo'}</em></summary>
         <section class="premium-form-section focus-mode-section"><p class="meta">Vista simplificada, clara y sin distracciones para el trabajo diario. Solo la profesora puede activarla o desactivarla desde este perfil.</p><label class="check-line focus-mode-check"><input type="checkbox" name="focusModeEnabled" ${focusActive?'checked':''}> Activar vista simplificada por defecto para este alumno</label><div class="focus-mode-preview"><strong>Qué verá el alumnado:</strong><span>una interfaz más limpia</span><span>menos tarjetas simultáneas</span><span>instrucciones visibles</span><span>actividades centradas en un paso cada vez</span></div></section>
-      </details>
-      <details class="teacher-option-drawer"><summary><span>Promoción de curso</span><em>Uso puntual</em></summary>
-        <section class="premium-form-section promotion-section"><p class="meta">Actualiza centro, etapa y curso con los datos elegidos arriba y limpia datos académicos del curso anterior.</p><button class="secondary-btn" type="button" data-t29-promote-student>Promocionar y limpiar datos del curso anterior</button></section>
       </details>
       <div class="sticky-form-actions clean-sticky-actions"><button class="primary-btn t24-save-profile" type="button" data-t24-save-student onclick="return window.TribecaSaveStudentProfileDirect(this,event)">Guardar cambios</button><span class="form-status" data-t24-profile-status-bottom></span></div>
     </form>`;
@@ -5687,7 +5771,7 @@ render();
       </header>
       <div class="subject-detail-intro window-panel">
         <strong>Materiales organizados por unidades didácticas</strong>
-        <p>Las unidades aparecen en orden natural y, dentro de cada unidad, los materiales más recientes quedan al final.</p>
+        <p>Las unidades aparecen en orden natural. Dentro de cada unidad, las publicaciones se ordenan por numeración, por el orden que arrastres manualmente o, si no hay orden definido, de más antiguas a más recientes.</p>
       </div>
       ${roleTeacher()?classUnitCreateForm(s.id):''}
       <div class="subject-units-list">
@@ -5717,7 +5801,7 @@ render();
       ${roleTeacher()?`<div class="subject-teacher-actions premium-actions"><button type="button" class="primary-btn" data-t29-new-material="${safe(subject)}">Publicar nuevo material</button><button type="button" class="secondary-btn" data-t30-subject-edit-by-name="${safe(subject)}">Editar materia</button></div>`:''}
       <div class="subject-detail-intro window-panel">
         <strong>Materiales organizados por unidades didácticas</strong>
-        <p>Las unidades aparecen en orden natural. Dentro de cada unidad, las publicaciones más recientes quedan al final.</p>
+        <p>Las unidades aparecen en orden natural. Dentro de cada unidad, las publicaciones se ordenan por numeración o por fecha, de más antiguas a más recientes.</p>
       </div>
       <div class="subject-units-list">
         ${units.map(([u,items],idx)=>`<details class="subject-unit-card" ${idx===0?'open':''}>
@@ -5731,11 +5815,13 @@ render();
     const meta=materialTypeMeta(m.material_type||m.type);
     const done=isMaterialCompleted(m.id);
     const dateLabel=m.created_at ? new Date(m.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
-    return `<details class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} material-collapse-card ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}" ${materialIsMath(m)?'data-math-material="1"':''}>
+    const orderLabel=inferredMaterialOrderLabel(m);
+    return `<details class="t16-publication publication-type-card publication-type-card-${safe(meta.key)} material-collapse-card ${m.hidden?'is-hidden-item':''} ${done?'is-completed-material':''}" data-t180-material-card="${safe(m.id)}" draggable="${roleTeacher()?'true':'false'}" ${materialIsMath(m)?'data-math-material="1"':''}>
       <summary class="material-collapse-summary">
+        ${roleTeacher()?`<span class="material-drag-handle-v180" title="Arrastrar para ordenar" aria-label="Arrastrar publicación">☰</span>`:''}
         <div class="material-summary-main">
           <span class="publication-type-tag publication-type-${safe(meta.key)}">${safe(meta.icon)} ${safe(meta.label)}</span>
-          <h3 class="material-title-prominent">${safe(m.title)}</h3>
+          <h3 class="material-title-prominent">${orderLabel?`<span class="material-order-chip-v180">${safe(orderLabel)}</span>`:''}${safe(m.title)}</h3>
           <small>${safe([m.unit_title||m.unit||'', dateLabel].filter(Boolean).join(' · '))}</small>
         </div>
         <div class="material-summary-flags">${m.hidden?'<span>Oculto</span>':''}${done&&!roleTeacher()?'<span class="completed-chip">Hecha</span>':''}<span class="material-expand-hint">Abrir</span></div>
@@ -5746,10 +5832,11 @@ render();
         ${m.link_url?`<a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>`:''}
         ${materialEmbedMarkup(m)}
         ${attachmentList(m)}
-        <div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions"><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div>
+        <div class="material-card-actions">${materialOpenButton(m)}${materialCompletionButton(m)}${roleTeacher()?`<div class="inline-actions material-reorder-actions-v180"><button type="button" data-t180-move-material="${safe(m.id)}" data-dir="up" title="Subir publicación">↑</button><button type="button" data-t180-move-material="${safe(m.id)}" data-dir="down" title="Bajar publicación">↓</button><button type="button" data-t32-edit-mat="${safe(m.id)}">Editar</button><button type="button" data-t16-toggle-mat="${safe(m.id)}">${m.hidden?'Mostrar':'Ocultar'}</button><button type="button" data-t16-delete-mat="${safe(m.id)}">Eliminar</button></div>`:''}</div>
       </div>
     </details>`;
   }
+
 
 
 
@@ -6356,17 +6443,16 @@ function classroomCard(c,i=0){
       if(courseCmp) return courseCmp;
       return displayName(a).localeCompare(displayName(b),'es');
     });
-    return `<details class="classroom-assignment-box"><summary><span>Asignar o promocionar alumnado</span><em>${classroomStudentsCount(c.id)} asignado${classroomStudentsCount(c.id)===1?'':'s'}</em></summary>
+    return `<details class="classroom-assignment-box"><summary><span>Asignar alumnado</span><em>${classroomStudentsCount(c.id)} asignado${classroomStudentsCount(c.id)===1?'':'s'}</em></summary>
       <form class="classroom-assignment-form" onsubmit="return false;">
         <input type="hidden" name="classId" value="${safe(c.id)}">
-        <p class="meta">Selecciona alumnado. “Guardar lista” actualiza solo esta clase. “Asignar/promocionar a esta clase” retira al alumnado seleccionado de otras clases activas y actualiza su centro, etapa y curso al de esta clase.</p>
+        <p class="meta">Selecciona el alumnado que pertenece a esta clase. Si necesitas pasar a alguien a otro curso, hazlo manualmente cambiando su clase y sus datos en el perfil.</p>
         <input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>
         <div class="classroom-student-select-list">
           ${students.map(s=>{ const current=studentActiveClass(s.id); const checked=String(current?.id||'')===String(c.id); return `<label data-student-name="${safe((displayName(s)+' '+s.username+' '+academicLine(s)+' '+(current?.name||'')).toLowerCase())}" class="${checked?'is-assigned-here':current?'is-assigned-elsewhere':''}"><input type="checkbox" name="studentIds" value="${safe(s.id)}" ${checked?'checked':''}><span><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}${current?` · Clase actual: ${safe(current.name||classroomAutoName(current.center,current.stage,current.course))}`:' · Sin clase activa'}</small></span></label>`; }).join('')}
         </div>
         <div class="inline-actions">
-          <button type="button" class="secondary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'assign')">Guardar lista de esta clase</button>
-          <button type="button" class="primary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'promote')">Asignar/promocionar a esta clase</button>
+          <button type="button" class="primary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'assign')">Guardar lista de esta clase</button>
         </div>
       </form>
     </details>`;
@@ -7391,6 +7477,38 @@ function classroomCard(c,i=0){
     window.addEventListener('orientationchange', () => setTimeout(positionAccountMenu, 180), { passive:true });
     window.addEventListener('scroll', () => { if(document.body.classList.contains('tribeca-account-menu-open')) positionAccountMenu(); }, { passive:true });
     window.addEventListener('click', async ev=>{ const btn=ev.target.closest?.('[data-t24-save-student]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const f=btn.closest('form'); if(f) await saveStudentProfile(f); } }, true);
+    document.addEventListener('dragstart', ev=>{
+      const card=ev.target.closest?.('[data-t180-material-card]');
+      if(!roleTeacher() || !card) return;
+      ev.dataTransfer?.setData('text/plain', card.dataset.t180MaterialCard || '');
+      card.classList.add('is-dragging-v180');
+    }, true);
+    document.addEventListener('dragend', ev=>{
+      ev.target.closest?.('[data-t180-material-card]')?.classList.remove('is-dragging-v180');
+      document.querySelectorAll('.subject-material-list.is-drag-over-v180').forEach(el=>el.classList.remove('is-drag-over-v180'));
+    }, true);
+    document.addEventListener('dragover', ev=>{
+      const list=ev.target.closest?.('.subject-material-list');
+      if(!roleTeacher() || !list || !Array.from(ev.dataTransfer?.types || []).includes('text/plain')) return;
+      ev.preventDefault();
+      list.classList.add('is-drag-over-v180');
+      const dragging=document.querySelector('[data-t180-material-card].is-dragging-v180');
+      const target=ev.target.closest?.('[data-t180-material-card]');
+      if(dragging && target && target!==dragging && target.parentElement===list){
+        const rect=target.getBoundingClientRect();
+        const after=ev.clientY > rect.top + rect.height/2;
+        list.insertBefore(dragging, after ? target.nextSibling : target);
+      }
+    }, true);
+    document.addEventListener('drop', async ev=>{
+      const list=ev.target.closest?.('.subject-material-list');
+      if(!roleTeacher() || !list) return;
+      const id=ev.dataTransfer?.getData('text/plain') || '';
+      if(!id) return;
+      ev.preventDefault();
+      list.classList.remove('is-drag-over-v180');
+      await saveDraggedMaterialOrder(list);
+    }, true);
     document.addEventListener('click', async ev=>{
       const pwaInstall=ev.target.closest?.('[data-pwa-install]'); if(pwaInstall){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); closeAccountMenu(); await handleTribecaPwaInstall(); return; }
       const pwaDismiss=ev.target.closest?.('[data-pwa-install-dismiss]'); if(pwaDismiss){ ev.preventDefault(); ev.stopPropagation(); localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY,'1'); updatePwaInstallCta(); return; }
@@ -7492,6 +7610,7 @@ function classroomCard(c,i=0){
       const selectGroup=ev.target.closest?.('[data-t32-select-group]'); if(selectGroup){ ev.preventDefault(); selectGroup.closest('details')?.querySelectorAll('.t32-badge-student:not([hidden]) input[name="userIds"]').forEach(i=>{ i.checked=true; }); return; }
       const clearGroup=ev.target.closest?.('[data-t32-clear-group]'); if(clearGroup){ ev.preventDefault(); clearGroup.closest('details')?.querySelectorAll('input[name="userIds"]').forEach(i=>{ i.checked=false; }); return; }
 
+      const moveMaterialBtn=ev.target.closest?.('[data-t180-move-material]'); if(moveMaterialBtn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await moveMaterialWithinUnit(moveMaterialBtn.dataset.t180MoveMaterial, moveMaterialBtn.dataset.dir || 'down'); return; }
       const matDone=ev.target.closest?.('[data-t33-toggle-completion]'); if(matDone){ ev.preventDefault(); ev.stopPropagation(); await toggleMaterialCompletion(matDone.dataset.t33ToggleCompletion); return; }
       const matOpen=ev.target.closest?.('[data-t33-open-mat]'); if(matOpen){ ev.preventDefault(); ev.stopPropagation(); openMaterialInNewWindow(matOpen.dataset.t33OpenMat); return; }
       const subjToggle=ev.target.closest?.('[data-t33-toggle-subject]'); if(subjToggle){ ev.preventDefault(); ev.stopPropagation(); await toggleSubjectVisibility(subjToggle.dataset.t33ToggleSubject); return; }
