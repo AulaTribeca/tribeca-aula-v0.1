@@ -1683,6 +1683,9 @@
   }
   function simplifyTribecaNavigation(){
     document.querySelectorAll('[data-public-tool-link], .public-tool-lumen, .public-tool-itinera, .main-nav [data-tool="guidance"], .main-nav [data-tool="badges"], .main-nav [data-tool="difficulties"], .main-nav [data-tool="grades"], .main-nav [data-tool="assignBadge"], [data-t16-tool="assignBadge"], [data-tool="badges"]').forEach(el=>el.remove?.());
+    if(!roleTeacher() && isIzamProfile(State.profile||{})){
+      document.querySelectorAll('.main-nav [data-tool="videoclasses"], [data-t16-tool="videoclasses"], .video-classes-home-v173, .video-classes-home-v175').forEach(el=>el.remove?.());
+    }
     document.querySelectorAll('.utility-bar .control-field, .utility-bar label, .utility-bar .select-wrap').forEach(el=>{
       const txt = normalizeLooseText(el.textContent || '');
       const sel = el.matches?.('select') ? el : el.querySelector?.('select');
@@ -2307,6 +2310,23 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(!subjects.length) return `<section class="focus-study-area panel"><h2>Tu materia</h2><p>Todavía no hay una materia visible asignada.</p></section>`;
     return `<section class="focus-study-area"><div class="section-heading focus-study-heading"><h2>Tu materia</h2><span>${subjects.length} materia${subjects.length===1?'':'s'} activa${subjects.length===1?'':'s'}</span></div><div class="focus-study-grid">${subjects.map(({s,c,i})=>focusStudySubjectCard(s,c,i)).join('')}</div></section>`;
   }
+  function isIzamStudyClassV187(c={}){
+    const subjects = c?.id ? classSubjectsForStudentClass(c.id).map(s=>s.subject).join(' ') : '';
+    const txt = normalizeLooseText([c.name,c.center,c.stage,c.course,c.description,subjects].filter(Boolean).join(' '));
+    return /t[eé]cnicas?\s+de\s+estudio|tecnicas?\s+estudio|t[eé]cnica\s+estudio/.test(txt);
+  }
+  function izamVisibleClassesV187(studentId=State.profile?.id){
+    return studentAssignedClasses(studentId).filter(isIzamStudyClassV187);
+  }
+  function izamStudyOnlyMarkupV187(){
+    const classes = izamVisibleClassesV187(State.profile?.id);
+    const subjects=[];
+    classes.forEach(c=>classSubjectsForStudentClass(c.id).filter(s=>isStudySkillsSubject(s.subject) || isIzamStudyClassV187({...c, subject:s.subject})).forEach((s,i)=>subjects.push({s,c,i})));
+    if(!subjects.length){
+      return `<section class="focus-study-area izam-study-only-v187 panel"><div class="section-heading focus-study-heading"><h2>Aula de Técnicas de estudio</h2><span>Pendiente</span></div><p>Todavía no hay una materia visible asignada en Técnicas de estudio.</p></section>`;
+    }
+    return `<section class="focus-study-area izam-study-only-v187"><div class="section-heading focus-study-heading"><h2>Aula de Técnicas de estudio</h2><span>${subjects.length} materia${subjects.length===1?'':'s'} activa${subjects.length===1?'':'s'}</span></div><div class="focus-study-grid">${subjects.map(({s,c,i})=>focusStudySubjectCard(s,c,i)).join('')}</div></section>`;
+  }
   function focusStudySubjectCard(s,c={},i=0){
     c = c || {};
     i = Number(i || 0);
@@ -2360,10 +2380,13 @@ function studentAssignedClasses(studentId=State.profile?.id){
   }
   function focusStudentHome(){
     const p=State.profile;
+    if(isIzamProfile(p)){
+      return `<section class="hero-card panel focus-hero-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
+    }
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
     const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}<section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}`;
   }
 
   function uiLocale(){
@@ -2399,7 +2422,10 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(studentFocusModeEnabled(p)) return focusStudentHome();
     const subjects=subjectList(p);
     const dateLabel = new Intl.DateTimeFormat(uiLocale(), {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
-    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${videoClassesHomePanel()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    if(isIzamProfile(p)){
+      return `<section class="hero-card panel hero-welcome-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
+    }
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
@@ -4409,6 +4435,7 @@ render();
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
     if(id==='badges' || id==='assignBadge') return '<div class="empty-state">Este apartado ya no está disponible en Tribeca Aula.</div>';
+    if(id==='videoclasses' && !roleTeacher() && isIzamProfile(State.profile||{})) return '<div class="empty-state">Este apartado no está disponible en tu aula.</div>';
     if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='videoclasses') return videoclassesContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
@@ -7471,7 +7498,7 @@ function classroomCard(c,i=0){
     return /\bizam\b/.test(txt) && /sanchez|sánchez/.test(txt);
   }
   function pokemonMedalDefinitionsV186(){
-    return badges.filter(b=>String(b.code||'').startsWith('pk_'));
+    return badges.filter(b=>String(b.code||'') === 'pk_keywords');
   }
   function izamEarnedMedalsV186(userId=State.profile?.id){
     const defs=pokemonMedalDefinitionsV186();
@@ -7481,13 +7508,14 @@ function classroomCard(c,i=0){
   function izamPokemonPanelV186(p=State.profile){
     if(!p || !isIzamProfile(p)) return '';
     const medals=izamEarnedMedalsV186(p.id);
-    const earned=medals.filter(m=>m.earned).length;
-    return `<section class="izam-medal-panel-v186 panel"><div class="izam-medal-head-v186"><div><p class="eyebrow">Reto personal</p><h2>Medallas de unidades</h2><p>Pequeños reconocimientos por cerrar unidades de técnicas de estudio. No todo será de Pokémon, pero aquí sí habrá una motivación especial.</p></div><strong>${earned}/${medals.length}</strong></div><div class="izam-medal-grid-v186">${medals.map(m=>`<article class="${m.earned?'is-earned':'is-locked'}"><span>${safe(m.icon)}</span><strong>${safe(m.name)}</strong><small>${m.earned?'Conseguida':'Aún no conseguida'}</small></article>`).join('')}</div></section>`;
+    const keyword=medals.find(m=>m.code==='pk_keywords') || {code:'pk_keywords',icon:'🔑',name:'Medalla Palabras clave',earned:false};
+    return `<section class="izam-medal-panel-v186 izam-medal-panel-v187 panel"><div class="izam-medal-head-v186"><div><p class="eyebrow">Reto personal</p><h2>Medallas de unidades</h2><p>Reconocimientos puntuales por cerrar unidades de Técnicas de estudio. Por ahora solo queda preparada la próxima medalla.</p></div><strong>${keyword.earned?'1/1':'0/1'}</strong></div><div class="izam-medal-grid-v186 izam-medal-grid-v187"><article class="${keyword.earned?'is-earned':'is-locked'} izam-keyword-medal-v187"><span>${safe(keyword.icon||'🔑')}</span><strong>${keyword.earned?'Medalla conseguida: Palabras clave':'Pendiente: medalla Palabras clave'}</strong><small>${keyword.earned?'Conseguida':'Se concederá cuando cierre la unidad de palabras clave.'}</small></article></div></section>`;
   }
   function izamPokemonTeacherPanelV186(s={}){
     if(!roleTeacher() || !isIzamProfile(s)) return '';
     const medals=izamEarnedMedalsV186(s.id);
-    return `<details class="teacher-option-drawer izam-teacher-medals-v186" open><summary><span>Medallas de unidades para Izam</span><em>${medals.filter(m=>m.earned).length}/${medals.length}</em></summary><section class="premium-form-section"><p class="meta">Gamificación ligera y solo para Izam: medallas tipo gimnasio por superar unidades didácticas, sin convertir toda el aula en Pokémon.</p><div class="izam-medal-admin-grid-v186">${medals.map(m=>`<article class="${m.earned?'is-earned':'is-pending'}"><span>${safe(m.icon)}</span><div><strong>${safe(m.name)}</strong><small>${m.earned?'Ya concedida':'Pendiente'}</small></div><button type="button" class="${m.earned?'secondary-btn':'primary-btn'} compact-btn" data-t186-award-izam-medal="${safe(s.id)}" data-medal-code="${safe(m.code)}" ${m.earned?'disabled':''}>${m.earned?'Concedida':'Conceder'}</button></article>`).join('')}</div></section></details>`;
+    const m=medals.find(x=>x.code==='pk_keywords') || {code:'pk_keywords',icon:'🔑',name:'Medalla Palabras clave',earned:false};
+    return `<details class="teacher-option-drawer izam-teacher-medals-v186 izam-teacher-medals-v187" open><summary><span>Medallas de unidades para Izam</span><em>${m.earned?'1/1':'0/1'}</em></summary><section class="premium-form-section"><p class="meta">Gamificación ligera y solo para Izam. Por ahora no se muestran futuras medallas: queda preparada únicamente la de Palabras clave.</p><div class="izam-medal-admin-grid-v186 izam-medal-admin-grid-v187"><article class="${m.earned?'is-earned':'is-pending'}"><span>${safe(m.icon||'🔑')}</span><div><strong>${m.earned?'Medalla conseguida: Palabras clave':'Pendiente: medalla Palabras clave'}</strong><small>${m.earned?'Ya concedida':'Pendiente para el próximo cierre de unidad'}</small></div><button type="button" class="${m.earned?'secondary-btn':'primary-btn'} compact-btn" data-t186-award-izam-medal="${safe(s.id)}" data-medal-code="pk_keywords" ${m.earned?'disabled':''}>${m.earned?'Concedida':'Conceder'}</button></article></div></section></details>`;
   }
   async function awardIzamMedalV186(userId, code){
     if(!roleTeacher()) return;

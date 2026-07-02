@@ -16379,3 +16379,13 @@ body.is-dark .video-class-empty-card-v175 small { color:rgba(248,241,220,.68); }
 .publication-move-toggle-v186{display:flex;align-items:center;gap:8px;margin:10px 0;font-weight:700}.publication-move-toggle-v186 input{accent-color:var(--forest,#285d4b)}
 .publication-location-lock-v186 select:disabled{opacity:.72;cursor:not-allowed;background:rgba(0,0,0,.04)}
 .publication-location-lock-v186.is-moving-publication{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#285d4b) 16%,transparent)}
+
+/* v187 · Aula de Izam simplificada */
+.izam-study-only-v187{margin-top:18px}
+.izam-study-only-v187 .focus-study-heading h2{letter-spacing:-.02em}
+.izam-medal-panel-v187{position:relative;overflow:hidden}
+.izam-medal-panel-v187::after{content:"";position:absolute;right:-70px;top:-90px;width:190px;height:190px;border-radius:999px;background:radial-gradient(circle,rgba(245,213,107,.24),rgba(245,213,107,0) 68%);pointer-events:none}
+.izam-medal-grid-v187{grid-template-columns:minmax(220px,420px)}
+.izam-keyword-medal-v187 strong{font-size:1rem;line-height:1.25}
+.izam-teacher-medals-v187 .izam-medal-admin-grid-v187{grid-template-columns:1fr}
+body.is-student .main-nav [data-tool="videoclasses"].izam-hidden-v187{display:none!important}
