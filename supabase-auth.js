@@ -2035,11 +2035,44 @@
     return raw==='summer' || raw==='verano' ? 'summer' : 'school';
   }
   function activeScheduleSeason(){ return 'school'; }
-  function activeScheduleSeasonForStudent(studentId){
+  function scheduleMonthNumber(value){
+    const raw=String(value || todayIso()).slice(0,10);
+    const m=raw.match(/^\d{4}-(\d{2})/);
+    return m ? Number(m[1]) : (new Date().getMonth()+1);
+  }
+  function scheduleDayNumber(value){
+    const raw=String(value || todayIso()).slice(0,10);
+    const m=raw.match(/^\d{4}-\d{2}-(\d{2})/);
+    return m ? Number(m[1]) : (new Date().getDate());
+  }
+  function preferredScheduleSeasonForDate(value){
+    const month=scheduleMonthNumber(value);
+    const day=scheduleDayNumber(value);
+    if(month===7 || month===8) return 'summer';
+    if(month===6 && day>=25) return 'summer';
+    return 'school';
+  }
+  function activeScheduleSeasonForStudent(studentId, reference=''){
     const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId));
     const summerActive=rows.some(x=>scheduleRecordSeason(x)==='summer' && x.active!==false);
     const schoolActive=rows.some(x=>scheduleRecordSeason(x)==='school' && x.active!==false);
-    return summerActive && !schoolActive ? 'summer' : 'school';
+    const preferred=reference ? preferredScheduleSeasonForDate(String(reference).length===7 ? `${reference}-15` : reference) : preferredScheduleSeasonForDate(todayIso());
+    if(preferred==='summer' && summerActive) return 'summer';
+    if(preferred==='school' && schoolActive) return 'school';
+    if(summerActive && !schoolActive) return 'summer';
+    if(schoolActive) return 'school';
+    if(summerActive) return 'summer';
+    return 'school';
+  }
+  function scheduleRowsForStudentDate(studentId, isoDate, opts={}){
+    const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId) && x.active!==false);
+    if(opts.allSeasons) return rows;
+    if(opts.season) return rows.filter(x=>scheduleRecordSeason(x)===opts.season);
+    const preferred=preferredScheduleSeasonForDate(isoDate);
+    const preferredRows=rows.filter(x=>scheduleRecordSeason(x)===preferred);
+    if(preferredRows.length) return preferredRows;
+    const fallback=activeScheduleSeasonForStudent(studentId, isoDate);
+    return rows.filter(x=>scheduleRecordSeason(x)===fallback);
   }
   function scheduleSeasonLabel(season='school'){
     return season==='summer' ? 'horario de verano' : 'horario de curso escolar';
@@ -5486,26 +5519,32 @@ render();
   }
   function defaultBillingMonth(){
     const today=new Date();
-    const y=today.getFullYear();
-    const m=today.getMonth()+1;
-    const day=today.getDate();
-    const target = day<=10 ? new Date(y, m-2, 1) : new Date(y, m-1, 1);
-    return `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}`;
+    return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
   }
-  function paymentDueDate(s, month){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return new Date(); return paymentModeForStudent(s)==='advance' ? new Date(y, m-1, 1) : new Date(y, m, 20); }
-  function paymentLateAfterDay10(month){
+  function paymentDueDate(_student, month){
+    const [y,m]=String(month).split('-').map(Number);
+    if(!y||!m) return new Date();
+    return new Date(y, m-1, 1, 0, 0, 0, 0);
+  }
+  function paymentLateFromDay1(month){
     const [y,m]=String(month).split('-').map(Number);
     if(!y||!m) return false;
     const today=new Date();
-    const cutoff=new Date(y, m, 10, 23, 59, 59, 999);
-    return today>cutoff;
+    const cutoff=new Date(y, m-1, 1, 0, 0, 0, 0);
+    return today>=cutoff;
   }
-  function isPaymentOverdue(month, student=null){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return false; const due = student ? paymentDueDate(student, month) : new Date(y, m, 20); const today=new Date(); return today > due; }
+  function isPaymentOverdue(month, student=null){
+    const [y,m]=String(month).split('-').map(Number);
+    if(!y||!m) return false;
+    const due = student ? paymentDueDate(student, month) : new Date(y, m-1, 1, 0, 0, 0, 0);
+    const today=new Date();
+    return today>=due;
+  }
   function paymentSummaryStatus(pay={}, month='', paused=false){
     if(paused) return {key:'paused', label:'En pausa', detail:'Excluido de pagos esperados'};
     if(pay.paid) return {key:'paid', label:'Pagado', detail:pay.paid_date?fmtDate(pay.paid_date):'Sin fecha indicada'};
-    if(paymentLateAfterDay10(month)) return {key:'late', label:'Retrasado', detail:'Pendiente después del día 10 del mes siguiente'};
-    return {key:'pending', label:'Pendiente', detail:'Dentro del plazo operativo'};
+    if(paymentLateFromDay1(month)) return {key:'late', label:'Retrasado', detail:'Pendiente desde el día 1 del mes si no se ha registrado el pago'};
+    return {key:'pending', label:'Pendiente', detail:'Mes futuro o aún no iniciado'};
   }
   function quarterMonthsFor(month){ const [y,m]=String(month||todayIso().slice(0,7)).split('-').map(Number); const start=Math.floor(((m||1)-1)/3)*3+1; return [0,1,2].map(i=>`${y}-${String(start+i).padStart(2,'0')}`); }
   function paidMonthsForStudent(userId){ return [...new Set((State.data.paymentMonths||[]).filter(p=>String(p.user_id)===String(userId) && p.paid).map(p=>String(p.month).slice(0,7)).filter(Boolean))].sort().reverse(); }
@@ -5622,6 +5661,8 @@ render();
   }
   function attendanceEditor(s,month){
     const days=monthScheduleDays(s.id,month,{includePaused:true});
+    const usedSeasons=[...new Set(days.map(d=>d.season).filter(Boolean))];
+    const scheduleNote=usedSeasons.length ? `<div class="attendance-season-note-v191"><strong>Horario usado:</strong> ${usedSeasons.map(scheduleSeasonLabel).join(' + ')}${String(month).endsWith('-06')?' · desde el 25/06 se prioriza el horario de verano si existe.':''}</div>` : '';
     const calc=calculatePaymentAmount(s.id,month);
     const grouped=days.reduce((map,d)=>{ const k=String(d.date).slice(0,7); if(!map[k]) map[k]=[]; map[k].push(d); return map; },{});
     const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
@@ -5629,6 +5670,7 @@ render();
     return `<section class="attendance-editor-clean-v146">
       <div class="attendance-stats-v146"><article><small>Asistencias</small><strong>${calc.present}</strong></article><article><small>Faltas</small><strong>${calc.absent}</strong></article><article><small>Justificadas</small><strong>${calc.justified}</strong></article><article><small>Pausadas</small><strong>${calc.paused||0}</strong></article><article><small>Importe asociado</small><strong>${money(calc.amount)}</strong></article></div>
       <details class="pause-drawer-v146"><summary>Pausas temporales de asistencia y acceso</summary>${paymentPausePanel(s,month)}</details>
+      ${scheduleNote}
       <div class="attendance-help-v146"><strong>Registro rápido</strong><p>En alumnado con tarifa individual, la asistencia queda presupuesta por defecto. Solo registra una falta o justificación cuando no haya asistido; los cambios se guardan al momento y actualizan el cálculo económico.</p></div>
       <div class="attendance-month-grid-v146">${dayCards}</div>
     </section>`;
@@ -5644,7 +5686,7 @@ render();
     const status=active?`<div class="pause-active-card"><strong>Asistencia pausada</strong><p>${safe(pauseStatusText(s.id))}. El acceso del alumno al aula virtual queda bloqueado mientras dure la pausa.</p></div>`:(upcoming?`<div class="pause-active-card is-upcoming"><strong>Pausa programada</strong><p>Programada desde ${safe(fmtDate(upcoming.start_date))}${upcoming.end_date?` hasta ${safe(fmtDate(upcoming.end_date))}`:' hasta reactivación manual'}.</p></div>`:'<p class="meta">Puedes programar una pausa por fechas o dejarla abierta para activarla y desactivarla manualmente. La pausa se crea solo si marcas expresamente “Pausa activa”.</p>');
     return `<section class="student-pause-panel"><h4>Pausa temporal de asistencia y acceso</h4>${status}<form id="t50PauseForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="pauseId" value="${safe(editing.id||'')}"><input type="hidden" name="userId" value="${safe(s.id)}"><div class="window-grid"><label>Tipo de pausa<select name="mode"><option value="scheduled" ${editing.mode!=='manual'?'selected':''}>Programada por fechas</option><option value="manual" ${editing.mode==='manual'?'selected':''}>Manual, hasta reactivación</option></select></label><label class="check-line"><input type="checkbox" name="active" ${(active || (editing.id && editing.active!==false))?'checked':''}> Pausa activa</label></div><div class="window-grid"><label>Fecha de inicio<input name="startDate" type="date" value="${safe(editing.start_date||todayIso())}" required></label><label>Fecha de fin<input name="endDate" type="date" value="${safe(editing.end_date||'')}"><small>Déjala en blanco si la pausa será manual.</small></label></div><label>Motivo o nota visible para el alumno cuando intente iniciar sesión<textarea name="reason" rows="2" placeholder="Ej.: pausa de verano, viaje familiar, descanso temporal... El alumno verá este texto al intentar entrar en el aula.">${safe(editing.reason||'')}</textarea><small class="field-help">No escribas aquí nada que no quieras que el alumno vea en la pantalla de acceso pausado.</small></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar pausa</button>${active?`<button class="danger-btn" type="button" data-t50-end-pause="${safe(active.id)}">Reanudar asistencia desde hoy</button>`:''}</div></form>${pauses.length?`<details class="pause-history"><summary>Histórico de pausas (${pauses.length})</summary><table class="premium-table compact"><thead><tr><th>Inicio</th><th>Fin</th><th>Estado</th><th>Motivo visible</th></tr></thead><tbody>${pauses.map(p=>`<tr><td>${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.end_date?fmtDate(p.end_date):'Abierta'}</td><td>${pauseCoversDate(p)?'Activa':'Finalizada/programada'}</td><td>${safe(p.reason||'—')}</td></tr>`).join('')}</tbody></table></details>`:''}</section>`;
   }
-  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const season=opts.season||activeScheduleSeasonForStudent(userId); const sched=(State.data.schedules||[]).filter(x=>x.user_id===userId && x.active!==false && (opts.allSeasons || scheduleRecordSeason(x)===season)); const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), paused:isPaused})); } return out; }
+  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; const sched=scheduleRowsForStudentDate(userId, iso, opts); sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), season:scheduleRecordSeason(s), paused:isPaused})); } return out; }
   function attendanceRecordForScheduledDay(userId,d){
     return (State.data.attendance||[]).find(a=>String(a.user_id)===String(userId) && String(a.class_date||'').slice(0,10)===String(d.date||'').slice(0,10) && String(a.scheduled_start||'').slice(0,5)===String(d.start||'').slice(0,5));
   }
@@ -5750,7 +5792,7 @@ render();
     return `<label>Mes<input type="month" value="${safe(month)}" data-t16-billing-month></label>
       <div class="payment-grand-total">Total previsto: ${money(total)}</div>
       <div class="payment-status-legend"><span class="payment-status-pill payment-status-paid">Pagados: ${paidCount}</span><span class="payment-status-pill payment-status-pending">Pendientes: ${pendingCount}</span><span class="payment-status-pill payment-status-late">Retrasados: ${lateCount}</span>${pausedCount?`<span class="payment-status-pill payment-status-paused">En pausa: ${pausedCount}</span>`:''}</div>
-      <p class="meta">El total previsto excluye al alumnado en pausa. El estado “retrasado” se aplica si sigue pendiente después del día 10 del mes siguiente.</p>
+      <p class="meta">El total previsto excluye al alumnado en pausa. El estado “retrasado” se aplica desde el día 1 del mes si el pago no se ha registrado.</p>
       ${familySummaryRows(month)?`<h4>Pagos familiares agrupados</h4><table class="premium-table payment-family-table-v144"><thead><tr><th>Familia</th><th>Alumnado</th><th>Total familiar</th></tr></thead><tbody>${familySummaryRows(month)}</tbody></table>`:''}
       <h4>Histórico total mensual</h4>
       <div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('month')">Descargar histórico mensual en PDF</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-month',{month:'${safe(month)}'})">PDF mensual completo</button></div>

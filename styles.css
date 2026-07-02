@@ -16389,3 +16389,21 @@ body.is-dark .video-class-empty-card-v175 small { color:rgba(248,241,220,.68); }
 .izam-keyword-medal-v187 strong{font-size:1rem;line-height:1.25}
 .izam-teacher-medals-v187 .izam-medal-admin-grid-v187{grid-template-columns:1fr}
 body.is-student .main-nav [data-tool="videoclasses"].izam-hidden-v187{display:none!important}
+
+/* v191 · Aviso de horario usado en asistencia/pagos */
+.attendance-season-note-v191{
+  border:1px solid rgba(0,75,48,.18);
+  background:linear-gradient(135deg, rgba(241,232,204,.72), rgba(239,250,244,.9));
+  border-radius:18px;
+  padding:12px 14px;
+  color:#164734;
+  font-size:.95rem;
+  margin:10px 0 14px;
+}
+.attendance-season-note-v191 strong{color:#0b4d30;}
+body.is-dark .attendance-season-note-v191{
+  background:linear-gradient(135deg, rgba(20,48,37,.85), rgba(8,24,18,.92));
+  border-color:rgba(216,184,99,.28);
+  color:#efe8d7;
+}
+body.is-dark .attendance-season-note-v191 strong{color:#f1d48a;}
