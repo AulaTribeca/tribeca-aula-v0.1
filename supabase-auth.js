@@ -836,7 +836,8 @@
   const neaeTypes = ['Necesidades educativas especiales','Retraso madurativo','Trastornos del desarrollo del lenguaje y la comunicación','Trastornos de atención o de aprendizaje','TDAH / TDA','Dislexia','Disortografía','Discalculia','Dificultades específicas de aprendizaje','Desconocimiento grave de la lengua de aprendizaje','Vulnerabilidad socioeducativa','Altas capacidades intelectuales','Incorporación tardía al sistema educativo','Condiciones personales o de historia escolar','Desfase curricular significativo','Necesidad de apoyo educativo temporal','Otra NEAE acreditada'];
   const healthConditions = ['Diabetes','Asma','Epilepsia','Celiaquía','Alergias','Migrañas','Enfermedad inflamatoria intestinal','Enfermedad aguda o transitoria','Recuperación posquirúrgica breve','Problema sensorial corregido','Dolor, fatiga o sueño insuficiente sin necesidad educativa acreditada','Dificultad emocional leve o reactiva','Factor familiar u organizativo no acreditado como vulnerabilidad','Otra condición que conviene conocer'];
   const badges = [
-    ['sixseven','😎','67 sixseven'],['effort','💪','Esfuerzo sostenido'],['autonomy','🧭','Autonomía'],['kindness','🤝','Buen trato'],['perseverance','🌱','Constancia'],['focus','🎯','Concentración'],['careful_reading','📚','Lectura cuidadosa'],['improvement','📈','Mejora notable'],['responsibility','✅','Responsabilidad'],['curiosity','🔎','Curiosidad'],['creativity','🎨','Creatividad'],['teamwork','👥','Trabajo cooperativo'],['punctuality','⏰','Puntualidad'],['resilience','🛡️','Resiliencia'],['math_power','π','Razonamiento matemático'],['language_care','✍️','Cuidado lingüístico'],['science_mind','🔬','Mentalidad científica'],['history_eye','🏛️','Mirada histórica'],['english_star','GB','English star'],['galician_voice','🌿','Voz galega'],['exam_ready','📝','Preparación de examen'],['challenge','🧩','Desafío superado'],['golden_bulb','💡','Idea brillante'],['study_week','📆','Semana de estudio completa'],['oral_expression','🎙️','Expresión oral'],['writing_care','🖋️','Escritura cuidada'],['homework_done','📌','Tareas al día'],['good_questions','❓','Buenas preguntas'],['first_eval_passed','1️⃣','Primera evaluación superada'],['second_eval_passed','2️⃣','Segunda evaluación superada'],['course_passed','🎓','Curso superado'],['summer_study','☀️','Estudiando en verano'],['punctual_person','⏱️','Puntual']
+    ['sixseven','😎','67 sixseven'],['effort','💪','Esfuerzo sostenido'],['autonomy','🧭','Autonomía'],['kindness','🤝','Buen trato'],['perseverance','🌱','Constancia'],['focus','🎯','Concentración'],['careful_reading','📚','Lectura cuidadosa'],['improvement','📈','Mejora notable'],['responsibility','✅','Responsabilidad'],['curiosity','🔎','Curiosidad'],['creativity','🎨','Creatividad'],['teamwork','👥','Trabajo cooperativo'],['punctuality','⏰','Puntualidad'],['resilience','🛡️','Resiliencia'],['math_power','π','Razonamiento matemático'],['language_care','✍️','Cuidado lingüístico'],['science_mind','🔬','Mentalidad científica'],['history_eye','🏛️','Mirada histórica'],['english_star','GB','English star'],['galician_voice','🌿','Voz galega'],['exam_ready','📝','Preparación de examen'],['challenge','🧩','Desafío superado'],['golden_bulb','💡','Idea brillante'],['study_week','📆','Semana de estudio completa'],['oral_expression','🎙️','Expresión oral'],['writing_care','🖋️','Escritura cuidada'],['homework_done','📌','Tareas al día'],['good_questions','❓','Buenas preguntas'],['first_eval_passed','1️⃣','Primera evaluación superada'],['second_eval_passed','2️⃣','Segunda evaluación superada'],['course_passed','🎓','Curso superado'],['summer_study','☀️','Estudiando en verano'],['punctual_person','⏱️','Puntual'],
+    ['pk_keywords','🔑','Medalla Palabras clave'],['pk_main_ideas','💎','Medalla Ideas principales'],['pk_summary','📜','Medalla Resumen claro'],['pk_organization','🧭','Medalla Organización'],['pk_focus','⚡','Medalla Concentración'],['pk_exam_plan','🛡️','Medalla Preparación de prueba'],['pk_autonomy','🏆','Medalla Autonomía'],['pk_master','🌟','Medalla Maestría final']
   ].map(([code,icon,name]) => ({code,icon,name}));
 
   const TOOL_ICON = {
@@ -2261,6 +2262,14 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const ids=new Set(assignments.map(a=>String(a.class_id)));
     return (State.data.classrooms||[]).filter(c=>ids.has(String(c.id)) && c.active!==false && !c.hidden).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}));
   }
+  function studentClassAssignmentRowsV186(studentId=''){
+    return (State.data.classStudents||[]).filter(a=>String(a.user_id)===String(studentId) && a.active!==false && classById(a.class_id));
+  }
+  function studentClassesManagementPanelV186(s={}){
+    if(!roleTeacher() || !s?.id) return '';
+    const rows=studentClassAssignmentRowsV186(s.id);
+    return `<details class="teacher-option-drawer student-class-manager-v186" open><summary><span>Clases asignadas</span><em>${rows.length} activa${rows.length===1?'':'s'}</em></summary><section class="premium-form-section"><p class="meta">Desde aquí puedes quitar manualmente a un alumno de una clase sin borrar su perfil. Si se queda sin clase, seguirá existiendo en Perfiles del alumnado.</p><div class="student-class-chip-list-v186">${rows.length?rows.map(a=>{ const c=classById(a.class_id)||{}; return `<article><div><strong>${safe(classroomLabel(c))}</strong><small>${safe([c.center,c.stage,c.course,c.academic_year].filter(Boolean).join(' · '))}</small></div><button type="button" class="danger-btn compact-btn" data-t186-remove-student-class="${safe(s.id)}" data-class-id="${safe(c.id)}">Quitar de esta clase</button></article>`; }).join(''):'<div class="empty-state">No tiene clases activas asignadas.</div>'}</div></section></details>`;
+  }
   function classSubjectsForStudentClass(classId){
     return (State.data.classSubjects||[]).filter(s=>String(s.class_id)===String(classId) && s.active!==false && !s.hidden).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.subject||'').localeCompare(String(b.subject||''),'es'));
   }
@@ -2354,7 +2363,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
     const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}<section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}`;
   }
 
   function uiLocale(){
@@ -2390,7 +2399,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(studentFocusModeEnabled(p)) return focusStudentHome();
     const subjects=subjectList(p);
     const dateLabel = new Intl.DateTimeFormat(uiLocale(), {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
-    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${videoClassesHomePanel()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
@@ -4499,11 +4508,24 @@ render();
   }
   function publicationClassroomSelector(item={}){
     const classes=(State.data.classrooms||[]).filter(c=>c && c.active!==false).sort((a,b)=>String(a.center||'').localeCompare(String(b.center||''),'es') || String(a.course||'').localeCompare(String(b.course||''),'es',{numeric:true}));
-    const selected=State.prefillPublicationClassId || item.class_id || '';
-    return `<section class="window-panel classroom-publication-panel">
-      <h3>Clase del nuevo modelo</h3>
-      <p class="meta">Para publicar materiales en el nuevo modelo, selecciona siempre la clase. Los anuncios pueden seguir publicándose sin clase.</p>
-      <label>Clase<select name="classId"><option value="">Seleccionar clase</option>${classes.map(c=>`<option value="${safe(c.id)}" ${selectedAttr(c.id,selected)}>${safe(classroomLabel(c))} · ${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</option>`).join('')}</select></label>
+    const editing=!!State.pendingPublicationEdit?.id;
+    // V185/V186: en edición, la ubicación original manda siempre.
+    const selected=editing ? (item.class_id || '') : (State.prefillPublicationClassId || item.class_id || '');
+    const selectedClass=selected ? classes.find(c=>String(c.id)===String(selected)) : null;
+    const selectedLevel = selectedClass ? `${selectedClass.stage||''}||${selectedClass.course||''}` : '';
+    const targetSet=new Set([selected, ...targetClassIds(item)].filter(Boolean).map(String));
+    const multiTargets = !editing ? `<details class="publication-multi-class-v186" open>
+        <summary><span>Publicar también en otras clases del mismo nivel</span><em>opcional</em></summary>
+        <p class="meta">Marca una o varias clases. Tribeca creará una copia independiente en cada clase, dentro de la misma materia, unidad y numeración. Todas las clases elegidas deben pertenecer al mismo curso/nivel.</p>
+        <div class="calendar-class-grid-v163 publication-class-grid-v186">${classes.map(c=>`<label class="${selectedLevel && `${c.stage||''}||${c.course||''}`!==selectedLevel?'is-other-level-v186':''}"><input type="checkbox" name="targetClassIds" value="${safe(c.id)}" ${targetSet.has(String(c.id))?'checked':''}><span><strong>${safe(classroomLabel(c))}</strong><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></span></label>`).join('')}</div>
+      </details>` : '';
+    return `<section class="window-panel classroom-publication-panel publication-location-lock-v186 publication-targets-v186 ${editing?'is-editing-publication':''}">
+      <h3>${editing?'Ubicación de esta publicación':'Clase o clases de destino'}</h3>
+      ${editing
+        ? `<p class="meta">Edición segura: esta publicación se guardará en su aula original salvo que marques expresamente la opción de moverla.</p>${selectedClass?`<div class="publication-location-current-v186"><strong>${safe(classroomLabel(selectedClass))}</strong><span>${safe([selectedClass.center,selectedClass.stage,selectedClass.course].filter(Boolean).join(' · '))}</span></div>`:''}<label class="publication-move-toggle-v186"><input type="checkbox" name="allowClassMove" value="1"> Quiero mover esta publicación a otra clase</label>`
+        : '<p class="meta">Para materiales, selecciona la clase principal y, si quieres, marca otras clases del mismo nivel para publicar el mismo contenido a la vez. Los anuncios pueden seguir publicándose sin clase.</p>'}
+      <label>Clase principal<select name="classId" ${editing?'disabled data-t185-class-select':''}><option value="">Seleccionar clase</option>${classes.map(c=>`<option value="${safe(c.id)}" ${selectedAttr(c.id,selected)}>${safe(classroomLabel(c))} · ${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</option>`).join('')}</select></label>
+      ${multiTargets}
     </section>`;
   }
   async function ensureClassSubjectAndUnit(classId, subject, unit='Unidad 1'){
@@ -4606,6 +4628,19 @@ render();
     </form>`;
   }
 
+  function normalizedPublicationTargetClassIdsV186(classId='', rawIds=[]){
+    const ids=[classId, ...(rawIds||[])].map(x=>String(x||'').trim()).filter(Boolean);
+    return [...new Set(ids)];
+  }
+  function assertSameLevelPublicationTargetsV186(ids=[]){
+    const classes=ids.map(id=>classById(id)).filter(Boolean);
+    if(classes.length<=1) return true;
+    const key=`${classes[0].stage||''}||${classes[0].course||''}`;
+    const bad=classes.find(c=>`${c.stage||''}||${c.course||''}`!==key);
+    if(bad) throw new Error('Para publicar el mismo material en varias clases, todas deben ser del mismo nivel/curso. Publica por tandas si son niveles distintos.');
+    return true;
+  }
+
   async function autoSaveMaterialPayloadToRepository(payload={}, sourceId=null){
     if(!roleTeacher()) return false;
     try {
@@ -4644,13 +4679,21 @@ render();
 
   async function savePublication(form) {
     const fd=new FormData(form);
-    const rawKind=fd.get('publicationKind');
-    const kind=normalizeMaterialKind(rawKind);
     const editId=String(fd.get('editId')||'').trim();
     const editTable=String(fd.get('editTable')||'').trim();
-    const classId=String(fd.get('classId')||'').trim();
-    const selectedClass=classId ? (State.data.classrooms||[]).find(c=>String(c.id)===String(classId)) : null;
+    const originalEdit = editId ? ((State.pendingPublicationEdit?.item) || ((State.data.materials||[]).find(m=>String(m.id)===String(editId))) || ((State.data.announcements||[]).find(a=>String(a.id)===String(editId))) || {}) : {};
+    const rawKind=fd.get('publicationKind') || normalizeMaterialKind(originalEdit.material_type || originalEdit.type || (editTable==='announcements'?'announcement':'material'));
+    const kind=normalizeMaterialKind(rawKind);
+    const allowClassMove = editId && fd.get('allowClassMove') === '1';
+    // V185: en edición no se usa el prellenado de otra aula ni un valor accidental
+    // del selector. La clase solo cambia si se marca expresamente "mover".
+    const targetClassIdsFromForm=[...new Set(fd.getAll('targetClassIds').map(String).map(x=>x.trim()).filter(Boolean))];
+    let classId=String((editId && originalEdit.class_id && !allowClassMove) ? originalEdit.class_id : (fd.get('classId') || originalEdit.class_id || State.prefillPublicationClassId || targetClassIdsFromForm[0] || '')).trim();
+    if(editId && originalEdit.class_id && !allowClassMove) classId=String(originalEdit.class_id).trim();
     const isAnnouncement = kind === 'announcement' || editTable === 'announcements';
+    const publishClassIds=(!editId && !isAnnouncement) ? normalizedPublicationTargetClassIdsV186(classId, targetClassIdsFromForm) : (classId ? [classId] : []);
+    if(!editId && !isAnnouncement && publishClassIds.length) { assertSameLevelPublicationTargetsV186(publishClassIds); classId=publishClassIds[0]; }
+    const selectedClass=classId ? (State.data.classrooms||[]).find(c=>String(c.id)===String(classId)) : null;
     const wantsSchedule = !!fd.get('schedulePublication');
     const scheduledRaw = String(fd.get('scheduledAt') || '').trim();
     const scheduledAt = wantsSchedule && scheduledRaw ? new Date(scheduledRaw).toISOString() : null;
@@ -4659,42 +4702,76 @@ render();
     if(!isAnnouncement && hasClassModel && !classId) throw new Error('Selecciona una clase antes de publicar materiales.');
     const scope = classId ? 'class' : 'all';
     const rec={
-      title:fd.get('title'),
+      title:fd.get('title') || originalEdit.title || 'Publicación sin título',
       body:fd.get('body')||'',
       description:fd.get('body')||'',
       content:fd.get('body')||'',
-      image_url:fd.get('imageUrl')||null,
-      link_url:fd.get('linkUrl')||null,
-      font_size:Number(fd.get('fontSize')||16),
+      image_url:fd.get('imageUrl')||originalEdit.image_url||null,
+      link_url:fd.get('linkUrl')||originalEdit.link_url||null,
+      font_size:Number(fd.get('fontSize')||originalEdit.font_size||16),
       target_scope:scope,
-      target_user_ids:[],
-      target_class_ids: classId ? [classId] : [],
-      center:selectedClass?.center || null,
-      stage:selectedClass?.stage || null,
-      course:selectedClass?.course || null,
+      target_user_ids:parseArrayField(originalEdit.target_user_ids || []),
+      target_class_ids: classId ? [classId] : targetClassIds(originalEdit),
+      center:selectedClass?.center || originalEdit.center || null,
+      stage:selectedClass?.stage || originalEdit.stage || null,
+      course:selectedClass?.course || originalEdit.course || null,
       created_by:State.profile.id,
       hidden:false,
+      active:true,
       scheduled_at: scheduledAt
     };
     let attachments = [];
     try { attachments = JSON.parse(fd.get('attachmentsJson')||'[]'); } catch(_e) { attachments = []; }
     const tableName = isAnnouncement ? 'announcements' : 'subject_materials';
-    const subject=fd.get('subject')||'Apoyo personalizado';
-    const unit=fd.get('unit')||'Unidad 1';
-    const displayOrder=normalizeOrderLabel(fd.get('displayOrder') || '');
+    const subject=String(fd.get('subject') || originalEdit.subject || State.prefillPublicationSubject || 'Apoyo personalizado').trim() || 'Apoyo personalizado';
+    const unit=String(fd.get('unit') || originalEdit.unit_title || originalEdit.unit || State.prefillPublicationUnit || 'Unidad 1').trim() || 'Unidad 1';
+    const displayOrder=normalizeOrderLabel(fd.get('displayOrder') || originalEdit.display_order || originalEdit.order_label || '');
     const inferredOrder=displayOrder || inferredMaterialOrderLabel({title:rec.title});
     const payload = isAnnouncement
       ? {...rec, announcement_type:'announcement', attachments}
       : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), display_order:inferredOrder || null, sort_order:Number.isFinite(materialSortNumberFromLabel(inferredOrder)) ? materialSortNumberFromLabel(inferredOrder) : null, badge_codes:[], attachments, embed_url:String(fd.get('embedUrl')||'').trim()||null, embed_code:String(fd.get('embedCode')||'').trim()||null, embed_height:Number(fd.get('embedHeight')||520)};
     let linked={classSubjectId:null, classUnitId:null};
-    if(!isAnnouncement && classId){
-      linked=await ensureClassSubjectAndUnit(classId, subject, unit);
-      payload.class_id=classId;
-      payload.class_subject_id=linked.classSubjectId;
-      payload.class_unit_id=linked.classUnitId;
+    if(!isAnnouncement){
+      if(classId){
+        linked=await ensureClassSubjectAndUnit(classId, subject, unit);
+        payload.class_id=classId;
+        payload.class_subject_id=linked.classSubjectId || originalEdit.class_subject_id || null;
+        payload.class_unit_id=linked.classUnitId || originalEdit.class_unit_id || null;
+      } else if(editId){
+        // V184: al editar una publicación existente nunca dejamos que pierda su ubicación.
+        // Si por cualquier motivo el selector de clase llega vacío, conservamos la clase, materia y unidad originales.
+        if(originalEdit.class_id) payload.class_id=originalEdit.class_id;
+        if(originalEdit.class_subject_id) payload.class_subject_id=originalEdit.class_subject_id;
+        if(originalEdit.class_unit_id) payload.class_unit_id=originalEdit.class_unit_id;
+        if(originalEdit.target_scope) payload.target_scope=originalEdit.target_scope;
+        if(targetClassIds(originalEdit).length) payload.target_class_ids=targetClassIds(originalEdit);
+      }
     }
     if(editId) { delete payload.created_by; delete payload.hidden; }
+    if(!editId && !isAnnouncement && publishClassIds.length > 1){
+      let firstLinked={classSubjectId:null,classUnitId:null};
+      for(const tid of publishClassIds){
+        const tc=classById(tid);
+        if(!tc) continue;
+        const perLinked=await ensureClassSubjectAndUnit(tid, subject, unit);
+        if(!firstLinked.classSubjectId) firstLinked=perLinked;
+        const perPayload={...payload, class_id:tid, class_subject_id:perLinked.classSubjectId || null, class_unit_id:perLinked.classUnitId || null, target_scope:'class', target_class_ids:[tid], center:tc.center || null, stage:tc.stage || null, course:tc.course || null};
+        await persistSupabaseRecord(tableName, perPayload, null);
+        await autoSaveMaterialPayloadToRepository(perPayload, null);
+      }
+      await log('publication','Nueva publicación multiclase',{title:rec.title, kind, table:tableName, class_ids:publishClassIds});
+      if(!isScheduledForFuture){
+        await tribecaDispatchPushNotification('material', {title:`Material nuevo: ${rec.title || 'Tribeca Aula'}`, body:String(rec.body || '').slice(0,180) || `${subject || 'Materia'} · ${unit || 'Unidad'}`, targetScope:'classes', classIds:publishClassIds, targetClassIds:publishClassIds, section:'subjects'});
+      }
+      State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationUnit=null; State.prefillPublicationClassId=null; State.prefillPublicationClassSubjectId=null; State.prefillPublicationClassUnitId=null; State.prefillPublicationKind=null;
+      await loadData(true);
+      toast(isScheduledForFuture ? `Publicación programada en ${publishClassIds.length} clases.` : `Material publicado en ${publishClassIds.length} clases.`);
+      form.reset();
+      rerender();
+      return;
+    }
     await persistSupabaseRecord(tableName, payload, editId || null);
+    if(!isAnnouncement) await autoSaveMaterialPayloadToRepository(payload, editId || null);
     await log('publication', editId?'Publicación modificada':'Nueva publicación',{title:rec.title, kind, table:tableName, class_id:classId||null});
     if(!editId && !isScheduledForFuture){
       await tribecaDispatchPushNotification(isAnnouncement ? 'announcement' : 'material', {
@@ -4705,8 +4782,8 @@ render();
         stage: payload.stage || null,
         course: payload.course || null,
         classId: classId || null,
-        classIds: classId ? [classId] : [],
-        targetClassIds: classId ? [classId] : [],
+        classIds: publishClassIds.length ? publishClassIds : (classId ? [classId] : []),
+        targetClassIds: publishClassIds.length ? publishClassIds : (classId ? [classId] : []),
         materialId: isAnnouncement ? null : null,
         section: isAnnouncement ? 'announcements' : (linked.classSubjectId ? 'classSubjectDetail' : 'subjects'),
         opts: isAnnouncement ? {} : (linked.classSubjectId ? {classSubjectId:linked.classSubjectId, classId:classId, subject} : {})
@@ -5265,6 +5342,8 @@ render();
         <div><p class="eyebrow">Perfil del alumnado</p><h3>${safe(displayName(s))}</h3><div class="clean-chip-row">${statusChips.map(x=>`<span>${safe(x)}</span>`).join('')}</div></div>
       </div>
       <div class="form-status t24-profile-status" data-t24-profile-status></div>
+      ${studentClassesManagementPanelV186(s)}
+      ${izamPokemonTeacherPanelV186(s)}
       <section class="premium-form-section clean-primary-section">
         <h4>Datos principales</h4>
         <div class="window-grid"><label>Nombre<input name="firstName" value="${safe(s.first_name||firstPart(s.full_name))}"></label><label>Apellidos<input name="lastName" value="${safe(s.last_name||lastPart(s.full_name))}"></label></div>
@@ -6530,7 +6609,7 @@ function classroomCard(c,i=0){
         <p class="meta">Selecciona el alumnado que pertenece a esta clase. Si necesitas pasar a alguien a otro curso, hazlo manualmente cambiando su clase y sus datos en el perfil.</p>
         <input class="t16-search" type="search" placeholder="Filtrar alumnado..." data-t16-student-search>
         <div class="classroom-student-select-list">
-          ${students.map(s=>{ const current=studentActiveClass(s.id); const checked=String(current?.id||'')===String(c.id); return `<label data-student-name="${safe((displayName(s)+' '+s.username+' '+academicLine(s)+' '+(current?.name||'')).toLowerCase())}" class="${checked?'is-assigned-here':current?'is-assigned-elsewhere':''}"><input type="checkbox" name="studentIds" value="${safe(s.id)}" ${checked?'checked':''}><span><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}${current?` · Clase actual: ${safe(current.name||classroomAutoName(current.center,current.stage,current.course))}`:' · Sin clase activa'}</small></span></label>`; }).join('')}
+          ${students.map(s=>{ const checked=!!activeClassAssignmentFor(s.id,c.id); const assignedClasses=studentAssignedClasses(s.id); const current=assignedClasses[0]||null; const currentLabel=assignedClasses.length?assignedClasses.map(x=>x.name||classroomAutoName(x.center,x.stage,x.course)).join(' · '):''; return `<label data-student-name="${safe((displayName(s)+' '+s.username+' '+academicLine(s)+' '+currentLabel).toLowerCase())}" class="${checked?'is-assigned-here':assignedClasses.length?'is-assigned-elsewhere':''}"><input type="checkbox" name="studentIds" value="${safe(s.id)}" ${checked?'checked':''}><span><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}${assignedClasses.length?` · Clase/s actual/es: ${safe(currentLabel)}`:' · Sin clase activa'}</small></span></label>`; }).join('')}
         </div>
         <div class="inline-actions">
           <button type="button" class="primary-btn" onclick="return window.TribecaClassroomSaveStudents(this,event,'assign')">Guardar lista de esta clase</button>
@@ -6908,6 +6987,31 @@ function classroomCard(c,i=0){
     toast(id?'Clase actualizada.':'Clase creada.');
     rerender();
   }
+  async function deactivateClassAssignmentsV186(ids=[]){
+    ids=[...new Set((ids||[]).map(String).filter(Boolean))];
+    if(!ids.length) return;
+    const rpc=await State.client.rpc('tribeca_teacher_deactivate_class_assignments_v186',{p_assignment_ids:ids});
+    if(rpc.error){
+      const {error}=await table('tribeca_class_students').update({active:false, withdrawn_at:todayIso(), updated_at:new Date().toISOString()}).in('id',ids);
+      if(error) throw error;
+    }
+  }
+  async function removeStudentFromClassV186(studentId, classId){
+    if(!roleTeacher()) return toast('Solo la profesora puede gestionar clases.');
+    const st=(State.data.students||[]).find(s=>String(s.id)===String(studentId));
+    const c=classById(classId);
+    if(!st || !c) return toast('No se encontró el alumno o la clase.');
+    if(!confirm(`¿Quitar a ${displayName(st)} de ${classroomLabel(c)}? No se borrará su perfil.`)) return;
+    const rpc=await State.client.rpc('tribeca_teacher_remove_student_from_class_v186',{p_user_id:studentId,p_class_id:classId});
+    if(rpc.error){
+      const rows=(State.data.classStudents||[]).filter(a=>String(a.user_id)===String(studentId) && String(a.class_id)===String(classId) && a.active!==false).map(a=>a.id).filter(Boolean);
+      if(rows.length) await deactivateClassAssignmentsV186(rows);
+    }
+    await loadData(true);
+    toast('Alumno quitado de la clase.');
+    rerender();
+  }
+
   async function saveClassroomStudents(form, mode='assign'){
     if(!roleTeacher()) throw new Error('Solo la profesora puede asignar alumnado.');
     const fd=new FormData(form);
@@ -6920,11 +7024,7 @@ function classroomCard(c,i=0){
     const today=todayIso();
     const toDeactivate=existing.filter(x=>!selectedSet.has(String(x.user_id)));
     if(toDeactivate.length){
-      const ids=toDeactivate.map(x=>x.id).filter(Boolean);
-      if(ids.length){
-        const {error}=await table('tribeca_class_students').update({active:false, withdrawn_at:today, updated_at:new Date().toISOString()}).in('id',ids);
-        if(error) throw error;
-      }
+      await deactivateClassAssignmentsV186(toDeactivate.map(x=>x.id).filter(Boolean));
     }
     if(mode==='promote' && selected.length){
       const other=activeClassAssignments().filter(x=>selectedSet.has(String(x.user_id)) && String(x.class_id)!==String(classId));
@@ -7366,6 +7466,41 @@ function classroomCard(c,i=0){
   async function deleteSubjectOverride(id){ if(!confirm('¿Eliminar esta materia personalizada?')) return; const before=(State.data.subjects||[]).find(x=>x.id===id); const rpc=await State.client.rpc('tribeca_delete_subject_override_v30',{p_id:id}); if(rpc.error) throw rpc.error; if(before){ pushUndo('eliminación de materia', async()=>{ await State.client.rpc('tribeca_save_subject_override_v30',{p_payload:before}); }); } await loadData(true); toast('Materia eliminada.'); rerender(); }
   function studentName(id){ const s=(State.data.students||[]).find(x=>x.id===id); if(s) return displayName(s); if(id===State.profile?.id) return displayName(State.profile); return 'Usuario'; }
   function badgeName(code){ return badges.find(b=>b.code===code)?.name || code || 'Insignia'; } function badgeIcon(code){ return badges.find(b=>b.code===code)?.icon || '🏅'; }
+  function isIzamProfile(p={}){
+    const txt=normalizeLooseText([p.full_name,p.username,p.first_name,p.last_name].filter(Boolean).join(' '));
+    return /\bizam\b/.test(txt) && /sanchez|sánchez/.test(txt);
+  }
+  function pokemonMedalDefinitionsV186(){
+    return badges.filter(b=>String(b.code||'').startsWith('pk_'));
+  }
+  function izamEarnedMedalsV186(userId=State.profile?.id){
+    const defs=pokemonMedalDefinitionsV186();
+    const earned=new Set((State.data.userBadges||[]).filter(b=>String(b.user_id||b.student_id)===String(userId)).map(b=>String(b.badge_code)));
+    return defs.map(b=>({...b, earned:earned.has(b.code)}));
+  }
+  function izamPokemonPanelV186(p=State.profile){
+    if(!p || !isIzamProfile(p)) return '';
+    const medals=izamEarnedMedalsV186(p.id);
+    const earned=medals.filter(m=>m.earned).length;
+    return `<section class="izam-medal-panel-v186 panel"><div class="izam-medal-head-v186"><div><p class="eyebrow">Reto personal</p><h2>Medallas de unidades</h2><p>Pequeños reconocimientos por cerrar unidades de técnicas de estudio. No todo será de Pokémon, pero aquí sí habrá una motivación especial.</p></div><strong>${earned}/${medals.length}</strong></div><div class="izam-medal-grid-v186">${medals.map(m=>`<article class="${m.earned?'is-earned':'is-locked'}"><span>${safe(m.icon)}</span><strong>${safe(m.name)}</strong><small>${m.earned?'Conseguida':'Aún no conseguida'}</small></article>`).join('')}</div></section>`;
+  }
+  function izamPokemonTeacherPanelV186(s={}){
+    if(!roleTeacher() || !isIzamProfile(s)) return '';
+    const medals=izamEarnedMedalsV186(s.id);
+    return `<details class="teacher-option-drawer izam-teacher-medals-v186" open><summary><span>Medallas de unidades para Izam</span><em>${medals.filter(m=>m.earned).length}/${medals.length}</em></summary><section class="premium-form-section"><p class="meta">Gamificación ligera y solo para Izam: medallas tipo gimnasio por superar unidades didácticas, sin convertir toda el aula en Pokémon.</p><div class="izam-medal-admin-grid-v186">${medals.map(m=>`<article class="${m.earned?'is-earned':'is-pending'}"><span>${safe(m.icon)}</span><div><strong>${safe(m.name)}</strong><small>${m.earned?'Ya concedida':'Pendiente'}</small></div><button type="button" class="${m.earned?'secondary-btn':'primary-btn'} compact-btn" data-t186-award-izam-medal="${safe(s.id)}" data-medal-code="${safe(m.code)}" ${m.earned?'disabled':''}>${m.earned?'Concedida':'Conceder'}</button></article>`).join('')}</div></section></details>`;
+  }
+  async function awardIzamMedalV186(userId, code){
+    if(!roleTeacher()) return;
+    const student=(State.data.students||[]).find(s=>String(s.id)===String(userId));
+    if(!student || !isIzamProfile(student)) return toast('Estas medallas solo están activadas para Izam Sánchez.');
+    const def=pokemonMedalDefinitionsV186().find(m=>m.code===code);
+    if(!def) return toast('No se encontró esa medalla.');
+    const result=await saveUserBadgesWithoutDuplicates([{user_id:userId,badge_code:def.code,badge_name:def.name,assigned_by:State.profile.id}]);
+    await log('badge','Medalla de unidad asignada a Izam',{student:displayName(student), badge:def.code});
+    await loadData(true);
+    toast(result.inserted ? `Medalla concedida: ${def.name}.` : 'Izam ya tenía esa medalla.');
+    rerender();
+  }
   function readFileAsText(file){
     if(file?.text) return file.text();
     return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(String(r.result||'')); r.onerror=reject; r.readAsText(file); });
@@ -7374,41 +7509,79 @@ function classroomCard(c,i=0){
     if(!file || !form) return;
     const preview=form.querySelector('#interactiveFilePreview');
     const embed=form.elements.embedCode;
-    const typeInput=form.elements.publicationKind;
+    const radios=[...form.querySelectorAll('input[name="publicationKind"]')];
+    const selectedRadio=form.querySelector('input[name="publicationKind"]:checked');
+    const selectedKind=normalizeMaterialKind(selectedRadio?.value || '');
+    const fileName=String(file.name||'');
+    const lowerName=fileName.toLowerCase();
+    const ext=(lowerName.match(/\.([a-z0-9]+)$/)||[])[1] || '';
+    const setKind=(next)=>{ const normalized=normalizeMaterialKind(next); radios.forEach(r=>{ r.checked = normalizeMaterialKind(r.value)===normalized; }); };
+    const setPreview=(text)=>{ if(preview) preview.textContent=text; };
     const raw=await readFileAsText(file);
-    const selectedKind=form.querySelector('input[name="publicationKind"]:checked')?.value || '';
-    const exam=parseExamFromInteractiveCode(raw) || ((selectedKind==='exam' || /simulacro|examen|exam/i.test(file.name)) ? normalizeExamPayload(raw) : null);
-    if(exam){
-      if(embed) embed.value=examPayloadToStorage(exam);
-      if(preview) preview.textContent=`${file.name} · simulacro autocorregible (${exam.questions.length} preguntas)`;
-      const radios=form.querySelectorAll('input[name="publicationKind"]');
-      radios.forEach(r=>{ r.checked = r.value==='exam'; });
-      toast(`Simulacro importado: ${exam.questions.length} preguntas.`);
+
+    // V184: si la profesora ya eligió "Presentación", respetamos su decisión.
+    // Algunas presentaciones HTML contienen actividades, formularios o preguntas y antes podían
+    // detectarse por error como test interactivo. Eso hacía que, al editar, cambiara el tipo y
+    // la publicación pudiera quedar fuera del lugar esperado.
+    if(selectedKind==='presentation'){
+      if(embed) embed.value=raw;
+      setPreview(`${fileName} · presentación HTML cargada`);
+      setKind('presentation');
+      toast('Presentación cargada. Se mantendrá como presentación al guardar.');
       return;
     }
-    const schemaActivity=parseSchemaActivityFromInteractiveCode(raw);
-    if(schemaActivity){
-      if(embed) embed.value=schemaActivityPayloadToStorage(schemaActivity);
-      if(preview) preview.textContent=`${file.name} · esquema autocorregible (${schemaActivity.dropZones.length} ocos)`;
-      const radios=form.querySelectorAll('input[name="publicationKind"]');
-      radios.forEach(r=>{ r.checked = r.value==='schema'; });
-      toast(`Esquema importado: ${schemaActivity.dropZones.length} ocos autocorregibles.`);
-      return;
+
+    // Si se eligió expresamente un tipo evaluable, entonces sí intentamos convertirlo al formato nativo.
+    const mayParseExam = selectedKind==='exam' || (!selectedKind && /simulacro|examen|exam/i.test(fileName));
+    const mayParseSchema = selectedKind==='schema' || (!selectedKind && /esquema|schema/i.test(fileName));
+    const mayParseQuiz = selectedKind==='test' || ['json','txt'].includes(ext) || /test|quiz|cuestionario|daypo/i.test(fileName);
+
+    if(mayParseExam){
+      const exam=parseExamFromInteractiveCode(raw) || normalizeExamPayload(raw);
+      if(exam){
+        if(embed) embed.value=examPayloadToStorage(exam);
+        setPreview(`${fileName} · simulacro autocorregible (${exam.questions.length} preguntas)`);
+        setKind('exam');
+        toast(`Simulacro importado: ${exam.questions.length} preguntas.`);
+        return;
+      }
     }
-    const quiz=parseQuizFromInteractiveCode(raw);
-    if(quiz){
-      if(embed) embed.value=quizPayloadToStorage(quiz);
-      if(preview) preview.textContent=`${file.name} · test nativo (${quiz.questions.length} preguntas)`;
-      const radios=form.querySelectorAll('input[name="publicationKind"]');
-      radios.forEach(r=>{ r.checked = r.value==='test'; });
-      toast(`Test importado: ${quiz.questions.length} preguntas.`);
-      return;
+    if(mayParseSchema){
+      const schemaActivity=parseSchemaActivityFromInteractiveCode(raw);
+      if(schemaActivity){
+        if(embed) embed.value=schemaActivityPayloadToStorage(schemaActivity);
+        setPreview(`${fileName} · esquema autocorregible (${schemaActivity.dropZones.length} ocos)`);
+        setKind('schema');
+        toast(`Esquema importado: ${schemaActivity.dropZones.length} ocos autocorregibles.`);
+        return;
+      }
     }
+    if(mayParseQuiz){
+      const quiz=parseQuizFromInteractiveCode(raw);
+      if(quiz){
+        if(embed) embed.value=quizPayloadToStorage(quiz);
+        setPreview(`${fileName} · test nativo (${quiz.questions.length} preguntas)`);
+        setKind('test');
+        toast(`Test importado: ${quiz.questions.length} preguntas.`);
+        return;
+      }
+    }
+
     if(embed) embed.value=raw;
-    if(preview) preview.textContent=`${file.name} · HTML/iframe guardado como recurso interactivo`;
-    const radios=form.querySelectorAll('input[name="publicationKind"]');
-    if(/game|juego/i.test(file.name)) radios.forEach(r=>{ r.checked = r.value==='game'; });
-    else radios.forEach(r=>{ if(r.value==='test') r.checked=true; });
+    if(['html','htm'].includes(ext)){
+      setPreview(`${fileName} · presentación HTML cargada`);
+      setKind('presentation');
+      toast('HTML cargado como presentación. Puedes cambiar el tipo si no corresponde.');
+      return;
+    }
+    if(/game|juego/i.test(fileName)){
+      setPreview(`${fileName} · juego interactivo cargado`);
+      setKind('game');
+      toast('Juego interactivo cargado.');
+      return;
+    }
+    setPreview(`${fileName} · recurso interactivo cargado`);
+    setKind(selectedKind || 'material');
     toast('Recurso interactivo cargado.');
   }
 
@@ -7605,6 +7778,8 @@ function classroomCard(c,i=0){
       const pwaDismiss=ev.target.closest?.('[data-pwa-install-dismiss]'); if(pwaDismiss){ ev.preventDefault(); ev.stopPropagation(); localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY,'1'); updatePwaInstallCta(); return; }
       const pwaHelpClose=ev.target.closest?.('[data-pwa-help-close]'); if(pwaHelpClose){ ev.preventDefault(); ev.stopPropagation(); document.getElementById('tribecaPwaHelp')?.remove(); return; }
       const saveAttemptFeedback=ev.target.closest?.('[data-t163-save-attempt-feedback]'); if(saveAttemptFeedback){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const form=saveAttemptFeedback.closest('form'); const oldText=saveAttemptFeedback.textContent; saveAttemptFeedback.disabled=true; saveAttemptFeedback.textContent='Guardando…'; try{ await saveAttemptTeacherFeedback(saveAttemptFeedback.dataset.t163SaveAttemptFeedback, form); } catch(error){ toast(error?.message || 'No se pudo guardar la retroalimentación.'); } finally { saveAttemptFeedback.disabled=false; saveAttemptFeedback.textContent=oldText; } return; }
+      const removeStudentClass=ev.target.closest?.('[data-t186-remove-student-class]'); if(removeStudentClass){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await removeStudentFromClassV186(removeStudentClass.dataset.t186RemoveStudentClass, removeStudentClass.dataset.classId); return; }
+      const awardIzam=ev.target.closest?.('[data-t186-award-izam-medal]'); if(awardIzam){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await awardIzamMedalV186(awardIzam.dataset.t186AwardIzamMedal, awardIzam.dataset.medalCode); return; }
       const hideAttemptBtn=ev.target.closest?.('[data-t181-hide-attempt]'); if(hideAttemptBtn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await hideExamAttemptV181(hideAttemptBtn.dataset.t181HideAttempt); return; }
       const deleteAttemptBtn=ev.target.closest?.('[data-t181-delete-attempt]'); if(deleteAttemptBtn){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); await deleteExamAttemptV181(deleteAttemptBtn.dataset.t181DeleteAttempt); return; }
       const enablePush=ev.target.closest?.('[data-t151-enable-push]'); if(enablePush){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); const oldText=enablePush.textContent; enablePush.disabled=true; enablePush.textContent='Activando…'; try{ await enableTribecaPushNotifications(); } finally { enablePush.disabled=false; enablePush.textContent=oldText; } return; }
@@ -7734,7 +7909,7 @@ function classroomCard(c,i=0){
     document.addEventListener('click', ev=>{ const btn=ev.target.closest?.('.native-exam-form [data-t129-grade-exam]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); const form=btn.closest('form'); form?.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); } }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.matches?.('[data-calendar-scope-select]')){ const form=ev.target.closest('form'); const box=form?.querySelector?.('[data-calendar-class-targets]'); if(box) box.hidden = ev.target.value !== 'classes'; return; } if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; try{ const url=await studentPhotoFileToDataUrl(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=`${file.name} · optimizada a ${prettyBytes(approxDataUrlBytes(url))}`; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; toast('Foto optimizada y cargada. Pulsa Guardar cambios para conservarla.'); }catch(err){ toast(err?.message || 'No se pudo procesar la foto.'); ev.target.value=''; } } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.matches?.('input[name="allowClassMove"]')){ const panel=ev.target.closest('.publication-location-lock-v186'); const select=panel?.querySelector('select[name="classId"]'); if(select){ select.disabled=!ev.target.checked; panel.classList.toggle('is-moving-publication', !!ev.target.checked); } return; } if(ev.target?.matches?.('[data-calendar-scope-select]')){ const form=ev.target.closest('form'); const box=form?.querySelector?.('[data-calendar-class-targets]'); if(box) box.hidden = ev.target.value !== 'classes'; return; } if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; try{ const url=await studentPhotoFileToDataUrl(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=`${file.name} · optimizada a ${prettyBytes(approxDataUrlBytes(url))}`; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; toast('Foto optimizada y cargada. Pulsa Guardar cambios para conservarla.'); }catch(err){ toast(err?.message || 'No se pudo procesar la foto.'); ev.target.value=''; } } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
