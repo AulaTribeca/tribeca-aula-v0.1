@@ -4672,6 +4672,21 @@ render();
             <input name="interactiveFile" type="file" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain">
             <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún recurso interactivo seleccionado.</span>
           </label>
+          <div class="publication-full-resource-card-v197">
+            <div class="publication-full-resource-head-v197">
+              <strong>Recurso completo con carpeta de assets</strong>
+              <small>Para juegos, presentaciones HTML, recursos con audio, imágenes, CSS o JavaScript. Puedes subir un ZIP completo o una carpeta completa.</small>
+            </div>
+            <div class="publication-full-resource-grid-v197">
+              <label><span>ZIP del recurso completo</span><input name="resourceZipPackage" type="file" accept=".zip,application/zip,application/x-zip-compressed"></label>
+              <label><span>Carpeta completa del recurso</span><input name="resourceFolderPackage" type="file" webkitdirectory directory multiple></label>
+              <label><span>HTML principal suelto</span><input name="resourceIndexFile" type="file" accept=".html,.htm,text/html"></label>
+              <label><span>Carpeta de assets suelta</span><input name="resourceAssetFolder" type="file" webkitdirectory directory multiple></label>
+            </div>
+            <input type="hidden" name="resourcePackageJson" value="">
+            <div class="publication-full-resource-preview-v197" id="resourcePackagePreview">Ningún paquete de recurso completo seleccionado.</div>
+            <p class="meta">El sistema sube el HTML y todos sus assets a Supabase Storage, conserva las rutas relativas y coloca automáticamente la URL del HTML principal como recurso embebido. Es la opción correcta para juegos con audio, carpetas <code>assets</code>, CSS o JavaScript.</p>
+          </div>
           <div class="window-grid">
             <label>URL embebible<input name="embedUrl" type="url" placeholder="https://www.canva.com/.../view?embed · https://docs.google.com/presentation/.../embed · https://..." value="${safe(embedUrl)}"></label>
             <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
@@ -4782,6 +4797,8 @@ render();
     };
     let attachments = [];
     try { attachments = JSON.parse(fd.get('attachmentsJson')||'[]'); } catch(_e) { attachments = []; }
+    let resourcePackage = null;
+    try { resourcePackage = JSON.parse(fd.get('resourcePackageJson')||'null'); } catch(_e) { resourcePackage = null; }
     const tableName = isAnnouncement ? 'announcements' : 'subject_materials';
     const subject=String(fd.get('subject') || originalEdit.subject || State.prefillPublicationSubject || 'Apoyo personalizado').trim() || 'Apoyo personalizado';
     const unit=String(fd.get('unit') || originalEdit.unit_title || originalEdit.unit || State.prefillPublicationUnit || 'Unidad 1').trim() || 'Unidad 1';
@@ -4789,7 +4806,7 @@ render();
     const inferredOrder=displayOrder || inferredMaterialOrderLabel({title:rec.title});
     const payload = isAnnouncement
       ? {...rec, announcement_type:'announcement', attachments}
-      : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), display_order:inferredOrder || null, sort_order:Number.isFinite(materialSortNumberFromLabel(inferredOrder)) ? materialSortNumberFromLabel(inferredOrder) : null, badge_codes:[], attachments, embed_url:String(fd.get('embedUrl')||'').trim()||null, embed_code:String(fd.get('embedCode')||'').trim()||null, embed_height:Number(fd.get('embedHeight')||520)};
+      : {...rec, subject, unit_title:unit, unit, material_type:dbMaterialType(kind), display_order:inferredOrder || null, sort_order:Number.isFinite(materialSortNumberFromLabel(inferredOrder)) ? materialSortNumberFromLabel(inferredOrder) : null, badge_codes:[], attachments, embed_url:String(fd.get('embedUrl')||resourcePackage?.indexUrl||'').trim()||null, embed_code:String(fd.get('embedCode')||'').trim()||null, embed_height:Number(fd.get('embedHeight')||520)};
     let linked={classSubjectId:null, classUnitId:null};
     if(!isAnnouncement){
       if(classId){
@@ -7575,6 +7592,175 @@ function classroomCard(c,i=0){
     if(file?.text) return file.text();
     return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(String(r.result||'')); r.onerror=reject; r.readAsText(file); });
   }
+
+  const TRIBECA_RESOURCE_BUCKET_V197 = 'tribeca-public-assets';
+  function tribecaSlugV197(value=''){
+    return String(value||'recurso').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,72) || 'recurso';
+  }
+  function tribecaMimeFromNameV197(name=''){
+    const n=String(name||'').toLowerCase();
+    if(n.endsWith('.html') || n.endsWith('.htm')) return 'text/html; charset=utf-8';
+    if(n.endsWith('.css')) return 'text/css; charset=utf-8';
+    if(n.endsWith('.js') || n.endsWith('.mjs')) return 'text/javascript; charset=utf-8';
+    if(n.endsWith('.json')) return 'application/json; charset=utf-8';
+    if(n.endsWith('.svg')) return 'image/svg+xml';
+    if(n.endsWith('.png')) return 'image/png';
+    if(n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+    if(n.endsWith('.webp')) return 'image/webp';
+    if(n.endsWith('.gif')) return 'image/gif';
+    if(n.endsWith('.mp3')) return 'audio/mpeg';
+    if(n.endsWith('.wav')) return 'audio/wav';
+    if(n.endsWith('.ogg')) return 'audio/ogg';
+    if(n.endsWith('.mp4')) return 'video/mp4';
+    if(n.endsWith('.webm')) return 'video/webm';
+    if(n.endsWith('.pdf')) return 'application/pdf';
+    return 'application/octet-stream';
+  }
+  function tribecaCleanPackagePathV197(path=''){
+    return String(path||'').replace(/\\/g,'/').split('/').map(part=>part.trim()).filter(Boolean).filter(part=>part!=='.' && part!=='..').map(part=>part.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_')).join('/');
+  }
+  function tribecaCommonRootV197(paths=[]){
+    const clean=paths.map(p=>String(p||'').replace(/\\/g,'/').split('/').filter(Boolean));
+    if(!clean.length || clean.some(parts=>parts.length<2)) return '';
+    const first=clean[0][0];
+    if(!first) return '';
+    return clean.every(parts=>parts[0]===first) ? first : '';
+  }
+  function tribecaStripRootV197(path='', root=''){
+    const p=String(path||'').replace(/\\/g,'/');
+    return root && (p===root || p.startsWith(root+'/')) ? p.slice(root.length).replace(/^\//,'') : p;
+  }
+  async function tribecaInflateRawV197(bytes){
+    if(!('DecompressionStream' in window)) throw new Error('Tu navegador no permite descomprimir ZIP desde la web. Sube la carpeta completa del recurso en lugar del ZIP.');
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  function tribecaZipU16V197(view, offset){ return view.getUint16(offset, true); }
+  function tribecaZipU32V197(view, offset){ return view.getUint32(offset, true); }
+  function tribecaFindEocdV197(bytes){
+    const min=Math.max(0, bytes.length-0x10000-22);
+    for(let i=bytes.length-22;i>=min;i-=1){
+      if(bytes[i]===0x50 && bytes[i+1]===0x4b && bytes[i+2]===0x05 && bytes[i+3]===0x06) return i;
+    }
+    return -1;
+  }
+  async function tribecaExtractZipV197(file){
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const view=new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const eocd=tribecaFindEocdV197(bytes);
+    if(eocd<0) throw new Error('No se pudo leer el ZIP. Comprueba que el archivo no esté dañado.');
+    const entries=tribecaZipU16V197(view, eocd+10);
+    let cdOffset=tribecaZipU32V197(view, eocd+16);
+    const decoder=new TextDecoder('utf-8');
+    const files=[];
+    for(let i=0;i<entries;i+=1){
+      if(tribecaZipU32V197(view, cdOffset)!==0x02014b50) break;
+      const flags=tribecaZipU16V197(view, cdOffset+8);
+      const method=tribecaZipU16V197(view, cdOffset+10);
+      const compressedSize=tribecaZipU32V197(view, cdOffset+20);
+      const uncompressedSize=tribecaZipU32V197(view, cdOffset+24);
+      const nameLen=tribecaZipU16V197(view, cdOffset+28);
+      const extraLen=tribecaZipU16V197(view, cdOffset+30);
+      const commentLen=tribecaZipU16V197(view, cdOffset+32);
+      const localOffset=tribecaZipU32V197(view, cdOffset+42);
+      const rawName=bytes.slice(cdOffset+46, cdOffset+46+nameLen);
+      const name=decoder.decode(rawName);
+      cdOffset += 46 + nameLen + extraLen + commentLen;
+      if(!name || /\/$/.test(name)) continue;
+      if(tribecaZipU32V197(view, localOffset)!==0x04034b50) continue;
+      const localNameLen=tribecaZipU16V197(view, localOffset+26);
+      const localExtraLen=tribecaZipU16V197(view, localOffset+28);
+      const start=localOffset+30+localNameLen+localExtraLen;
+      const comp=bytes.slice(start, start+compressedSize);
+      let out;
+      if(method===0) out=comp;
+      else if(method===8) out=await tribecaInflateRawV197(comp);
+      else throw new Error(`El ZIP usa un método de compresión no compatible (${method}) en ${name}.`);
+      if(uncompressedSize && out.length!==uncompressedSize) console.warn('[Tribeca Aula] Tamaño ZIP inesperado', name, out.length, uncompressedSize, flags);
+      files.push({path:name, blob:new Blob([out],{type:tribecaMimeFromNameV197(name)}), size:out.length, type:tribecaMimeFromNameV197(name)});
+    }
+    if(!files.length) throw new Error('El ZIP no contiene archivos utilizables.');
+    return files;
+  }
+  function tribecaPackageFindIndexV197(files=[]){
+    const html=files.filter(f=>/\.html?$/i.test(f.path||f.name||''));
+    if(!html.length) return null;
+    const exact=html.find(f=>/(^|\/)index\.html?$/i.test(f.path||f.name||''));
+    if(exact) return exact;
+    const top=html.find(f=>!String(f.path||f.name||'').includes('/'));
+    return top || html[0];
+  }
+  async function tribecaUploadPublicAssetV197(path, blob, opts={}){
+    if(!State.client?.storage?.from) throw new Error('Supabase Storage no está disponible en esta sesión.');
+    const cleanPath=tribecaCleanPackagePathV197(path);
+    const bucket=State.client.storage.from(TRIBECA_RESOURCE_BUCKET_V197);
+    const { error } = await bucket.upload(cleanPath, blob, { contentType: opts.contentType || blob.type || tribecaMimeFromNameV197(cleanPath), upsert:true, cacheControl:'3600' });
+    if(error) throw new Error(error.message || 'No se pudo subir el recurso completo a Supabase Storage.');
+    const { data } = bucket.getPublicUrl(cleanPath);
+    return data?.publicUrl || '';
+  }
+  async function tribecaPrepareAndUploadResourcePackageV197(form, files, sourceLabel='recurso'){
+    if(!files?.length) throw new Error('No hay archivos para subir.');
+    const title=String(form?.elements?.title?.value || form?.querySelector?.('input[name="title"]')?.value || sourceLabel || 'recurso').trim();
+    const rawPaths=files.map(f=>String(f.path || f.webkitRelativePath || f.name || '').replace(/\\/g,'/')).filter(Boolean);
+    const root=tribecaCommonRootV197(rawPaths);
+    const normalized=files.map((file,idx)=>{
+      const original=String(file.path || file.webkitRelativePath || file.name || `archivo-${idx}`).replace(/\\/g,'/');
+      const rel=tribecaCleanPackagePathV197(tribecaStripRootV197(original, root)) || tribecaCleanPackagePathV197(file.name || `archivo-${idx}`);
+      return {file, rel};
+    }).filter(x=>x.rel && !/\/$/.test(x.rel));
+    const indexEntry=tribecaPackageFindIndexV197(normalized.map(x=>({path:x.rel, name:x.rel, blob:x.file.blob || x.file, type:x.file.type, size:x.file.size})));
+    if(!indexEntry) throw new Error('No he encontrado un archivo HTML principal. Debe existir un index.html o un .html dentro del ZIP/carpeta.');
+    const packageId=`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const base=`interactive-packages/${safe(State.profile?.id||'teacher')}/${packageId}-${tribecaSlugV197(title)}`;
+    let indexUrl='';
+    let totalBytes=0;
+    for(const entry of normalized){
+      const blob=entry.file.blob || entry.file;
+      totalBytes += Number(blob.size || entry.file.size || 0);
+      const publicUrl=await tribecaUploadPublicAssetV197(`${base}/${entry.rel}`, blob, {contentType: entry.file.type || blob.type || tribecaMimeFromNameV197(entry.rel)});
+      if(entry.rel===indexEntry.path) indexUrl=publicUrl;
+    }
+    if(!indexUrl) throw new Error('El paquete se ha subido, pero no se pudo localizar la URL del HTML principal.');
+    const pack={kind:'tribeca-resource-package-v197', bucket:TRIBECA_RESOURCE_BUCKET_V197, basePath:base, indexPath:indexEntry.path, indexUrl, fileCount:normalized.length, totalBytes, createdAt:new Date().toISOString()};
+    if(form?.elements?.embedUrl) form.elements.embedUrl.value=indexUrl;
+    if(form?.elements?.resourcePackageJson) form.elements.resourcePackageJson.value=JSON.stringify(pack);
+    if(form?.elements?.embedHeight && !Number(form.elements.embedHeight.value||0)) form.elements.embedHeight.value='720';
+    const currentKind=form?.querySelector?.('input[name="publicationKind"]:checked')?.value || '';
+    if(!['presentation','game','video','schema','exam','test'].includes(normalizeMaterialKind(currentKind))){
+      const pres=form?.querySelector?.('input[name="publicationKind"][value="presentation"]');
+      if(pres) pres.checked=true;
+    }
+    let attachments=[];
+    try{ attachments=JSON.parse(form?.elements?.attachmentsJson?.value || '[]'); }catch(_e){ attachments=[]; }
+    attachments=attachments.filter(a=>a?.kind!=='tribeca-resource-package-v197');
+    attachments.push({kind:'tribeca-resource-package-v197', name:`Recurso completo · ${indexEntry.path}`, url:indexUrl, publicUrl:indexUrl, type:'text/html', fileCount:pack.fileCount, totalBytes:pack.totalBytes, bucket:pack.bucket, basePath:pack.basePath, indexPath:pack.indexPath});
+    if(form?.elements?.attachmentsJson) form.elements.attachmentsJson.value=JSON.stringify(attachments);
+    const attachmentBox=$('#attachmentPreview', form); if(attachmentBox) attachmentBox.textContent=attachments.map(f=>f.name||'Archivo').join(', ');
+    const box=$('#resourcePackagePreview', form);
+    if(box) box.innerHTML=`<strong>Recurso completo subido correctamente.</strong><span>${safe(indexEntry.path)} · ${normalized.length} archivo${normalized.length===1?'':'s'} · ${prettyBytes(totalBytes)}</span><a href="${safe(indexUrl)}" target="_blank" rel="noopener">Probar recurso</a>`;
+    toast('Recurso completo subido. Pulsa Publicar o Guardar cambios para conservarlo en la materia.');
+    return pack;
+  }
+  async function tribecaHandleZipPackageV197(file, form){
+    const box=$('#resourcePackagePreview', form); if(box) box.textContent='Descomprimiendo ZIP y subiendo archivos…';
+    const extracted=await tribecaExtractZipV197(file);
+    return tribecaPrepareAndUploadResourcePackageV197(form, extracted.map(f=>({name:f.path,path:f.path,type:f.type,size:f.size,blob:f.blob})), file.name || 'zip');
+  }
+  async function tribecaHandleFolderPackageV197(fileList, form){
+    const files=Array.from(fileList||[]).filter(f=>f && f.size>=0);
+    if(!files.length) return null;
+    const box=$('#resourcePackagePreview', form); if(box) box.textContent='Subiendo carpeta completa del recurso…';
+    return tribecaPrepareAndUploadResourcePackageV197(form, files, 'carpeta');
+  }
+  async function tribecaTrySeparatePackageUploadV197(form){
+    const indexFile=form.__tribecaResourceIndexFile || null;
+    const assetFiles=Array.from(form.__tribecaResourceAssetFiles || []);
+    if(!indexFile) return null;
+    const files=[indexFile, ...assetFiles];
+    const box=$('#resourcePackagePreview', form); if(box) box.textContent='Subiendo HTML principal y carpeta de assets…';
+    return tribecaPrepareAndUploadResourcePackageV197(form, files, indexFile.name || 'html');
+  }
   async function handleInteractiveFile(file, form){
     if(!file || !form) return;
     const preview=form.querySelector('#interactiveFilePreview');
@@ -7979,7 +8165,7 @@ function classroomCard(c,i=0){
     document.addEventListener('click', ev=>{ const btn=ev.target.closest?.('.native-exam-form [data-t129-grade-exam]'); if(btn){ ev.preventDefault(); ev.stopPropagation(); const form=btn.closest('form'); form?.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); } }, true);
     document.addEventListener('submit', async ev=>{ const f=ev.target; const ids=['t16LoginForm','t16ResetForm','t16PublicationForm','t16EventForm','t16AssignBadgeForm','t16StudentProfileForm','t24StudentProfileForm','t16StudentMessageForm','t16TeacherMessageForm','t16ProfileIconForm','t16ProfileNotificationsForm','t16PasswordForm','t16OwnResetForm','t16DifficultyForm','t16GradeForm','t16BillingForm','t50PauseForm','t18GuidanceForm','t24GuidanceForm','t27SubjectForm','t78RepoMaterialForm','t80ClassroomForm','contactForm']; if(!ids.includes(f.id)) return; ev.preventDefault(); ev.stopImmediatePropagation(); await handleManagedSubmit(f); }, true);
     document.addEventListener('input', ev=>{ if(ev.target?.dataset?.t16StudentSearch!==undefined){ const q=ev.target.value.toLowerCase(); const root=ev.target.closest('.window-panel,form') || document; root.querySelectorAll('[data-student-name]').forEach(el=>{el.hidden=!!(q && !el.dataset.studentName.includes(q));}); root.querySelectorAll('details').forEach(d=>{ const items=[...d.querySelectorAll('[data-student-name]')]; if(items.length) d.hidden=items.every(x=>x.hidden); }); } }, true);
-    document.addEventListener('change', async ev=>{ if(ev.target?.matches?.('input[name="allowClassMove"]')){ const panel=ev.target.closest('.publication-location-lock-v186'); const select=panel?.querySelector('select[name="classId"]'); if(select){ select.disabled=!ev.target.checked; panel.classList.toggle('is-moving-publication', !!ev.target.checked); } return; } if(ev.target?.matches?.('[data-calendar-scope-select]')){ const form=ev.target.closest('form'); const box=form?.querySelector?.('[data-calendar-class-targets]'); if(box) box.hidden = ev.target.value !== 'classes'; return; } if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; try{ const url=await studentPhotoFileToDataUrl(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=`${file.name} · optimizada a ${prettyBytes(approxDataUrlBytes(url))}`; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; toast('Foto optimizada y cargada. Pulsa Guardar cambios para conservarla.'); }catch(err){ toast(err?.message || 'No se pudo procesar la foto.'); ev.target.value=''; } } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
+    document.addEventListener('change', async ev=>{ if(ev.target?.matches?.('input[name="allowClassMove"]')){ const panel=ev.target.closest('.publication-location-lock-v186'); const select=panel?.querySelector('select[name="classId"]'); if(select){ select.disabled=!ev.target.checked; panel.classList.toggle('is-moving-publication', !!ev.target.checked); } return; } if(ev.target?.matches?.('[data-calendar-scope-select]')){ const form=ev.target.closest('form'); const box=form?.querySelector?.('[data-calendar-class-targets]'); if(box) box.hidden = ev.target.value !== 'classes'; return; } if(ev.target?.dataset?.t74IgnoreAlert!==undefined){ setTeacherAlertIgnored(ev.target.dataset.t74IgnoreAlert, !!ev.target.checked); rerender(); return; } if(ev.target?.id==='languageSelect'){ localStorage.setItem('tribeca-language-user-set','1'); localStorage.setItem('tribeca-language', ev.target.value || (roleTeacher()?'es':'gl')); setTimeout(()=>{ applyTranslations(document); updateAccessibilityWidgetText(); }, 0); return; } if(ev.target?.name==='imageFile' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.imageUrl.value=url; $('#t16ImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='attachmentFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const box=$('#attachmentPreview', ev.target.form); if(box) box.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='resourceZipPackage' && ev.target.files?.[0]){ try{ await tribecaHandleZipPackageV197(ev.target.files[0], ev.target.form); }catch(error){ const box=$('#resourcePackagePreview', ev.target.form); if(box) box.innerHTML=`<span class="resource-upload-error-v197">${safe(error?.message||'No se pudo subir el ZIP.')}</span>`; toast(error?.message||'No se pudo subir el ZIP.'); } return; } if(ev.target?.name==='resourceFolderPackage' && ev.target.files?.length){ try{ await tribecaHandleFolderPackageV197(ev.target.files, ev.target.form); }catch(error){ const box=$('#resourcePackagePreview', ev.target.form); if(box) box.innerHTML=`<span class="resource-upload-error-v197">${safe(error?.message||'No se pudo subir la carpeta.')}</span>`; toast(error?.message||'No se pudo subir la carpeta.'); } return; } if(ev.target?.name==='resourceIndexFile' && ev.target.files?.[0]){ ev.target.form.__tribecaResourceIndexFile=ev.target.files[0]; try{ await tribecaTrySeparatePackageUploadV197(ev.target.form); }catch(error){ const box=$('#resourcePackagePreview', ev.target.form); if(box) box.innerHTML=`<span class="resource-upload-error-v197">${safe(error?.message||'No se pudo subir el recurso completo.')}</span>`; toast(error?.message||'No se pudo subir el recurso completo.'); } return; } if(ev.target?.name==='resourceAssetFolder' && ev.target.files?.length){ ev.target.form.__tribecaResourceAssetFiles=Array.from(ev.target.files); const box=$('#resourcePackagePreview', ev.target.form); if(!ev.target.form.__tribecaResourceIndexFile){ if(box) box.textContent='Carpeta de assets seleccionada. Ahora selecciona el HTML principal del recurso.'; return; } try{ await tribecaTrySeparatePackageUploadV197(ev.target.form); }catch(error){ if(box) box.innerHTML=`<span class="resource-upload-error-v197">${safe(error?.message||'No se pudo subir el recurso completo.')}</span>`; toast(error?.message||'No se pudo subir el recurso completo.'); } return; } if(ev.target?.name==='interactiveFile' && ev.target.files?.[0]){ await handleInteractiveFile(ev.target.files[0], ev.target.form); } if(ev.target?.name==='messageFiles' && ev.target.files?.length){ const files=await Promise.all(Array.from(ev.target.files).map(async file=>({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}))); ev.target.form.elements.attachmentsJson.value=JSON.stringify(files); const n=ev.target.form.querySelector('[data-message-file-name]'); if(n) n.textContent=files.map(f=>f.name).join(', '); } if(ev.target?.name==='guidanceFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; ev.target.form.elements.attachmentJson.value=JSON.stringify({name:file.name,type:file.type||'application/octet-stream',size:file.size,url:await normImage(file)}); const n=ev.target.form.querySelector('#guidanceFileName'); if(n) n.textContent=file.name; } if(ev.target?.dataset?.t114ToggleTask!==undefined){ window.TribecaToggleTeacherTask(ev.target.dataset.t114ToggleTask, ev.target.checked); return; } if(ev.target?.name==='profileImage' && ev.target.files?.[0]){ const url=await normImage(ev.target.files[0]); ev.target.form.elements.avatarImageUrl.value=url; $('#profileImagePreview', ev.target.form).innerHTML=`<img src="${safe(url)}" alt="">`; } if(ev.target?.name==='studentPhotoFile' && ev.target.files?.[0]){ const file=ev.target.files[0]; try{ const url=await studentPhotoFileToDataUrl(file); if(ev.target.form?.elements?.studentPhotoUrl) ev.target.form.elements.studentPhotoUrl.value=url; const n=ev.target.form?.querySelector('[data-student-photo-file-name]'); if(n) n.textContent=`${file.name} · optimizada a ${prettyBytes(approxDataUrlBytes(url))}`; const fig=ev.target.form?.querySelector('.student-editor-photo'); if(fig) fig.innerHTML=`<img src="${safe(url)}" alt="Foto del alumno">`; toast('Foto optimizada y cargada. Pulsa Guardar cambios para conservarla.'); }catch(err){ toast(err?.message || 'No se pudo procesar la foto.'); ev.target.value=''; } } if(ev.target?.dataset?.t16BillingMonth!==undefined){ State.billingMonth=ev.target.value; rerender(); } if(ev.target?.dataset?.t18SubjectStage!==undefined){ State.selectedSubjectStage=ev.target.value; const valid=coursesForStage(State.selectedSubjectStage); if(valid.length && !valid.includes(State.selectedSubjectCourse)) State.selectedSubjectCourse=valid[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } if(ev.target?.dataset?.t18SubjectCourse!==undefined){ State.selectedSubjectCourse=ev.target.value; const validStages=stagesForCourse(State.selectedSubjectCourse); if(validStages.length && !validStages.includes(State.selectedSubjectStage)) State.selectedSubjectStage=validStages[0]; localStorage.setItem('tribeca-teacher-subject-stage', State.selectedSubjectStage); localStorage.setItem('tribeca-teacher-subject-course', State.selectedSubjectCourse); rerender(); } }, true);
   }
 
 
