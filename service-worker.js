@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v201 · PWA, caché ligera, push con payload cifrado y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v201';
+/* Tribeca Aula · Service worker v204 · PWA, caché ligera, push con payload cifrado y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v204';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
@@ -10,6 +10,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './assets/ius/presentations/ius-01-bienvenida.html',
   './assets/ius/presentations/ius-02-de-facto-de-iure.html',
   './assets/ius/presentations/ius-03-fuentes-derecho.html',
+  './tribeca-package-viewer.html',
   './assets/izam/tecnicas-estudio/unidad-1/gimnasio-1-pueblo-palabra/index.html'
 ];
 
@@ -97,6 +98,10 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request, './index.html', 3000));
+    return;
+  }
+  if (/\.(?:js|css)$/i.test(url.pathname)) {
+    event.respondWith(networkFirst(request, null, 4500));
     return;
   }
   if (TRIBECA_STATIC_MATCH.test(url.pathname)) {

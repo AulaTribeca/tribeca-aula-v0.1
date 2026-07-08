@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Recurso interactivo · Tribeca Aula</title>
+  <style>
+    :root{--ink:#172018;--muted:#64746c;--brand:#0b4b35;--paper:#fffdf7;--line:#d9ceb9}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+    .loader,.fallback{min-height:100vh;display:grid;place-items:center;text-align:center;padding:24px}
+    .card{max-width:720px;border:1px solid var(--line);border-radius:24px;background:#fff;box-shadow:0 18px 48px rgba(18,42,29,.12);padding:28px}
+    .loader span{display:inline-flex;gap:10px;align-items:center;font-weight:900;color:var(--brand)}
+    .loader span:before{content:"";width:18px;height:18px;border-radius:50%;border:3px solid #d7ccb5;border-top-color:var(--brand);animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    a{color:var(--brand);font-weight:900}
+    code{background:#f4efe4;border-radius:8px;padding:2px 6px}
+  </style>
+</head>
+<body>
+  <main class="loader"><span>Cargando recurso…</span></main>
+  <script>
+(function(){
+  'use strict';
+  var params=new URLSearchParams(location.search);
+  var source=params.get('url') || params.get('src') || '';
+  var title=params.get('title') || 'Recurso interactivo';
+  if(title) document.title=title+' · Tribeca Aula';
+  function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function escAttr(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function validSource(u){
+    try{
+      var x=new URL(u, location.href);
+      return /\/storage\/v1\/object\/public\/tribeca-public-assets\//i.test(x.href) && /\.html?(?:[?#].*)?$/i.test(x.href);
+    }catch(_e){ return false; }
+  }
+  function dirOf(u){
+    try{var x=new URL(u, location.href); var parts=x.pathname.split('/'); parts.pop(); x.pathname=parts.join('/')+'/'; x.search=''; x.hash=''; return x.href;}
+    catch(_e){return String(u||'').replace(/[^/]*([?#].*)?$/,'');}
+  }
+  function maybeDecodeEntities(text){
+    text=String(text||'');
+    if(/&lt;\s*(?:!doctype|html|head|body|style|script|main|section|div|article|iframe)\b/i.test(text) && !/<\s*(?:!doctype|html|head|body|style|script|main|section|div|article|iframe)\b/i.test(text.slice(0,1500))){
+      var area=document.createElement('textarea');
+      area.innerHTML=text;
+      return area.value;
+    }
+    return text;
+  }
+  function withBase(html, baseHref){
+    html=maybeDecodeEntities(html);
+    var base='<base href="'+escAttr(baseHref)+'">';
+    if(/<base\b/i.test(html)) return html;
+    if(/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i,function(m){return m+base;});
+    if(/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i,function(m){return m+'<head>'+base+'</head>';});
+    return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+base+'</head><body>'+html+'</body></html>';
+  }
+  function showError(msg){
+    document.body.innerHTML='<main class="fallback"><div class="card"><h1>No se pudo abrir el recurso</h1><p>'+esc(msg||'Error de carga')+'</p>'+(source?'<p><a href="'+escAttr(source)+'" target="_blank" rel="noopener">Abrir archivo original</a></p>':'')+'<p><a href="./">Volver a Tribeca Aula</a></p></div></main>';
+  }
+  if(!source) return showError('Falta la URL del recurso.');
+  if(!validSource(source)) return showError('La URL no pertenece al bucket público de recursos interactivos de Tribeca Aula o no es un HTML.');
+  fetch(source,{cache:'no-store',mode:'cors'}).then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.text();
+  }).then(function(html){
+    html=withBase(html, dirOf(source));
+    document.open('text/html','replace');
+    document.write(html);
+    document.close();
+  }).catch(function(error){
+    console.error('[Tribeca Aula] No se pudo cargar el recurso en página nueva:', error);
+    showError(error && error.message ? error.message : 'El archivo no respondió correctamente.');
+  });
+})();
+  </script>
+</body>
+</html>
