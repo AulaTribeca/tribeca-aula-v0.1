@@ -2854,11 +2854,73 @@ function studentAssignedClasses(studentId=State.profile?.id){
       catch(_err){return '';}
     }
   }
+  function tribecaLooksLikeEscapedHtmlV202(value=''){
+    const raw=String(value||'').trim();
+    if(!raw) return false;
+    return /&lt;\s*(?:!doctype|html|head|body|style|script|main|section|div|article|iframe)/i.test(raw)
+      && !/<\s*(?:!doctype|html|head|body|style|script|main|section|div|article|iframe)/i.test(raw.slice(0,1500));
+  }
+  function tribecaDecodeHtmlEntitiesV202(value=''){
+    const raw=String(value||'');
+    if(!raw) return '';
+    try{
+      const area=document.createElement('textarea');
+      area.innerHTML=raw;
+      return area.value;
+    }catch(_e){ return raw; }
+  }
   function normalizeEmbeddedHtml(code=''){
-    const raw=stripEmbedCodeFence(code);
+    let raw=stripEmbedCodeFence(code);
+    if(tribecaLooksLikeEscapedHtmlV202(raw)) raw=tribecaDecodeHtmlEntitiesV202(raw);
     if(!raw) return '';
     if(/<!doctype|<html[\s>]/i.test(raw)) return raw;
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${raw}</body></html>`;
+  }
+  function tribecaIsPublicPackageHtmlUrlV202(url=''){
+    const raw=String(url||'').trim();
+    return /\/storage\/v1\/object\/public\/tribeca-public-assets\//i.test(raw) && /\.html?(?:[?#].*)?$/i.test(raw);
+  }
+  function tribecaPackageHtmlLoaderSrcdocV202(url='', title='Recurso interactivo'){
+    const cleanUrl=String(url||'').trim();
+    const cleanTitle=String(title||'Recurso interactivo').trim() || 'Recurso interactivo';
+    const script=`
+(function(){
+  var url=${JSON.stringify(cleanUrl)};
+  function escAttr(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function dirOf(u){try{var x=new URL(u, location.href); var parts=x.pathname.split('/'); parts.pop(); x.pathname=parts.join('/')+'/'; x.search=''; x.hash=''; return x.href;}catch(e){return u.replace(/[^/]*([?#].*)?$/,'');}}
+  function maybeDecodeEntities(text){
+    text=String(text||'');
+    if(/&lt;\s*(?:!doctype|html|head|body|style|script|main|section|div|article|iframe)\b/i.test(text) && !/<\s*(?:!doctype|html|head|body|style|script|main|section|div|article|iframe)\b/i.test(text.slice(0,1500))){
+      var area=document.createElement('textarea'); area.innerHTML=text; return area.value;
+    }
+    return text;
+  }
+  function withBase(html, baseHref){
+    html=maybeDecodeEntities(html);
+    var base='<base href="'+escAttr(baseHref)+'">';
+    if(/<base\b/i.test(html)) return html;
+    if(/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i,function(m){return m+base;});
+    if(/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i,function(m){return m+'<head>'+base+'</head>';});
+    return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+base+'</head><body>'+html+'</body></html>';
+  }
+  function showError(msg){
+    document.body.innerHTML='<main class="fallback"><strong>No se pudo cargar el recurso.</strong><p>'+String(msg||'Error de carga').replace(/</g,'&lt;')+'</p><p><a href="'+escAttr(url)+'" target="_blank" rel="noopener">Abrir recurso en pestaña nueva</a></p></main>';
+  }
+  fetch(url,{cache:'no-store',mode:'cors'}).then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.text();
+  }).then(function(html){
+    html=withBase(html, dirOf(url));
+    document.open('text/html','replace');
+    document.write(html);
+    document.close();
+  }).catch(function(error){
+    console.error('[Tribeca Aula] No se pudo hidratar el HTML del paquete:', error);
+    showError(error && error.message ? error.message : 'El archivo no respondió correctamente.');
+  });
+})();
+`.replace(/<\/script/gi,'<\/script');
+    return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(cleanTitle)}</title><style>html,body{margin:0;min-height:100%;background:#fffdf7;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.loader,.fallback{min-height:100vh;display:grid;place-items:center;text-align:center;padding:24px}.loader span{display:inline-flex;gap:8px;align-items:center;font-weight:900}.loader span:before{content:"";width:18px;height:18px;border-radius:50%;border:3px solid #d7ccb5;border-top-color:#0b3d22;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}a{color:#0b3d22;font-weight:900}</style></head><body><main class="loader"><span>Cargando recurso…</span></main><script>${script}<\/script></body></html>`;
   }
   function extractBalancedArrayLiteral(source='', startAt=0){
     const src=String(source||'');
@@ -3980,7 +4042,10 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const height=Math.max(420, Math.min(Number(m.embed_height||720), 1800));
     const title=safe(m.title||'Presentación');
     const encoded=source.html ? encodeBase64Utf8(source.html||'') : '';
-    const srcAttr=source.html ? ` src="data:text/html;charset=utf-8;base64,${encoded}"` : (source.src ? ` src="${safe(source.src)}"` : ' src="about:blank"');
+    let srcAttr=' src="about:blank"';
+    if(source.html) srcAttr=` src="data:text/html;charset=utf-8;base64,${encoded}"`;
+    else if(source.src && tribecaIsPublicPackageHtmlUrlV202(source.src)) srcAttr=` srcdoc="${safe(tribecaPackageHtmlLoaderSrcdocV202(source.src, m.title||'Presentación'))}" data-t202-package-html="${safe(source.src)}"`;
+    else if(source.src) srcAttr=` src="${safe(source.src)}"`;
     return `<section class="material-embed-block material-presentation-block"><div><strong>Presentación</strong><small>Diapositivas embebidas en la materia</small></div><iframe title="${title}" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation allow-downloads" allow="fullscreen; clipboard-write; autoplay; encrypted-media; web-share" allowfullscreen${srcAttr} style="min-height:${height}px"></iframe>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir presentación en pestaña nueva</a>`:''}</section>`;
   }
   function tribecaMissingEmbedNoticeV198(m={}){
@@ -4004,7 +4069,8 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(!source.src && !source.html) return tribecaMissingEmbedNoticeV198(m);
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const encoded=source.html ? encodeBase64Utf8(source.html) : '';
-    const srcAttr = source.src ? ` src="${safe(source.src)}"` : ' src="about:blank"';
+    let srcAttr = source.src ? ` src="${safe(source.src)}"` : ' src="about:blank"';
+    if(!source.html && source.src && tribecaIsPublicPackageHtmlUrlV202(source.src)) srcAttr=` srcdoc="${safe(tribecaPackageHtmlLoaderSrcdocV202(source.src, m.title||'Recurso interactivo'))}" data-t202-package-html="${safe(source.src)}"`;
     return `<section class="material-embed-block material-embed-block-v98"><div><strong>Recurso interactivo</strong><small>${source.mode==='html'?'Código HTML insertado':source.mode==='iframe'?'Iframe insertado':'URL embebida'}</small></div><iframe title="Recurso interactivo" loading="lazy" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads"${srcAttr} data-t98-embed-html="${safe(encoded)}" style="min-height:${height}px"></iframe>${source.src?`<a class="embed-open-link" href="${safe(source.src)}" target="_blank" rel="noopener">Abrir recurso en pestaña nueva</a>`:''}</section>`;
   }
   function renderNativeQuiz(container){
@@ -4275,7 +4341,10 @@ render();
       const encoded=encodeBase64Utf8(source.html);
       return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>Código HTML insertado</small></div><iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="data:text/html;charset=utf-8;base64,${encoded}" style="min-height:${height}px"></iframe></section>`;
     }
-    return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>URL embebida</small></div><iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" src="${safe(source.src)}" style="min-height:${height}px"></iframe></section>`;
+    const srcAttr=tribecaIsPublicPackageHtmlUrlV202(source.src)
+      ? `srcdoc="${safe(tribecaPackageHtmlLoaderSrcdocV202(source.src, m.title||'Recurso interactivo'))}" data-t202-package-html="${safe(source.src)}"`
+      : `src="${safe(source.src)}"`;
+    return `<section class="material-embed-block"><div><strong>Recurso interactivo</strong><small>URL embebida</small></div><iframe title="Recurso interactivo" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" ${srcAttr} style="min-height:${height}px"></iframe></section>`;
   }
 
 
@@ -7808,7 +7877,13 @@ function classroomCard(c,i=0){
     if(!State.client?.storage?.from) throw new Error('Supabase Storage no está disponible en esta sesión.');
     const cleanPath=tribecaCleanPackagePathV197(path);
     const bucket=State.client.storage.from(TRIBECA_RESOURCE_BUCKET_V197);
-    const { error } = await bucket.upload(cleanPath, blob, { contentType: opts.contentType || blob.type || tribecaMimeFromNameV197(cleanPath), upsert:true, cacheControl:'3600' });
+    const typeFromName=tribecaMimeFromNameV197(cleanPath);
+    const weakType=/^(application\/octet-stream|text\/plain)(?:\s*;.*)?$/i;
+    const requestedType=String(opts.contentType || blob.type || '').trim();
+    const finalContentType = typeFromName && typeFromName !== 'application/octet-stream'
+      ? typeFromName
+      : (requestedType && !weakType.test(requestedType) ? requestedType : (blob.type || typeFromName || 'application/octet-stream'));
+    const { error } = await bucket.upload(cleanPath, blob, { contentType: finalContentType, upsert:true, cacheControl:'3600' });
     if(error) throw new Error(error.message || 'No se pudo subir el recurso completo a Supabase Storage.');
     const { data } = bucket.getPublicUrl(cleanPath);
     return data?.publicUrl || '';
