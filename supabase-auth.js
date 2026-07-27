@@ -7829,7 +7829,21 @@ function classroomCard(c,i=0){
     return /\bizam\b/.test(txt) && /sanchez|sánchez/.test(txt);
   }
   function pokemonMedalDefinitionsV186(){
-    return badges.filter(b=>String(b.code||'') === 'pk_keywords');
+    const order=['pk_keywords','pk_main_ideas'];
+    return order.map(code=>badges.find(b=>String(b.code||'')===code)).filter(Boolean);
+  }
+  function izamMedalCopyV206(m={}){
+    if(m.code==='pk_keywords') return {
+      title:'Palabras clave',
+      place:'Pueblo Palabra',
+      pending:'Se concederá al cerrar la unidad de palabras clave.'
+    };
+    if(m.code==='pk_main_ideas') return {
+      title:'Ideas principales',
+      place:'Ciudad Idea',
+      pending:'Se concederá al superar el segundo pueblo: Ciudad Idea.'
+    };
+    return {title:m.name||'Medalla',place:'Técnicas de estudio',pending:'Pendiente de completar la unidad.'};
   }
   function izamEarnedMedalsV186(userId=State.profile?.id){
     const defs=pokemonMedalDefinitionsV186();
@@ -7839,14 +7853,22 @@ function classroomCard(c,i=0){
   function izamPokemonPanelV186(p=State.profile){
     if(!p || !isIzamProfile(p)) return '';
     const medals=izamEarnedMedalsV186(p.id);
-    const keyword=medals.find(m=>m.code==='pk_keywords') || {code:'pk_keywords',icon:'🔑',name:'Medalla Palabras clave',earned:false};
-    return `<section class="izam-medal-panel-v186 izam-medal-panel-v187 panel"><div class="izam-medal-head-v186"><div><p class="eyebrow">Reto personal</p><h2>Medallas de unidades</h2><p>Reconocimientos puntuales por cerrar unidades de Técnicas de estudio. Por ahora solo queda preparada la próxima medalla.</p></div><strong>${keyword.earned?'1/1':'0/1'}</strong></div><div class="izam-medal-grid-v186 izam-medal-grid-v187"><article class="${keyword.earned?'is-earned':'is-locked'} izam-keyword-medal-v187"><span>${safe(keyword.icon||'🔑')}</span><strong>${keyword.earned?'Medalla conseguida: Palabras clave':'Pendiente: medalla Palabras clave'}</strong><small>${keyword.earned?'Conseguida':'Se concederá cuando cierre la unidad de palabras clave.'}</small></article></div></section>`;
+    const earnedCount=medals.filter(m=>m.earned).length;
+    const cards=medals.map(m=>{
+      const copy=izamMedalCopyV206(m);
+      return `<article class="${m.earned?'is-earned':'is-locked'} ${m.code==='pk_keywords'?'izam-keyword-medal-v187':'izam-main-ideas-medal-v206'}"><span>${safe(m.icon||'🏅')}</span><strong>${m.earned?`Medalla conseguida: ${safe(copy.title)}`:`Pendiente: medalla ${safe(copy.title)}`}</strong><small>${m.earned?`${safe(copy.place)} · Conseguida`:safe(copy.pending)}</small></article>`;
+    }).join('');
+    return `<section class="izam-medal-panel-v186 izam-medal-panel-v187 panel"><div class="izam-medal-head-v186"><div><p class="eyebrow">Reto personal</p><h2>Medallas de unidades</h2><p>Reconocimientos por superar los pueblos y gimnasios de Técnicas de estudio.</p></div><strong>${earnedCount}/${medals.length}</strong></div><div class="izam-medal-grid-v186 izam-medal-grid-v187">${cards}</div></section>`;
   }
   function izamPokemonTeacherPanelV186(s={}){
     if(!roleTeacher() || !isIzamProfile(s)) return '';
     const medals=izamEarnedMedalsV186(s.id);
-    const m=medals.find(x=>x.code==='pk_keywords') || {code:'pk_keywords',icon:'🔑',name:'Medalla Palabras clave',earned:false};
-    return `<details class="teacher-option-drawer izam-teacher-medals-v186 izam-teacher-medals-v187" open><summary><span>Medallas de unidades para Izam</span><em>${m.earned?'1/1':'0/1'}</em></summary><section class="premium-form-section"><p class="meta">Gamificación ligera y solo para Izam. Por ahora no se muestran futuras medallas: queda preparada únicamente la de Palabras clave.</p><div class="izam-medal-admin-grid-v186 izam-medal-admin-grid-v187"><article class="${m.earned?'is-earned':'is-pending'}"><span>${safe(m.icon||'🔑')}</span><div><strong>${m.earned?'Medalla conseguida: Palabras clave':'Pendiente: medalla Palabras clave'}</strong><small>${m.earned?'Ya concedida':'Pendiente para el próximo cierre de unidad'}</small></div><button type="button" class="${m.earned?'secondary-btn':'primary-btn'} compact-btn" data-t186-award-izam-medal="${safe(s.id)}" data-medal-code="pk_keywords" ${m.earned?'disabled':''}>${m.earned?'Concedida':'Conceder'}</button></article></div></section></details>`;
+    const earnedCount=medals.filter(m=>m.earned).length;
+    const cards=medals.map(m=>{
+      const copy=izamMedalCopyV206(m);
+      return `<article class="${m.earned?'is-earned':'is-pending'}"><span>${safe(m.icon||'🏅')}</span><div><strong>${m.earned?`Medalla conseguida: ${safe(copy.title)}`:`Pendiente: medalla ${safe(copy.title)}`}</strong><small>${m.earned?`${safe(copy.place)} · Ya concedida`:safe(copy.pending)}</small></div><button type="button" class="${m.earned?'secondary-btn':'primary-btn'} compact-btn" data-t186-award-izam-medal="${safe(s.id)}" data-medal-code="${safe(m.code)}" ${m.earned?'disabled':''}>${m.earned?'Concedida':'Conceder'}</button></article>`;
+    }).join('');
+    return `<details class="teacher-option-drawer izam-teacher-medals-v186 izam-teacher-medals-v187" open><summary><span>Medallas de unidades para Izam</span><em>${earnedCount}/${medals.length}</em></summary><section class="premium-form-section"><p class="meta">Medallas personales de Izam por los pueblos ya incorporados a su recorrido de Técnicas de estudio.</p><div class="izam-medal-admin-grid-v186 izam-medal-admin-grid-v187">${cards}</div></section></details>`;
   }
   async function awardIzamMedalV186(userId, code){
     if(!roleTeacher()) return;

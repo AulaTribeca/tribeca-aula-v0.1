@@ -1,0 +1,16 @@
+TRIBECA AULA v206 · SEGUNDA MEDALLA DE IZAM
+
+1. Sustituye en la raíz del proyecto:
+   - supabase-auth.js
+   - index.html
+   - service-worker.js
+
+2. Ejecuta completo en Supabase SQL Editor:
+   - tribeca-aula-v206-medalla-segundo-pueblo-izam.sql
+
+3. Sube los archivos a GitHub, espera al despliegue y pulsa Ctrl + F5.
+
+Resultado:
+- Izam verá en su página principal 2/2 medallas conseguidas.
+- La segunda es la Medalla Ideas principales (💎), correspondiente a Ciudad Idea.
+- En el panel docente también se mostrarán las dos medallas.
