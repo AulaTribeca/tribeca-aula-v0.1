@@ -1,5 +1,5 @@
-/* Tribeca Aula · Versión 181 · promoción automática, histórico de actividad y documentos por alumno.
-   Base: v179 con asistencia presunta en individuales y push funcional. */
+/* Tribeca Aula · Versión 205 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+   Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
   if (location.search && /(firstName|lastName|fullName|username|eventDate|monthlyFee|subject)=/.test(location.search)) {
@@ -878,6 +878,15 @@
   function normalizeLooseText(value=''){
     return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   }
+  function isCarlaFinanceProfileV205(profile=State.profile){
+    if(!profile || profile.role==='teacher') return false;
+    const username=normalizeLooseText(profile.username||'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    if(username==='carla_caamano') return true;
+    const full=normalizeLooseText(profile.full_name || [profile.first_name,profile.last_name].filter(Boolean).join(' ')).replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+    const center=normalizeLooseText(profile.center||'');
+    const course=normalizeLooseText(profile.course||'');
+    return full==='carla caamano caamano' && /manuela\s+rial/.test(center) && /3[^a-z0-9]*o?\s*eso|3\s*eso/.test(course);
+  }
   function isStudySkillsSubject(subject=''){
     const s=normalizeLooseText(subject);
     return /tecnicas\s+de\s+estud/.test(s) || /aprender\s+a\s+estudiar/.test(s) || /study\s+skills/.test(s);
@@ -1222,6 +1231,17 @@
     } else {
       common.push(maybe(table('grades').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
       common.push(maybe(table('difficult_subjects').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
+      if(isCarlaFinanceProfileV205(p)){
+        common.push(maybe(table('student_billing').select('*').eq('user_id',p.id), []).then(d=>State.data.billing=d||[]));
+        common.push(maybe(table('student_schedules').select('*').eq('user_id',p.id).order('weekday').order('start_time'), []).then(d=>State.data.schedules=d||[]));
+        common.push(maybe(table('attendance_records').select('*').eq('user_id',p.id).order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]));
+        common.push(maybe(table('payment_months').select('*').eq('user_id',p.id).order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]));
+      } else {
+        State.data.billing=[];
+        State.data.schedules=[];
+        State.data.attendance=[];
+        State.data.paymentMonths=[];
+      }
     }
     await Promise.allSettled(common);
     updateBadges();
@@ -1605,7 +1625,7 @@
   function accountMenuMarkup(){
     const personalTools = roleTeacher()
       ? `<button type="button" data-t141-account-tool="guidance">Orientación académica</button>`
-      : `<button type="button" data-t141-account-tool="guidance">Orientación académica</button><button type="button" data-t141-account-tool="grades">Calificaciones</button><button type="button" data-t141-account-tool="difficulties">Materias con dificultades</button>`;
+      : `<button type="button" data-t141-account-tool="guidance">Orientación académica</button><button type="button" data-t141-account-tool="grades">Calificaciones</button><button type="button" data-t141-account-tool="difficulties">Materias con dificultades</button>${isCarlaFinanceProfileV205(State.profile)?'<button type="button" data-t141-account-tool="myPayments">Mensualidad y asistencia</button>':''}`;
     const installTool = isTribecaStandalone() ? '' : `<button type="button" data-pwa-install>${safe(pwaText('install'))}</button>`;
     const themeLabel = document.body.classList.contains('is-dark') ? 'Modo claro' : 'Modo oscuro';
     return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button><button type="button" data-t73-account-panel="appearance">Apariencia</button><button type="button" data-t167-toggle-theme>${safe(themeLabel)}</button>${personalTools}${installTool}`;
@@ -2411,6 +2431,57 @@ function studentAssignedClasses(studentId=State.profile?.id){
       <small>${pr.done}/${pr.total} publicaciones hechas.</small>
     </article>`;
   }
+  function carlaFinanceMonthV205(){
+    const value=String(State.billingMonth||defaultBillingMonth()).slice(0,7);
+    State.billingMonth=value;
+    return value;
+  }
+  function carlaFinanceDataV205(month=carlaFinanceMonthV205()){
+    const p=State.profile||{};
+    const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(p.id))||{tariff_type:'individual',class_rate:10,monthly_fee:0};
+    const calc=calculatePaymentAmount(p.id,month);
+    const days=monthScheduleDays(p.id,month,{includePaused:true}).sort((a,b)=>`${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`));
+    const today=todayIso();
+    const rows=days.map(d=>{
+      const rec=attendanceRecordForScheduledDay(p.id,d);
+      const effective=effectiveAttendanceStatus(p.id,d,bill);
+      const isFuture=String(d.date)>today;
+      let key=effective;
+      let label='Asistencia';
+      if(d.paused){ key='paused'; label='Pausada'; }
+      else if(isFuture && !rec){ key='scheduled'; label='Programada'; }
+      else if(effective==='absent') label='Falta';
+      else if(effective==='justified') label='Falta justificada';
+      else if(effective==='present') label=rec?'Asistencia registrada':'Asistencia computada';
+      return {...d,rec,effective,key,label,isFuture};
+    });
+    const attended=rows.filter(r=>!r.isFuture && !r.paused && r.effective==='present');
+    const absent=rows.filter(r=>!r.paused && r.effective==='absent');
+    const justified=rows.filter(r=>!r.paused && r.effective==='justified');
+    const future=rows.filter(r=>r.key==='scheduled');
+    const pay=paymentMonthRecord(p.id,month);
+    const rate=Number(bill.class_rate||10);
+    const isCurrent=month===defaultBillingMonth();
+    return {p,bill,calc,rows,attended,absent,justified,future,pay,rate,isCurrent,month};
+  }
+  function carlaFinanceHomePanelV205(){
+    if(!isCarlaFinanceProfileV205(State.profile)) return '';
+    const d=carlaFinanceDataV205();
+    const missing=d.absent.length+d.justified.length;
+    return `<section class="carla-finance-home-v205 panel" aria-label="Mensualidad y asistencia"><div class="carla-finance-home-copy-v205"><p class="eyebrow">Consulta privada</p><h2>Mensualidad y asistencia</h2><p>Importe previsto de ${safe(monthLabel(d.month))}, calculado a ${money(d.rate)} por clase. La mensualidad se abona a mes vencido.</p></div><div class="carla-finance-home-kpis-v205"><span><small>Total del mes</small><strong>${money(d.calc.amount)}</strong></span><span><small>Clases computadas</small><strong>${d.calc.present}</strong></span><span><small>Faltas registradas</small><strong>${missing}</strong></span></div><button type="button" class="primary-btn" data-t16-tool="myPayments">Consultar detalle</button></section>`;
+  }
+  function carlaFinanceDayListV205(rows=[],empty='No hay días registrados en este apartado.'){
+    if(!rows.length) return `<div class="empty-state">${safe(empty)}</div>`;
+    return `<div class="carla-finance-day-list-v205">${rows.map(r=>`<article class="carla-finance-day-v205 is-${safe(r.key)}"><div><strong>${safe(fmtLongDate(r.date))}</strong><span>${safe(r.start)}${r.end?`–${safe(r.end)}`:''} · ${r.type==='individual'?'Clase individual':'Clase'}</span></div><em>${safe(r.label)}</em></article>`).join('')}</div>`;
+  }
+  function carlaFinanceContentV205(){
+    if(!isCarlaFinanceProfileV205(State.profile)) return '<div class="empty-state">Este apartado no está disponible para esta cuenta.</div>';
+    const d=carlaFinanceDataV205();
+    const missing=d.absent.length+d.justified.length;
+    const stateText=d.pay?.paid?`Pagada${d.pay.paid_date?` el ${fmtDate(d.pay.paid_date)}`:''}`:(d.isCurrent?'Se abonará al finalizar el mes':'Pendiente de confirmación');
+    return `<section class="carla-finance-page-v205"><header class="window-panel carla-finance-hero-v205"><div><p class="eyebrow">Información personal</p><h2>Mensualidad y asistencia</h2><p>Consulta privada de tus clases individuales. Cada clase computada tiene un precio de <strong>${money(d.rate)}</strong> y el importe se abona a mes vencido.</p></div><span>${safe(stateText)}</span></header><section class="window-panel carla-finance-month-v205">${paymentMonthNavigator(d.month,'Mes consultado')}</section><section class="carla-finance-kpis-v205"><article><small>Mensualidad total</small><strong>${money(d.calc.amount)}</strong><span>${d.calc.present} clases × ${money(d.rate)}</span></article><article><small>Días de asistencia</small><strong>${d.attended.length}</strong><span>hasta hoy</span></article><article class="${missing?'is-warn':''}"><small>Días que has faltado</small><strong>${missing}</strong><span>${d.absent.length} sin justificar · ${d.justified.length} justificadas</span></article><article><small>Próximas clases</small><strong>${d.future.length}</strong><span>incluidas en la previsión</span></article></section><section class="window-panel carla-finance-explanation-v205"><strong>Cómo se calcula</strong><p>${safe(d.calc.detail)}. Las clases futuras programadas se incluyen en la previsión; si se registra una falta o una falta justificada, esa clase deja de sumarse al importe.</p></section><div class="carla-finance-columns-v205"><section class="window-panel"><div class="section-heading"><h3>Días de asistencia</h3><span>${d.attended.length}</span></div>${carlaFinanceDayListV205(d.attended,'Todavía no hay asistencias computadas en este mes.')}</section><section class="window-panel"><div class="section-heading"><h3>Días que has faltado</h3><span>${missing}</span></div>${carlaFinanceDayListV205([...d.absent,...d.justified].sort((a,b)=>a.date.localeCompare(b.date)),'No tienes faltas registradas en este mes.')}</section></div><section class="window-panel"><div class="section-heading"><h3>Próximas clases del mes</h3><span>${d.future.length}</span></div>${carlaFinanceDayListV205(d.future,'No quedan clases programadas en este mes.')}</section></section>`;
+  }
+
   function focusStudentHome(){
     const p=State.profile;
     if(isIzamProfile(p)){
@@ -2419,7 +2490,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
     const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}${classHtml}`;
   }
 
   function uiLocale(){
@@ -2458,7 +2529,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(isIzamProfile(p)){
       return `<section class="hero-card panel hero-welcome-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
     }
-    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
@@ -4390,7 +4461,7 @@ render();
     w.document.close();
   }
 
-  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',teacherSubjects:'Materias y materiales',videoclasses:'Videoclases',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
+  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',myPayments:'Mensualidad y asistencia',teacherSubjects:'Materias y materiales',videoclasses:'Videoclases',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     closeAccountMenu();
@@ -4585,6 +4656,7 @@ render();
   function toolContent(id) {
     if(id==='badges' || id==='assignBadge') return '<div class="empty-state">Este apartado ya no está disponible en Tribeca Aula.</div>';
     if(id==='videoclasses' && !roleTeacher() && isIzamProfile(State.profile||{})) return '<div class="empty-state">Este apartado no está disponible en tu aula.</div>';
+    if(id==='myPayments') return carlaFinanceContentV205();
     if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='videoclasses') return videoclassesContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 

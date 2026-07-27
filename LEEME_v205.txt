@@ -1,0 +1,29 @@
+TRIBECA AULA v205 · MENSUALIDAD Y ASISTENCIA DE CARLA
+
+ARCHIVOS QUE DEBES SUSTITUIR EN LA RAÍZ DEL PROYECTO
+- supabase-auth.js
+- styles.css
+- index.html
+- service-worker.js
+
+ARCHIVO NUEVO QUE DEBES CONSERVAR SI YA LO TENÍAS
+- tribeca-package-viewer.html
+  Está incluido para que el ZIP sea compatible con la v204. Puedes volver a sustituirlo sin problema.
+
+SQL QUE DEBES EJECUTAR EN SUPABASE
+- tribeca-aula-v205-mensualidad-asistencia-carla.sql
+
+QUÉ AÑADE
+- Solo la cuenta carla_caamano ve el apartado «Mensualidad y asistencia».
+- Aparece una tarjeta resumen en su página principal.
+- También aparece el acceso dentro de «Mi cuenta».
+- Permite consultar cualquier mes.
+- Muestra importe total, días de asistencia, faltas, faltas justificadas y próximas clases.
+- La tarifa queda fijada en 10 € por clase individual.
+- La alumna solo puede leer sus datos; no puede modificarlos.
+
+ORDEN
+1. Sustituye los archivos en GitHub.
+2. Ejecuta el SQL completo en Supabase.
+3. Espera a que GitHub Pages termine el despliegue.
+4. Haz Ctrl + F5. En móvil, cierra y vuelve a abrir la PWA.

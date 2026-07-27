@@ -16457,3 +16457,156 @@ body.is-dark .publication-full-resource-preview-v197{background:rgba(241,216,137
   color: var(--green, #0b3d22);
   font-weight: 900;
 }
+
+/* Tribeca Aula · versión 205
+   Consulta privada de mensualidad y asistencia de Carla Caamaño Caamaño. */
+.carla-finance-home-v205 {
+  display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(360px,.9fr) auto;
+  align-items:center;
+  gap:20px;
+  margin:18px 0 26px;
+  padding:22px;
+  border:1px solid rgba(181,122,42,.34);
+  background:linear-gradient(135deg,rgba(255,253,247,.98),rgba(247,239,215,.92));
+  box-shadow:0 18px 42px rgba(36,45,37,.08);
+}
+.carla-finance-home-copy-v205 h2,
+.carla-finance-hero-v205 h2 { margin:2px 0 8px; }
+.carla-finance-home-copy-v205 p:last-child,
+.carla-finance-hero-v205 p { margin:0; color:#5d625c; line-height:1.55; }
+.carla-finance-home-kpis-v205 {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+}
+.carla-finance-home-kpis-v205 span {
+  min-width:0;
+  padding:12px;
+  border:1px solid rgba(11,61,34,.14);
+  border-radius:14px;
+  background:rgba(255,255,255,.75);
+}
+.carla-finance-home-kpis-v205 small,
+.carla-finance-home-kpis-v205 strong { display:block; }
+.carla-finance-home-kpis-v205 small { color:#686f68; font-size:12px; font-weight:750; }
+.carla-finance-home-kpis-v205 strong { margin-top:3px; color:#0b3d22; font-size:20px; }
+.carla-finance-page-v205 { display:grid; gap:16px; }
+.carla-finance-hero-v205 {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  padding:22px;
+  border-left:5px solid #b57a2a;
+}
+.carla-finance-hero-v205 > span {
+  flex:0 0 auto;
+  padding:9px 13px;
+  border-radius:999px;
+  background:#eef5eb;
+  color:#0b3d22;
+  font-weight:850;
+}
+.carla-finance-month-v205 { padding:14px 18px; }
+.carla-finance-kpis-v205 {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.carla-finance-kpis-v205 article {
+  padding:18px;
+  border:1px solid #ded5c0;
+  border-radius:16px;
+  background:#fffdf8;
+  box-shadow:0 10px 25px rgba(34,42,35,.055);
+}
+.carla-finance-kpis-v205 article.is-warn { border-color:#d39b43; background:#fff8e9; }
+.carla-finance-kpis-v205 small,
+.carla-finance-kpis-v205 strong,
+.carla-finance-kpis-v205 span { display:block; }
+.carla-finance-kpis-v205 small { color:#687069; font-weight:750; }
+.carla-finance-kpis-v205 strong { margin:5px 0 2px; color:#0b3d22; font-size:28px; }
+.carla-finance-kpis-v205 span { color:#67675f; font-size:12px; line-height:1.4; }
+.carla-finance-explanation-v205 {
+  padding:16px 18px;
+  border-color:#d8c99d;
+  background:#fffaf0;
+}
+.carla-finance-explanation-v205 strong { color:#60430d; }
+.carla-finance-explanation-v205 p { margin:5px 0 0; color:#686052; line-height:1.55; }
+.carla-finance-columns-v205 {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+.carla-finance-columns-v205 > section,
+.carla-finance-page-v205 > section.window-panel { padding:18px; }
+.carla-finance-day-list-v205 { display:grid; gap:9px; }
+.carla-finance-day-v205 {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 13px;
+  border:1px solid #ddd8ca;
+  border-radius:13px;
+  background:#fff;
+}
+.carla-finance-day-v205 div { min-width:0; }
+.carla-finance-day-v205 strong,
+.carla-finance-day-v205 span { display:block; }
+.carla-finance-day-v205 strong { color:#243129; text-transform:capitalize; }
+.carla-finance-day-v205 span { margin-top:3px; color:#70736e; font-size:12px; }
+.carla-finance-day-v205 em {
+  flex:0 0 auto;
+  padding:6px 9px;
+  border-radius:999px;
+  font-style:normal;
+  font-size:12px;
+  font-weight:850;
+  background:#edf5eb;
+  color:#1d633f;
+}
+.carla-finance-day-v205.is-absent { border-color:#e4b2aa; background:#fff7f5; }
+.carla-finance-day-v205.is-absent em { background:#f8dcd7; color:#8c3026; }
+.carla-finance-day-v205.is-justified { border-color:#e5ce8b; background:#fffaf0; }
+.carla-finance-day-v205.is-justified em { background:#f5e8bd; color:#715615; }
+.carla-finance-day-v205.is-scheduled { border-style:dashed; background:#f8faf7; }
+.carla-finance-day-v205.is-scheduled em { background:#e8edf0; color:#4a5960; }
+.carla-finance-day-v205.is-paused { opacity:.72; }
+body.is-dark .carla-finance-home-v205,
+body.is-dark .carla-finance-kpis-v205 article,
+body.is-dark .carla-finance-day-v205,
+body.is-dark .carla-finance-explanation-v205,
+body[data-theme="dark"] .carla-finance-home-v205,
+body[data-theme="dark"] .carla-finance-kpis-v205 article,
+body[data-theme="dark"] .carla-finance-day-v205,
+body[data-theme="dark"] .carla-finance-explanation-v205 {
+  background:#151711;
+  color:#f3efe4;
+  border-color:#474435;
+}
+body.is-dark .carla-finance-home-kpis-v205 span,
+body[data-theme="dark"] .carla-finance-home-kpis-v205 span { background:#1c1f18; border-color:#46483d; }
+body.is-dark .carla-finance-home-kpis-v205 strong,
+body.is-dark .carla-finance-kpis-v205 strong,
+body.is-dark .carla-finance-day-v205 strong,
+body[data-theme="dark"] .carla-finance-home-kpis-v205 strong,
+body[data-theme="dark"] .carla-finance-kpis-v205 strong,
+body[data-theme="dark"] .carla-finance-day-v205 strong { color:#f4e6b4; }
+@media (max-width:980px){
+  .carla-finance-home-v205 { grid-template-columns:1fr; }
+  .carla-finance-kpis-v205 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:680px){
+  .carla-finance-home-v205 { padding:17px; gap:15px; }
+  .carla-finance-home-kpis-v205 { grid-template-columns:1fr; }
+  .carla-finance-kpis-v205 { grid-template-columns:1fr 1fr; }
+  .carla-finance-columns-v205 { grid-template-columns:1fr; }
+  .carla-finance-hero-v205 { align-items:flex-start; flex-direction:column; }
+  .carla-finance-day-v205 { align-items:flex-start; flex-direction:column; }
+}
+@media (max-width:430px){
+  .carla-finance-kpis-v205 { grid-template-columns:1fr; }
+}
