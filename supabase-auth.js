@@ -885,7 +885,7 @@
     const full=normalizeLooseText(profile.full_name || [profile.first_name,profile.last_name].filter(Boolean).join(' ')).replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
     const center=normalizeLooseText(profile.center||'');
     const course=normalizeLooseText(profile.course||'');
-    return full==='carla caamano caamano' && /manuela\s+rial/.test(center) && /3[^a-z0-9]*o?\s*eso|3\s*eso/.test(course);
+    return (full==='carla caamano' || full==='carla caamano caamano') && /manuela\s+rial/.test(center) && /3[^a-z0-9]*o?\s*eso|3\s*eso/.test(course);
   }
   function isStudySkillsSubject(subject=''){
     const s=normalizeLooseText(subject);
@@ -2072,10 +2072,20 @@
     if(month===6 && day>=25) return 'summer';
     return 'school';
   }
+  function scheduleRowValidOnDateV207(row={}, iso=todayIso()){
+    if(row.active===false) return false;
+    const dateKey=String(iso||todayIso()).slice(0,10);
+    const from=String(row.valid_from||row.starts_on||'').slice(0,10);
+    const to=String(row.valid_to||row.ends_on||'').slice(0,10);
+    if(from && dateKey<from) return false;
+    if(to && dateKey>to) return false;
+    return true;
+  }
   function activeScheduleSeasonForStudent(studentId, reference=''){
-    const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId));
-    const summerActive=rows.some(x=>scheduleRecordSeason(x)==='summer' && x.active!==false);
-    const schoolActive=rows.some(x=>scheduleRecordSeason(x)==='school' && x.active!==false);
+    const refDate=String(reference||todayIso()).length===7 ? `${String(reference)}-15` : String(reference||todayIso()).slice(0,10);
+    const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId) && scheduleRowValidOnDateV207(x,refDate));
+    const summerActive=rows.some(x=>scheduleRecordSeason(x)==='summer');
+    const schoolActive=rows.some(x=>scheduleRecordSeason(x)==='school');
     const preferred=reference ? preferredScheduleSeasonForDate(String(reference).length===7 ? `${reference}-15` : reference) : preferredScheduleSeasonForDate(todayIso());
     if(preferred==='summer' && summerActive) return 'summer';
     if(preferred==='school' && schoolActive) return 'school';
@@ -2085,7 +2095,8 @@
     return 'school';
   }
   function scheduleRowsForStudentDate(studentId, isoDate, opts={}){
-    const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId) && x.active!==false);
+    const dateKey=String(isoDate||'').slice(0,10);
+    const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId) && scheduleRowValidOnDateV207(x,dateKey||todayIso()));
     if(opts.allSeasons) return rows;
     if(opts.season) return rows.filter(x=>scheduleRecordSeason(x)===opts.season);
     const preferred=preferredScheduleSeasonForDate(isoDate);
@@ -2114,7 +2125,7 @@
   function teacherScheduleModeSwitch(){ return ''; }
   function studentScheduleRows(studentId, season=activeScheduleSeasonForStudent(studentId)){
     return (State.data.schedules||[])
-      .filter(x=>String(x.user_id)===String(studentId) && x.active!==false && scheduleRecordSeason(x)===season)
+      .filter(x=>String(x.user_id)===String(studentId) && scheduleRowValidOnDateV207(x,todayIso()) && scheduleRecordSeason(x)===season)
       .sort((a,b)=>Number(a.weekday||0)-Number(b.weekday||0) || String(a.start_time||'').localeCompare(String(b.start_time||'')));
   }
   function buildStudentScheduleFromFormData(fd, prefix='schoolSchedule', season='school'){
@@ -2174,7 +2185,7 @@
   function scheduleSlotsForSeason(season=activeScheduleSeason(), blank=false){
     const base=defaultPlanningSlots(season);
     if(blank) return base;
-    const schedules=(State.data.schedules||[]).filter(r=>r.active!==false && scheduleRecordSeason(r)===season);
+    const schedules=(State.data.schedules||[]).filter(r=>scheduleRowValidOnDateV207(r,todayIso()) && scheduleRecordSeason(r)===season);
     const map=new Map(base.map(([s,e])=>[`${s}-${e}`,[s,e]]));
     schedules.forEach(r=>{ const s=String(r.start_time||'').slice(0,5); const e=String(r.end_time||'').slice(0,5); if(s&&e) map.set(`${s}-${e}`,[s,e]); });
     return [...map.values()].sort((a,b)=>a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
@@ -2182,7 +2193,7 @@
   function schedulePlanningTable(season=activeScheduleSeason(), blank=false){
     const days=['LUNS','MARTES','MÉRCORES','XOVES','VENRES'];
     const rows=scheduleSlotsForSeason(season, blank);
-    const schedules=blank ? [] : (State.data.schedules||[]).filter(r=>r.active!==false && scheduleRecordSeason(r)===season);
+    const schedules=blank ? [] : (State.data.schedules||[]).filter(r=>scheduleRowValidOnDateV207(r,todayIso()) && scheduleRecordSeason(r)===season);
     return `<table class="planning-pdf-table ${blank?'is-blank-planning':'is-filled-planning'}"><thead><tr><th>Horario</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>${rows.map(([start,end])=>`<tr><th>${safe(start)}-${safe(end)}</th>${[1,2,3,4,5].map(day=>{ const items=schedules.filter(r=>Number(r.weekday)===day && String(r.start_time||'').slice(0,5)===start && String(r.end_time||'').slice(0,5)===end); return `<td>${items.length?items.map(r=>{ const st=(State.data.students||[]).find(s=>String(s.id)===String(r.user_id))||{}; return `<strong>${safe(displayName(st))}</strong><br><span>${safe(r.class_type==='individual'?'Individual':'Grupo')}</span>${r.notes?`<br><small>${safe(r.notes)}</small>`:''}`; }).join('<hr>'):'&nbsp;'}</td>`; }).join('')}</tr>`).join('')}</tbody></table>`;
   }
   function teacherWelcomePanel(){
@@ -2436,39 +2447,57 @@ function studentAssignedClasses(studentId=State.profile?.id){
     State.billingMonth=value;
     return value;
   }
+  function scheduledClassEndDateV207(d={}){
+    const date=String(d.date||'').slice(0,10);
+    const time=String(d.end||d.start||'23:59').slice(0,5) || '23:59';
+    const parsed=new Date(`${date}T${time}:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  function scheduledClassHasFinishedV207(d={}){
+    const end=scheduledClassEndDateV207(d);
+    return end ? Date.now()>=end.getTime() : String(d.date||'').slice(0,10)<todayIso();
+  }
+  function attendanceUiStatusV207(userId,d,bill=null){
+    if(d?.paused) return 'paused';
+    const rec=attendanceRecordForScheduledDay(userId,d);
+    if(rec?.status) return String(rec.status);
+    if(!scheduledClassHasFinishedV207(d)) return 'scheduled';
+    return defaultPresentForScheduledDay(userId,d,bill) ? 'presumed' : 'pending';
+  }
   function carlaFinanceDataV205(month=carlaFinanceMonthV205()){
     const p=State.profile||{};
     const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(p.id))||{tariff_type:'individual',class_rate:10,monthly_fee:0};
     const calc=calculatePaymentAmount(p.id,month);
     const days=monthScheduleDays(p.id,month,{includePaused:true}).sort((a,b)=>`${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`));
-    const today=todayIso();
     const rows=days.map(d=>{
       const rec=attendanceRecordForScheduledDay(p.id,d);
-      const effective=effectiveAttendanceStatus(p.id,d,bill);
-      const isFuture=String(d.date)>today;
-      let key=effective;
-      let label='Asistencia';
+      const billingStatus=effectiveAttendanceStatus(p.id,d,bill);
+      const uiStatus=attendanceUiStatusV207(p.id,d,bill);
+      let key=uiStatus;
+      let label='Pendiente de registrar';
       if(d.paused){ key='paused'; label='Pausada'; }
-      else if(isFuture && !rec){ key='scheduled'; label='Programada'; }
-      else if(effective==='absent') label='Falta';
-      else if(effective==='justified') label='Falta justificada';
-      else if(effective==='present') label=rec?'Asistencia registrada':'Asistencia computada';
-      return {...d,rec,effective,key,label,isFuture};
+      else if(uiStatus==='scheduled') label='Programada';
+      else if(uiStatus==='absent') label='Falta';
+      else if(uiStatus==='justified') label='Falta justificada';
+      else if(uiStatus==='present') label='Asistencia registrada';
+      else if(uiStatus==='presumed') label='Pendiente · computada para pago';
+      return {...d,rec,effective:billingStatus,uiStatus,key,label,isFuture:uiStatus==='scheduled'};
     });
-    const attended=rows.filter(r=>!r.isFuture && !r.paused && r.effective==='present');
-    const absent=rows.filter(r=>!r.paused && r.effective==='absent');
-    const justified=rows.filter(r=>!r.paused && r.effective==='justified');
-    const future=rows.filter(r=>r.key==='scheduled');
+    const attended=rows.filter(r=>r.rec?.status==='present');
+    const absent=rows.filter(r=>r.rec?.status==='absent');
+    const justified=rows.filter(r=>r.rec?.status==='justified');
+    const future=rows.filter(r=>r.uiStatus==='scheduled');
+    const pending=rows.filter(r=>['presumed','pending'].includes(r.uiStatus));
     const pay=paymentMonthRecord(p.id,month);
     const rate=Number(bill.class_rate||10);
     const isCurrent=month===defaultBillingMonth();
-    return {p,bill,calc,rows,attended,absent,justified,future,pay,rate,isCurrent,month};
+    return {p,bill,calc,rows,attended,absent,justified,future,pending,pay,rate,isCurrent,month};
   }
   function carlaFinanceHomePanelV205(){
     if(!isCarlaFinanceProfileV205(State.profile)) return '';
     const d=carlaFinanceDataV205();
     const missing=d.absent.length+d.justified.length;
-    return `<section class="carla-finance-home-v205 panel" aria-label="Mensualidad y asistencia"><div class="carla-finance-home-copy-v205"><p class="eyebrow">Consulta privada</p><h2>Mensualidad y asistencia</h2><p>Importe previsto de ${safe(monthLabel(d.month))}, calculado a ${money(d.rate)} por clase. La mensualidad se abona a mes vencido.</p></div><div class="carla-finance-home-kpis-v205"><span><small>Total del mes</small><strong>${money(d.calc.amount)}</strong></span><span><small>Clases computadas</small><strong>${d.calc.present}</strong></span><span><small>Faltas registradas</small><strong>${missing}</strong></span></div><button type="button" class="primary-btn" data-t16-tool="myPayments">Consultar detalle</button></section>`;
+    return `<section class="carla-finance-home-v205 panel" aria-label="Mensualidad y asistencia"><div class="carla-finance-home-copy-v205"><p class="eyebrow">Consulta privada</p><h2>Mensualidad y asistencia</h2><p>Importe previsto de ${safe(monthLabel(d.month))}, calculado a ${money(d.rate)} por clase. La mensualidad se abona a mes vencido.</p></div><div class="carla-finance-home-kpis-v205"><span><small>Total del mes</small><strong>${money(d.calc.amount)}</strong></span><span><small>Clases computadas</small><strong>${d.calc.billableClasses}</strong></span><span><small>Faltas registradas</small><strong>${missing}</strong></span></div><button type="button" class="primary-btn" data-t16-tool="myPayments">Consultar detalle</button></section>`;
   }
   function carlaFinanceDayListV205(rows=[],empty='No hay días registrados en este apartado.'){
     if(!rows.length) return `<div class="empty-state">${safe(empty)}</div>`;
@@ -2479,7 +2508,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const d=carlaFinanceDataV205();
     const missing=d.absent.length+d.justified.length;
     const stateText=d.pay?.paid?`Pagada${d.pay.paid_date?` el ${fmtDate(d.pay.paid_date)}`:''}`:(d.isCurrent?'Se abonará al finalizar el mes':'Pendiente de confirmación');
-    return `<section class="carla-finance-page-v205"><header class="window-panel carla-finance-hero-v205"><div><p class="eyebrow">Información personal</p><h2>Mensualidad y asistencia</h2><p>Consulta privada de tus clases individuales. Cada clase computada tiene un precio de <strong>${money(d.rate)}</strong> y el importe se abona a mes vencido.</p></div><span>${safe(stateText)}</span></header><section class="window-panel carla-finance-month-v205">${paymentMonthNavigator(d.month,'Mes consultado')}</section><section class="carla-finance-kpis-v205"><article><small>Mensualidad total</small><strong>${money(d.calc.amount)}</strong><span>${d.calc.present} clases × ${money(d.rate)}</span></article><article><small>Días de asistencia</small><strong>${d.attended.length}</strong><span>hasta hoy</span></article><article class="${missing?'is-warn':''}"><small>Días que has faltado</small><strong>${missing}</strong><span>${d.absent.length} sin justificar · ${d.justified.length} justificadas</span></article><article><small>Próximas clases</small><strong>${d.future.length}</strong><span>incluidas en la previsión</span></article></section><section class="window-panel carla-finance-explanation-v205"><strong>Cómo se calcula</strong><p>${safe(d.calc.detail)}. Las clases futuras programadas se incluyen en la previsión; si se registra una falta o una falta justificada, esa clase deja de sumarse al importe.</p></section><div class="carla-finance-columns-v205"><section class="window-panel"><div class="section-heading"><h3>Días de asistencia</h3><span>${d.attended.length}</span></div>${carlaFinanceDayListV205(d.attended,'Todavía no hay asistencias computadas en este mes.')}</section><section class="window-panel"><div class="section-heading"><h3>Días que has faltado</h3><span>${missing}</span></div>${carlaFinanceDayListV205([...d.absent,...d.justified].sort((a,b)=>a.date.localeCompare(b.date)),'No tienes faltas registradas en este mes.')}</section></div><section class="window-panel"><div class="section-heading"><h3>Próximas clases del mes</h3><span>${d.future.length}</span></div>${carlaFinanceDayListV205(d.future,'No quedan clases programadas en este mes.')}</section></section>`;
+    return `<section class="carla-finance-page-v205"><header class="window-panel carla-finance-hero-v205"><div><p class="eyebrow">Información personal</p><h2>Mensualidad y asistencia</h2><p>Consulta privada de tus clases individuales. Cada clase computada tiene un precio de <strong>${money(d.rate)}</strong> y el importe se abona a mes vencido.</p></div><span>${safe(stateText)}</span></header><section class="window-panel carla-finance-month-v205">${paymentMonthNavigator(d.month,'Mes consultado')}</section><section class="carla-finance-kpis-v205"><article><small>Mensualidad total</small><strong>${money(d.calc.amount)}</strong><span>${d.calc.billableClasses} clases × ${money(d.rate)}</span></article><article><small>Días de asistencia</small><strong>${d.attended.length}</strong><span>hasta hoy</span></article><article class="${missing?'is-warn':''}"><small>Días que has faltado</small><strong>${missing}</strong><span>${d.absent.length} sin justificar · ${d.justified.length} justificadas</span></article><article><small>Próximas clases</small><strong>${d.future.length}</strong><span>incluidas en la previsión</span></article></section><section class="window-panel carla-finance-explanation-v205"><strong>Cómo se calcula</strong><p>${safe(d.calc.detail)}. Las clases futuras programadas se incluyen en la previsión; si se registra una falta o una falta justificada, esa clase deja de sumarse al importe.</p></section><div class="carla-finance-columns-v205"><section class="window-panel"><div class="section-heading"><h3>Días de asistencia</h3><span>${d.attended.length}</span></div>${carlaFinanceDayListV205(d.attended,'Todavía no hay asistencias computadas en este mes.')}</section><section class="window-panel"><div class="section-heading"><h3>Días que has faltado</h3><span>${missing}</span></div>${carlaFinanceDayListV205([...d.absent,...d.justified].sort((a,b)=>a.date.localeCompare(b.date)),'No tienes faltas registradas en este mes.')}</section></div><section class="window-panel"><div class="section-heading"><h3>Próximas clases del mes</h3><span>${d.future.length}</span></div>${carlaFinanceDayListV205(d.future,'No quedan clases programadas en este mes.')}</section></section>`;
   }
 
   function focusStudentHome(){
@@ -5553,7 +5582,7 @@ render();
   function studentPaymentMonthTableV181(userId='', month=defaultBillingMonth()){
     const st=studentByIdV181(userId); if(!st) return '<p>No se encontró el alumno.</p>';
     const calc=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month);
-    return `<h2>Pago de ${safe(displayName(st))} · ${safe(monthLabel(month))}</h2><table><tbody><tr><th>Importe calculado</th><td>${money(calc.amount)}</td></tr><tr><th>Detalle</th><td>${safe(calc.detail)}</td></tr><tr><th>Asistencias</th><td>${safe(calc.present)} · Faltas: ${safe(calc.absent)} · Justificadas: ${safe(calc.justified)} · Pausadas: ${safe(calc.paused||0)}</td></tr><tr><th>Estado</th><td>${pay.paid?'Pagado':'Pendiente'}${pay.paid_date?` · ${safe(fmtDate(pay.paid_date))}`:''}</td></tr><tr><th>Forma de pago</th><td>${safe(paymentMethodLabel(pay.payment_method))}</td></tr></tbody></table>`;
+    return `<h2>Pago de ${safe(displayName(st))} · ${safe(monthLabel(month))}</h2><table><tbody><tr><th>Importe calculado</th><td>${money(calc.amount)}</td></tr><tr><th>Detalle</th><td>${safe(calc.detail)}</td></tr><tr><th>Asistencias registradas</th><td>${safe(calc.present)} · Faltas: ${safe(calc.absent)} · Justificadas: ${safe(calc.justified)} · Pausadas: ${safe(calc.paused||0)}</td></tr><tr><th>Estado</th><td>${pay.paid?'Pagado':'Pendiente'}${pay.paid_date?` · ${safe(fmtDate(pay.paid_date))}`:''}</td></tr><tr><th>Forma de pago</th><td>${safe(paymentMethodLabel(pay.payment_method))}</td></tr></tbody></table>`;
   }
   function studentPaymentHistoryDocV181(userId=''){
     return monthsForStudentRecordsV181(userId).map(m=>studentPaymentMonthTableV181(userId,m)).join('');
@@ -5790,7 +5819,14 @@ render();
   function paymentMonthRecord(userId, month){ return (State.data.paymentMonths||[]).find(x=>x.user_id===userId && String(x.month||'').slice(0,7)===String(month).slice(0,7)) || {}; }
   function monthLabel(month){ try { const [y,m]=String(month).split('-').map(Number); return new Date(y, (m||1)-1, 1).toLocaleDateString('es-ES',{month:'long',year:'numeric'}); } catch(_){ return String(month||''); } }
   function addMonthsToMonth(month, delta){ const [y,m]=String(month||todayIso().slice(0,7)).split('-').map(Number); const d=new Date(y||new Date().getFullYear(), (m||1)-1+delta, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
-  function paymentModeForStudent(s){ const haystack = `${displayName(s)} ${s?.username||''}`.toLowerCase(); return (/wrona/.test(haystack) || /marco\s+calvo|marco_calvo/.test(haystack)) ? 'advance' : 'arrears'; }
+  function paymentModeForStudent(s){
+    const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s?.id))||{};
+    const stored=String(bill.payment_timing||bill.payment_mode||'').trim().toLowerCase();
+    if(['advance','adelantado','upfront'].includes(stored)) return 'advance';
+    if(['arrears','vencido','month_end'].includes(stored)) return 'arrears';
+    const haystack = `${displayName(s)} ${s?.username||''}`.toLowerCase();
+    return /wrona/.test(haystack) ? 'advance' : 'arrears';
+  }
   function paymentModeLabel(s){ return paymentModeForStudent(s)==='advance' ? 'Pago por adelantado' : 'Pago a mes vencido'; }
   function paymentMethodLabel(value=''){
     const v=String(value||'').trim().toLowerCase();
@@ -5801,19 +5837,20 @@ render();
   function paymentPausedForMonth(userId, month){
     const overlaps = pauseMonthOverlap(userId, month);
     if(!overlaps.length) return false;
-    const activeToday = activePauseFor(userId, todayIso());
-    if(activeToday && overlaps.some(p=>String(p.id)===String(activeToday.id))) return true;
+    // Una pausa no prorratea ni anula una cuota mensual fija. Solo tratamos el mes
+    // como económicamente pausado cuando el cálculo real del alumno queda a 0 €.
     const c = calculatePaymentAmount(userId, month);
-    return Number(c.amount||0) === 0 && overlaps.length > 0;
+    return Number(c.amount||0) === 0;
   }
   function defaultBillingMonth(){
     const today=new Date();
     return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
   }
-  function paymentDueDate(_student, month){
+  function paymentDueDate(student, month){
     const [y,m]=String(month).split('-').map(Number);
     if(!y||!m) return new Date();
-    return new Date(y, m-1, 1, 0, 0, 0, 0);
+    if(paymentModeForStudent(student)==='advance') return new Date(y, m-1, 1, 0, 0, 0, 0);
+    return new Date(y, m, 1, 0, 0, 0, 0);
   }
   function paymentLateFromDay1(month){
     const [y,m]=String(month).split('-').map(Number);
@@ -5829,11 +5866,15 @@ render();
     const today=new Date();
     return today>=due;
   }
-  function paymentSummaryStatus(pay={}, month='', paused=false){
+  function paymentSummaryStatus(pay={}, month='', paused=false, student=null){
     if(paused) return {key:'paused', label:'En pausa', detail:'Excluido de pagos esperados'};
     if(pay.paid) return {key:'paid', label:'Pagado', detail:pay.paid_date?fmtDate(pay.paid_date):'Sin fecha indicada'};
-    if(paymentLateFromDay1(month)) return {key:'late', label:'Retrasado', detail:'Pendiente desde el día 1 del mes si no se ha registrado el pago'};
-    return {key:'pending', label:'Pendiente', detail:'Mes futuro o aún no iniciado'};
+    if(student && isPaymentOverdue(month, student)){
+      return paymentModeForStudent(student)==='advance'
+        ? {key:'late', label:'Retrasado', detail:'Pago por adelantado pendiente'}
+        : {key:'late', label:'Retrasado', detail:'Mensualidad vencida pendiente de pago'};
+    }
+    return {key:'pending', label:'Pendiente', detail:student && paymentModeForStudent(student)==='arrears'?'Se abona a mes vencido':'Pendiente de registrar'};
   }
   function quarterMonthsFor(month){ const [y,m]=String(month||todayIso().slice(0,7)).split('-').map(Number); const start=Math.floor(((m||1)-1)/3)*3+1; return [0,1,2].map(i=>`${y}-${String(start+i).padStart(2,'0')}`); }
   function paidMonthsForStudent(userId){ return [...new Set((State.data.paymentMonths||[]).filter(p=>String(p.user_id)===String(userId) && p.paid).map(p=>String(p.month).slice(0,7)).filter(Boolean))].sort().reverse(); }
@@ -5850,7 +5891,7 @@ render();
     const calc=calculatePaymentAmount(s.id,month);
     const pay=paymentMonthRecord(s.id,month);
     const paused=paymentPausedForMonth(s.id,month);
-    const status=paymentSummaryStatus(pay, month, paused);
+    const status=paymentSummaryStatus(pay, month, paused, s);
     const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
     return {calc,pay,paused,status,bill};
   }
@@ -5935,12 +5976,12 @@ render();
     const calc=calculatePaymentAmount(s.id,month);
     const pausedBilling=paymentPausedForMonth(s.id,month);
     const method=pay.payment_method || '';
-    const status=paymentSummaryStatus(pay, month, pausedBilling);
+    const status=paymentSummaryStatus(pay, month, pausedBilling, s);
     return `<section class="payment-editor-v146">
       <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe calculado</small><strong>${money(pausedBilling?0:calc.amount)}</strong><p>${safe(calc.detail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
       <form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="premium-form finance-payment-form-v146">
         <input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}">
-        <div class="finance-form-section-v146"><h4>Tarifa</h4><div class="finance-form-grid-v146"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase asistida</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija + clases individuales</option></select></label><label>Cuota fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div></div>
+        <div class="finance-form-section-v146"><h4>Tarifa</h4><div class="finance-form-grid-v146"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase programada (se descuenta la falta)</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija completa + clases individuales</option></select></label><label>Cuota fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div></div>
         <div class="finance-form-section-v146"><h4>Estado del mes</h4><div class="finance-form-grid-v146"><label class="check-line"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> Pagado</label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div></div>
         <label>Notas privadas de pago<textarea name="paymentNotes" rows="3" placeholder="Observaciones internas de pago, familia o acuerdo económico.">${safe(bill.payment_notes||'')}</textarea></label>
         <div class="finance-actions-v146"><button class="primary-btn" type="submit">Guardar pago</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Recibí del mes</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Recibís del trimestre</button></div>
@@ -5955,12 +5996,12 @@ render();
     const calc=calculatePaymentAmount(s.id,month);
     const grouped=days.reduce((map,d)=>{ const k=String(d.date).slice(0,7); if(!map[k]) map[k]=[]; map[k].push(d); return map; },{});
     const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
-    const dayCards=days.length?days.map(d=>{ const rec=attendanceRecordForScheduledDay(s.id,d); const status=effectiveAttendanceStatus(s.id,d,bill); const assumed=!rec && status==='present'; return `<article class="attendance-day-v146 is-${safe(status)} is-${safe(d.type)} ${assumed?'is-assumed-present':''}" ${d.paused?'data-paused="true"':''} data-t22-attendance-toggle data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}" data-current="${safe(status)}"><header><strong>${fmtLongDate(d.date)}</strong><span>${safe(d.start)}-${safe(d.end)}</span></header><p>${d.type==='individual'?'Clase individual':'Clase grupal'}</p><em>${status==='present'?(assumed?'Asistencia presunta':'Asistió'):status==='justified'?'Justificada':status==='paused'?'Pausa':'Falta'}</em>${assumed?'<small>Se cobra por defecto. Registra falta solo si no asistió.</small>':''}${d.paused?'<small>Bloqueada por pausa</small>':`<div class="attendance-actions-v146"><button type="button" data-t16-attendance="present" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Asistió</button><button type="button" data-t16-attendance="absent" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Falta</button><button type="button" data-t16-attendance="justified" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Justificada</button></div>`}</article>`; }).join(''):'<div class="empty-state">Este alumno no tiene horario asignado para este mes.</div>';
+    const dayCards=days.length?days.map(d=>{ const rec=attendanceRecordForScheduledDay(s.id,d); const status=attendanceUiStatusV207(s.id,d,bill); const presumed=status==='presumed'; const label=status==='present'?'Asistió':status==='justified'?'Justificada':status==='paused'?'Pausa':status==='absent'?'Falta':status==='scheduled'?'Programada':presumed?'Pendiente · computada para pago':'Pendiente de registrar'; return `<article class="attendance-day-v146 is-${safe(status)} is-${safe(d.type)} ${presumed?'is-assumed-present':''}" ${d.paused?'data-paused="true"':''} data-t22-attendance-toggle data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}" data-current="${safe(status)}"><header><strong>${fmtLongDate(d.date)}</strong><span>${safe(d.start)}-${safe(d.end)}</span></header><p>${d.type==='individual'?'Clase individual':'Clase grupal'}</p><em>${safe(label)}</em>${presumed?'<small>Cuenta en la previsión económica, pero la asistencia todavía no está registrada.</small>':status==='scheduled'?'<small>La clase aún no ha terminado.</small>':''}${d.paused?'<small>Bloqueada por pausa</small>':`<div class="attendance-actions-v146"><button type="button" data-t16-attendance="present" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Asistió</button><button type="button" data-t16-attendance="absent" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Falta</button><button type="button" data-t16-attendance="justified" data-user="${safe(s.id)}" data-date="${safe(d.date)}" data-start="${safe(d.start)}" data-end="${safe(d.end)}" data-class-type="${safe(d.type)}">Justificada</button></div>`}</article>`; }).join(''):'<div class="empty-state">Este alumno no tiene horario asignado para este mes.</div>';
     return `<section class="attendance-editor-clean-v146">
       <div class="attendance-stats-v146"><article><small>Asistencias</small><strong>${calc.present}</strong></article><article><small>Faltas</small><strong>${calc.absent}</strong></article><article><small>Justificadas</small><strong>${calc.justified}</strong></article><article><small>Pausadas</small><strong>${calc.paused||0}</strong></article><article><small>Importe asociado</small><strong>${money(calc.amount)}</strong></article></div>
       <details class="pause-drawer-v146"><summary>Pausas temporales de asistencia y acceso</summary>${paymentPausePanel(s,month)}</details>
       ${scheduleNote}
-      <div class="attendance-help-v146"><strong>Registro rápido</strong><p>En alumnado con tarifa individual, la asistencia queda presupuesta por defecto. Solo registra una falta o justificación cuando no haya asistido; los cambios se guardan al momento y actualizan el cálculo económico.</p></div>
+      <div class="attendance-help-v146"><strong>Registro rápido</strong><p>En tarifas individuales, las clases programadas se incluyen por defecto en la previsión económica, pero no se muestran como asistencias hasta que se registran. Si hay una falta o justificación, regístrala y el importe se actualizará al momento.</p></div>
       <div class="attendance-month-grid-v146">${dayCards}</div>
     </section>`;
   }
@@ -5995,37 +6036,44 @@ render();
   function calculatePaymentAmount(userId,month){
     const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(userId))||{};
     const allDays=monthScheduleDays(userId,month,{includePaused:true});
-    const activeDays=allDays.filter(d=>!d.paused);
-    const att=(State.data.attendance||[]).filter(a=>String(a.user_id)===String(userId) && String(a.class_date||'').startsWith(month) && !pausedOnDate(userId,a.class_date));
-    const absent=att.filter(a=>a.status==='absent').length;
-    const justified=att.filter(a=>a.status==='justified').length;
-    const explicitPresent=att.filter(a=>a.status==='present').length;
+    const billingStart=String(bill.billing_start_date||'').slice(0,10);
+    const [monthYear,monthNumber]=String(month||'').split('-').map(Number);
+    const monthEnd=(monthYear&&monthNumber)?toIso(new Date(monthYear,monthNumber,0)):'';
+    if(billingStart && monthEnd && monthEnd<billingStart){
+      return {amount:0,detail:'Todavía no había comenzado la facturación de este curso',present:0,billableClasses:0,individualPresent:0,fixedGroupDays:0,absent:0,justified:0,paused:0,totalDays:0,activeDays:0,assumedPresent:false};
+    }
+    const eligibleDays=allDays.filter(d=>!billingStart || String(d.date)>=billingStart);
+    const activeDays=eligibleDays.filter(d=>!d.paused);
+    const scheduledKey=new Set(activeDays.map(d=>`${String(d.date).slice(0,10)}|${String(d.start||'').slice(0,5)}`));
+    const monthAttendance=(State.data.attendance||[]).filter(a=>String(a.user_id)===String(userId) && String(a.class_date||'').startsWith(month) && (!billingStart || String(a.class_date||'').slice(0,10)>=billingStart) && !pausedOnDate(userId,a.class_date));
+    const scheduledAttendance=monthAttendance.filter(a=>scheduledKey.has(`${String(a.class_date||'').slice(0,10)}|${String(a.scheduled_start||'').slice(0,5)}`));
+    const absent=scheduledAttendance.filter(a=>a.status==='absent').length;
+    const justified=scheduledAttendance.filter(a=>a.status==='justified').length;
+    const actualPresent=scheduledAttendance.filter(a=>a.status==='present').length;
+    const extraExplicitPresent=monthAttendance.filter(a=>a.status==='present' && !scheduledKey.has(`${String(a.class_date||'').slice(0,10)}|${String(a.scheduled_start||'').slice(0,5)}`));
     const fixed=Number(bill.monthly_fee||0);
     const rate=Number(bill.class_rate||0);
     const tariff=String(bill.tariff_type||'group');
-    const billablePerClassDays=activeDays.filter(d=>effectiveAttendanceStatus(userId,d,bill)==='present');
-    const scheduledExplicitPresent=activeDays.filter(d=>attendanceRecordForScheduledDay(userId,d)?.status==='present').length;
-    const extraExplicitPresent=Math.max(0, explicitPresent-scheduledExplicitPresent);
-    const present=(tariff==='individual') ? (billablePerClassDays.length+extraExplicitPresent) : (tariff==='mixed' ? Math.max(explicitPresent, activeDays.filter(d=>defaultPresentForScheduledDay(userId,d,bill) && effectiveAttendanceStatus(userId,d,bill)==='present').length) : explicitPresent);
-    const individualPresent=activeDays.filter(d=>String(d.type||'group')==='individual' && effectiveAttendanceStatus(userId,d,bill)==='present').length;
-    const totalGroupDays=allDays.filter(d=>d.type!=='individual').length;
-    const activeGroupDays=activeDays.filter(d=>d.type!=='individual').length;
-    const paused=allDays.filter(d=>d.paused).length;
-    const fixedProrated=totalGroupDays>0 && activeGroupDays<totalGroupDays ? fixed*(activeGroupDays/totalGroupDays) : fixed;
-    let amount=0, detail='';
+    const billableScheduled=activeDays.filter(d=>{ const st=effectiveAttendanceStatus(userId,d,bill); return st!=='absent' && st!=='justified' && st!=='paused'; });
+    const billableIndividualScheduled=billableScheduled.filter(d=>String(d.type||'group')==='individual');
+    const extraIndividualPresent=extraExplicitPresent.filter(a=>String(a.class_type||a.type||'individual')==='individual').length;
+    const paused=eligibleDays.filter(d=>d.paused).length;
+    let amount=0, detail='', billableClasses=0, individualPresent=0;
     if(tariff==='individual'){
-      const count=billablePerClassDays.length+extraExplicitPresent;
-      amount=count*rate;
-      detail=`${count} clases previstas/asistidas × ${money(rate)}${absent||justified?` · ${absent+justified} falta/s descontada/s`:''}`;
+      billableClasses=billableScheduled.length+extraExplicitPresent.length;
+      amount=billableClasses*rate;
+      detail=`${billableClasses} clases previstas/computadas × ${money(rate)}${absent||justified?` · ${absent+justified} falta/s descontada/s`:''}`;
     } else if(tariff==='mixed'){
-      amount=fixedProrated+(individualPresent*rate);
-      detail=`Cuota ${activeGroupDays<totalGroupDays?'prorrateada ':''}${money(fixedProrated)} + ${individualPresent} clases individuales previstas/asistidas × ${money(rate)}`;
+      individualPresent=billableIndividualScheduled.length+extraIndividualPresent;
+      billableClasses=individualPresent;
+      amount=fixed+(individualPresent*rate);
+      detail=`Cuota fija completa ${money(fixed)} + ${individualPresent} clases individuales previstas/computadas × ${money(rate)}`;
     } else {
-      amount=fixedProrated;
-      detail=activeGroupDays<totalGroupDays?`Cuota fija prorrateada: ${activeGroupDays}/${totalGroupDays} clases activas`:'Cuota fija mensual';
+      amount=fixed;
+      billableClasses=0;
+      detail='Cuota fija mensual completa, sin prorrateo';
     }
-    if(paused && amount===0) detail='Mes en pausa, sin clases facturables';
-    return {amount,detail,present,individualPresent,fixedGroupDays:activeGroupDays,absent,justified,paused,totalDays:allDays.length,activeDays:activeDays.length,assumedPresent:tariff==='individual'||tariff==='mixed'};
+    return {amount,detail,present:actualPresent,billableClasses,individualPresent,fixedGroupDays:activeDays.filter(d=>d.type!=='individual').length,absent,justified,paused,totalDays:eligibleDays.length,activeDays:activeDays.length,assumedPresent:tariff==='individual'||tariff==='mixed'};
   }
   function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); return `<strong>Total calculado: ${money(c.amount)}</strong><p>${safe(c.detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
   function paymentStudentHistory(userId){
@@ -6047,7 +6095,7 @@ render();
     if(members.length<2) return '';
     const rows=members.map(st=>{ const calc=calculatePaymentAmount(st.id, month); const pay=paymentMonthRecord(st.id,month); return {st,calc,pay,paused:paymentPausedForMonth(st.id,month)}; });
     const total=rows.reduce((sum,r)=>sum+(r.paused?0:Number(r.calc.amount||0)),0);
-    return `<section class="window-panel family-payment-card-v144"><div><p class="eyebrow">Pago familiar único</p><h3>${safe(s.family_name || s.family_group_id || 'Familia')}</h3><p class="meta">Puedes ver el importe total familiar y el desglose individual de cada hermano/a.</p></div><strong>${money(total)}</strong><table class="premium-table compact-table"><thead><tr><th>Alumno/a</th><th>Importe individual</th><th>Estado</th></tr></thead><tbody>${rows.map(r=>{ const status=paymentSummaryStatus(r.pay, month, r.paused); return `<tr><td>${safe(displayName(r.st))}</td><td>${money(r.paused?0:r.calc.amount)}</td><td><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></td></tr>`; }).join('')}</tbody></table></section>`;
+    return `<section class="window-panel family-payment-card-v144"><div><p class="eyebrow">Pago familiar único</p><h3>${safe(s.family_name || s.family_group_id || 'Familia')}</h3><p class="meta">Puedes ver el importe total familiar y el desglose individual de cada hermano/a.</p></div><strong>${money(total)}</strong><table class="premium-table compact-table"><thead><tr><th>Alumno/a</th><th>Importe individual</th><th>Estado</th></tr></thead><tbody>${rows.map(r=>{ const status=paymentSummaryStatus(r.pay, month, r.paused, r.st); return `<tr><td>${safe(displayName(r.st))}</td><td>${money(r.paused?0:r.calc.amount)}</td><td><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></td></tr>`; }).join('')}</tbody></table></section>`;
   }
   function familySummaryRows(month){
     const groupsMap=new Map();
@@ -6065,7 +6113,7 @@ render();
       const pausedBilling=paymentPausedForMonth(s.id,month);
       if(!pausedBilling) total+=c.amount;
       const pText=pauseMonthOverlap(s.id,month).length?' · pausa registrada':'';
-      const status=paymentSummaryStatus(pay, month, pausedBilling);
+      const status=paymentSummaryStatus(pay, month, pausedBilling, s);
       if(status.key==='paid') paidCount++;
       else if(status.key==='late') lateCount++;
       else if(status.key==='pending') pendingCount++;
@@ -6073,7 +6121,7 @@ render();
       return `<tr class="payment-status-row payment-status-${safe(status.key)} ${pText?'is-paused-row':''}">
         <td>${safe(displayName(s))}${pausedBilling?'<br><small>En pausa, excluido de pagos esperados</small>':pText?'<br><small>Con pausa</small>':''}</td>
         <td>${bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual':'Grupal'}</td>
-        <td>${c.present}</td>
+        <td>${bill.tariff_type==='group'?'—':c.billableClasses}</td>
         <td>${pausedBilling?money(0):money(c.amount)}</td>
         <td><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span><br><small>${safe(status.detail)} · ${safe(paymentModeLabel(s))}${pay.payment_method?` · ${safe(paymentMethodLabel(pay.payment_method))}`:''}</small></td>
       </tr>`;
@@ -6081,16 +6129,16 @@ render();
     return `<label>Mes<input type="month" value="${safe(month)}" data-t16-billing-month></label>
       <div class="payment-grand-total">Total previsto: ${money(total)}</div>
       <div class="payment-status-legend"><span class="payment-status-pill payment-status-paid">Pagados: ${paidCount}</span><span class="payment-status-pill payment-status-pending">Pendientes: ${pendingCount}</span><span class="payment-status-pill payment-status-late">Retrasados: ${lateCount}</span>${pausedCount?`<span class="payment-status-pill payment-status-paused">En pausa: ${pausedCount}</span>`:''}</div>
-      <p class="meta">El total previsto excluye al alumnado en pausa. El estado “retrasado” se aplica desde el día 1 del mes si el pago no se ha registrado.</p>
+      <p class="meta">El total previsto excluye al alumnado con una pausa activa que impide la asistencia del mes. Los pagos por adelantado vencen al comenzar el mes; los pagos a mes vencido, al comenzar el mes siguiente.</p>
       ${familySummaryRows(month)?`<h4>Pagos familiares agrupados</h4><table class="premium-table payment-family-table-v144"><thead><tr><th>Familia</th><th>Alumnado</th><th>Total familiar</th></tr></thead><tbody>${familySummaryRows(month)}</tbody></table>`:''}
       <h4>Histórico total mensual</h4>
       <div class="inline-actions"><button type="button" class="secondary-btn" onclick="window.TribecaPrintPaymentsPdf && window.TribecaPrintPaymentsPdf('month')">Descargar histórico mensual en PDF</button><button type="button" class="secondary-btn" onclick="window.TribecaPrintTribecaDocument && window.TribecaPrintTribecaDocument('payments-month',{month:'${safe(month)}'})">PDF mensual completo</button></div>
-      <table class="premium-table payment-summary-table"><thead><tr><th>Alumno/a</th><th>Tarifa</th><th>Asistencias</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <table class="premium-table payment-summary-table"><thead><tr><th>Alumno/a</th><th>Tarifa</th><th>Clases computadas</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
   function money(v){ return `${Number(v||0).toFixed(2).replace('.',',')} €`; }
   async function saveBilling(form){ const fd=new FormData(form); const rec={user_id:fd.get('userId'), tariff_type:fd.get('tariffType'), monthly_fee:fd.get('monthlyFee')?Number(fd.get('monthlyFee')):0, class_rate:fd.get('classRate')?Number(fd.get('classRate')):0, payment_notes:fd.get('paymentNotes')||'', updated_at:new Date().toISOString()}; const paymentMethod=fd.get('paymentMethod')||null; const pay={user_id:fd.get('userId'), month:fd.get('month')||State.billingMonth||defaultBillingMonth(), paid:!!fd.get('paid'), paid_date:fd.get('paidDate')||null, updated_at:new Date().toISOString()}; const r=await State.client.rpc('tribeca_save_payment_v28',{p_billing:rec,p_month:pay}); if(r.error) throw r.error; await maybe(table('payment_months').update({payment_method:paymentMethod, updated_at:new Date().toISOString()}).eq('user_id',pay.user_id).eq('month',pay.month)); await log('payment','Tarifa o pago actualizado',{student:studentName(rec.user_id),month:pay.month,payment_method:paymentMethod}); await loadData(true); toast('Pago guardado.'); rerender(); }
   async function saveStudentPause(form){ const fd=new FormData(form); const id=String(fd.get('pauseId')||'').trim(); const userId=String(fd.get('userId')||'').trim(); const start=String(fd.get('startDate')||todayIso()).slice(0,10); const end=String(fd.get('endDate')||'').slice(0,10)||null; if(end && end < start) throw new Error('La fecha de fin no puede ser anterior a la fecha de inicio.'); const active=!!fd.get('active'); if(!active && !id) throw new Error('Marca “Pausa activa” para crear una nueva pausa.'); const rec={user_id:userId,start_date:start,end_date:end,active,mode:fd.get('mode')||'scheduled',reason:String(fd.get('reason')||'').trim()||null,updated_at:new Date().toISOString()}; let error; if(id){ ({error}=await table('student_pauses').update(rec).eq('id',id)); } else { rec.created_by=State.profile.id; ({error}=await table('student_pauses').insert(rec)); } if(error) throw error; await log('pause','Pausa de asistencia actualizada',{student:studentName(userId),start,end,active}); await loadData(true); toast(active?'Pausa guardada. El acceso del alumno quedará bloqueado durante el período indicado.':'Pausa desactivada.'); rerender(); }
-  async function endStudentPause(id){ const rec=(State.data.studentPauses||[]).find(p=>p.id===id); if(!rec) return toast('No se encontró la pausa.'); const {error}=await table('student_pauses').update({active:false,end_date:todayIso(),updated_at:new Date().toISOString()}).eq('id',id); if(error) return toast(error.message || 'No se pudo finalizar la pausa.'); await log('pause','Pausa finalizada',{student:studentName(rec.user_id)}); await loadData(true); toast('Pausa finalizada. El alumno podrá volver a acceder.'); rerender(); }
+  async function endStudentPause(id){ const rec=(State.data.studentPauses||[]).find(p=>p.id===id); if(!rec) return toast('No se encontró la pausa.'); const yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1); const endDate=toIso(yesterday); const {error}=await table('student_pauses').update({active:false,end_date:endDate,updated_at:new Date().toISOString()}).eq('id',id); if(error) return toast(error.message || 'No se pudo finalizar la pausa.'); await log('pause','Pausa finalizada',{student:studentName(rec.user_id),access_from:todayIso()}); await loadData(true); toast('Pausa finalizada. El alumno puede acceder desde hoy.'); rerender(); }
   async function saveAttendance(btn){ if(pausedOnDate(btn.dataset.user, btn.dataset.date)) return toast('Este día está dentro de una pausa y no cuenta como asistencia ni como falta.'); const rec={user_id:btn.dataset.user, class_date:btn.dataset.date, scheduled_start:btn.dataset.start||null, scheduled_end:btn.dataset.end||null, class_type:btn.dataset.classType||'group', status:btn.dataset.t16Attendance, updated_at:new Date().toISOString()}; const { error } = await State.client.from('attendance_records').upsert(rec,{onConflict:'user_id,class_date,scheduled_start'}); if(error) throw error; await loadData(true); rerender(); }
   async function toggleAttendance(card){ if(card.dataset.paused==='true' || pausedOnDate(card.dataset.user, card.dataset.date)) return toast('Este día está pausado y se excluye del cálculo de asistencia y facturación.'); const current=card.dataset.current || 'absent'; const next=current==='present'?'absent':'present'; const rec={user_id:card.dataset.user, class_date:card.dataset.date, scheduled_start:card.dataset.start||null, scheduled_end:card.dataset.end||null, class_type:card.dataset.classType||'group', status:next, updated_at:new Date().toISOString()}; const { error } = await State.client.from('attendance_records').upsert(rec,{onConflict:'user_id,class_date,scheduled_start'}); if(error) throw error; await loadData(true); rerender(); }
 
@@ -8276,9 +8324,9 @@ function classroomCard(c,i=0){
     const s=(State.data.students||[]).find(x=>String(x.id)===String(userId)); if(!s) return '';
     const c=calculatePaymentAmount(userId, month); const pay=paymentMonthRecord(userId, month); const bill=(State.data.billing||[]).find(b=>b.user_id===userId)||{};
     const now=new Date(); const generated=now.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}); const pausedBilling=paymentPausedForMonth(userId,month); const paidText=pausedBilling?'en pausa, excluido de pago':pay.paid?(pay.paid_date?fmtDate(pay.paid_date):'pagado'):'pendiente de pago'; const code=receiptVerificationCode(userId, month, pausedBilling?0:c.amount);
-    const tariff=bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual, por clase asistida':'Grupal, cuota fija mensual';
+    const tariff=bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual, por clase programada':'Grupal, cuota fija mensual';
     const logo='assets/tribeca-academia-logo.webp';
-    return `<main class="receipt-slip"><header class="receipt-head"><div class="receipt-brand"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Recibí interno · no factura</span></div></div><div class="receipt-code"><strong>${safe(code)}</strong><span>${safe(generated)}</span></div></header><section class="receipt-title"><h1>RECIBÍ</h1><p>${safe(monthLabel(month))} · ${safe(paymentModeLabel(s))} · ${safe(paymentMethodLabel(pay.payment_method))}</p></section><section class="receipt-grid"><div><small>Alumno/a</small><strong>${safe(displayName(s))}</strong><span>${safe(academicLine(s))}</span></div><div><small>Estado</small><strong>${safe(paidText)}</strong><span>${pay.paid_date?fmtDate(pay.paid_date):'Fecha no registrada'}</span></div><div><small>Tarifa</small><strong>${safe(tariff)}</strong><span>${safe(c.detail)}</span></div><div><small>Importe</small><strong class="receipt-amount">${money(pausedBilling?0:c.amount)}</strong><span>${c.present} asist. · ${c.justified} justif. · ${c.paused||0} pausadas</span></div><div><small>Forma de pago</small><strong>${safe(paymentMethodLabel(pay.payment_method))}</strong><span>${pay.payment_method?'Registrada':'No indicada'}</span></div></section><section class="receipt-concept"><strong>Concepto:</strong> apoyo educativo y clases de refuerzo correspondientes a ${safe(monthLabel(month))}.</section><footer class="receipt-sign"><div><small>Recibido por</small><strong>Patricia Trillo</strong></div><div><small>Firma electrónica interna</small><strong>${safe(code)}</strong></div></footer></main>`;
+    return `<main class="receipt-slip"><header class="receipt-head"><div class="receipt-brand"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Recibí interno · no factura</span></div></div><div class="receipt-code"><strong>${safe(code)}</strong><span>${safe(generated)}</span></div></header><section class="receipt-title"><h1>RECIBÍ</h1><p>${safe(monthLabel(month))} · ${safe(paymentModeLabel(s))} · ${safe(paymentMethodLabel(pay.payment_method))}</p></section><section class="receipt-grid"><div><small>Alumno/a</small><strong>${safe(displayName(s))}</strong><span>${safe(academicLine(s))}</span></div><div><small>Estado</small><strong>${safe(paidText)}</strong><span>${pay.paid_date?fmtDate(pay.paid_date):'Fecha no registrada'}</span></div><div><small>Tarifa</small><strong>${safe(tariff)}</strong><span>${safe(c.detail)}</span></div><div><small>Importe</small><strong class="receipt-amount">${money(pausedBilling?0:c.amount)}</strong><span>${c.present} asist. registradas · ${c.billableClasses||0} clases computadas · ${c.justified} justif.</span></div><div><small>Forma de pago</small><strong>${safe(paymentMethodLabel(pay.payment_method))}</strong><span>${pay.payment_method?'Registrada':'No indicada'}</span></div></section><section class="receipt-concept"><strong>Concepto:</strong> apoyo educativo y clases de refuerzo correspondientes a ${safe(monthLabel(month))}.</section><footer class="receipt-sign"><div><small>Recibido por</small><strong>Patricia Trillo</strong></div><div><small>Firma electrónica interna</small><strong>${safe(code)}</strong></div></footer></main>`;
   }
   function receiptPrintDocument(title, body){
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(title)}</title><style>@page{size:A4;margin:10mm}*{box-sizing:border-box}body{margin:0;background:#f7f5ee;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.actions{position:sticky;top:0;z-index:2;padding:8px;text-align:right;background:#f7f5ee}.actions button{border:0;border-radius:999px;background:#0b3d22;color:#fffdf8;font-weight:900;padding:8px 12px}.receipt-sheet{display:grid;gap:8mm;align-content:start}.receipt-slip{width:190mm;min-height:86mm;margin:0 auto;background:#fffdf8;border:1px solid #d9cfb7;border-left:5px solid #0b3d22;border-radius:10px;padding:8mm;break-inside:avoid;page-break-inside:avoid}.receipt-head{display:flex;justify-content:space-between;gap:10px;border-bottom:1.5px solid #b99a3b;padding-bottom:6px}.receipt-brand{display:flex;align-items:center;gap:9px}.receipt-brand img{width:34px;height:34px;object-fit:contain}.receipt-brand strong{display:block;font-family:Georgia,serif;font-size:15px;color:#0b3d22}.receipt-brand span,.receipt-code span{display:block;color:#6f6658;font-size:9px;font-weight:750}.receipt-code{text-align:right;font-size:9px;color:#4b443b}.receipt-title{display:flex;align-items:end;justify-content:space-between;margin:8px 0}.receipt-title h1{font-family:Georgia,serif;font-size:22px;letter-spacing:.16em;color:#0b3d22;margin:0}.receipt-title p{margin:0;color:#6f6658;font-weight:850;font-size:10px}.receipt-grid{display:grid;grid-template-columns:1.15fr .85fr 1.15fr .85fr;gap:6px}.receipt-grid div{border:1px solid #e2d8c2;border-radius:8px;padding:7px;background:#fff}.receipt-grid small,.receipt-sign small{display:block;text-transform:uppercase;letter-spacing:.08em;color:#8a753b;font-size:8px;font-weight:900;margin-bottom:3px}.receipt-grid strong{display:block;font-size:11px}.receipt-grid span{display:block;color:#6f6658;font-size:9px;margin-top:2px}.receipt-amount{font-size:16px!important;color:#0b3d22}.receipt-concept{border-left:3px solid #b99a3b;margin:8px 0;padding:5px 0 5px 8px;font-size:10px}.receipt-sign{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid #e2d8c2;padding-top:6px}.receipt-sign strong{font-family:Georgia,serif;font-size:12px}@media print{body{background:white}.actions{display:none}.receipt-slip{margin:0 auto 5mm}}</style></head><body><div class="actions"><button onclick="window.print()">Descargar o guardar como PDF</button></div><section class="receipt-sheet">${body}</section><script>setTimeout(()=>window.print(),350)</script></body></html>`;
