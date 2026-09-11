@@ -1,0 +1,62 @@
+name: Tribeca Izam cleanup v209
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tribeca-izam-cleanup-v209.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Remove Izam medal UI and bump cache
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("supabase-auth.js")
+          s = p.read_text(encoding="utf-8")
+          a = "function izamPokemonPanelV186(p=State.profile){"
+          b = "function izamPokemonTeacherPanelV186(s={}){"
+          if a not in s or b not in s:
+              raise SystemExit("No se localizaron las funciones de medallas de Izam.")
+          s = s.replace(a, a + "\n    return '';", 1)
+          s = s.replace(b, b + "\n    return '';", 1)
+          if s.startswith("/* Tribeca Aula · Versión 205"):
+              s = s.replace("/* Tribeca Aula · Versión 205", "/* Tribeca Aula · Versión 209", 1)
+          p.write_text(s, encoding="utf-8")
+
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          import re
+          s = re.sub(r'supabase-auth\.js\?v=\d+', 'supabase-auth.js?v=209', s)
+          p.write_text(s, encoding="utf-8")
+
+          p = Path("service-worker.js")
+          s = p.read_text(encoding="utf-8")
+          s = re.sub(r'Service worker v\d+', 'Service worker v209', s, count=1)
+          s = re.sub(r"tribeca-aula-static-v\d+", "tribeca-aula-static-v209", s, count=1)
+          p.write_text(s, encoding="utf-8")
+      - name: Validate
+        shell: bash
+        run: |
+          node --check supabase-auth.js
+          node --check service-worker.js
+          grep -q "supabase-auth.js?v=209" index.html
+          grep -q "tribeca-aula-static-v209" service-worker.js
+      - name: Commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/tribeca-izam-cleanup-v209.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Remove Izam study-techniques medals and keep only 5th primary class'
+          git push origin HEAD:main
