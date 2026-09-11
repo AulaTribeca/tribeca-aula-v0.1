@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 205 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 209 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -7899,6 +7899,7 @@ function classroomCard(c,i=0){
     return defs.map(b=>({...b, earned:earned.has(b.code)}));
   }
   function izamPokemonPanelV186(p=State.profile){
+    return '';
     if(!p || !isIzamProfile(p)) return '';
     const medals=izamEarnedMedalsV186(p.id);
     const earnedCount=medals.filter(m=>m.earned).length;
@@ -7909,6 +7910,7 @@ function classroomCard(c,i=0){
     return `<section class="izam-medal-panel-v186 izam-medal-panel-v187 panel"><div class="izam-medal-head-v186"><div><p class="eyebrow">Reto personal</p><h2>Medallas de unidades</h2><p>Reconocimientos por superar los pueblos y gimnasios de Técnicas de estudio.</p></div><strong>${earnedCount}/${medals.length}</strong></div><div class="izam-medal-grid-v186 izam-medal-grid-v187">${cards}</div></section>`;
   }
   function izamPokemonTeacherPanelV186(s={}){
+    return '';
     if(!roleTeacher() || !isIzamProfile(s)) return '';
     const medals=izamEarnedMedalsV186(s.id);
     const earnedCount=medals.filter(m=>m.earned).length;

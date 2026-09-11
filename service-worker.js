@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v207 · PWA, caché ligera, push con payload cifrado y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v207';
+/* Tribeca Aula · Service worker v209 · PWA, caché ligera, push con payload cifrado y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v209';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
