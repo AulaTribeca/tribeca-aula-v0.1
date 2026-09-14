@@ -13,12 +13,12 @@
   <link rel="apple-touch-icon" href="assets/tribeca-pwa-icon-192.png" />
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#064b35" />
-  <meta name="color-scheme" content="light dark" />
+  <meta name="color-scheme" content="light" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Tribeca Aula" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <link rel="stylesheet" href="styles.css?v=215" />
+  <link rel="stylesheet" href="styles.css?v=216" />
 </head>
 <body class="font-default">
   <header class="app-header" id="appHeader">
@@ -99,13 +99,7 @@
             <option value="pt">Português</option>
           </select>
         </label>
-
-        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Cambiar modo claro u oscuro">
-          <span class="theme-dot" aria-hidden="true"></span>
-          <span id="themeText" data-i18n="themeLight">Claro</span>
-        </button>
-
-        <div class="profile-area">
+<div class="profile-area">
           <button class="profile-button" id="profileButton" type="button" aria-label="Abrir mi cuenta">
             <span class="avatar" id="profileAvatar">💡</span>
             <span class="profile-name">Mi cuenta</span>
@@ -165,7 +159,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=213"></script>
-  <script src="supabase-auth.js?v=215"></script>
+  <script src="app.js?v=216"></script>
+  <script src="supabase-auth.js?v=216"></script>
 </body>
 </html>
