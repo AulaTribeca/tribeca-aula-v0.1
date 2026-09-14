@@ -232,9 +232,12 @@ function applyFont(value) {
 }
 
 function toggleTheme() {
-  document.body.classList.toggle('is-dark');
-  localStorage.setItem('tribeca-theme', document.body.classList.contains('is-dark') ? 'dark' : 'light');
-  $('#themeText').textContent = document.body.classList.contains('is-dark') ? tr('themeDark') : tr('themeLight');
+  document.body.classList.remove('is-dark','dark-mode','theme-dark');
+  document.documentElement.dataset.theme = 'light';
+  document.body.dataset.theme = 'light';
+  localStorage.setItem('tribeca-theme','light');
+  const text = $('#themeText');
+  if(text) text.textContent = tr('themeLight');
 }
 
 function toolTitle(id) { return tr(`tool${id.charAt(0).toUpperCase()}${id.slice(1)}`); }
@@ -943,12 +946,12 @@ function init() {
   migrateSettings();
   const savedZoom = localStorage.getItem('tribeca-zoom') || '60';
   const savedFont = localStorage.getItem('tribeca-font') || 'default';
-  const savedTheme = localStorage.getItem('tribeca-theme') || 'light';
+  const savedTheme = 'light'; localStorage.setItem('tribeca-theme','light');
   $('#zoomSelect').value = savedZoom;
   $('#fontSelect').value = savedFont;
   applyZoom(savedZoom);
   applyFont(savedFont);
-  if (savedTheme === 'dark') document.body.classList.add('is-dark');
+  document.body.classList.remove('is-dark','dark-mode','theme-dark'); document.documentElement.dataset.theme='light'; document.body.dataset.theme='light';
   applyTranslations();
   updateCalendarBadge();
   setHeaderHeight();
@@ -956,7 +959,7 @@ function init() {
   $('#zoomSelect').addEventListener('change', event => applyZoom(event.target.value));
   $('#fontSelect').addEventListener('change', event => applyFont(event.target.value));
   $('#languageSelect').addEventListener('change', () => { applyTranslations(); updateCalendarBadge(); });
-  $('#themeToggle').addEventListener('click', toggleTheme);
+  $('#themeToggle')?.remove();
 
   $$('.nav-btn[data-route="subjects"]').forEach(button => button.addEventListener('click', () => {
     $$('.nav-btn').forEach(b => b.classList.remove('is-active'));
