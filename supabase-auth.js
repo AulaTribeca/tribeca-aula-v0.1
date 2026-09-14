@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 216 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 217 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -2210,24 +2210,66 @@
     if(!rows.length) return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>0 clases</span></div><div class="empty-state">Todavía no hay clases activas.</div></section>`;
     return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>${rows.length} clase${rows.length===1?'':'s'}</span></div><div class="teacher-quick-class-grid">${rows.map(c=>{ const assigned=classroomStudents(c.id); const subjects=classroomSubjects(c.id); const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id))); const mats=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)); return `<article class="teacher-quick-class-card ${classroomThemeClass(c)}" style="${safe(classroomThemeStyle(c))}" tabindex="0" role="button" data-t90-open-class="${safe(c.id)}"><div><p>${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></div><footer><span>${assigned.length} alumno${assigned.length===1?'':'s'}</span><span>${subjects.length} materia${subjects.length===1?'':'s'}</span><span>${units.length} unidad${units.length===1?'':'es'}</span><span>${mats.length} pub.</span></footer></article>`; }).join('')}</div></section>`;
   }
+  function teacherDashboardCardV217(item={}){
+    const badge=item.badge ? `<span class="teacher-tool-badge-v217">${safe(item.badge)}</span>` : '';
+    const meta=item.meta ? `<small>${safe(item.meta)}</small>` : '';
+    return `<article class="teacher-tool-card-v217 ${item.primary?'is-primary':''}" role="button" tabindex="0" data-t16-tool="${safe(item.id)}">
+      <span class="teacher-tool-symbol-v217" aria-hidden="true">${safe(item.icon||'•')}</span>
+      <div class="teacher-tool-copy-v217"><h3>${safe(item.title)}</h3><p>${safe(item.desc)}</p>${meta}</div>
+      ${badge}<span class="teacher-tool-arrow-v217" aria-hidden="true">→</span>
+    </article>`;
+  }
+
+  function teacherDashboardGroupV217(title,subtitle,items=[],cls=''){
+    return `<section class="teacher-tool-group-v217 ${safe(cls)}"><header><div><p class="eyebrow">${safe(title)}</p><h2>${safe(subtitle)}</h2></div><span>${items.length} accesos</span></header><div class="teacher-tool-grid-v217">${items.map(teacherDashboardCardV217).join('')}</div></section>`;
+  }
+
   function teacherHome() {
-    const students=State.data.students||[]; const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
-    const tools=[
-      ['newPublication','✍️','Nueva publicación','Crear anuncios o materiales y vincularlos a una clase, materia y unidad.'],
-      ['videoclasses','🎥','Videoclases','Programa enlaces de Google Meet para clases online y proyección de documentos.'],
-      ['teacherAlerts','⚠️','Alertas docentes','Suspensos, materias con dificultades, solicitudes de contraseña y avisos pendientes.'],
-      ['classOverview','📊','Vista general del aula','Cada grupo aparece en una tarjeta con alumnado, clases, asistencia y avisos básicos.'],
-      ['activityAnalytics','📈','Actividad del alumnado','Intentos, puntuaciones, repeticiones y alertas de mejora en actividades autocorregibles.'],
-      ['teacherDocuments','🧾','Documentos PDF','Recibís, históricos económicos, horario semanal, ficha de alumnado y documentos útiles.'],
-      ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
-      ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
-      ['classrooms','🏫','Clases','Crear aulas permanentes por centro y curso, al estilo Google Classroom.'],
-      ['payments','💶','Pagos','Tarifas, mensualidades, meses pagados, recibís e histórico económico.'],
-      ['attendance','📅','Asistencia y pausas','Registro de asistencia, faltas justificadas y pausas temporales de acceso.']
+    const students=State.data.students||[];
+    const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
+    const alertCount=teacherAlertCount();
+    const unseenAlerts=Math.max(0,alertCount-Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
+    const activeClasses=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).length;
+    const paused=students.filter(s=>!!pauseStatusText(s.id)).length;
+    const month=State.billingMonth||defaultBillingMonth();
+    const paymentPending=students.filter(s=>{
+      const key=financeStudentMetricsV146(s,month).status.key;
+      return key==='pending' || key==='late';
+    }).length;
+
+    const daily=[
+      {id:'attendance',icon:'✓',title:'Asistencia y pausas',desc:'Pasar lista, registrar faltas y gestionar pausas temporales.',meta:paused?`${paused} pausa${paused===1?'':'s'} activa${paused===1?'':'s'}`:'Sin pausas activas',badge:paused||'',primary:true},
+      {id:'payments',icon:'€',title:'Pagos',desc:'Revisar lo cobrado, lo pendiente y registrar mensualidades.',meta:paymentPending?`${paymentPending} pago${paymentPending===1?'':'s'} pendiente${paymentPending===1?'':'s'}`:'Sin pagos pendientes',badge:paymentPending||'',primary:true},
+      {id:'studentProfiles',icon:'P',title:'Perfiles del alumnado',desc:'Datos, horarios, apoyo educativo, acceso y contraseñas.',meta:`${students.length} perfiles activos`,primary:true},
+      {id:'classrooms',icon:'C',title:'Clases',desc:'Aulas, materias, unidades, alumnado y organización académica.',meta:`${activeClasses} clase${activeClasses===1?'':'s'} activa${activeClasses===1?'':'s'}`,primary:true}
     ];
-    const alertCount = teacherAlertCount();
-    const unseenAlerts = Math.max(0, alertCount - Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
-    return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}${State.teacherTasksOpen?teacherTasksManager():''}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${videoClassesHomePanel()}${activeClassroomsQuickAccess()}</section>`;
+
+    const teaching=[
+      {id:'newPublication',icon:'+',title:'Nueva publicación',desc:'Crear material, anuncio o recurso y asignarlo a una clase.'},
+      {id:'videoclasses',icon:'▶',title:'Videoclases',desc:'Programar y gestionar sesiones online con Google Meet.'},
+      {id:'activityAnalytics',icon:'↗',title:'Actividad del alumnado',desc:'Intentos, resultados, repeticiones y progreso en actividades.'}
+    ];
+
+    const admin=[
+      {id:'teacherAlerts',icon:'!',title:'Alertas docentes',desc:'Revisar incidencias y seguimientos que requieren atención.',meta:alertCount?`${alertCount} alerta${alertCount===1?'':'s'} activa${alertCount===1?'':'s'}`:'Sin alertas activas',badge:unseenAlerts||''},
+      {id:'passwordRequests',icon:'🔐',title:'Recuperación de acceso',desc:'Atender solicitudes y restablecer contraseñas del alumnado.',meta:passReq?`${passReq} solicitud${passReq===1?'':'es'} pendiente${passReq===1?'':'s'}`:'Sin solicitudes pendientes',badge:passReq||''},
+      {id:'teacherDocuments',icon:'PDF',title:'Documentos',desc:'Recibís, históricos, horarios y fichas listas para imprimir.'}
+    ];
+
+    return `<section class="teacher-dashboard teacher-dashboard-v217">
+      ${teacherWelcomePanel()}
+      ${State.teacherTasksOpen?teacherTasksManager():''}
+      <section class="teacher-command-strip-v217">
+        <div><strong>${students.length}</strong><span>alumnos activos</span></div>
+        <div><strong>${activeClasses}</strong><span>clases activas</span></div>
+        <div class="${paymentPending?'is-attention':''}"><strong>${paymentPending}</strong><span>pagos pendientes</span></div>
+        <div class="${alertCount?'is-attention':''}"><strong>${alertCount}</strong><span>alertas</span></div>
+      </section>
+      ${teacherDashboardGroupV217('Trabajo diario','Gestión diaria',daily,'is-daily')}
+      ${teacherDashboardGroupV217('Preparación y seguimiento','Docencia y contenido',teaching,'is-teaching')}
+      ${teacherDashboardGroupV217('Control del aula','Seguimiento y administración',admin,'is-admin')}
+      ${activeClassroomsQuickAccess()}
+    </section>`;
   }
 
   
@@ -4503,8 +4545,9 @@ render();
     w.document.close();
   }
 
-  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',classOverview:'Vista general del aula',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',myPayments:'Mensualidad y asistencia',teacherSubjects:'Materias y materiales',videoclasses:'Videoclases',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
+  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',myPayments:'Mensualidad y asistencia',teacherSubjects:'Materias y materiales',videoclasses:'Videoclases',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
+    if(String(id)==='classOverview') id='home';
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     closeAccountMenu();
     setTribecaHistory(id, opts || {});
@@ -4592,6 +4635,7 @@ render();
     hydrateInteractiveEmbeds(main);
   }
   function renderInlineSection(target, opts={}) {
+    if(String(target)==='classOverview') target='home';
     const main = $('#inicio');
     if(!main || !State.profile) return;
     if(!roleTeacher() && activePauseFor(State.profile.id)) { renderApp(); return; }
@@ -4699,7 +4743,7 @@ render();
     if(id==='badges' || id==='assignBadge') return '<div class="empty-state">Este apartado ya no está disponible en Tribeca Aula.</div>';
     if(id==='videoclasses' && !roleTeacher() && isIzamProfile(State.profile||{})) return '<div class="empty-state">Este apartado no está disponible en tu aula.</div>';
     if(id==='myPayments') return carlaFinanceContentV205();
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='classOverview') return classOverviewContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='videoclasses') return videoclassesContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='videoclasses') return videoclassesContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -7744,7 +7788,7 @@ function classroomCard(c,i=0){
           <p>${safe(p.role === 'teacher' ? 'Profesora' : academic)}</p>
         </div>
       </section>`;
-    const tabs = `<div class="profile-account-tabs"><button type="button" data-t74-profile-tab="profile" class="${panel==='profile'?'is-active':''}">Mi perfil</button><button type="button" data-t74-profile-tab="password" class="${panel==='password'?'is-active':''}">Ajustes de contraseña</button><button type="button" data-t74-profile-tab="notifications" class="${panel==='notifications'?'is-active':''}">Ajustes de notificaciones</button><button type="button" data-t74-profile-tab="appearance" class="${panel==='appearance'?'is-active':''}">Apariencia</button></div>`;
+    const tabs = `<div class="profile-account-tabs"><button type="button" data-t74-profile-tab="profile" class="${panel==='profile'||panel==='appearance'?'is-active':''}">Mi perfil</button><button type="button" data-t74-profile-tab="password" class="${panel==='password'?'is-active':''}">Ajustes de contraseña</button><button type="button" data-t74-profile-tab="notifications" class="${panel==='notifications'?'is-active':''}">Ajustes de notificaciones</button></div>`;
     const profileCard = `<section class="profile-tool-card profile-avatar-card">
         <header class="profile-tool-head">
           <span class="profile-tool-icon">🎨</span>
@@ -7835,7 +7879,7 @@ function classroomCard(c,i=0){
           <button type="button" class="theme-choice-card-v167 ${document.body.classList.contains('is-dark')?'is-selected':''}" data-t167-set-theme="dark"><span>🌙</span><strong>Modo oscuro</strong><small>Negro suave, dorado y contraste alto para uso prolongado.</small></button>
         </div>
       </section>`;
-    const selected = panel==='password' ? passwordCard : panel==='notifications' ? notificationsCard : panel==='appearance' ? appearanceCard : profileCard + academicCard;
+    const selected = panel==='password' ? passwordCard : panel==='notifications' ? notificationsCard : profileCard + academicCard;
     return `<div class="profile-hub">${summary}${tabs}${selected}</div>`;
   }
 
@@ -8457,8 +8501,8 @@ function classroomCard(c,i=0){
       const saveVideoClassBtn=ev.target.closest?.('[data-t173-save-video-class]'); if(saveVideoClassBtn){ ev.preventDefault(); ev.stopPropagation(); const f=saveVideoClassBtn.closest('form'); if(f) await saveVideoClass(f); return; }
       const delVideoClass=ev.target.closest?.('[data-t173-delete-video-class]'); if(delVideoClass){ ev.preventDefault(); ev.stopPropagation(); await deleteVideoClass(delVideoClass.dataset.t173DeleteVideoClass); return; }
       const hideVideoClass=ev.target.closest?.('[data-t173-toggle-video-class]'); if(hideVideoClass){ ev.preventDefault(); ev.stopPropagation(); await toggleVideoClassHidden(hideVideoClass.dataset.t173ToggleVideoClass); return; }
-      const themeSet=ev.target.closest?.('[data-t167-set-theme]'); if(themeSet){ ev.preventDefault(); ev.stopPropagation(); const value=themeSet.dataset.t167SetTheme === 'dark' ? 'dark' : 'light'; setTribecaTheme(value); updateTopProfile(); rerender(); toast(value === 'dark' ? 'Modo oscuro activado.' : 'Modo claro activado.'); return; }
-      const themeToggleAccount=ev.target.closest?.('[data-t167-toggle-theme]'); if(themeToggleAccount){ ev.preventDefault(); ev.stopPropagation(); const next=document.body.classList.contains('is-dark') ? 'light' : 'dark'; setTribecaTheme(next); closeAccountMenu(); updateTopProfile(); toast(next === 'dark' ? 'Modo oscuro activado.' : 'Modo claro activado.'); return; }
+      const themeSet=ev.target.closest?.('[data-t167-set-theme]'); if(themeSet){ ev.preventDefault(); ev.stopPropagation(); setTribecaTheme('light'); updateTopProfile(); rerender(); toast('Tribeca Aula utiliza modo claro.'); return; }
+      const themeToggleAccount=ev.target.closest?.('[data-t167-toggle-theme]'); if(themeToggleAccount){ ev.preventDefault(); ev.stopPropagation(); setTribecaTheme('light'); closeAccountMenu(); updateTopProfile(); toast('Tribeca Aula utiliza modo claro.'); return; }
       const profileTab=ev.target.closest?.('[data-t74-profile-tab]'); if(profileTab){ ev.preventDefault(); ev.stopPropagation(); State.profilePanel=profileTab.dataset.t74ProfileTab || 'profile'; rerender(); return; }
       const monthNav=ev.target.closest?.('[data-t51-month-nav]'); if(monthNav){ ev.preventDefault(); ev.stopPropagation(); State.billingMonth=monthNav.dataset.t51MonthNav; rerender(); return; }
       const docStudent=ev.target.closest?.('[data-t181-doc-student]'); if(docStudent){ State.selectedStudentId=docStudent.value; rerender(); return; }
