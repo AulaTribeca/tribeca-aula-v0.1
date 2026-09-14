@@ -16940,3 +16940,216 @@ body.is-dark,body.dark-mode,body.theme-dark{
   .teacher-tool-group-v217>header{align-items:flex-start;flex-direction:column;gap:4px}
   .teacher-tool-card-v217{min-height:0}
 }
+
+
+/* =========================================================
+   Tribeca Aula · v219 · organización interna del panel docente
+   ========================================================= */
+
+/* Restauración visual de la portada docente previa. */
+.teacher-dashboard-v217,
+.teacher-command-strip-v217,
+.teacher-tool-group-v217,
+.teacher-tool-grid-v217,
+.teacher-tool-card-v217{all:unset}
+
+/* Navegación interna entre apartados relacionados. */
+.teacher-section-nav-v219{
+  position:sticky;
+  top:var(--header-h,92px);
+  z-index:35;
+  display:flex;
+  gap:6px;
+  width:max-content;
+  max-width:calc(100% - 24px);
+  overflow:auto;
+  margin:0 auto 14px;
+  padding:6px;
+  border:1px solid rgba(72,61,35,.13);
+  border-radius:12px;
+  background:rgba(255,253,247,.95);
+  box-shadow:0 8px 24px rgba(36,31,20,.07);
+  backdrop-filter:blur(14px);
+}
+.teacher-section-nav-v219 button{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  border-radius:8px!important;
+  min-height:36px;
+  padding:0 13px;
+  font-weight:850;
+  white-space:nowrap;
+}
+.teacher-section-nav-v219 button.is-active{
+  background:var(--green);
+  color:#fff;
+}
+
+/* Ritmo y jerarquía común dentro de las herramientas docentes. */
+.teacher-section-clean-v147{
+  display:grid;
+  gap:14px;
+}
+.teacher-section-clean-v147>.window-panel,
+.teacher-section-clean-v147 .window-panel{
+  border-color:rgba(72,61,35,.12);
+}
+.teacher-section-clean-v147 .section-heading{
+  gap:12px;
+  align-items:center;
+}
+.teacher-section-clean-v147 .section-heading h2,
+.teacher-section-clean-v147 .section-heading h3{
+  letter-spacing:-.015em;
+}
+.teacher-section-clean-v147 details>summary{
+  min-height:48px;
+}
+
+/* Pagos: lo frecuente primero; tarifa secundaria. */
+.payment-editor-v219{
+  display:grid;
+  gap:12px;
+}
+.payment-month-state-v219{
+  padding:16px;
+  border-radius:14px;
+  background:rgba(6,75,53,.045);
+  border:1px solid rgba(6,75,53,.13);
+}
+.payment-paid-toggle-v219{
+  min-height:48px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#fff;
+  border:1px solid rgba(6,75,53,.14);
+}
+.payment-paid-toggle-v219 span{
+  font-weight:900;
+  color:var(--green);
+}
+.payment-notes-v219 textarea{min-height:70px}
+.payment-main-actions-v219{
+  position:sticky;
+  bottom:10px;
+  z-index:8;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(255,253,247,.94);
+  border:1px solid rgba(72,61,35,.12);
+  box-shadow:0 8px 22px rgba(36,31,20,.08);
+  backdrop-filter:blur(12px);
+}
+.finance-config-drawer-v219{
+  border-top:1px solid rgba(72,61,35,.12);
+  margin-top:4px;
+  padding-top:4px;
+}
+.finance-config-drawer-v219 summary{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  cursor:pointer;
+  font-weight:900;
+  color:var(--green);
+}
+.finance-config-drawer-v219 summary em{
+  font-style:normal;
+  color:var(--muted);
+  font-size:.84rem;
+}
+
+/* Perfiles / asistencia / pagos: directorio más claro. */
+.v210-two-col{
+  align-items:start;
+}
+.v210-directory{
+  position:sticky;
+  top:calc(var(--header-h,92px) + 62px);
+  max-height:calc(100vh - var(--header-h,92px) - 88px);
+  overflow:auto;
+}
+.v210-detail{
+  min-width:0;
+}
+.v210-profile-card,
+.finance-student-card-v146,
+.attendance-student-card-v146{
+  transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease;
+}
+.v210-profile-card:hover,
+.finance-student-card-v146:hover,
+.attendance-student-card-v146:hover{
+  transform:translateY(-1px);
+}
+
+/* Alertas: lectura vertical, no mosaico. */
+.alerts-list-v219{
+  display:grid;
+  gap:12px;
+}
+.alerts-panel-v219{
+  padding:18px;
+}
+.alerts-summary-v219{
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:center;
+}
+.alerts-summary-v219 h3{margin:.1rem 0}
+.alerts-summary-v219 .meta{margin:0;max-width:760px}
+
+/* Publicaciones: pasos más distinguibles. */
+.t94-publication-wizard{
+  display:grid;
+  gap:14px;
+}
+.t94-publication-wizard>.window-panel{
+  position:relative;
+  overflow:visible;
+}
+.t94-publication-wizard>.window-panel>h3:first-child{
+  margin-top:0;
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(72,61,35,.10);
+}
+.t18-type-cards{
+  gap:8px;
+}
+.t18-type-cards label>span{
+  min-height:76px;
+}
+
+/* Clases: creación secundaria; las clases activas mandan. */
+.classroom-create-drawer,
+.classroom-unassigned-drawer,
+.classroom-hidden-drawer{
+  box-shadow:none!important;
+}
+.classroom-google-grid{
+  gap:12px!important;
+}
+
+/* Videoclases y documentos: bloques más compactos. */
+.videoclasses-focus-v174,
+.teacher-documents-v181{
+  display:grid;
+  gap:14px;
+}
+.videoclass-focus-composer-v174{
+  border-left:4px solid var(--green);
+}
+
+@media(max-width:900px){
+  .teacher-section-nav-v219{
+    position:static;
+    width:100%;
+    max-width:100%;
+  }
+  .v210-directory{
+    position:static;
+    max-height:none;
+  }
+}
