@@ -1,0 +1,39 @@
+name: Validate Tribeca v217
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-v217.yml'
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Validate JavaScript and v217 changes
+        shell: bash
+        run: |
+          node --check app.js
+          node --check supabase-auth.js
+          node --check service-worker.js
+          grep -q "teacher-dashboard-v217" supabase-auth.js
+          grep -q "teacherDashboardGroupV217" supabase-auth.js
+          grep -q "studentBirthdayGreetingV216" supabase-auth.js
+          grep -q "supabase-auth.js?v=217" index.html
+          grep -q "styles.css?v=217" index.html
+          grep -q 'content="light"' index.html
+          ! grep -q 'id="themeToggle"' index.html
+          ! grep -q "\['classOverview'" supabase-auth.js
+          grep -q "tribeca-aula-static-v217" service-worker.js
+      - name: Remove validator and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/validate-v217.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "Validate Tribeca Aula v217 dashboard" || true
+          git push origin HEAD:main
