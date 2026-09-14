@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 218 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 219 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -2210,66 +2210,24 @@
     if(!rows.length) return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>0 clases</span></div><div class="empty-state">Todavía no hay clases activas.</div></section>`;
     return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>${rows.length} clase${rows.length===1?'':'s'}</span></div><div class="teacher-quick-class-grid">${rows.map(c=>{ const assigned=classroomStudents(c.id); const subjects=classroomSubjects(c.id); const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id))); const mats=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)); return `<article class="teacher-quick-class-card ${classroomThemeClass(c)}" style="${safe(classroomThemeStyle(c))}" tabindex="0" role="button" data-t90-open-class="${safe(c.id)}"><div><p>${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></div><footer><span>${assigned.length} alumno${assigned.length===1?'':'s'}</span><span>${subjects.length} materia${subjects.length===1?'':'s'}</span><span>${units.length} unidad${units.length===1?'':'es'}</span><span>${mats.length} pub.</span></footer></article>`; }).join('')}</div></section>`;
   }
-  function teacherDashboardCardV217(item={}){
-    const badge=item.badge ? `<span class="teacher-tool-badge-v217">${safe(item.badge)}</span>` : '';
-    const meta=item.meta ? `<small>${safe(item.meta)}</small>` : '';
-    return `<article class="teacher-tool-card-v217 ${item.primary?'is-primary':''}" role="button" tabindex="0" data-t16-tool="${safe(item.id)}">
-      <span class="teacher-tool-symbol-v217" aria-hidden="true">${safe(item.icon||'•')}</span>
-      <div class="teacher-tool-copy-v217"><h3>${safe(item.title)}</h3><p>${safe(item.desc)}</p>${meta}</div>
-      ${badge}<span class="teacher-tool-arrow-v217" aria-hidden="true">→</span>
-    </article>`;
-  }
-
-  function teacherDashboardGroupV217(title,subtitle,items=[],cls=''){
-    return `<section class="teacher-tool-group-v217 ${safe(cls)}"><header><div><p class="eyebrow">${safe(title)}</p><h2>${safe(subtitle)}</h2></div><span>${items.length} accesos</span></header><div class="teacher-tool-grid-v217">${items.map(teacherDashboardCardV217).join('')}</div></section>`;
-  }
-
   function teacherHome() {
     const students=State.data.students||[];
     const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
+    const tools=[
+      ['newPublication','✍️','Nueva publicación','Crear anuncios o materiales y vincularlos a una clase, materia y unidad.'],
+      ['videoclasses','🎥','Videoclases','Programa enlaces de Google Meet para clases online y proyección de documentos.'],
+      ['teacherAlerts','⚠️','Alertas docentes','Suspensos, materias con dificultades, solicitudes de contraseña y avisos pendientes.'],
+      ['activityAnalytics','📈','Actividad del alumnado','Intentos, puntuaciones, repeticiones y alertas de mejora en actividades autocorregibles.'],
+      ['teacherDocuments','🧾','Documentos PDF','Recibís, históricos económicos, horario semanal, ficha de alumnado y documentos útiles.'],
+      ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
+      ['studentProfiles','👤','Perfiles del alumnado','Editar datos, horarios, apoyo educativo, acceso y observaciones.'],
+      ['classrooms','🏫','Clases','Crear y gestionar aulas permanentes por centro y curso.'],
+      ['payments','💶','Pagos','Tarifas, mensualidades, meses pagados, recibís e histórico económico.'],
+      ['attendance','📅','Asistencia y pausas','Registro de asistencia, faltas justificadas y pausas temporales de acceso.']
+    ];
     const alertCount=teacherAlertCount();
     const unseenAlerts=Math.max(0,alertCount-Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
-    const activeClasses=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).length;
-    const paused=students.filter(s=>!!pauseStatusText(s.id)).length;
-    const month=State.billingMonth||defaultBillingMonth();
-    const paymentPending=students.filter(s=>{
-      const key=financeStudentMetricsV146(s,month).status.key;
-      return key==='pending' || key==='late';
-    }).length;
-
-    const daily=[
-      {id:'attendance',icon:'✓',title:'Asistencia y pausas',desc:'Pasar lista, registrar faltas y gestionar pausas temporales.',meta:paused?`${paused} pausa${paused===1?'':'s'} activa${paused===1?'':'s'}`:'Sin pausas activas',badge:paused||'',primary:true},
-      {id:'payments',icon:'€',title:'Pagos',desc:'Revisar lo cobrado, lo pendiente y registrar mensualidades.',meta:paymentPending?`${paymentPending} pago${paymentPending===1?'':'s'} pendiente${paymentPending===1?'':'s'}`:'Sin pagos pendientes',badge:paymentPending||'',primary:true},
-      {id:'studentProfiles',icon:'P',title:'Perfiles del alumnado',desc:'Datos, horarios, apoyo educativo, acceso y contraseñas.',meta:`${students.length} perfiles activos`,primary:true},
-      {id:'classrooms',icon:'C',title:'Clases',desc:'Aulas, materias, unidades, alumnado y organización académica.',meta:`${activeClasses} clase${activeClasses===1?'':'s'} activa${activeClasses===1?'':'s'}`,primary:true}
-    ];
-
-    const teaching=[
-      {id:'newPublication',icon:'+',title:'Nueva publicación',desc:'Crear material, anuncio o recurso y asignarlo a una clase.'},
-      {id:'videoclasses',icon:'▶',title:'Videoclases',desc:'Programar y gestionar sesiones online con Google Meet.'},
-      {id:'activityAnalytics',icon:'↗',title:'Actividad del alumnado',desc:'Intentos, resultados, repeticiones y progreso en actividades.'}
-    ];
-
-    const admin=[
-      {id:'teacherAlerts',icon:'!',title:'Alertas docentes',desc:'Revisar incidencias y seguimientos que requieren atención.',meta:alertCount?`${alertCount} alerta${alertCount===1?'':'s'} activa${alertCount===1?'':'s'}`:'Sin alertas activas',badge:unseenAlerts||''},
-      {id:'passwordRequests',icon:'🔐',title:'Recuperación de acceso',desc:'Atender solicitudes y restablecer contraseñas del alumnado.',meta:passReq?`${passReq} solicitud${passReq===1?'':'es'} pendiente${passReq===1?'':'s'}`:'Sin solicitudes pendientes',badge:passReq||''},
-      {id:'teacherDocuments',icon:'PDF',title:'Documentos',desc:'Recibís, históricos, horarios y fichas listas para imprimir.'}
-    ];
-
-    return `<section class="teacher-dashboard teacher-dashboard-v217">
-      ${teacherWelcomePanel()}
-      ${State.teacherTasksOpen?teacherTasksManager():''}
-      <section class="teacher-command-strip-v217">
-        <div><strong>${students.length}</strong><span>alumnos activos</span></div>
-        <div><strong>${activeClasses}</strong><span>clases activas</span></div>
-        <div class="${paymentPending?'is-attention':''}"><strong>${paymentPending}</strong><span>pagos pendientes</span></div>
-        <div class="${alertCount?'is-attention':''}"><strong>${alertCount}</strong><span>alertas</span></div>
-      </section>
-      ${teacherDashboardGroupV217('Trabajo diario','Gestión diaria',daily,'is-daily')}
-      ${teacherDashboardGroupV217('Preparación y seguimiento','Docencia y contenido',teaching,'is-teaching')}
-      ${teacherDashboardGroupV217('Control del aula','Seguimiento y administración',admin,'is-admin')}
-      ${activeClassroomsQuickAccess()}
-    </section>`;
+    return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}${State.teacherTasksOpen?teacherTasksManager():''}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${videoClassesHomePanel()}${activeClassroomsQuickAccess()}</section>`;
   }
 
   
@@ -4634,6 +4592,25 @@ render();
     applyTranslations();
     hydrateInteractiveEmbeds(main);
   }
+  function teacherSectionNavV219(id=''){
+    if(!roleTeacher()) return '';
+    const groups={
+      studentProfiles:[['studentProfiles','Perfiles'],['attendance','Asistencia'],['payments','Pagos']],
+      attendance:[['studentProfiles','Perfiles'],['attendance','Asistencia'],['payments','Pagos']],
+      payments:[['studentProfiles','Perfiles'],['attendance','Asistencia'],['payments','Pagos']],
+      classrooms:[['classrooms','Clases'],['newPublication','Publicar'],['videoclasses','Videoclases'],['activityAnalytics','Actividad']],
+      newPublication:[['classrooms','Clases'],['newPublication','Publicar'],['videoclasses','Videoclases'],['activityAnalytics','Actividad']],
+      videoclasses:[['classrooms','Clases'],['newPublication','Publicar'],['videoclasses','Videoclases'],['activityAnalytics','Actividad']],
+      activityAnalytics:[['classrooms','Clases'],['newPublication','Publicar'],['videoclasses','Videoclases'],['activityAnalytics','Actividad']],
+      teacherAlerts:[['teacherAlerts','Alertas'],['passwordRequests','Accesos'],['teacherDocuments','Documentos']],
+      passwordRequests:[['teacherAlerts','Alertas'],['passwordRequests','Accesos'],['teacherDocuments','Documentos']],
+      teacherDocuments:[['teacherAlerts','Alertas'],['passwordRequests','Accesos'],['teacherDocuments','Documentos']]
+    };
+    const rows=groups[id];
+    if(!rows) return '';
+    return `<nav class="teacher-section-nav-v219" aria-label="Navegación del apartado">${rows.map(([key,label])=>`<button type="button" class="${key===id?'is-active':''}" data-t16-tool="${key}">${safe(label)}</button>`).join('')}</nav>`;
+  }
+
   function renderInlineSection(target, opts={}) {
     if(String(target)==='classOverview') target='home';
     const main = $('#inicio');
@@ -4680,7 +4657,8 @@ render();
 
     const title = (id === 'classroomDetail' && State.currentClassId) ? (classroomLabel(classById(State.currentClassId)||{}) || 'Clase') : ((id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id)));
     const headHtml = '';
-    main.innerHTML = `${headHtml}<section class="t52-inline-tool ${safe(id)}-inline teacher-section-clean-v147" data-section-title="${safe(title)}">${bodyHtml}</section>`;
+    const teacherNav=teacherSectionNavV219(id);
+    main.innerHTML = `${headHtml}${teacherNav}<section class="t52-inline-tool ${safe(id)}-inline teacher-section-clean-v147" data-section-title="${safe(title)}">${bodyHtml}</section>`;
 
     wireManagedForms(main);
     bindSubjectCards();
@@ -5457,11 +5435,11 @@ render();
       if(group==='Dificultades declaradas') empty='Sin materias con dificultades.';
       if(group==='Recuperación de contraseña') empty='Sin solicitudes pendientes.';
       if(group==='Mensualidades pendientes') empty='Sin mensualidades vencidas pendientes.';
-      return `<section class="window-panel alerts-panel"><h3>${safe(group)}</h3>${rows.length?rows.map(alertItemCard).join(''):`<div class="empty-state">${empty}</div>`}</section>`;
+      return `<section class="window-panel alerts-panel alerts-panel-v219"><div class="section-heading"><h3>${safe(group)}</h3><span>${rows.length}</span></div>${rows.length?rows.map(alertItemCard).join(''):`<div class="empty-state">${empty}</div>`}</section>`;
     }).join('');
     const active=items.filter(a=>!teacherAlertIgnored(a.key)).length;
     const ignored=items.length-active;
-    return `<div class="alerts-summary window-panel"><h3>Alertas docentes</h3><p class="meta">${active} alerta${active===1?'':'s'} activa${active===1?'':'s'} · ${ignored} ignorada${ignored===1?'':'s'}. Marca “Ignorar alerta” para que no aparezca la notificación mientras la situación siga activa.</p></div><div class="window-grid alerts-grid">${sections}</div>`;
+    return `<div class="alerts-summary window-panel alerts-summary-v219"><div><p class="eyebrow">Seguimiento</p><h3>Alertas docentes</h3></div><p class="meta">${active} alerta${active===1?'':'s'} activa${active===1?'':'s'} · ${ignored} ignorada${ignored===1?'':'s'}. Marca “Ignorar alerta” para que no aparezca la notificación mientras la situación siga activa.</p></div><div class="alerts-list-v219">${sections}</div>`;
   }
   function fieldArray(value){ if(Array.isArray(value)) return value.filter(Boolean); if(!value) return []; if(typeof value==='string'){ try{ const parsed=JSON.parse(value); if(Array.isArray(parsed)) return parsed.filter(Boolean); }catch(_e){} return value.split(/[;,]/).map(x=>x.trim()).filter(Boolean); } return []; }
   function supportSummary(s){ const nee=fieldArray(s.nee_types); const neae=fieldArray(s.neae_types); const health=fieldArray(s.health_conditions); const flags=[]; if(s.personalized_attention) flags.push('Atención personalizada'); if(nee.length) flags.push(`${nee.length} NEE`); if(neae.length) flags.push(`${neae.length} NEAE`); if(health.length) flags.push(`${health.length} condición/es registradas`); return {nee,neae,health,flags}; }
@@ -6066,14 +6044,15 @@ render();
     const pausedBilling=paymentPausedForMonth(s.id,month);
     const method=pay.payment_method || '';
     const status=paymentSummaryStatus(pay, month, pausedBilling, s);
-    return `<section class="payment-editor-v146">
-      <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe calculado</small><strong>${money(pausedBilling?0:calc.amount)}</strong><p>${safe(calc.detail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
+    const tariffLabel=bill.tariff_type==='individual'?'Individual':bill.tariff_type==='mixed'?'Mixta':'Grupal';
+    return `<section class="payment-editor-v146 payment-editor-v219">
+      <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe del mes</small><strong>${money(pausedBilling?0:calc.amount)}</strong><p>${safe(calc.detail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
       <form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="premium-form finance-payment-form-v146">
         <input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}">
-        <div class="finance-form-section-v146"><h4>Tarifa</h4><div class="finance-form-grid-v146"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase programada (se descuenta la falta)</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija completa + clases individuales</option></select></label><label>Cuota fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div></div>
-        <div class="finance-form-section-v146"><h4>Estado del mes</h4><div class="finance-form-grid-v146"><label class="check-line"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> Pagado</label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div></div>
-        <label>Notas privadas de pago<textarea name="paymentNotes" rows="3" placeholder="Observaciones internas de pago, familia o acuerdo económico.">${safe(bill.payment_notes||'')}</textarea></label>
-        <div class="finance-actions-v146"><button class="primary-btn" type="submit">Guardar pago</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Recibí del mes</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Recibís del trimestre</button></div>
+        <section class="finance-form-section-v146 payment-month-state-v219"><div class="section-heading"><h4>Estado del mes</h4><span>${safe(monthLabel(month))}</span></div><div class="finance-form-grid-v146"><label class="check-line payment-paid-toggle-v219"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> <span>Marcar como pagado</span></label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div></section>
+        <label class="payment-notes-v219">Notas privadas<textarea name="paymentNotes" rows="2" placeholder="Observaciones internas de pago o acuerdo económico.">${safe(bill.payment_notes||'')}</textarea></label>
+        <div class="finance-actions-v146 payment-main-actions-v219"><button class="primary-btn" type="submit">Guardar pago</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(s.id)}','${safe(month)}')">Recibí del mes</button><button class="secondary-btn" type="button" onclick="window.TribecaPrintQuarterReceipts && window.TribecaPrintQuarterReceipts('${safe(s.id)}','${safe(month)}')">Recibís del trimestre</button></div>
+        <details class="finance-config-drawer-v219"><summary><span>Tarifa y configuración</span><em>${safe(tariffLabel)}</em></summary><div class="finance-form-grid-v146"><label>Tipo de tarifa<select name="tariffType"><option value="group" ${bill.tariff_type==='group'||!bill.tariff_type?'selected':''}>Grupal, cuota fija mensual</option><option value="individual" ${bill.tariff_type==='individual'?'selected':''}>Individual, pago por clase programada</option><option value="mixed" ${bill.tariff_type==='mixed'?'selected':''}>Mixta, cuota fija + clases individuales</option></select></label><label>Cuota fija (€)<input name="monthlyFee" type="number" min="0" step="0.01" value="${safe(bill.monthly_fee??'')}"></label><label>Clase individual (€)<input name="classRate" type="number" min="0" step="0.01" value="${safe(bill.class_rate??'')}"></label></div></details>
       </form>
       <details class="finance-history-drawer-v146"><summary>Histórico económico de ${safe(displayName(s))}</summary>${paymentStudentHistory(s.id)}</details>
     </section>`;
