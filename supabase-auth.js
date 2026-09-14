@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 209 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 210 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -5641,49 +5641,23 @@ render();
     return true;
   }
   function studentProfilesContent(){
-    const students = State.data.students || [];
-    const currentFilter = State.profileKpiFilter || 'all';
-    const filteredStudents = students.filter(s=>studentMatchesProfileFilter(s, currentFilter));
-    const selectedPool = filteredStudents.length ? filteredStudents : students;
-    const selected = selectedPool.find(s => String(s.id) === String(State.selectedStudentId)) || selectedPool[0] || null;
-    if(selected && !State.selectedStudentId) State.selectedStudentId = selected.id;
-    const active = students.filter(s=>!pauseStatusText(s.id)).length;
-    const paused = students.length - active;
-    const focusCount = students.filter(s=>focusModeEnabledForProfile(s)).length;
-    const withSchedule = students.filter(s=>(State.data.schedules||[]).some(x=>String(x.user_id)===String(s.id) && x.active!==false)).length;
-    const supportCount = students.filter(s=>supportSummary(s).flags.length).length;
-    const selectedFamily = selected ? String(selected.family_name || selected.family_group_id || '').trim() : '';
-    const kpi=(filter,title,value,caption,tone='')=>`<button type="button" class="profile-kpi-card-v174 ${tone} ${currentFilter===filter?'is-active':''}" data-profile-kpi-filter="${safe(filter)}"><small>${safe(title)}</small><strong>${safe(value)}</strong><span>${safe(caption)}</span></button>`;
-    const list = groups(filteredStudents).map(g => `<details class="profile-group-v147" open><summary><span>${safe(g.label)}</span><em>${g.items.length}</em></summary><div class="profile-card-grid-v147">${g.items.map(s => {
-      const pause=pauseStatusText(s.id);
-      const sup=supportSummary(s);
-      const selectedClass=String(selected?.id||'')===String(s.id)?'is-selected':'';
-      const focus=focusModeEnabledForProfile(s);
-      const family=String(s.family_name || s.family_group_id || '').trim();
-      const schedCount=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(s.id) && x.active!==false).length;
-      return `<button type="button" class="profile-student-card-v147 ${selectedClass} ${pause?'is-paused':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)+' '+family).toLowerCase())}">
-        ${studentAvatarMarkup(s,'profile-avatar-v147')}
-        <span class="profile-card-main-v147"><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small><span>${family?`Familia: ${safe(family)}`:'Sin grupo familiar'} · ${schedCount} horario${schedCount===1?'':'s'}</span></span>
-        <span class="profile-card-badges-v147">${pause?`<em class="danger">Pausa</em>`:''}${focus?`<em>Concentración</em>`:''}${sup.flags.length?`<em>${safe(sup.flags[0])}</em>`:''}</span>
-      </button>`;
-    }).join('')}</div></details>`).join('');
-    return `<section class="teacher-profiles-v147 teacher-profiles-v174">
-      <header class="finance-hero-clean-v146 profile-hero-v147 profile-hero-v174 window-panel"><div><p class="eyebrow">Seguimiento pedagógico</p><h2>Perfiles del alumnado</h2><p>Fichas completas, horarios, apoyos, familia y datos profesionales en una vista limpia y fácil de revisar.</p></div><div class="profile-quick-actions-v174"><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="payments">Ir a pagos</button></div></header>
-      <section class="profile-kpi-grid-v147 profile-kpi-grid-v174">
-        ${kpi('all','Total',students.length,'perfiles activos')}
-        ${kpi('scheduled','Con horario',withSchedule,'alumnos con clases registradas')}
-        ${kpi('paused','Pausas',paused,'perfiles temporalmente pausados',paused?'is-warn':'')}
-        ${kpi('support','Apoyos',supportCount,'con NEAE, NEE o notas relevantes')}
-        ${kpi('focus','Modo concentración',focusCount,'vista simplificada activa')}
-      </section>
-      <section class="window-panel profile-toolbar-v147 profile-toolbar-v174"><label>Buscar alumnado<input class="t16-search" type="search" placeholder="Filtrar por nombre, usuario, curso o familia..." data-t16-student-search></label><span class="profile-family-pill-v147">Filtro: ${safe(profileFilterLabel(currentFilter))} · ${filteredStudents.length}/${students.length}</span>${selectedFamily?`<span class="profile-family-pill-v147">${safe(selectedFamily)}</span>`:''}</section>
-      <div class="profile-layout-v147">
-        <section class="window-panel profile-list-v147"><div class="section-heading"><h3>Alumnado</h3><span>${filteredStudents.length}</span></div>${list || '<div class="empty-state">No hay alumnado en esta categoría.</div>'}</section>
-        <section class="window-panel profile-editor-v147"><div class="section-heading"><h3>${selected?`Ficha de ${safe(displayName(selected))}`:'Ficha del alumnado'}</h3><span>${selected?safe(academicLine(selected)):''}</span></div>${selected ? studentEditForm(selected) : '<div class="empty-state">Selecciona un alumno.</div>'}</section>
-      </div>
+    const students=State.data.students||[];
+    const currentFilter=State.profileKpiFilter||'all';
+    const filtered=students.filter(s=>studentMatchesProfileFilter(s,currentFilter)).sort((a,b)=>displayName(a).localeCompare(displayName(b),'es'));
+    const selected=filtered.find(s=>String(s.id)===String(State.selectedStudentId))||filtered[0]||students[0]||null;
+    if(selected) State.selectedStudentId=selected.id;
+    const paused=students.filter(s=>pauseStatusText(s.id)).length;
+    const scheduled=students.filter(s=>scheduleRowsForStudentDate(s.id,todayIso()).length).length;
+    const support=students.filter(s=>supportSummary(s).flags.length).length;
+    const focus=students.filter(s=>focusModeEnabledForProfile(s)).length;
+    const k=(f,t,v)=>`<button type="button" class="profile-kpi-card-v174 ${currentFilter===f?'is-active':''}" data-profile-kpi-filter="${f}"><small>${t}</small><strong>${v}</strong></button>`;
+    return `<section class="teacher-profiles-v210">
+      <header class="window-panel v210-hero"><div><p class="eyebrow">Alumnado</p><h2>Perfiles</h2><p>Primero eliges al alumno y después editas su ficha. Los bloques menos usados quedan plegados.</p></div><div><button class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Asistencia</button><button class="secondary-btn tool-jump-btn" data-t16-tool="payments">Pagos</button></div></header>
+      <div class="v210-profile-kpis">${k('all','Total',students.length)}${k('scheduled','Con horario',scheduled)}${k('paused','En pausa',paused)}${k('support','Apoyo',support)}${k('focus','Concentración',focus)}</div>
+      <section class="window-panel v210-profile-directory"><div class="section-heading"><h3>${safe(profileFilterLabel(currentFilter))}</h3><span>${filtered.length}</span></div><input class="t16-search" type="search" placeholder="Buscar por nombre, usuario, curso o familia..." data-t16-student-search><div class="v210-profile-grid">${filtered.map(s=>{const p=pauseStatusText(s.id);return `<button type="button" class="v210-profile-card ${selected?.id===s.id?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)).toLowerCase())}">${studentAvatarMarkup(s,'profile-avatar-v147')}<span><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}</small><em>${p?'Pausa activa':`${scheduleRowsForStudentDate(s.id,todayIso()).length} horarios actuales`}</em></span></button>`;}).join('')||'<div class="empty-state">No hay alumnado en este filtro.</div>'}</div></section>
+      <section class="window-panel v210-profile-detail"><div class="section-heading"><h3>${selected?`Ficha de ${safe(displayName(selected))}`:'Ficha'}</h3><span>${selected?safe(academicLine(selected)):''}</span></div>${selected?studentEditForm(selected):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
     </section>`;
   }
-
   function studentPhotoUrl(s={}){ return String(s.student_photo_url || s.photo_url || s.avatar_url || '').trim(); }
   function studentAvatarMarkup(s={}, className='student-avatar-photo-v149', alt=''){
     const photo=studentPhotoUrl(s);
@@ -5730,10 +5704,10 @@ render();
         <div class="window-grid t143-personal-grid"><label>Fecha de nacimiento<input name="birthDate" type="date" value="${safe(birthDateInputValue(s.birth_date))}"></label><label>Foto del alumno (URL o archivo)<input name="studentPhotoUrl" type="url" value="${safe(photoUrl)}" placeholder="https://... o sube una imagen"></label></div>
         <label class="publication-upload-card student-photo-upload-v144"><strong>Subir foto desde el ordenador</strong><small>PNG, JPG o WebP. Puedes subir hasta 4 MB; Tribeca la optimiza antes de guardarla.</small><input name="studentPhotoFile" type="file" accept="image/png,image/jpeg,image/webp"><span class="attachment-preview-pill" data-student-photo-file-name>Ningún archivo seleccionado.</span></label>
       </section>
-      <details class="teacher-option-drawer" open><summary><span>Datos familiares y personales</span><em>Privado</em></summary>
+      <details class="teacher-option-drawer"><summary><span>Datos familiares y personales</span><em>Privado</em></summary>
         <section class="premium-form-section"><div class="window-grid"><label>Nombre y apellidos del padre / tutor 1<input name="fatherFullName" value="${safe(s.father_full_name||'')}"></label><label>Nombre y apellidos de la madre / tutora 2<input name="motherFullName" value="${safe(s.mother_full_name||'')}"></label></div><div class="window-grid"><label>Teléfono principal de familia<input name="familyPhone" value="${safe(s.family_phone||'')}"></label><label>Teléfono de emergencia<input name="emergencyPhone" value="${safe(s.emergency_phone||'')}"></label></div><div class="window-grid"><label>Email familiar<input name="familyEmail" type="email" value="${safe(s.family_email||'')}"></label><label>Contacto preferente<input name="preferredContact" value="${safe(s.preferred_contact||'')}"></label></div><div class="window-grid"><label>Grupo familiar / hermanos<input name="familyGroupId" value="${safe(s.family_group_id||'')}" placeholder="Ej.: familia_wrona"></label><label>Nombre visible de familia<input name="familyName" value="${safe(s.family_name||'')}" placeholder="Ej.: Familia Wrona"></label></div><label>Dirección<textarea name="studentAddress" rows="2">${safe(s.address||'')}</textarea></label></section>
       </details>
-      <details class="teacher-option-drawer" open><summary><span>Contacto e itinerario</span><em>Datos útiles</em></summary>
+      <details class="teacher-option-drawer"><summary><span>Contacto e itinerario</span><em>Datos útiles</em></summary>
         <section class="premium-form-section"><div class="window-grid"><label>Email interno<input name="authEmail" type="email" value="${safe(s.auth_email||'')}"></label><label>Email personal<input name="personalEmail" type="email" value="${safe(s.personal_email||'')}"></label></div><label>Modalidad / itinerario<input name="track" value="${safe(s.track||'')}"></label></section>
       </details>
       <details class="teacher-option-drawer" open><summary><span>Horarios de asistencia</span><em>${scheduleSeasonLabel(activeSchedSeason)} activo</em></summary>
@@ -5902,13 +5876,23 @@ render();
     return {total,paid,pending,late,paused,count:students.length};
   }
   function financeTopKpisMarkupV146(month){
-    const k=paymentKpisV146(month);
-    return `<section class="finance-kpi-grid-v146" aria-label="Resumen económico del mes">
-      <article><small>Total previsto</small><strong>${money(k.total)}</strong><span>${safe(monthLabel(month))}</span></article>
-      <article><small>Pagados</small><strong>${k.paid}</strong><span>mensualidades confirmadas</span></article>
-      <article class="${k.pending?'is-warn':''}"><small>Pendientes</small><strong>${k.pending}</strong><span>en plazo o sin confirmar</span></article>
-      <article class="${k.late?'is-danger':''}"><small>Retrasados</small><strong>${k.late}</strong><span>requieren revisión</span></article>
-      ${k.paused?`<article><small>En pausa</small><strong>${k.paused}</strong><span>excluidos del total</span></article>`:''}
+    const students=State.data.students||[];
+    let total=0,collected=0,remaining=0,lateAmount=0,paidCount=0,pendingCount=0,lateCount=0;
+    students.forEach(s=>{
+      const m=financeStudentMetricsV146(s,month);
+      if(m.paused) return;
+      const amount=Number(m.calc.amount||0);
+      total+=amount;
+      if(m.status.key==='paid'){ collected+=amount; paidCount++; }
+      else { remaining+=amount; if(m.status.key==='late'){ lateAmount+=amount; lateCount++; } else pendingCount++; }
+    });
+    const pct=total?Math.round(collected*100/total):0;
+    return `<section class="v210-money-summary">
+      <article><small>Total previsto</small><strong>${money(total)}</strong><span>${safe(monthLabel(month))}</span></article>
+      <article class="is-ok"><small>Ya cobrado</small><strong>${money(collected)}</strong><span>${paidCount} pagos registrados</span></article>
+      <article class="${remaining?'is-warn':''}"><small>Queda por cobrar</small><strong>${money(remaining)}</strong><span>${pendingCount+lateCount} pagos pendientes</span></article>
+      <article class="${lateAmount?'is-danger':''}"><small>Vencido pendiente</small><strong>${money(lateAmount)}</strong><span>${lateCount} retrasados</span></article>
+      <div class="v210-progress"><i><b style="width:${Math.max(0,Math.min(100,pct))}%"></b></i><span>${pct}% cobrado</span></div>
     </section>`;
   }
   function financeStudentCardV146(s={}, month=defaultBillingMonth(), selected=null){
@@ -5941,32 +5925,39 @@ render();
   function paymentsContent(){
     const students=State.data.students||[];
     const selected=students.find(s=>String(s.id)===String(State.selectedStudentId))||students[0]||null;
-    if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
-    const month=(State.billingMonth||defaultBillingMonth()); State.billingMonth=month;
-    const family=selected ? familyPaymentCard(selected, month) : '';
-    return `<section class="teacher-finance-v146 payments-v146">
-      <header class="finance-hero-clean-v146 window-panel"><div><p class="eyebrow">Gestión económica</p><h2>Pagos</h2><p>Una vista limpia para revisar importes, familias, mensualidades pendientes y recibís sin paneles solapados.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Ir a asistencia</button></header>
+    if(!State.selectedStudentId&&selected) State.selectedStudentId=selected.id;
+    const month=State.billingMonth||defaultBillingMonth(); State.billingMonth=month;
+    const rank={late:0,pending:1,paid:2,paused:3};
+    const ordered=students.slice().sort((a,b)=>{
+      const sa=financeStudentMetricsV146(a,month).status.key, sb=financeStudentMetricsV146(b,month).status.key;
+      return (rank[sa]??9)-(rank[sb]??9)||displayName(a).localeCompare(displayName(b),'es');
+    });
+    return `<section class="teacher-finance-v146 payments-v210">
+      <header class="window-panel v210-hero"><div><p class="eyebrow">Gestión económica</p><h2>Pagos</h2><p>Resumen del mes, cobrado y pendiente de un vistazo. Los pagos pendientes aparecen primero.</p></div><div><button class="secondary-btn tool-jump-btn" data-t16-tool="attendance">Asistencia</button><button class="secondary-btn tool-jump-btn" data-t16-tool="studentProfiles">Perfiles</button></div></header>
       <section class="window-panel finance-toolbar-v146">${paymentMonthNavigator(month,'Mes económico')}</section>
       ${financeTopKpisMarkupV146(month)}
-      <div class="finance-layout-v146">
-        <section class="window-panel finance-student-list-v146"><div class="section-heading"><h3>Alumnado y familias</h3><span>${students.length}</span></div>${financeSearchBoxV146('Filtrar por nombre, curso o familia...')}<div class="finance-student-grid-v146">${students.length?students.map(s=>financeStudentCardV146(s,month,selected)).join(''):'<div class="empty-state">No hay alumnado cargado.</div>'}</div></section>
-        <section class="window-panel finance-student-detail-v146"><div class="section-heading"><h3>${selected?`Ficha económica de ${safe(displayName(selected))}`:'Ficha económica'}</h3><span>${safe(monthLabel(month))}</span></div>${selected?`${family}${paymentEditor(selected,month)}`:'<div class="empty-state">Selecciona un alumno.</div>'}</section>
+      <div class="v210-two-col">
+        <section class="window-panel v210-directory"><div class="section-heading"><h3>Alumnado</h3><span>${students.length}</span></div>${financeSearchBoxV146('Buscar alumnado...')}<div class="finance-student-grid-v146">${ordered.map(s=>financeStudentCardV146(s,month,selected)).join('')||'<div class="empty-state">No hay alumnado.</div>'}</div></section>
+        <section class="window-panel v210-detail"><div class="section-heading"><h3>${selected?`Pago de ${safe(displayName(selected))}`:'Pago'}</h3><span>${safe(monthLabel(month))}</span></div>${selected?`${familyPaymentCard(selected,month)}${paymentEditor(selected,month)}`:'<div class="empty-state">Selecciona un alumno.</div>'}</section>
       </div>
-      <section class="window-panel finance-history-v146"><details><summary>Ver histórico mensual completo y pagos familiares agrupados</summary>${paymentSummary(month)}</details></section>
+      <section class="window-panel v210-secondary"><details><summary>Histórico, familias y PDF</summary>${paymentSummary(month)}</details></section>
     </section>`;
   }
   function attendanceContent(){
     const students=State.data.students||[];
     const selected=students.find(s=>String(s.id)===String(State.selectedStudentId))||students[0]||null;
-    if(!State.selectedStudentId && selected) State.selectedStudentId=selected.id;
-    const month=(State.billingMonth||defaultBillingMonth()); State.billingMonth=month;
-    return `<section class="teacher-attendance-v146 attendance-v146">
-      <header class="finance-hero-clean-v146 window-panel"><div><p class="eyebrow">Seguimiento de clases</p><h2>Asistencia y pausas</h2><p>Control mensual claro: asistencias, faltas, justificaciones y pausas que afectan al cálculo económico.</p></div><button type="button" class="secondary-btn tool-jump-btn" data-t16-tool="payments">Ir a pagos</button></header>
+    if(!State.selectedStudentId&&selected) State.selectedStudentId=selected.id;
+    const month=State.billingMonth||defaultBillingMonth(); State.billingMonth=month;
+    const paused=students.filter(s=>activePauseFor(s.id));
+    const ordered=students.slice().sort((a,b)=>(activePauseFor(a.id)?0:1)-(activePauseFor(b.id)?0:1)||Number(calculatePaymentAmount(b.id,month).absent||0)-Number(calculatePaymentAmount(a.id,month).absent||0)||displayName(a).localeCompare(displayName(b),'es'));
+    return `<section class="attendance-v210">
+      <header class="window-panel v210-hero"><div><p class="eyebrow">Seguimiento</p><h2>Asistencia y pausas</h2><p>Resumen del mes, pausas activas y registro diario en una sola pantalla.</p></div><div><button class="secondary-btn tool-jump-btn" data-t16-tool="payments">Pagos</button><button class="secondary-btn tool-jump-btn" data-t16-tool="studentProfiles">Perfiles</button></div></header>
       <section class="window-panel finance-toolbar-v146">${paymentMonthNavigator(month,'Mes de asistencia')}</section>
       ${attendanceSummary(month)}
-      <div class="finance-layout-v146 attendance-layout-v146">
-        <section class="window-panel finance-student-list-v146"><div class="section-heading"><h3>Alumnado</h3><span>${students.length}</span></div>${financeSearchBoxV146('Filtrar alumnado...')}<div class="finance-student-grid-v146">${students.length?students.map(s=>attendanceStudentCardV146(s,month,selected)).join(''):'<div class="empty-state">No hay alumnado cargado.</div>'}</div></section>
-        <section class="window-panel finance-student-detail-v146 attendance-student-detail-v146"><div class="section-heading"><h3>${selected?`Asistencia de ${safe(displayName(selected))}`:'Asistencia'}</h3><span>${safe(monthLabel(month))}</span></div>${selected?attendanceEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
+      <section class="window-panel v210-pauses"><div class="section-heading"><h3>Pausas activas</h3><span>${paused.length}</span></div>${paused.length?`<div>${paused.map(s=>`<button type="button" data-t16-select-student="${safe(s.id)}"><strong>${safe(displayName(s))}</strong><small>${safe(pauseStatusText(s.id))}</small></button>`).join('')}</div>`:'<p class="meta">No hay pausas activas.</p>'}</section>
+      <div class="v210-two-col">
+        <section class="window-panel v210-directory"><div class="section-heading"><h3>Alumnado</h3><span>${students.length}</span></div>${financeSearchBoxV146('Buscar alumnado...')}<div class="finance-student-grid-v146">${ordered.map(s=>attendanceStudentCardV146(s,month,selected)).join('')||'<div class="empty-state">No hay alumnado.</div>'}</div></section>
+        <section class="window-panel v210-detail"><div class="section-heading"><h3>${selected?`Asistencia de ${safe(displayName(selected))}`:'Asistencia'}</h3><span>${safe(monthLabel(month))}</span></div>${selected?attendanceEditor(selected,month):'<div class="empty-state">Selecciona un alumno.</div>'}</section>
       </div>
     </section>`;
   }
@@ -6006,10 +5997,9 @@ render();
     </section>`;
   }
   function attendanceSummary(month){
-    const students=State.data.students||[];
-    let present=0, absent=0, justified=0, paused=0, withSchedule=0;
-    students.forEach(s=>{ const c=calculatePaymentAmount(s.id,month); present+=Number(c.present||0); absent+=Number(c.absent||0); justified+=Number(c.justified||0); paused+=Number(c.paused||0); if(Number(c.totalDays||0)>0) withSchedule++; });
-    return `<section class="attendance-kpi-grid-v146"><article><small>Alumnado con horario</small><strong>${withSchedule}</strong><span>${safe(monthLabel(month))}</span></article><article><small>Asistencias</small><strong>${present}</strong><span>registradas</span></article><article class="${absent?'is-warn':''}"><small>Faltas</small><strong>${absent}</strong><span>pendientes de revisar</span></article><article><small>Justificadas</small><strong>${justified}</strong><span>no computan como asistencia</span></article>${paused?`<article><small>Pausadas</small><strong>${paused}</strong><span>excluidas del cálculo</span></article>`:''}</section>`;
+    const students=State.data.students||[]; let scheduled=0,present=0,absent=0,justified=0,paused=0;
+    students.forEach(s=>{const c=calculatePaymentAmount(s.id,month);scheduled+=Number(c.activeDays||0);present+=Number(c.present||0);absent+=Number(c.absent||0);justified+=Number(c.justified||0);paused+=Number(c.paused||0);});
+    return `<section class="v210-attendance-kpis"><article><small>Clases programadas</small><strong>${scheduled}</strong></article><article><small>Asistencias</small><strong>${present}</strong></article><article class="${absent?'is-warn':''}"><small>Faltas</small><strong>${absent}</strong></article><article><small>Justificadas</small><strong>${justified}</strong></article><article><small>Pausadas</small><strong>${paused}</strong></article></section>`;
   }
   function paymentPausePanel(s, month){
     const active=activePauseFor(s.id); const pauses=pauseRecords(s.id); const upcoming=pauses.find(p=>p.active!==false && !pauseCoversDate(p) && String(p.start_date||'')>todayIso()); const editing=active||upcoming||{};
