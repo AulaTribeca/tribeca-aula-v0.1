@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 215 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 216 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -43,45 +43,30 @@
 
   const TRIBECA_THEME_KEY = 'tribeca-theme';
   function tribecaPreferredTheme(){
-    const saved = localStorage.getItem(TRIBECA_THEME_KEY) || localStorage.getItem('theme') || '';
-    if(saved === 'dark' || saved === 'light') return saved;
-    try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
-    catch(_error){ return 'light'; }
+    localStorage.setItem(TRIBECA_THEME_KEY,'light');
+    localStorage.setItem('theme','light');
+    return 'light';
   }
-  function applyTribecaTheme(theme = tribecaPreferredTheme()){
-    const dark = theme === 'dark';
-    document.body.classList.toggle('is-dark', dark);
-    document.body.classList.toggle('dark-mode', dark);
-    document.body.classList.toggle('theme-dark', dark);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    document.body.dataset.theme = dark ? 'dark' : 'light';
+  function applyTribecaTheme(){
+    document.body.classList.remove('is-dark','dark-mode','theme-dark');
+    document.documentElement.dataset.theme = 'light';
+    document.body.dataset.theme = 'light';
     const meta = document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute('content', dark ? '#070805' : '#064b35');
-    const txt = document.getElementById('themeText');
-    if(txt) txt.textContent = dark ? 'Oscuro' : 'Claro';
+    if(meta) meta.setAttribute('content','#064b35');
+    const scheme = document.querySelector('meta[name="color-scheme"]');
+    if(scheme) scheme.setAttribute('content','light');
     const toggle = document.getElementById('themeToggle');
-    if(toggle){
-      toggle.setAttribute('aria-pressed', dark ? 'true' : 'false');
-      toggle.setAttribute('title', dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-    }
+    if(toggle) toggle.remove();
   }
-  function setTribecaTheme(theme){
-    const clean = theme === 'dark' ? 'dark' : 'light';
-    localStorage.setItem(TRIBECA_THEME_KEY, clean);
-    applyTribecaTheme(clean);
+  function setTribecaTheme(){
+    localStorage.setItem(TRIBECA_THEME_KEY,'light');
+    localStorage.setItem('theme','light');
+    applyTribecaTheme();
   }
   function bindTribecaThemeControls(){
     applyTribecaTheme();
-    const toggle = document.getElementById('themeToggle');
-    if(toggle && !toggle.dataset.t166ThemeBound){
-      toggle.dataset.t166ThemeBound = '1';
-      toggle.addEventListener('click', ev=>{
-        ev.preventDefault();
-        ev.stopPropagation();
-        setTribecaTheme(document.body.classList.contains('is-dark') ? 'light' : 'dark');
-      }, true);
-    }
   }
+
   function syncTribecaStandaloneClass(){
     try{
       const standalone = window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true;
@@ -2526,12 +2511,12 @@ function studentAssignedClasses(studentId=State.profile?.id){
   function focusStudentHome(){
     const p=State.profile;
     if(isIzamProfile(p)){
-      return `<section class="hero-card panel focus-hero-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
+      return `<section class="hero-card panel focus-hero-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
     }
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
     const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}${classHtml}`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}${classHtml}`;
   }
 
   function uiLocale(){
@@ -2562,15 +2547,31 @@ function studentAssignedClasses(studentId=State.profile?.id){
     return Number(count)===1 ? uiLabel(singularKey) : uiLabel(pluralKey);
   }
 
+  function studentBirthdayGreetingV216(profile={}, date=new Date()){
+    const raw=String(profile.birth_date || profile.date_of_birth || '').trim();
+    const match=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(!match) return '';
+    const month=Number(match[2]);
+    const day=Number(match[3]);
+    if(month!==date.getMonth()+1 || day!==date.getDate()) return '';
+    const first=String(profile.first_name || firstPart(profile.full_name || displayName(profile)) || displayName(profile) || '').trim();
+    return first ? `Feliz cumple, ${first}` : '';
+  }
+  function studentWelcomeHeadingV216(profile={}){
+    const birthday=studentBirthdayGreetingV216(profile,new Date());
+    if(birthday) return `🎂 ${safe(birthday)}`;
+    return `<span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(profile))}</span>`;
+  }
+
   function studentHome() {
     const p=State.profile;
     if(studentFocusModeEnabled(p)) return focusStudentHome();
     const subjects=subjectList(p);
     const dateLabel = new Intl.DateTimeFormat(uiLocale(), {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
     if(isIzamProfile(p)){
-      return `<section class="hero-card panel hero-welcome-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
+      return `<section class="hero-card panel hero-welcome-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
     }
-    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1><span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(p))}</span></h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
