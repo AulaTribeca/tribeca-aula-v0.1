@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 214 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 215 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -1113,13 +1113,25 @@
     const rpc = await maybe(State.client.rpc('resolve_login_email', { p_username:u }), null);
     return rpc || `${u}@tribecaaula.test`;
   }
+
+  function tribecaStoredPasswordV215(username, password){
+    const raw=String(password||'');
+    if(raw.length>=6) return raw;
+    return `Tribeca-${String(username||'').trim().toLowerCase()}-${raw}`;
+  }
+
   async function signIn(username, password) {
     const box = document.getElementById('loginStatus');
     if(box){ box.textContent='Comprobando acceso…'; box.className='form-status auth-login-status is-info'; }
     try {
       const email = await resolveEmail(username);
-      const { data, error } = await State.client.auth.signInWithPassword({ email, password });
-      if(error) throw error;
+      let result = await State.client.auth.signInWithPassword({ email, password });
+      if(result.error && String(password||'').length<6){
+        const compatible=tribecaStoredPasswordV215(username,password);
+        result = await State.client.auth.signInWithPassword({ email, password:compatible });
+      }
+      if(result.error) throw result.error;
+      const {data}=result;
       State.session = data.session; State.user = data.user;
       await hydrate();
       await log('login','Inicio de sesión', {user:displayName(State.profile)});
@@ -5650,7 +5662,7 @@ render();
       return;
     }
     await log('auth','Contraseña de alumno restablecida',{student:displayName(student),username:student.username||''});
-    toast(`Contraseña restablecida para ${displayName(student)}.`);
+    toast(`Contraseña restablecida para ${displayName(student)}. Ya puede iniciar sesión con la nueva contraseña.`);
     document.querySelectorAll('[data-t214-password]').forEach(input=>{ input.value=''; });
   }
 
@@ -5732,7 +5744,7 @@ render();
       </div>
       <div class="form-status t24-profile-status" data-t24-profile-status></div>
       <section class="premium-form-section password-reset-card-v214" data-t214-password-card>
-        <div class="password-reset-head-v214"><div><p class="eyebrow">Acceso al aula</p><h4>Usuario: ${safe(s.username||'')}</h4><p class="meta">Restablece la contraseña sin cambiar el usuario ni el perfil. Solo tú, como profesora, puedes usar esta opción.</p></div><span>Seguro</span></div>
+        <div class="password-reset-head-v214"><div><p class="eyebrow">Acceso al aula</p><h4>Usuario: ${safe(s.username||'')}</h4><p class="meta">Restablece la contraseña sin cambiar el usuario ni el perfil. Puedes usar un PIN sencillo de 4 caracteres; Tribeca lo adapta internamente al sistema de acceso.</p></div><span>Seguro</span></div>
         <div class="password-reset-controls-v214"><label>Nueva contraseña<input type="password" autocomplete="new-password" placeholder="Ej. 1234" data-t214-password></label><button type="button" class="primary-btn" data-t214-reset-password="${safe(s.id)}">Restablecer contraseña</button></div>
       </section>
       ${studentClassesManagementPanelV186(s)}
