@@ -160,9 +160,9 @@ const baseCalendarEvents = [
 ];
 
 const ranges = [
-  { start:'2026-12-22', end:'2027-01-07', title:'Vacaciones de Navidad · no lectivo', type:'school' },
-  { start:'2027-02-08', end:'2027-02-10', title:'Entroido · no lectivo', type:'school' },
-  { start:'2027-03-22', end:'2027-03-29', title:'Vacaciones de Semana Santa · no lectivo', type:'school' }
+  { start:'2026-12-22', end:'2027-01-07', title:'Vacaciones de Navidad · no lectivo', type:'school', calendarClass:'vacation-christmas' },
+  { start:'2027-02-08', end:'2027-02-10', title:'Entroido · no lectivo', type:'school', calendarClass:'vacation-carnival' },
+  { start:'2027-03-22', end:'2027-03-29', title:'Vacaciones de Semana Santa · no lectivo', type:'school', calendarClass:'vacation-easter' }
 ];
 
 let calendarMonth = startOfMonth(new Date());
@@ -1230,6 +1230,23 @@ function bindWindowForms(win, id) {
 }
 
 
+function calendarRangeClass(event) {
+  if (event && event.calendarClass) return event.calendarClass;
+  const title = String(event?.title || '').toLowerCase();
+  if (title.includes('navidad')) return 'vacation-christmas';
+  if (title.includes('entroido') || title.includes('carnaval')) return 'vacation-carnival';
+  if (title.includes('semana santa')) return 'vacation-easter';
+  return '';
+}
+
+function calendarDayRangeClasses(dayEvents) {
+  const classes = [...new Set(dayEvents
+    .filter(event => event.range && event.type === 'school')
+    .map(calendarRangeClass)
+    .filter(Boolean))];
+  return classes.map(name => `is-${name}`).join(' ');
+}
+
 function renderCalendarGrid(monthDate, contextKey) {
   const baseMonday = new Date(2026, 0, 5);
   const weekdays = Array.from({length:7}, (_, i) => new Intl.DateTimeFormat(localeForCurrentLang(), { weekday:'short' }).format(addDays(baseMonday, i)).replace('.', ''));
@@ -1242,7 +1259,8 @@ function renderCalendarGrid(monthDate, contextKey) {
     const date = addDays(start, i);
     const iso = toIsoDate(date);
     const dayEvents = contextEvents.filter(event => event.date === iso);
-    html += `<button type="button" class="calendar-day ${date.getMonth() !== monthDate.getMonth() ? 'is-other' : ''} ${iso === todayIso ? 'is-today' : ''} ${iso === selectedCalendarDate ? 'is-selected' : ''} ${dayEvents.length ? 'has-events' : ''}" data-date="${iso}" title="${dayEvents.map(e => escapeHtml(e.title)).join(' | ')}"><span class="day-number">${date.getDate()}</span>${dayEvents.slice(0, 3).map(e => `<span class="day-event-label"><i class="day-event-dot event-${eventVisualType(e)}"></i>${escapeHtml(e.title)}</span>`).join('')}</button>`;
+    const rangeClasses = calendarDayRangeClasses(dayEvents);
+    html += `<button type="button" class="calendar-day ${date.getMonth() !== monthDate.getMonth() ? 'is-other' : ''} ${iso === todayIso ? 'is-today' : ''} ${iso === selectedCalendarDate ? 'is-selected' : ''} ${dayEvents.length ? 'has-events' : ''} ${rangeClasses}" data-date="${iso}" title="${dayEvents.map(e => escapeHtml(e.title)).join(' | ')}"><span class="day-number">${date.getDate()}</span>${dayEvents.slice(0, 3).map(e => `<span class="day-event-label"><i class="day-event-dot event-${eventVisualType(e)}"></i>${escapeHtml(e.title)}</span>`).join('')}</button>`;
   }
   return html;
 }
