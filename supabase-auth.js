@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 219 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 220 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -2211,8 +2211,7 @@
     return `<section class="teacher-quick-classes window-panel"><div class="section-heading teacher-local-heading"><h2>Clases activas</h2><span>${rows.length} clase${rows.length===1?'':'s'}</span></div><div class="teacher-quick-class-grid">${rows.map(c=>{ const assigned=classroomStudents(c.id); const subjects=classroomSubjects(c.id); const units=(State.data.classUnits||[]).filter(u=>subjects.some(s=>String(s.id)===String(u.class_subject_id))); const mats=(State.data.materials||[]).filter(m=>String(m.class_id||'')===String(c.id)); return `<article class="teacher-quick-class-card ${classroomThemeClass(c)}" style="${safe(classroomThemeStyle(c))}" tabindex="0" role="button" data-t90-open-class="${safe(c.id)}"><div><p>${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><small>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</small></div><footer><span>${assigned.length} alumno${assigned.length===1?'':'s'}</span><span>${subjects.length} materia${subjects.length===1?'':'s'}</span><span>${units.length} unidad${units.length===1?'':'es'}</span><span>${mats.length} pub.</span></footer></article>`; }).join('')}</div></section>`;
   }
   function teacherHome() {
-    const students=State.data.students||[];
-    const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
+    const students=State.data.students||[]; const passReq=(State.data.passwordRequests||[]).filter(r=>r.status==='pending').length;
     const tools=[
       ['newPublication','✍️','Nueva publicación','Crear anuncios o materiales y vincularlos a una clase, materia y unidad.'],
       ['videoclasses','🎥','Videoclases','Programa enlaces de Google Meet para clases online y proyección de documentos.'],
@@ -2220,13 +2219,13 @@
       ['activityAnalytics','📈','Actividad del alumnado','Intentos, puntuaciones, repeticiones y alertas de mejora en actividades autocorregibles.'],
       ['teacherDocuments','🧾','Documentos PDF','Recibís, históricos económicos, horario semanal, ficha de alumnado y documentos útiles.'],
       ['passwordRequests','🔐','Solicitudes de recuperación','Solicitudes realizadas por el alumnado para restablecer contraseña.'],
-      ['studentProfiles','👤','Perfiles del alumnado','Editar datos, horarios, apoyo educativo, acceso y observaciones.'],
-      ['classrooms','🏫','Clases','Crear y gestionar aulas permanentes por centro y curso.'],
+      ['studentProfiles','👤','Perfiles del alumnado','Editar nombre, apellidos, usuario, centro, etapa, curso, horario, NEE, NEAE y observaciones.'],
+      ['classrooms','🏫','Clases','Crear aulas permanentes por centro y curso, al estilo Google Classroom.'],
       ['payments','💶','Pagos','Tarifas, mensualidades, meses pagados, recibís e histórico económico.'],
       ['attendance','📅','Asistencia y pausas','Registro de asistencia, faltas justificadas y pausas temporales de acceso.']
     ];
-    const alertCount=teacherAlertCount();
-    const unseenAlerts=Math.max(0,alertCount-Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
+    const alertCount = teacherAlertCount();
+    const unseenAlerts = Math.max(0, alertCount - Number(localStorage.getItem(`tribeca-alerts-seen-${State.profile.id}`)||0));
     return `<section class="teacher-dashboard t16-dashboard teacher-dashboard-v112">${teacherWelcomePanel()}${State.teacherTasksOpen?teacherTasksManager():''}<div class="section-heading teacher-heading-premium"><h2>Panel docente</h2><div class="teacher-stats"><span>${students.length} perfiles</span><span>${passReq} solicitudes de contraseña</span><span>${alertCount} alertas</span></div></div><div class="t16-teacher-tools">${tools.map(([id,ic,title,desc])=>`<article class="t16-tool-card" role="button" tabindex="0" data-t16-tool="${id}"><span class="t16-tool-icon teacher-legacy-icon">${safe(ic)}</span><div><h3>${safe(title)}</h3><p>${safe(desc)}</p></div>${id==='passwordRequests'&&passReq?`<em>${passReq}</em>`:''}${id==='teacherAlerts'&&unseenAlerts?`<em id="teacherAlertsBadge">${unseenAlerts}</em>`:''}</article>`).join('')}</div>${videoClassesHomePanel()}${activeClassroomsQuickAccess()}</section>`;
   }
 
