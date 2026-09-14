@@ -1,0 +1,29 @@
+name: Validate Tribeca v215
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-v215.yml'
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - run: |
+          node --check supabase-auth.js
+          node --check service-worker.js
+          grep -q "tribecaStoredPasswordV215" supabase-auth.js
+          grep -q "tribeca-admin-reset-password" supabase-auth.js
+          grep -q "supabase-auth.js?v=215" index.html
+          grep -q "tribeca-aula-static-v215" service-worker.js
+      - run: |
+          rm -f .github/workflows/validate-v215.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "Validate Tribeca Aula v215 password reset" || true
+          git push origin HEAD:main
