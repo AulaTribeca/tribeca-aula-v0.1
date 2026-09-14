@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v209 · PWA, caché ligera, push con payload cifrado y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v209';
+/* Tribeca Aula · Service worker v210 · PWA, caché ligera, push con payload cifrado y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v210';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './manifest.webmanifest',
@@ -11,7 +11,6 @@ const TRIBECA_INSTALL_ASSETS = [
   './assets/ius/presentations/ius-02-de-facto-de-iure.html',
   './assets/ius/presentations/ius-03-fuentes-derecho.html',
   './tribeca-package-viewer.html',
-  './assets/izam/tecnicas-estudio/unidad-1/gimnasio-1-pueblo-palabra/index.html'
 ];
 
 self.addEventListener('install', event => {

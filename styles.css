@@ -16610,3 +16610,40 @@ body[data-theme="dark"] .carla-finance-day-v205 strong { color:#f4e6b4; }
 @media (max-width:430px){
   .carla-finance-kpis-v205 { grid-template-columns:1fr; }
 }
+
+
+/* Tribeca Aula · v210 · gestión docente clara */
+.v210-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:24px 26px;margin-bottom:14px}
+.v210-hero h2{margin:.2rem 0 .45rem;font-size:clamp(2rem,3vw,3rem)}
+.v210-hero p{max-width:760px}.v210-hero>div:last-child{display:flex;gap:8px;flex-wrap:wrap}
+.v210-money-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+.v210-money-summary article,.v210-attendance-kpis article{padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--panel-solid);box-shadow:var(--shadow-soft);display:flex;flex-direction:column;gap:4px}
+.v210-money-summary small,.v210-attendance-kpis small{font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.035em}
+.v210-money-summary strong,.v210-attendance-kpis strong{font-family:Georgia,serif;color:var(--green);font-size:2.25rem;line-height:1.05}
+.v210-money-summary span{color:var(--muted)}.v210-money-summary .is-ok{border-color:rgba(16,63,36,.28);background:linear-gradient(180deg,rgba(226,242,231,.72),var(--panel-solid))}
+.v210-money-summary .is-warn,.v210-money-summary .is-danger,.v210-attendance-kpis .is-warn{border-color:rgba(168,135,45,.38);background:linear-gradient(180deg,rgba(250,243,220,.75),var(--panel-solid))}
+.v210-progress{grid-column:1/-1;padding:4px 2px}.v210-progress i{display:block;height:9px;border-radius:999px;background:rgba(104,107,100,.15);overflow:hidden}
+.v210-progress b{display:block;height:100%;border-radius:inherit;background:var(--green)}.v210-progress span{display:block;margin-top:6px;font-weight:800}
+.v210-two-col{display:grid;grid-template-columns:minmax(285px,.78fr) minmax(0,1.55fr);gap:14px;align-items:start}
+.v210-directory,.v210-detail,.v210-profile-directory,.v210-profile-detail,.v210-pauses{padding:18px}
+.v210-secondary{margin-top:14px;padding:0;overflow:hidden}.v210-secondary summary{padding:15px 17px;cursor:pointer;font-weight:850}
+.v210-secondary details[open] summary{border-bottom:1px solid var(--line)}
+.v210-profile-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:14px 0}
+.v210-profile-kpis button{min-height:86px}.v210-profile-directory{margin-bottom:14px}
+.v210-profile-directory>.t16-search{width:100%;margin:10px 0 14px}
+.v210-profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.v210-profile-card{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;text-align:left;padding:13px;border:1px solid var(--line);border-radius:14px;background:var(--panel-solid);min-width:0;cursor:pointer}
+.v210-profile-card:hover,.v210-profile-card.is-selected{border-color:rgba(16,63,36,.38);box-shadow:var(--shadow-soft)}
+.v210-profile-card.is-selected{outline:2px solid rgba(16,63,36,.12)}
+.v210-profile-card>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}.v210-profile-card strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v210-profile-card small,.v210-profile-card em{font-style:normal;color:var(--muted);font-size:.9em}
+.v210-profile-detail .teacher-option-drawer{margin-top:9px}
+.v210-attendance-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:14px 0}
+.v210-pauses{margin-bottom:14px}.v210-pauses>.section-heading{margin-bottom:8px}
+.v210-pauses>div:last-child{display:flex;gap:8px;flex-wrap:wrap}.v210-pauses button{display:flex;flex-direction:column;align-items:flex-start;padding:10px 12px;border:1px solid rgba(168,135,45,.32);border-radius:12px;background:rgba(250,243,220,.55);text-align:left}
+.v210-pauses button small{color:var(--muted)}
+.payments-v210 .finance-student-card-v146.status-late,.payments-v210 .finance-student-card-v146.status-pending{border-color:rgba(168,135,45,.32)}
+@media(max-width:1050px){.v210-money-summary,.v210-profile-kpis,.v210-attendance-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v210-two-col{grid-template-columns:1fr}.v210-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.v210-hero{flex-direction:column}.v210-money-summary,.v210-profile-kpis,.v210-attendance-kpis,.v210-profile-grid{grid-template-columns:1fr}}
+body.is-dark .v210-money-summary article,body.is-dark .v210-attendance-kpis article,body.is-dark .v210-profile-card{background:var(--panel)}
+
