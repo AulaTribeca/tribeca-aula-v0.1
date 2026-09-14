@@ -150,44 +150,19 @@ const calendarContexts = {
 };
 
 const baseCalendarEvents = [
-  { date:'2026-01-01', title:'Año Nuevo', type:'national' },
-  { date:'2026-01-06', title:'Epifanía del Señor, Reyes', type:'national' },
-  { date:'2026-03-19', title:'San José', type:'galicia' },
-  { date:'2026-04-02', title:'Jueves Santo', type:'galicia' },
-  { date:'2026-04-03', title:'Viernes Santo', type:'national' },
-  { date:'2026-05-01', title:'Fiesta del Trabajo', type:'national' },
-  { date:'2026-06-24', title:'San Juan', type:'galicia' },
-  { date:'2026-07-25', title:'Día Nacional de Galicia, Santiago Apóstol', type:'galicia' },
-  { date:'2026-08-15', title:'Asunción de la Virgen', type:'national' },
-  { date:'2026-10-12', title:'Fiesta Nacional de España', type:'national' },
-  { date:'2026-12-08', title:'Inmaculada Concepción', type:'national' },
-  { date:'2026-12-25', title:'Natividad del Señor', type:'national' },
-  { date:'2026-04-06', title:'Lunes de Pascua, Cee', type:'local', municipality:'Cee' },
-  { date:'2026-06-16', title:'San Adrián, Cee', type:'local', municipality:'Cee' },
-  { date:'2026-06-29', title:'San Pedro, Corcubión', type:'local', municipality:'Corcubión' },
-  { date:'2026-07-16', title:'Fiesta del Carmen, Corcubión', type:'local', municipality:'Corcubión' },
-  { date:'2026-04-06', title:'Lunes de Pascua, Fisterra', type:'local', municipality:'Fisterra' },
-  { date:'2026-09-08', title:'Fiesta local de Fisterra', type:'local', municipality:'Fisterra' },
-  { date:'2025-10-31', title:'Día de la Enseñanza', type:'school' },
-  { date:'2025-11-03', title:'Día no lectivo', type:'school' },
-  { date:'2026-04-13', title:'Evaluación de diagnóstico en 2.º de ESO, inicio', type:'school' },
-  { date:'2026-04-20', title:'Evaluación de diagnóstico en 4.º de Primaria, inicio', type:'school' },
-  { date:'2026-05-31', title:'Entrega de actividades de repaso', type:'personal' },
-  { date:'2026-06-04', title:'Simulacro de examen de Inglés', type:'personal' },
-  { date:'2026-09-09', title:'Inicio lectivo propuesto 2026/27', type:'proposed' },
-  { date:'2026-12-07', title:'Día de la Enseñanza propuesto 2026/27', type:'proposed' },
-  { date:'2027-02-08', title:'Entroido propuesto 2026/27, inicio', type:'proposed' },
-  { date:'2027-03-22', title:'Semana Santa propuesta 2026/27, inicio', type:'proposed' }
+  { date:'2026-09-09', title:'Inicio de las clases · curso 2026-2027', type:'school' },
+  { date:'2026-10-12', title:'Fiesta Nacional de España · día no lectivo', type:'national' },
+  { date:'2026-12-06', title:'Día de la Constitución Española', type:'national' },
+  { date:'2026-12-07', title:'Día de la Enseñanza · día no lectivo', type:'school' },
+  { date:'2026-12-08', title:'Inmaculada Concepción · día no lectivo', type:'national' },
+  { date:'2027-05-17', title:'Día das Letras Galegas · día no lectivo', type:'galicia' },
+  { date:'2027-06-21', title:'Fin de curso · curso 2026-2027', type:'school' }
 ];
 
 const ranges = [
-  { start:'2025-12-22', end:'2026-01-07', title:'Vacaciones de Navidad', type:'school' },
-  { start:'2026-02-16', end:'2026-02-18', title:'Entroido/Carnaval', type:'school' },
-  { start:'2026-03-30', end:'2026-04-06', title:'Vacaciones de Semana Santa', type:'school' },
-  { start:'2026-06-08', end:'2026-06-08', title:'Evaluación final ordinaria 1.º Bachillerato y 1.º FP básica, inicio', type:'school' },
-  { start:'2026-06-17', end:'2026-06-19', title:'Pruebas extraordinarias 1.º Bachillerato y 1.º FP básica', type:'school' },
-  { start:'2026-12-21', end:'2027-01-06', title:'Navidad propuesta 2026/27', type:'proposed' },
-  { start:'2027-03-22', end:'2027-03-29', title:'Semana Santa propuesta 2026/27', type:'proposed' }
+  { start:'2026-12-22', end:'2027-01-07', title:'Vacaciones de Navidad · no lectivo', type:'school' },
+  { start:'2027-02-08', end:'2027-02-10', title:'Entroido · no lectivo', type:'school' },
+  { start:'2027-03-22', end:'2027-03-29', title:'Vacaciones de Semana Santa · no lectivo', type:'school' }
 ];
 
 let calendarMonth = startOfMonth(new Date());
