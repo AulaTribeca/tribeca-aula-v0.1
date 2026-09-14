@@ -16713,3 +16713,21 @@ body.is-dark .calendar-day.is-vacation-easter {
 body.is-dark .calendar-day.is-vacation-christmas .day-event-label,
 body.is-dark .calendar-day.is-vacation-carnival .day-event-label,
 body.is-dark .calendar-day.is-vacation-easter .day-event-label { background: rgba(0,0,0,.18); }
+
+
+/* Tribeca Aula · v214 · restablecimiento de contraseñas */
+.password-reset-card-v214{border:1px solid rgba(16,63,36,.18);background:linear-gradient(180deg,rgba(232,244,236,.62),var(--panel-solid));border-radius:16px}
+.password-reset-head-v214{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.password-reset-head-v214 h4{margin:.15rem 0 .35rem;color:var(--green)}
+.password-reset-head-v214>span{padding:5px 9px;border-radius:999px;background:rgba(16,63,36,.1);color:var(--green);font-size:.78rem;font-weight:900}
+.password-reset-controls-v214{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:12px;align-items:end;margin-top:12px}
+.password-reset-controls-v214 label{margin:0}
+.password-requests-v214{padding:20px}
+.password-request-row-v214{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.password-request-actions-v214{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+body.is-dark .password-reset-card-v214{background:rgba(255,255,255,.04)}
+@media(max-width:700px){
+  .password-reset-controls-v214{grid-template-columns:1fr}
+  .password-request-row-v214{align-items:flex-start;flex-direction:column}
+  .password-request-actions-v214{justify-content:flex-start}
+}
