@@ -1,4 +1,4 @@
-/* Tribeca Aula · Versión 217 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
+/* Tribeca Aula · Versión 218 · consulta privada de mensualidad y asistencia para Carla Caamaño Caamaño.
    Base: v204 con visor seguro de paquetes HTML y assets. */
 (() => {
   'use strict';
@@ -2597,11 +2597,11 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const day=Number(match[3]);
     if(month!==date.getMonth()+1 || day!==date.getDate()) return '';
     const first=String(profile.first_name || firstPart(profile.full_name || displayName(profile)) || displayName(profile) || '').trim();
-    return first ? `Feliz cumple, ${first}` : '';
+    return first ? `feliz cumple, ${first}` : '';
   }
   function studentWelcomeHeadingV216(profile={}){
     const birthday=studentBirthdayGreetingV216(profile,new Date());
-    if(birthday) return `🎂 ${safe(birthday)}`;
+    if(birthday) return safe(birthday);
     return `<span class="hero-wave" aria-hidden="true">👋</span> ${safe(uiLabel('hello'))}, <span id="studentHeroName">${safe(displayName(profile))}</span>`;
   }
 
