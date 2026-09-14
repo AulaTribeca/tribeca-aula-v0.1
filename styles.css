@@ -16647,3 +16647,69 @@ body[data-theme="dark"] .carla-finance-day-v205 strong { color:#f4e6b4; }
 @media(max-width:680px){.v210-hero{flex-direction:column}.v210-money-summary,.v210-profile-kpis,.v210-attendance-kpis,.v210-profile-grid{grid-template-columns:1fr}}
 body.is-dark .v210-money-summary article,body.is-dark .v210-attendance-kpis article,body.is-dark .v210-profile-card{background:var(--panel)}
 
+
+
+/* =========================================================
+   Tribeca Aula · v213 · periodos vacacionales coloreados
+   ========================================================= */
+.calendar-day.is-vacation-christmas,
+.calendar-day.is-vacation-carnival,
+.calendar-day.is-vacation-easter {
+  background-image: none !important;
+  color: #2c2316;
+}
+.calendar-day.is-vacation-christmas {
+  background: linear-gradient(180deg, #f8dde8 0%, #f5d2e0 100%) !important;
+}
+.calendar-day.is-vacation-carnival {
+  background: linear-gradient(180deg, #ffe7b8 0%, #ffd899 100%) !important;
+}
+.calendar-day.is-vacation-easter {
+  background: linear-gradient(180deg, #e4dcfb 0%, #d9cff8 100%) !important;
+}
+.calendar-day.is-vacation-christmas:hover,
+.calendar-day.is-vacation-carnival:hover,
+.calendar-day.is-vacation-easter:hover { filter: brightness(.985); }
+.calendar-day.is-vacation-christmas .day-number,
+.calendar-day.is-vacation-carnival .day-number,
+.calendar-day.is-vacation-easter .day-number { font-weight: 900; }
+.calendar-day.is-vacation-christmas .day-event-label,
+.calendar-day.is-vacation-carnival .day-event-label,
+.calendar-day.is-vacation-easter .day-event-label {
+  background: rgba(255,255,255,.38);
+  border-radius: .5rem;
+  padding: .12rem .28rem;
+}
+.calendar-day.is-vacation-christmas.is-selected,
+.calendar-day.is-vacation-carnival.is-selected,
+.calendar-day.is-vacation-easter.is-selected {
+  box-shadow: inset 0 0 0 3px var(--gold) !important;
+}
+.calendar-day.is-vacation-christmas.is-today,
+.calendar-day.is-vacation-carnival.is-today,
+.calendar-day.is-vacation-easter.is-today {
+  box-shadow: inset 0 0 0 2px var(--green) !important;
+}
+.calendar-day.is-vacation-christmas.is-selected.is-today,
+.calendar-day.is-vacation-carnival.is-selected.is-today,
+.calendar-day.is-vacation-easter.is-selected.is-today {
+  box-shadow: inset 0 0 0 2px var(--green), inset 0 0 0 5px var(--gold) !important;
+}
+.calendar-day.is-other.is-vacation-christmas,
+.calendar-day.is-other.is-vacation-carnival,
+.calendar-day.is-other.is-vacation-easter { opacity: .92; }
+body.is-dark .calendar-day.is-vacation-christmas,
+body.is-dark .calendar-day.is-vacation-carnival,
+body.is-dark .calendar-day.is-vacation-easter { color: #fff7ec; }
+body.is-dark .calendar-day.is-vacation-christmas {
+  background: linear-gradient(180deg, rgba(138,56,88,.82) 0%, rgba(112,39,73,.88) 100%) !important;
+}
+body.is-dark .calendar-day.is-vacation-carnival {
+  background: linear-gradient(180deg, rgba(161,96,18,.82) 0%, rgba(138,78,10,.88) 100%) !important;
+}
+body.is-dark .calendar-day.is-vacation-easter {
+  background: linear-gradient(180deg, rgba(92,72,158,.82) 0%, rgba(76,58,134,.88) 100%) !important;
+}
+body.is-dark .calendar-day.is-vacation-christmas .day-event-label,
+body.is-dark .calendar-day.is-vacation-carnival .day-event-label,
+body.is-dark .calendar-day.is-vacation-easter .day-event-label { background: rgba(0,0,0,.18); }
