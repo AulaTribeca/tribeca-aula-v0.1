@@ -16731,3 +16731,7 @@ body.is-dark .password-reset-card-v214{background:rgba(255,255,255,.04)}
   .password-request-row-v214{align-items:flex-start;flex-direction:column}
   .password-request-actions-v214{justify-content:flex-start}
 }
+
+
+/* Tribeca Aula · v215 · password feedback */
+.password-reset-card-v214 .meta{max-width:780px}
