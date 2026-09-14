@@ -16735,3 +16735,28 @@ body.is-dark .password-reset-card-v214{background:rgba(255,255,255,.04)}
 
 /* Tribeca Aula · v215 · password feedback */
 .password-reset-card-v214 .meta{max-width:780px}
+
+
+/* Tribeca Aula · v216 · modo claro y cumpleaños */
+html,body{color-scheme:light only}
+#themeToggle,.theme-toggle,[data-theme-toggle]{display:none!important}
+body.is-dark,body.dark-mode,body.theme-dark{
+  --bg:#f7f4ec!important;
+  --bg-soft:#f3efe5!important;
+  --panel:rgba(255,253,247,.94)!important;
+  --panel-solid:#fffdf7!important;
+  --text:#18231b!important;
+  --muted:#6b6354!important;
+  --green:#064b35!important;
+  --gold:#a8872d!important;
+  --line:rgba(72,61,35,.14)!important;
+  background:#f7f4ec!important;
+  color:#18231b!important;
+}
+.is-birthday-greeting-v216{
+  color:var(--green)!important;
+  letter-spacing:-.02em;
+}
+.hero-card .is-birthday-greeting-v216{
+  font-size:clamp(2.2rem,5vw,4.8rem);
+}
