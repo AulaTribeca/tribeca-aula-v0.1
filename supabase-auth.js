@@ -5635,12 +5635,12 @@ render();
     if(!student) return toast('No se encontró el perfil del alumno.');
     let password=String(suppliedPassword||'').trim();
     if(!password){
-      const entered=prompt(\`Nueva contraseña para \${displayName(student)}:\`, '1234');
+      const entered=prompt(`Nueva contraseña para ${displayName(student)}:`, '1234');
       if(entered===null) return;
       password=String(entered||'').trim();
     }
     if(password.length<4 || password.length>72) return toast('La contraseña debe tener entre 4 y 72 caracteres.');
-    if(!confirm(\`¿Restablecer la contraseña de \${displayName(student)}?\`)) return;
+    if(!confirm(`¿Restablecer la contraseña de ${displayName(student)}?`)) return;
     const {data,error}=await State.client.functions.invoke('tribeca-admin-reset-password',{
       body:{userId:student.id,password}
     });
@@ -5650,21 +5650,21 @@ render();
       return;
     }
     await log('auth','Contraseña de alumno restablecida',{student:displayName(student),username:student.username||''});
-    toast(\`Contraseña restablecida para \${displayName(student)}.\`);
+    toast(`Contraseña restablecida para ${displayName(student)}.`);
     document.querySelectorAll('[data-t214-password]').forEach(input=>{ input.value=''; });
   }
 
   function passwordRequestsContent(){
     const rows=State.data.passwordRequests||[];
     const students=State.data.students||[];
-    return \`<section class="window-panel password-requests-v214">
-      <div class="section-heading"><div><p class="eyebrow">Acceso</p><h3>Recuperación de contraseñas</h3></div><span>\${rows.filter(r=>r.status==='pending').length} pendientes</span></div>
+    return `<section class="window-panel password-requests-v214">
+      <div class="section-heading"><div><p class="eyebrow">Acceso</p><h3>Recuperación de contraseñas</h3></div><span>${rows.filter(r=>r.status==='pending').length} pendientes</span></div>
       <p class="meta">Puedes restablecer la contraseña directamente desde aquí. La contraseña nueva no se guarda en la ficha del alumno.</p>
-      \${rows.length?rows.map(r=>{
+      ${rows.length?rows.map(r=>{
         const student=students.find(s=>String(s.username||'').toLowerCase()===String(r.username||'').toLowerCase());
-        return \`<article class="list-item password-request-row-v214"><div><strong>\${safe(r.username||r.display_name)}</strong><p>\${safe(r.display_name||'')} · \${safe(r.status||'pending')}</p><small>\${fmtDT(r.created_at)}</small></div><div class="password-request-actions-v214">\${student?\`<button type="button" class="primary-btn compact-btn" data-t214-reset-password="\${safe(student.id)}">Restablecer contraseña</button>\`:''}<button type="button" class="secondary-btn compact-btn" data-t16-pass-done="\${safe(r.id)}">Marcar como atendida</button></div></article>\`;
+        return `<article class="list-item password-request-row-v214"><div><strong>${safe(r.username||r.display_name)}</strong><p>${safe(r.display_name||'')} · ${safe(r.status||'pending')}</p><small>${fmtDT(r.created_at)}</small></div><div class="password-request-actions-v214">${student?`<button type="button" class="primary-btn compact-btn" data-t214-reset-password="${safe(student.id)}">Restablecer contraseña</button>`:''}<button type="button" class="secondary-btn compact-btn" data-t16-pass-done="${safe(r.id)}">Marcar como atendida</button></div></article>`;
       }).join(''):'<div class="empty-state">No hay solicitudes pendientes.</div>'}
-    </section>\`;
+    </section>`;
   }
 
   function profileFilterLabel(filter='all'){
@@ -5732,8 +5732,8 @@ render();
       </div>
       <div class="form-status t24-profile-status" data-t24-profile-status></div>
       <section class="premium-form-section password-reset-card-v214" data-t214-password-card>
-        <div class="password-reset-head-v214"><div><p class="eyebrow">Acceso al aula</p><h4>Usuario: \${safe(s.username||'')}</h4><p class="meta">Restablece la contraseña sin cambiar el usuario ni el perfil. Solo tú, como profesora, puedes usar esta opción.</p></div><span>Seguro</span></div>
-        <div class="password-reset-controls-v214"><label>Nueva contraseña<input type="password" autocomplete="new-password" placeholder="Ej. 1234" data-t214-password></label><button type="button" class="primary-btn" data-t214-reset-password="\${safe(s.id)}">Restablecer contraseña</button></div>
+        <div class="password-reset-head-v214"><div><p class="eyebrow">Acceso al aula</p><h4>Usuario: ${safe(s.username||'')}</h4><p class="meta">Restablece la contraseña sin cambiar el usuario ni el perfil. Solo tú, como profesora, puedes usar esta opción.</p></div><span>Seguro</span></div>
+        <div class="password-reset-controls-v214"><label>Nueva contraseña<input type="password" autocomplete="new-password" placeholder="Ej. 1234" data-t214-password></label><button type="button" class="primary-btn" data-t214-reset-password="${safe(s.id)}">Restablecer contraseña</button></div>
       </section>
       ${studentClassesManagementPanelV186(s)}
       ${izamPokemonTeacherPanelV186(s)}
