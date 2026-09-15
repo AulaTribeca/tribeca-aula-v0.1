@@ -2441,27 +2441,27 @@ function studentAssignedClasses(studentId=State.profile?.id){
     return `<section class="student-classroom-area"><div class="section-heading"><h2>Mis clases</h2><span>${classes.length} clase${classes.length===1?'':'s'} activa${classes.length===1?'':'s'}</span></div>${classes.map(studentClassroomCard).join('')}</section>`;
   }
   function focusStudentClassesMarkup(classes=studentAssignedClasses()){
-    const subjects=[];
-    classes.forEach(c=>classSubjectsForStudentClass(c.id).forEach((s,i)=>subjects.push({s,c,i})));
-    if(!subjects.length) return `<section class="focus-study-area panel"><h2>Tu materia</h2><p>Todavía no hay una materia visible asignada.</p></section>`;
-    return `<section class="focus-study-area"><div class="section-heading focus-study-heading"><h2>Tu materia</h2><span>${subjects.length} materia${subjects.length===1?'':'s'} activa${subjects.length===1?'':'s'}</span></div><div class="focus-study-grid">${subjects.map(({s,c,i})=>focusStudySubjectCard(s,c,i)).join('')}</div></section>`;
-  }
-  function isIzamStudyClassV187(c={}){
-    const subjects = c?.id ? classSubjectsForStudentClass(c.id).map(s=>s.subject).join(' ') : '';
-    const txt = normalizeLooseText([c.name,c.center,c.stage,c.course,c.description,subjects].filter(Boolean).join(' '));
-    return /t[eé]cnicas?\s+de\s+estudio|tecnicas?\s+estudio|t[eé]cnica\s+estudio/.test(txt);
-  }
-  function izamVisibleClassesV187(studentId=State.profile?.id){
-    return studentAssignedClasses(studentId).filter(isIzamStudyClassV187);
-  }
-  function izamStudyOnlyMarkupV187(){
-    const classes = izamVisibleClassesV187(State.profile?.id);
-    const subjects=[];
-    classes.forEach(c=>classSubjectsForStudentClass(c.id).filter(s=>isStudySkillsSubject(s.subject) || isIzamStudyClassV187({...c, subject:s.subject})).forEach((s,i)=>subjects.push({s,c,i})));
-    if(!subjects.length){
-      return `<section class="focus-study-area izam-study-only-v187 panel"><div class="section-heading focus-study-heading"><h2>Aula de Técnicas de estudio</h2><span>Pendiente</span></div><p>Todavía no hay una materia visible asignada en Técnicas de estudio.</p></section>`;
-    }
-    return `<section class="focus-study-area izam-study-only-v187"><div class="section-heading focus-study-heading"><h2>Aula de Técnicas de estudio</h2><span>${subjects.length} materia${subjects.length===1?'':'s'} activa${subjects.length===1?'':'s'}</span></div><div class="focus-study-grid">${subjects.map(({s,c,i})=>focusStudySubjectCard(s,c,i)).join('')}</div></section>`;
+    const visible=(classes||[]).filter(c=>c && c.active!==false && !c.hidden);
+    if(!visible.length) return `<section class="focus-study-area panel"><h2>Mi clase</h2><p>Todavía no tienes una clase activa asignada.</p></section>`;
+    return `<section class="focus-study-area focus-classroom-area-v223">
+      <div class="section-heading focus-study-heading"><h2>${visible.length===1?'Mi clase':'Mis clases'}</h2><span>${visible.length} clase${visible.length===1?'':'s'} activa${visible.length===1?'':'s'}</span></div>
+      ${visible.map(c=>{
+        const subjects=classSubjectsForStudentClass(c.id);
+        return `<article class="student-classroom-card focus-classroom-card-v223 panel" data-focus-class-id="${safe(c.id)}">
+          <header>
+            <div>
+              <p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p>
+              <h3>${safe(classroomLabel(c))}</h3>
+              <p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p>
+            </div>
+            <strong>${subjects.length} materia${subjects.length===1?'':'s'}</strong>
+          </header>
+          <div class="student-class-subject-grid focus-study-grid">
+            ${subjects.length?subjects.map((s,i)=>focusStudySubjectCard(s,c,i)).join(''):'<div class="empty-state">Esta clase todavía no tiene materias visibles.</div>'}
+          </div>
+        </article>`;
+      }).join('')}
+    </section>`;
   }
   function focusStudySubjectCard(s,c={},i=0){
     c = c || {};
@@ -2585,9 +2585,6 @@ function studentAssignedClasses(studentId=State.profile?.id){
 
   function focusStudentHome(){
     const p=State.profile;
-    if(isIzamProfile(p)){
-      return `<section class="hero-card panel focus-hero-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
-    }
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
     const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
@@ -2641,12 +2638,13 @@ function studentAssignedClasses(studentId=State.profile?.id){
   function studentHome() {
     const p=State.profile;
     if(studentFocusModeEnabled(p)) return focusStudentHome();
+    const classes=studentAssignedClasses(p?.id);
     const subjects=subjectList(p);
     const dateLabel = new Intl.DateTimeFormat(uiLocale(), {weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
-    if(isIzamProfile(p)){
-      return `<section class="hero-card panel hero-welcome-card izam-home-v187"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${izamPokemonPanelV186(p)}${izamStudyOnlyMarkupV187()}`;
-    }
-    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    const learningArea=classes.length
+      ? studentClassesMarkup()
+      : `<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}${carlaFinanceHomePanelV205()}${learningArea}`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
