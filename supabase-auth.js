@@ -568,20 +568,30 @@
     });
   }
 
-  const TRIBECA_PWA_DISMISSED_KEY = 'tribeca-pwa-install-dismissed-v150';
+  const TRIBECA_PWA_DISMISSED_KEY = 'tribeca-pwa-install-dismissed-v221';
   let tribecaDeferredInstallPrompt = null;
   function isTribecaStandalone(){
     return window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true;
+  }
+  function tribecaPwaPlatform(){
+    const ua=String(window.navigator?.userAgent || '');
+    const platform=String(window.navigator?.platform || '');
+    const maxTouchPoints=Number(window.navigator?.maxTouchPoints || 0);
+    const isiOS=/iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
+    const isSafari=/Safari/i.test(ua) && !/(CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Android)/i.test(ua);
+    const isMacSafari=!isiOS && /Mac/i.test(platform || ua) && isSafari;
+    return { isiOS, isSafari, isMacSafari };
   }
   function pwaText(key){
     const dict={
       install:{es:'Instalar Tribeca Aula',gl:'Instalar Tribeca Aula',en:'Install Tribeca Aula',fr:'Installer Tribeca Aula',pl:'Zainstaluj Tribeca Aula',de:'Tribeca Aula installieren',pt:'Instalar Tribeca Aula'},
       installShort:{es:'Instalar app',gl:'Instalar app',en:'Install app',fr:'Installer l’app',pl:'Zainstaluj aplikację',de:'App installieren',pt:'Instalar app'},
       ready:{es:'Abre Tribeca Aula como una app, con icono propio y sin la barra normal del navegador.',gl:'Abre Tribeca Aula como unha app, con icona propia e sen a barra normal do navegador.',en:'Open Tribeca Aula as an app, with its own icon and without the normal browser bar.',fr:'Ouvre Tribeca Aula comme une app, avec sa propre icône et sans la barre normale du navigateur.',pl:'Otwórz Tribeca Aula jak aplikację, z własną ikoną i bez zwykłego paska przeglądarki.',de:'Öffne Tribeca Aula als App, mit eigenem Symbol und ohne normale Browserleiste.',pt:'Abre a Tribeca Aula como uma app, com ícone próprio e sem a barra normal do navegador.'},
+      readyIOS:{es:'En iPhone y iPad se instala desde Compartir → Añadir a pantalla de inicio.',gl:'En iPhone e iPad instálase desde Compartir → Engadir á pantalla de inicio.',en:'On iPhone and iPad, install it from Share → Add to Home Screen.',fr:'Sur iPhone et iPad, installe-la via Partager → Ajouter à l’écran d’accueil.',pl:'Na iPhonie i iPadzie zainstaluj ją przez Udostępnij → Dodaj do ekranu początkowego.',de:'Auf iPhone und iPad installierst du sie über Teilen → Zum Home-Bildschirm.',pt:'No iPhone e iPad, instala através de Partilhar → Adicionar ao ecrã principal.'},
       later:{es:'Ahora no',gl:'Agora non',en:'Not now',fr:'Pas maintenant',pl:'Nie teraz',de:'Jetzt nicht',pt:'Agora não'},
       installed:{es:'Tribeca Aula ya está instalada en este dispositivo.',gl:'Tribeca Aula xa está instalada neste dispositivo.',en:'Tribeca Aula is already installed on this device.',fr:'Tribeca Aula est déjà installée sur cet appareil.',pl:'Tribeca Aula jest już zainstalowana na tym urządzeniu.',de:'Tribeca Aula ist auf diesem Gerät bereits installiert.',pt:'Tribeca Aula já está instalada neste dispositivo.'},
       unavailableTitle:{es:'Instalación manual',gl:'Instalación manual',en:'Manual installation',fr:'Installation manuelle',pl:'Instalacja ręczna',de:'Manuelle Installation',pt:'Instalação manual'},
-      unavailableBody:{es:'Si no aparece el cuadro automático, abre el menú del navegador y elige “Instalar aplicación” o “Añadir a pantalla de inicio”. En iPhone o iPad, pulsa Compartir y después “Añadir a pantalla de inicio”.',gl:'Se non aparece o cadro automático, abre o menú do navegador e escolle “Instalar aplicación” ou “Engadir á pantalla de inicio”. En iPhone ou iPad, pulsa Compartir e despois “Engadir á pantalla de inicio”.',en:'If the automatic prompt does not appear, open the browser menu and choose “Install app” or “Add to Home screen”. On iPhone or iPad, tap Share and then “Add to Home Screen”.',fr:'Si la fenêtre automatique n’apparaît pas, ouvre le menu du navigateur et choisis “Installer l’application” ou “Ajouter à l’écran d’accueil”. Sur iPhone ou iPad, touche Partager puis “Ajouter à l’écran d’accueil”.',pl:'Jeśli automatyczny komunikat się nie pojawi, otwórz menu przeglądarki i wybierz „Zainstaluj aplikację” lub „Dodaj do ekranu głównego”. Na iPhonie lub iPadzie stuknij Udostępnij, a potem „Dodaj do ekranu początkowego”.',de:'Wenn der automatische Dialog nicht erscheint, öffne das Browsermenü und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“. Auf iPhone oder iPad: Teilen antippen und dann „Zum Home-Bildschirm“.',pt:'Se a janela automática não aparecer, abre o menu do navegador e escolhe “Instalar aplicação” ou “Adicionar ao ecrã inicial”. No iPhone ou iPad, toca em Partilhar e depois em “Adicionar ao ecrã principal”.'},
+      unavailableBody:{es:'Si no aparece el cuadro automático, abre el menú del navegador y elige “Instalar aplicación” o “Añadir a pantalla de inicio”. En iPhone o iPad: pulsa Compartir, toca “Añadir a pantalla de inicio”, activa “Abrir como app web” si aparece y confirma “Añadir”. En Safari para Mac, usa Archivo → “Añadir al Dock”.',gl:'Se non aparece o cadro automático, abre o menú do navegador e escolle “Instalar aplicación” ou “Engadir á pantalla de inicio”. En iPhone ou iPad: pulsa Compartir, toca “Engadir á pantalla de inicio”, activa “Abrir como app web” se aparece e confirma “Engadir”. En Safari para Mac, usa Arquivo → “Engadir ao Dock”.',en:'If the automatic prompt does not appear, open the browser menu and choose “Install app” or “Add to Home Screen”. On iPhone or iPad: tap Share, choose “Add to Home Screen”, enable “Open as Web App” if shown, then confirm “Add”. In Safari on Mac, use File → “Add to Dock”.',fr:'Si la fenêtre automatique n’apparaît pas, ouvre le menu du navigateur et choisis “Installer l’application” ou “Ajouter à l’écran d’accueil”. Sur iPhone ou iPad : touche Partager, choisis “Ajouter à l’écran d’accueil”, active “Ouvrir comme app web” si l’option apparaît, puis confirme. Dans Safari sur Mac, utilise Fichier → “Ajouter au Dock”.',pl:'Jeśli automatyczny komunikat się nie pojawi, otwórz menu przeglądarki i wybierz „Zainstaluj aplikację” lub „Dodaj do ekranu głównego”. Na iPhonie lub iPadzie: stuknij Udostępnij, wybierz „Dodaj do ekranu początkowego”, włącz „Otwórz jako aplikację internetową”, jeśli ta opcja się pojawi, i potwierdź. W Safari na Macu użyj Plik → „Dodaj do Docka”.',de:'Wenn der automatische Dialog nicht erscheint, öffne das Browsermenü und wähle „App installieren“ oder „Zum Home-Bildschirm hinzufügen“. Auf iPhone oder iPad: Teilen antippen, „Zum Home-Bildschirm“ wählen, falls angezeigt „Als Web-App öffnen“ aktivieren und „Hinzufügen“ bestätigen. In Safari auf dem Mac: Ablage → „Zum Dock hinzufügen“.',pt:'Se a janela automática não aparecer, abre o menu do navegador e escolhe “Instalar aplicação” ou “Adicionar ao ecrã principal”. No iPhone ou iPad: toca em Partilhar, escolhe “Adicionar ao ecrã principal”, ativa “Abrir como app web” se aparecer e confirma “Adicionar”. No Safari para Mac, usa Ficheiro → “Adicionar ao Dock”.'},
       close:{es:'Cerrar',gl:'Pechar',en:'Close',fr:'Fermer',pl:'Zamknij',de:'Schließen',pt:'Fechar'},
       offlineReady:{es:'Tribeca Aula queda preparada para abrir más rápido en este dispositivo.',gl:'Tribeca Aula queda preparada para abrir máis rápido neste dispositivo.',en:'Tribeca Aula is ready to open faster on this device.',fr:'Tribeca Aula est prête à s’ouvrir plus vite sur cet appareil.',pl:'Tribeca Aula jest gotowa do szybszego otwierania na tym urządzeniu.',de:'Tribeca Aula kann auf diesem Gerät nun schneller geöffnet werden.',pt:'Tribeca Aula está pronta para abrir mais depressa neste dispositivo.'}
     };
@@ -621,11 +631,15 @@
     ensurePwaInstallCta();
     const node=document.getElementById('tribecaPwaInstallCta');
     if(!node) return;
-    node.hidden = isTribecaStandalone() || !tribecaDeferredInstallPrompt || localStorage.getItem(TRIBECA_PWA_DISMISSED_KEY)==='1';
+    let dismissed=false;
+    try { dismissed=localStorage.getItem(TRIBECA_PWA_DISMISSED_KEY)==='1'; } catch(_e) {}
+    const platform=tribecaPwaPlatform();
+    node.hidden = isTribecaStandalone() || dismissed;
     if(!node.hidden){
       const strong=node.querySelector('strong'); if(strong) strong.textContent=pwaText('install');
-      const span=node.querySelector('span'); if(span) span.textContent=pwaText('ready');
+      const span=node.querySelector('span'); if(span) span.textContent=platform.isiOS && !tribecaDeferredInstallPrompt ? pwaText('readyIOS') : pwaText('ready');
       const btn=node.querySelector('[data-pwa-install]'); if(btn) btn.textContent=pwaText('installShort');
+      node.dataset.installMode = tribecaDeferredInstallPrompt ? 'native' : (platform.isiOS ? 'ios' : (platform.isMacSafari ? 'mac-safari' : 'manual'));
     }
   }
   async function handleTribecaPwaInstall(){
@@ -666,6 +680,13 @@
     updatePwaInstallCta();
     toast(pwaText('offlineReady'));
   });
+  window.addEventListener('pageshow', ()=>updatePwaInstallCta());
+  try {
+    window.matchMedia?.('(display-mode: standalone)')?.addEventListener?.('change', ()=>{
+      syncTribecaStandaloneClass();
+      updatePwaInstallCta();
+    });
+  } catch(_e) {}
 
   const A11Y_STORAGE_KEY = 'tribeca-accessibility-settings-v115';
   const A11Y_DEFAULTS = {
@@ -9023,7 +9044,7 @@ function classroomCard(c,i=0){
   }
   async function boot() {
     ensureLanguageDefault();
-    registerTribecaPwa();
+    registerTribecaPwa({ immediate:true });
     bindTribecaServiceWorkerMessages();
     applyAccessibilitySettings();
     setTimeout(()=>{ ensureAccessibilityWidget(); updatePwaInstallCta(); }, 0);
