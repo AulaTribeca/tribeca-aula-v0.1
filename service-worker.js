@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v223 · PWA multiplataforma, caché de app shell, push y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v223';
+/* Tribeca Aula · Service worker v224 · PWA multiplataforma, caché de app shell, push y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v224';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -7,7 +7,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './styles.css?v=220',
   './app.js?v=216',
   './supabase-config.js',
-  './supabase-auth.js?v=223',
+  './supabase-auth.js?v=224',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
   './assets/tribeca-pwa-icon-512.png',
@@ -36,11 +36,15 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key.startsWith('tribeca-aula-static-') && key !== TRIBECA_CACHE).map(key => caches.delete(key))))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith('tribeca-aula-static-') && key !== TRIBECA_CACHE).map(key => caches.delete(key)));
+    await self.clients.claim();
+    const clients = await self.clients.matchAll({type:'window', includeUncontrolled:true});
+    await Promise.allSettled(clients.map(client => {
+      try { return client.navigate(client.url); } catch (_e) { return null; }
+    }));
+  })());
 });
 
 function shouldHandle(request) {
