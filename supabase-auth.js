@@ -2073,6 +2073,32 @@
     return raw==='summer' || raw==='verano' ? 'summer' : 'school';
   }
   function activeScheduleSeason(){ return 'school'; }
+  function scheduleRowIdentityV222(row={}, effective=false){
+    const season=scheduleRecordSeason(row);
+    const base=[
+      season,
+      Number(row.weekday||0),
+      String(row.start_time||'').slice(0,5),
+      String(row.end_time||'').slice(0,5),
+      String(row.class_type||row.type||'group')
+    ];
+    if(!effective){
+      base.push(String(row.valid_from||''), String(row.valid_to||''));
+    }
+    return base.join('|');
+  }
+  function dedupeScheduleRowsV222(rows=[], effective=false){
+    const map=new Map();
+    (rows||[]).forEach(row=>{
+      const key=scheduleRowIdentityV222(row,effective);
+      const prev=map.get(key);
+      if(!prev){ map.set(key,row); return; }
+      const prevScore=(String(prev.notes||'').trim()?2:0)+(prev.valid_from?1:0)+(prev.updated_at?1:0);
+      const rowScore=(String(row.notes||'').trim()?2:0)+(row.valid_from?1:0)+(row.updated_at?1:0);
+      if(rowScore>prevScore) map.set(key,row);
+    });
+    return [...map.values()];
+  }
   function scheduleMonthNumber(value){
     const raw=String(value || todayIso()).slice(0,10);
     const m=raw.match(/^\d{4}-(\d{2})/);
@@ -2114,7 +2140,10 @@
   }
   function scheduleRowsForStudentDate(studentId, isoDate, opts={}){
     const dateKey=String(isoDate||'').slice(0,10);
-    const rows=(State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId) && scheduleRowValidOnDateV207(x,dateKey||todayIso()));
+    const rows=dedupeScheduleRowsV222(
+      (State.data.schedules||[]).filter(x=>String(x.user_id)===String(studentId) && scheduleRowValidOnDateV207(x,dateKey||todayIso())),
+      true
+    );
     if(opts.allSeasons) return rows;
     if(opts.season) return rows.filter(x=>scheduleRecordSeason(x)===opts.season);
     const preferred=preferredScheduleSeasonForDate(isoDate);
@@ -2142,9 +2171,11 @@
   };
   function teacherScheduleModeSwitch(){ return ''; }
   function studentScheduleRows(studentId, season=activeScheduleSeasonForStudent(studentId)){
-    return (State.data.schedules||[])
-      .filter(x=>String(x.user_id)===String(studentId) && scheduleRowValidOnDateV207(x,todayIso()) && scheduleRecordSeason(x)===season)
-      .sort((a,b)=>Number(a.weekday||0)-Number(b.weekday||0) || String(a.start_time||'').localeCompare(String(b.start_time||'')));
+    return dedupeScheduleRowsV222(
+      (State.data.schedules||[])
+        .filter(x=>String(x.user_id)===String(studentId) && scheduleRowValidOnDateV207(x,todayIso()) && scheduleRecordSeason(x)===season),
+      true
+    ).sort((a,b)=>Number(a.weekday||0)-Number(b.weekday||0) || String(a.start_time||'').localeCompare(String(b.start_time||'')));
   }
   function buildStudentScheduleFromFormData(fd, prefix='schoolSchedule', season='school'){
     const activeSeason=String(fd.get('activeScheduleSeason')||'school')==='summer' ? 'summer' : 'school';
@@ -2160,6 +2191,30 @@
       season,
       active:isActive
     })).filter(r=>r.weekday && r.start_time && r.end_time);
+  }
+  function normalizeSchedulePayloadV222(rows=[]){
+    const clean=[];
+    const dayNames=['','lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
+    for(const raw of rows||[]){
+      const row={...raw};
+      row.weekday=Number(row.weekday||0);
+      row.start_time=String(row.start_time||'').slice(0,5);
+      row.end_time=String(row.end_time||'').slice(0,5);
+      row.class_type=String(row.class_type||'group');
+      row.schedule_season=scheduleRecordSeason(row);
+      row.season=row.schedule_season;
+      if(row.weekday<1 || row.weekday>7) throw new Error('Hay un día de horario no válido.');
+      if(!row.start_time || !row.end_time || row.start_time>=row.end_time) throw new Error(`Horario no válido el ${dayNames[row.weekday]}: la hora de inicio debe ser anterior a la de fin.`);
+      const exact=clean.find(x=>x.schedule_season===row.schedule_season && x.weekday===row.weekday && x.start_time===row.start_time && x.end_time===row.end_time && x.class_type===row.class_type);
+      if(exact){
+        if(!String(exact.notes||'').trim() && String(row.notes||'').trim()) exact.notes=row.notes;
+        continue;
+      }
+      const overlap=clean.find(x=>x.schedule_season===row.schedule_season && x.weekday===row.weekday && x.start_time<row.end_time && row.start_time<x.end_time);
+      if(overlap) throw new Error(`Horario solapado el ${dayNames[row.weekday]}: ${overlap.start_time}–${overlap.end_time} coincide con ${row.start_time}–${row.end_time}.`);
+      clean.push(row);
+    }
+    return clean;
   }
   function scheduleRowsEditor(rows=[], prefix='schoolSchedule'){
     const weekdayOptions = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
@@ -5831,10 +5886,10 @@ render();
     const last = String(fd.get('lastName') || '').trim();
     const username = String(fd.get('username') || '').trim().toLowerCase();
     const full = String(fd.get('fullName') || `${first} ${last}`.trim() || knownStudentNames[username] || username).trim();
-    const schedule = [
+    const schedule = normalizeSchedulePayloadV222([
       ...buildStudentScheduleFromFormData(fd, 'schoolSchedule', 'school'),
       ...buildStudentScheduleFromFormData(fd, 'summerSchedule', 'summer')
-    ];
+    ]);
     return { id, first_name:first, last_name:last, full_name:full, username, auth_email:String(fd.get('authEmail')||'').trim()||null, personal_email:String(fd.get('personalEmail')||'').trim()||null, center:fd.get('center')||null, stage:fd.get('stage')||null, course:fd.get('course')||null, track:String(fd.get('track')||'').trim()||null, birth_date:String(fd.get('birthDate')||'').trim()||null, student_photo_url:String(fd.get('studentPhotoUrl')||'').trim()||null, father_full_name:String(fd.get('fatherFullName')||'').trim()||null, mother_full_name:String(fd.get('motherFullName')||'').trim()||null, family_phone:String(fd.get('familyPhone')||'').trim()||null, emergency_phone:String(fd.get('emergencyPhone')||'').trim()||null, family_email:String(fd.get('familyEmail')||'').trim()||null, preferred_contact:String(fd.get('preferredContact')||'').trim()||null, family_group_id:String(fd.get('familyGroupId')||'').trim()||null, family_name:String(fd.get('familyName')||'').trim()||null, address:String(fd.get('studentAddress')||'').trim()||null, school_tutor:String(fd.get('schoolTutor')||'').trim()||null, support_reason:String(fd.get('supportReason')||'').trim()||null, learning_goals:String(fd.get('learningGoals')||'').trim()||null, initial_assessment:String(fd.get('initialAssessment')||'').trim()||null, family_coordination:String(fd.get('familyCoordination')||'').trim()||null, diagnosis_notes:String(fd.get('diagnosisNotes')||'').trim()||null, nee_types:fd.getAll('neeTypes'), neae_types:fd.getAll('neaeTypes'), health_conditions:fd.getAll('healthConditions'), observations:fd.get('observations')||'', personalized_attention:!!fd.get('personalizedAttention'), focus_mode_enabled:!!fd.get('focusModeEnabled'), schedule };
   }
 
@@ -5886,7 +5941,39 @@ render();
   }
 
 
-  function paymentMonthRecord(userId, month){ return (State.data.paymentMonths||[]).find(x=>x.user_id===userId && String(x.month||'').slice(0,7)===String(month).slice(0,7)) || {}; }
+  function paymentMonthRecord(userId, month){ return (State.data.paymentMonths||[]).find(x=>String(x.user_id)===String(userId) && String(x.month||'').slice(0,7)===String(month).slice(0,7)) || {}; }
+  function finitePaymentValueV222(value){
+    if(value===null || value===undefined || value==='') return null;
+    const n=Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  function paymentFinancialAmountV222(userId,month,calc=null){
+    const pay=paymentMonthRecord(userId,month);
+    const snap=finitePaymentValueV222(pay.amount_due_snapshot);
+    if(pay.paid && snap!==null) return snap;
+    return Number((calc||calculatePaymentAmount(userId,month)).amount||0);
+  }
+  function paymentCollectedAmountV222(userId,month){
+    const pay=paymentMonthRecord(userId,month);
+    if(!pay.paid) return 0;
+    return finitePaymentValueV222(pay.amount_paid);
+  }
+  function paymentSnapshotDetailV222(pay={},calc={}){
+    const snap=pay.billing_snapshot && typeof pay.billing_snapshot==='object' ? pay.billing_snapshot : {};
+    const type=String(snap.tariff_type||'');
+    const classes=finitePaymentValueV222(snap.billable_classes);
+    const rate=finitePaymentValueV222(snap.class_rate);
+    const fixed=finitePaymentValueV222(snap.monthly_fee);
+    if(type==='individual' && classes!==null && rate!==null) return `${classes} clases computadas × ${money(rate)}`;
+    if(type==='mixed'){
+      const pieces=[];
+      if(fixed!==null) pieces.push(`cuota fija ${money(fixed)}`);
+      if(classes!==null && rate!==null) pieces.push(`${classes} clases individuales × ${money(rate)}`);
+      if(pieces.length) return pieces.join(' + ');
+    }
+    if(type==='group' && fixed!==null) return `Cuota fija mensual ${money(fixed)}`;
+    return String(calc.detail||'');
+  }
   function monthLabel(month){ try { const [y,m]=String(month).split('-').map(Number); return new Date(y, (m||1)-1, 1).toLocaleDateString('es-ES',{month:'long',year:'numeric'}); } catch(_){ return String(month||''); } }
   function addMonthsToMonth(month, delta){ const [y,m]=String(month||todayIso().slice(0,7)).split('-').map(Number); const d=new Date(y||new Date().getFullYear(), (m||1)-1+delta, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
   function paymentModeForStudent(s){
@@ -5938,7 +6025,11 @@ render();
   }
   function paymentSummaryStatus(pay={}, month='', paused=false, student=null){
     if(paused) return {key:'paused', label:'En pausa', detail:'Excluido de pagos esperados'};
-    if(pay.paid) return {key:'paid', label:'Pagado', detail:pay.paid_date?fmtDate(pay.paid_date):'Sin fecha indicada'};
+    if(pay.paid){
+      const amountKnown=finitePaymentValueV222(pay.amount_paid)!==null;
+      const dateText=pay.paid_date?fmtDate(pay.paid_date):'Sin fecha indicada';
+      return {key:'paid', label:'Pagado', detail:amountKnown?dateText:`${dateText} · cuantía cobrada no guardada en el sistema antiguo`};
+    }
     if(student && isPaymentOverdue(month, student)){
       return paymentModeForStudent(student)==='advance'
         ? {key:'late', label:'Retrasado', detail:'Pago por adelantado pendiente'}
@@ -5963,29 +6054,37 @@ render();
     const paused=paymentPausedForMonth(s.id,month);
     const status=paymentSummaryStatus(pay, month, paused, s);
     const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
-    return {calc,pay,paused,status,bill};
+    const financialAmount=paymentFinancialAmountV222(s.id,month,calc);
+    const collectedAmount=paymentCollectedAmountV222(s.id,month);
+    return {calc,pay,paused,status,bill,financialAmount,collectedAmount};
   }
   function paymentKpisV146(month){
     const students=State.data.students||[];
     let total=0, paid=0, pending=0, late=0, paused=0;
-    students.forEach(s=>{ const m=financeStudentMetricsV146(s,month); if(!m.paused) total+=Number(m.calc.amount||0); if(m.status.key==='paid') paid++; else if(m.status.key==='late') late++; else if(m.status.key==='paused') paused++; else pending++; });
+    students.forEach(s=>{ const m=financeStudentMetricsV146(s,month); if(!m.paused) total+=Number(m.financialAmount||0); if(m.status.key==='paid') paid++; else if(m.status.key==='late') late++; else if(m.status.key==='paused') paused++; else pending++; });
     return {total,paid,pending,late,paused,count:students.length};
   }
   function financeTopKpisMarkupV146(month){
     const students=State.data.students||[];
-    let total=0,collected=0,remaining=0,lateAmount=0,paidCount=0,pendingCount=0,lateCount=0;
+    let total=0,collected=0,remaining=0,lateAmount=0,paidCount=0,pendingCount=0,lateCount=0,unknownCollectedCount=0;
     students.forEach(s=>{
       const m=financeStudentMetricsV146(s,month);
       if(m.paused) return;
-      const amount=Number(m.calc.amount||0);
+      const amount=Number(m.financialAmount||0);
       total+=amount;
-      if(m.status.key==='paid'){ collected+=amount; paidCount++; }
-      else { remaining+=amount; if(m.status.key==='late'){ lateAmount+=amount; lateCount++; } else pendingCount++; }
+      if(m.status.key==='paid'){
+        paidCount++;
+        if(m.collectedAmount===null) unknownCollectedCount++;
+        else collected+=Number(m.collectedAmount||0);
+      } else {
+        remaining+=amount;
+        if(m.status.key==='late'){ lateAmount+=amount; lateCount++; } else pendingCount++;
+      }
     });
     const pct=total?Math.round(collected*100/total):0;
     return `<section class="v210-money-summary">
       <article><small>Total previsto</small><strong>${money(total)}</strong><span>${safe(monthLabel(month))}</span></article>
-      <article class="is-ok"><small>Ya cobrado</small><strong>${money(collected)}</strong><span>${paidCount} pagos registrados</span></article>
+      <article class="is-ok"><small>Ya cobrado</small><strong>${money(collected)}</strong><span>${paidCount} pagos registrados${unknownCollectedCount?` · ${unknownCollectedCount} histórico/s sin cuantía guardada`:''}</span></article>
       <article class="${remaining?'is-warn':''}"><small>Queda por cobrar</small><strong>${money(remaining)}</strong><span>${pendingCount+lateCount} pagos pendientes</span></article>
       <article class="${lateAmount?'is-danger':''}"><small>Vencido pendiente</small><strong>${money(lateAmount)}</strong><span>${lateCount} retrasados</span></article>
       <div class="v210-progress"><i><b style="width:${Math.max(0,Math.min(100,pct))}%"></b></i><span>${pct}% cobrado</span></div>
@@ -6103,7 +6202,7 @@ render();
     const status=active?`<div class="pause-active-card"><strong>Asistencia pausada</strong><p>${safe(pauseStatusText(s.id))}. El acceso del alumno al aula virtual queda bloqueado mientras dure la pausa.</p></div>`:(upcoming?`<div class="pause-active-card is-upcoming"><strong>Pausa programada</strong><p>Programada desde ${safe(fmtDate(upcoming.start_date))}${upcoming.end_date?` hasta ${safe(fmtDate(upcoming.end_date))}`:' hasta reactivación manual'}.</p></div>`:'<p class="meta">Puedes programar una pausa por fechas o dejarla abierta para activarla y desactivarla manualmente. La pausa se crea solo si marcas expresamente “Pausa activa”.</p>');
     return `<section class="student-pause-panel"><h4>Pausa temporal de asistencia y acceso</h4>${status}<form id="t50PauseForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="pauseId" value="${safe(editing.id||'')}"><input type="hidden" name="userId" value="${safe(s.id)}"><div class="window-grid"><label>Tipo de pausa<select name="mode"><option value="scheduled" ${editing.mode!=='manual'?'selected':''}>Programada por fechas</option><option value="manual" ${editing.mode==='manual'?'selected':''}>Manual, hasta reactivación</option></select></label><label class="check-line"><input type="checkbox" name="active" ${(active || (editing.id && editing.active!==false))?'checked':''}> Pausa activa</label></div><div class="window-grid"><label>Fecha de inicio<input name="startDate" type="date" value="${safe(editing.start_date||todayIso())}" required></label><label>Fecha de fin<input name="endDate" type="date" value="${safe(editing.end_date||'')}"><small>Déjala en blanco si la pausa será manual.</small></label></div><label>Motivo o nota visible para el alumno cuando intente iniciar sesión<textarea name="reason" rows="2" placeholder="Ej.: pausa de verano, viaje familiar, descanso temporal... El alumno verá este texto al intentar entrar en el aula.">${safe(editing.reason||'')}</textarea><small class="field-help">No escribas aquí nada que no quieras que el alumno vea en la pantalla de acceso pausado.</small></label><div class="inline-actions"><button class="primary-btn" type="submit">Guardar pausa</button>${active?`<button class="danger-btn" type="button" data-t50-end-pause="${safe(active.id)}">Reanudar asistencia desde hoy</button>`:''}</div></form>${pauses.length?`<details class="pause-history"><summary>Histórico de pausas (${pauses.length})</summary><table class="premium-table compact"><thead><tr><th>Inicio</th><th>Fin</th><th>Estado</th><th>Motivo visible</th></tr></thead><tbody>${pauses.map(p=>`<tr><td>${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.end_date?fmtDate(p.end_date):'Abierta'}</td><td>${pauseCoversDate(p)?'Activa':'Finalizada/programada'}</td><td>${safe(p.reason||'—')}</td></tr>`).join('')}</tbody></table></details>`:''}</section>`;
   }
-  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const last=new Date(y,m,0).getDate(); const out=[]; for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; const sched=scheduleRowsForStudentDate(userId, iso, opts); sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>out.push({date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), season:scheduleRecordSeason(s), paused:isPaused})); } return out; }
+  function monthScheduleDays(userId,month,opts={}){ const [y,m]=String(month).split('-').map(Number); if(!y||!m) return []; const last=new Date(y,m,0).getDate(); const out=[]; const seen=new Set(); for(let d=1; d<=last; d++){ const date=new Date(y,m-1,d); const iso=toIso(date); const isPaused=pausedOnDate(userId,iso); if(isPaused && !opts.includePaused) continue; const weekday=((date.getDay()+6)%7)+1; const sched=scheduleRowsForStudentDate(userId, iso, opts); sched.filter(s=>Number(s.weekday)===weekday).forEach(s=>{ const item={date:iso, start:String(s.start_time||'').slice(0,5), end:String(s.end_time||'').slice(0,5), type:String(s.class_type||s.type||'group'), season:scheduleRecordSeason(s), paused:isPaused}; const key=`${item.date}|${item.start}|${item.end}|${item.type}|${item.season}`; if(seen.has(key)) return; seen.add(key); out.push(item); }); } return out; }
   function attendanceRecordForScheduledDay(userId,d){
     return (State.data.attendance||[]).find(a=>String(a.user_id)===String(userId) && String(a.class_date||'').slice(0,10)===String(d.date||'').slice(0,10) && String(a.scheduled_start||'').slice(0,5)===String(d.start||'').slice(0,5));
   }
@@ -6120,8 +6219,8 @@ render();
     if(rec?.status) return String(rec.status);
     return defaultPresentForScheduledDay(userId,d,bill) ? 'present' : 'absent';
   }
-  function calculatePaymentAmount(userId,month){
-    const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(userId))||{};
+  function calculatePaymentAmount(userId,month,billOverride=null){
+    const bill=billOverride || (State.data.billing||[]).find(b=>String(b.user_id)===String(userId))||{};
     const allDays=monthScheduleDays(userId,month,{includePaused:true});
     const billingStart=String(bill.billing_start_date||'').slice(0,10);
     const [monthYear,monthNumber]=String(month||'').split('-').map(Number);
@@ -6162,11 +6261,11 @@ render();
     }
     return {amount,detail,present:actualPresent,billableClasses,individualPresent,fixedGroupDays:activeDays.filter(d=>d.type!=='individual').length,absent,justified,paused,totalDays:eligibleDays.length,activeDays:activeDays.length,assumedPresent:tariff==='individual'||tariff==='mixed'};
   }
-  function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); return `<strong>Total calculado: ${money(c.amount)}</strong><p>${safe(c.detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
+  function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); const amount=paymentFinancialAmountV222(userId,month,c); const detail=paymentSnapshotDetailV222(pay,c); return `<strong>Total: ${money(amount)}</strong><p>${safe(detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
   function paymentStudentHistory(userId){
     const pauseMonths=pauseRecords(userId).flatMap(p=>{ const start=String(p.start_date||todayIso()).slice(0,7); const end=String(p.end_date||start).slice(0,7); return [start,end]; });
     const months=[...new Set([...(State.data.paymentMonths||[]).filter(p=>p.user_id===userId).map(p=>String(p.month).slice(0,7)), ...pauseMonths, State.billingMonth||defaultBillingMonth()])].filter(Boolean).sort().reverse();
-    return `<table class="premium-table compact"><thead><tr><th>Mes</th><th>Importe</th><th>Estado</th><th>Forma de pago</th><th>Día de pago</th><th>Pausas</th><th>Recibí</th></tr></thead><tbody>${months.map(m=>{ const c=calculatePaymentAmount(userId,m); const p=paymentMonthRecord(userId,m); const pausedBilling=paymentPausedForMonth(userId,m); const pauses=pauseMonthOverlap(userId,m).length; return `<tr class="${pausedBilling?'is-paused-row':''}"><td>${safe(monthLabel(m))}</td><td>${money(pausedBilling?0:c.amount)}</td><td>${pausedBilling?'En pausa, excluido':p.paid?'Pagado':'Pendiente'}</td><td>${safe(paymentMethodLabel(p.payment_method))}</td><td>${p.paid_date?fmtDate(p.paid_date):'—'}</td><td>${pauses?`${pauses} pausa/s`:c.paused?`${c.paused} clase/s`: '—'}</td><td><button type="button" class="secondary-btn compact-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(userId)}','${safe(m)}')">Descargar</button></td></tr>`; }).join('')}</tbody></table>`;
+    return `<table class="premium-table compact"><thead><tr><th>Mes</th><th>Importe</th><th>Estado</th><th>Forma de pago</th><th>Día de pago</th><th>Pausas</th><th>Recibí</th></tr></thead><tbody>${months.map(m=>{ const c=calculatePaymentAmount(userId,m); const p=paymentMonthRecord(userId,m); const amount=paymentFinancialAmountV222(userId,m,c); const pausedBilling=paymentPausedForMonth(userId,m); const pauses=pauseMonthOverlap(userId,m).length; return `<tr class="${pausedBilling?'is-paused-row':''}"><td>${safe(monthLabel(m))}</td><td>${money(pausedBilling?0:amount)}</td><td>${pausedBilling?'En pausa, excluido':p.paid?'Pagado':'Pendiente'}</td><td>${safe(paymentMethodLabel(p.payment_method))}</td><td>${p.paid_date?fmtDate(p.paid_date):'—'}</td><td>${pauses?`${pauses} pausa/s`:c.paused?`${c.paused} clase/s`: '—'}</td><td><button type="button" class="secondary-btn compact-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(userId)}','${safe(m)}')">Descargar</button></td></tr>`; }).join('')}</tbody></table>`;
   }
 
   function studentFamilyKey(s={}){
@@ -6180,14 +6279,14 @@ render();
   function familyPaymentCard(s={}, month=defaultBillingMonth()){
     const members=familyGroupForStudent(s);
     if(members.length<2) return '';
-    const rows=members.map(st=>{ const calc=calculatePaymentAmount(st.id, month); const pay=paymentMonthRecord(st.id,month); return {st,calc,pay,paused:paymentPausedForMonth(st.id,month)}; });
-    const total=rows.reduce((sum,r)=>sum+(r.paused?0:Number(r.calc.amount||0)),0);
-    return `<section class="window-panel family-payment-card-v144"><div><p class="eyebrow">Pago familiar único</p><h3>${safe(s.family_name || s.family_group_id || 'Familia')}</h3><p class="meta">Puedes ver el importe total familiar y el desglose individual de cada hermano/a.</p></div><strong>${money(total)}</strong><table class="premium-table compact-table"><thead><tr><th>Alumno/a</th><th>Importe individual</th><th>Estado</th></tr></thead><tbody>${rows.map(r=>{ const status=paymentSummaryStatus(r.pay, month, r.paused, r.st); return `<tr><td>${safe(displayName(r.st))}</td><td>${money(r.paused?0:r.calc.amount)}</td><td><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></td></tr>`; }).join('')}</tbody></table></section>`;
+    const rows=members.map(st=>{ const calc=calculatePaymentAmount(st.id, month); const pay=paymentMonthRecord(st.id,month); const amount=paymentFinancialAmountV222(st.id,month,calc); return {st,calc,pay,amount,paused:paymentPausedForMonth(st.id,month)}; });
+    const total=rows.reduce((sum,r)=>sum+(r.paused?0:Number(r.amount||0)),0);
+    return `<section class="window-panel family-payment-card-v144"><div><p class="eyebrow">Pago familiar único</p><h3>${safe(s.family_name || s.family_group_id || 'Familia')}</h3><p class="meta">Puedes ver el importe total familiar y el desglose individual de cada hermano/a.</p></div><strong>${money(total)}</strong><table class="premium-table compact-table"><thead><tr><th>Alumno/a</th><th>Importe individual</th><th>Estado</th></tr></thead><tbody>${rows.map(r=>{ const status=paymentSummaryStatus(r.pay, month, r.paused, r.st); return `<tr><td>${safe(displayName(r.st))}</td><td>${money(r.paused?0:r.amount)}</td><td><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></td></tr>`; }).join('')}</tbody></table></section>`;
   }
   function familySummaryRows(month){
     const groupsMap=new Map();
     (State.data.students||[]).forEach(s=>{ const key=studentFamilyKey(s); if(!key) return; if(!groupsMap.has(key.toLowerCase())) groupsMap.set(key.toLowerCase(), {label:s.family_name||key, members:[]}); groupsMap.get(key.toLowerCase()).members.push(s); });
-    return [...groupsMap.values()].filter(g=>g.members.length>1).map(g=>{ const total=g.members.reduce((sum,s)=>sum+(paymentPausedForMonth(s.id,month)?0:Number(calculatePaymentAmount(s.id,month).amount||0)),0); return `<tr><td>${safe(g.label)}</td><td>${g.members.map(displayName).map(safe).join('<br>')}</td><td>${money(total)}</td></tr>`; }).join('');
+    return [...groupsMap.values()].filter(g=>g.members.length>1).map(g=>{ const total=g.members.reduce((sum,s)=>{ const calc=calculatePaymentAmount(s.id,month); return sum+(paymentPausedForMonth(s.id,month)?0:paymentFinancialAmountV222(s.id,month,calc)); },0); return `<tr><td>${safe(g.label)}</td><td>${g.members.map(displayName).map(safe).join('<br>')}</td><td>${money(total)}</td></tr>`; }).join('');
   }
 
   function paymentSummary(month){
@@ -6197,8 +6296,9 @@ render();
       const bill=(State.data.billing||[]).find(b=>b.user_id===s.id)||{};
       const c=calculatePaymentAmount(s.id,month);
       const pay=paymentMonthRecord(s.id,month);
+      const amount=paymentFinancialAmountV222(s.id,month,c);
       const pausedBilling=paymentPausedForMonth(s.id,month);
-      if(!pausedBilling) total+=c.amount;
+      if(!pausedBilling) total+=amount;
       const pText=pauseMonthOverlap(s.id,month).length?' · pausa registrada':'';
       const status=paymentSummaryStatus(pay, month, pausedBilling, s);
       if(status.key==='paid') paidCount++;
@@ -6209,7 +6309,7 @@ render();
         <td>${safe(displayName(s))}${pausedBilling?'<br><small>En pausa, excluido de pagos esperados</small>':pText?'<br><small>Con pausa</small>':''}</td>
         <td>${bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual':'Grupal'}</td>
         <td>${bill.tariff_type==='group'?'—':c.billableClasses}</td>
-        <td>${pausedBilling?money(0):money(c.amount)}</td>
+        <td>${pausedBilling?money(0):money(amount)}</td>
         <td><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span><br><small>${safe(status.detail)} · ${safe(paymentModeLabel(s))}${pay.payment_method?` · ${safe(paymentMethodLabel(pay.payment_method))}`:''}</small></td>
       </tr>`;
     }).join('');
@@ -6223,7 +6323,58 @@ render();
       <table class="premium-table payment-summary-table"><thead><tr><th>Alumno/a</th><th>Tarifa</th><th>Clases computadas</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
   function money(v){ return `${Number(v||0).toFixed(2).replace('.',',')} €`; }
-  async function saveBilling(form){ const fd=new FormData(form); const rec={user_id:fd.get('userId'), tariff_type:fd.get('tariffType'), monthly_fee:fd.get('monthlyFee')?Number(fd.get('monthlyFee')):0, class_rate:fd.get('classRate')?Number(fd.get('classRate')):0, payment_notes:fd.get('paymentNotes')||'', updated_at:new Date().toISOString()}; const paymentMethod=fd.get('paymentMethod')||null; const pay={user_id:fd.get('userId'), month:fd.get('month')||State.billingMonth||defaultBillingMonth(), paid:!!fd.get('paid'), paid_date:fd.get('paidDate')||null, updated_at:new Date().toISOString()}; const r=await State.client.rpc('tribeca_save_payment_v28',{p_billing:rec,p_month:pay}); if(r.error) throw r.error; await maybe(table('payment_months').update({payment_method:paymentMethod, updated_at:new Date().toISOString()}).eq('user_id',pay.user_id).eq('month',pay.month)); await log('payment','Tarifa o pago actualizado',{student:studentName(rec.user_id),month:pay.month,payment_method:paymentMethod}); await loadData(true); toast('Pago guardado.'); rerender(); }
+  async function saveBilling(form){
+    const fd=new FormData(form);
+    const rec={
+      user_id:String(fd.get('userId')||''),
+      tariff_type:String(fd.get('tariffType')||'group'),
+      monthly_fee:fd.get('monthlyFee')?Number(fd.get('monthlyFee')):0,
+      class_rate:fd.get('classRate')?Number(fd.get('classRate')):0,
+      payment_notes:fd.get('paymentNotes')||'',
+      updated_at:new Date().toISOString()
+    };
+    if(rec.monthly_fee<0 || rec.class_rate<0) throw new Error('Las tarifas no pueden ser negativas.');
+    const month=String(fd.get('month')||State.billingMonth||defaultBillingMonth()).slice(0,7);
+    const isPaid=!!fd.get('paid');
+    const paymentMethod=isPaid ? (fd.get('paymentMethod')||null) : null;
+    const existing=paymentMonthRecord(rec.user_id,month);
+    const pay={
+      user_id:rec.user_id,
+      month,
+      paid:isPaid,
+      paid_date:isPaid ? (fd.get('paidDate')||null) : null,
+      updated_at:new Date().toISOString()
+    };
+    if(isPaid){
+      const existingDue=finitePaymentValueV222(existing.amount_due_snapshot);
+      if(existing.paid && existingDue!==null){
+        pay.amount_due_snapshot=existingDue;
+        const existingPaid=finitePaymentValueV222(existing.amount_paid);
+        if(existingPaid!==null) pay.amount_paid=existingPaid;
+        pay.billing_snapshot=(existing.billing_snapshot && typeof existing.billing_snapshot==='object') ? existing.billing_snapshot : {};
+      } else {
+        const calc=calculatePaymentAmount(rec.user_id,month,rec);
+        pay.amount_due_snapshot=Number(calc.amount||0);
+        pay.amount_paid=Number(calc.amount||0);
+        pay.billing_snapshot={
+          tariff_type:rec.tariff_type,
+          monthly_fee:Number(rec.monthly_fee||0),
+          class_rate:Number(rec.class_rate||0),
+          billable_classes:Number(calc.billableClasses||0),
+          individual_present:Number(calc.individualPresent||0),
+          detail:String(calc.detail||''),
+          source:'closed_on_payment'
+        };
+      }
+    }
+    const r=await State.client.rpc('tribeca_save_payment_v28',{p_billing:rec,p_month:pay});
+    if(r.error) throw r.error;
+    await maybe(table('payment_months').update({payment_method:paymentMethod, updated_at:new Date().toISOString()}).eq('user_id',pay.user_id).eq('month',pay.month));
+    await log('payment','Tarifa o pago actualizado',{student:studentName(rec.user_id),month:pay.month,payment_method:paymentMethod,amount:isPaid?pay.amount_paid:null,paid:isPaid});
+    await loadData(true);
+    toast(isPaid?'Pago guardado y cuantía cerrada.':'Pago marcado como pendiente.');
+    rerender();
+  }
   async function saveStudentPause(form){ const fd=new FormData(form); const id=String(fd.get('pauseId')||'').trim(); const userId=String(fd.get('userId')||'').trim(); const start=String(fd.get('startDate')||todayIso()).slice(0,10); const end=String(fd.get('endDate')||'').slice(0,10)||null; if(end && end < start) throw new Error('La fecha de fin no puede ser anterior a la fecha de inicio.'); const active=!!fd.get('active'); if(!active && !id) throw new Error('Marca “Pausa activa” para crear una nueva pausa.'); const rec={user_id:userId,start_date:start,end_date:end,active,mode:fd.get('mode')||'scheduled',reason:String(fd.get('reason')||'').trim()||null,updated_at:new Date().toISOString()}; let error; if(id){ ({error}=await table('student_pauses').update(rec).eq('id',id)); } else { rec.created_by=State.profile.id; ({error}=await table('student_pauses').insert(rec)); } if(error) throw error; await log('pause','Pausa de asistencia actualizada',{student:studentName(userId),start,end,active}); await loadData(true); toast(active?'Pausa guardada. El acceso del alumno quedará bloqueado durante el período indicado.':'Pausa desactivada.'); rerender(); }
   async function endStudentPause(id){ const rec=(State.data.studentPauses||[]).find(p=>p.id===id); if(!rec) return toast('No se encontró la pausa.'); const yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1); const endDate=toIso(yesterday); const {error}=await table('student_pauses').update({active:false,end_date:endDate,updated_at:new Date().toISOString()}).eq('id',id); if(error) return toast(error.message || 'No se pudo finalizar la pausa.'); await log('pause','Pausa finalizada',{student:studentName(rec.user_id),access_from:todayIso()}); await loadData(true); toast('Pausa finalizada. El alumno puede acceder desde hoy.'); rerender(); }
   async function saveAttendance(btn){ if(pausedOnDate(btn.dataset.user, btn.dataset.date)) return toast('Este día está dentro de una pausa y no cuenta como asistencia ni como falta.'); const rec={user_id:btn.dataset.user, class_date:btn.dataset.date, scheduled_start:btn.dataset.start||null, scheduled_end:btn.dataset.end||null, class_type:btn.dataset.classType||'group', status:btn.dataset.t16Attendance, updated_at:new Date().toISOString()}; const { error } = await State.client.from('attendance_records').upsert(rec,{onConflict:'user_id,class_date,scheduled_start'}); if(error) throw error; await loadData(true); rerender(); }
@@ -8411,11 +8562,16 @@ function classroomCard(c,i=0){
   window.TribecaPrintPaymentsPdf = function(kind){ const title = kind==='student'?'Histórico de pagos del alumno':'Resumen mensual de pagos'; const source = kind==='student' ? document.querySelector('.payment-history-panel') : document.querySelector('.payments-summary'); const html = source ? source.innerHTML : document.querySelector('.payments-layout')?.innerHTML || ''; const w = window.open('', '_blank'); if(!w) return toast('No se pudo abrir la ventana de impresión.'); const logo = 'assets/tribeca-academia-logo.webp'; w.document.write(`<html><head><title>${title}</title><style>@page{margin:18mm}body{font-family:Georgia,serif;padding:0;color:#172018}.pdf-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #b99a3b;padding-bottom:12px;margin-bottom:22px}.pdf-head img{width:54px;height:54px;object-fit:contain}.pdf-head strong{font-size:22px}.pdf-head span{display:block;color:#686052;font-size:12px}h1{font-size:21px;margin:0 0 18px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:8px;text-align:left}.primary-btn,.secondary-btn,button{display:none!important}</style></head><body><header class="pdf-head"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Documento generado desde Tribeca Aula</span></div></header><h1>${title}</h1>${html}</body></html>`); w.document.close(); setTimeout(()=>w.print(),250); };
   function paymentReceiptMarkup(userId, month, opts={}){
     const s=(State.data.students||[]).find(x=>String(x.id)===String(userId)); if(!s) return '';
-    const c=calculatePaymentAmount(userId, month); const pay=paymentMonthRecord(userId, month); const bill=(State.data.billing||[]).find(b=>b.user_id===userId)||{};
-    const now=new Date(); const generated=now.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}); const pausedBilling=paymentPausedForMonth(userId,month); const paidText=pausedBilling?'en pausa, excluido de pago':pay.paid?(pay.paid_date?fmtDate(pay.paid_date):'pagado'):'pendiente de pago'; const code=receiptVerificationCode(userId, month, pausedBilling?0:c.amount);
-    const tariff=bill.tariff_type==='mixed'?'Mixta':bill.tariff_type==='individual'?'Individual, por clase programada':'Grupal, cuota fija mensual';
+    const c=calculatePaymentAmount(userId, month); const pay=paymentMonthRecord(userId, month); const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(userId))||{};
+    const amount=paymentFinancialAmountV222(userId,month,c);
+    const snap=(pay.billing_snapshot && typeof pay.billing_snapshot==='object')?pay.billing_snapshot:{};
+    const tariffType=String(snap.tariff_type||bill.tariff_type||'group');
+    const billableClasses=finitePaymentValueV222(snap.billable_classes) ?? Number(c.billableClasses||0);
+    const detail=paymentSnapshotDetailV222(pay,c);
+    const now=new Date(); const generated=now.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}); const pausedBilling=paymentPausedForMonth(userId,month); const paidText=pausedBilling?'en pausa, excluido de pago':pay.paid?(pay.paid_date?fmtDate(pay.paid_date):'pagado'):'pendiente de pago'; const code=receiptVerificationCode(userId, month, pausedBilling?0:amount);
+    const tariff=tariffType==='mixed'?'Mixta':tariffType==='individual'?'Individual, por clase programada':'Grupal, cuota fija mensual';
     const logo='assets/tribeca-academia-logo.webp';
-    return `<main class="receipt-slip"><header class="receipt-head"><div class="receipt-brand"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Recibí interno · no factura</span></div></div><div class="receipt-code"><strong>${safe(code)}</strong><span>${safe(generated)}</span></div></header><section class="receipt-title"><h1>RECIBÍ</h1><p>${safe(monthLabel(month))} · ${safe(paymentModeLabel(s))} · ${safe(paymentMethodLabel(pay.payment_method))}</p></section><section class="receipt-grid"><div><small>Alumno/a</small><strong>${safe(displayName(s))}</strong><span>${safe(academicLine(s))}</span></div><div><small>Estado</small><strong>${safe(paidText)}</strong><span>${pay.paid_date?fmtDate(pay.paid_date):'Fecha no registrada'}</span></div><div><small>Tarifa</small><strong>${safe(tariff)}</strong><span>${safe(c.detail)}</span></div><div><small>Importe</small><strong class="receipt-amount">${money(pausedBilling?0:c.amount)}</strong><span>${c.present} asist. registradas · ${c.billableClasses||0} clases computadas · ${c.justified} justif.</span></div><div><small>Forma de pago</small><strong>${safe(paymentMethodLabel(pay.payment_method))}</strong><span>${pay.payment_method?'Registrada':'No indicada'}</span></div></section><section class="receipt-concept"><strong>Concepto:</strong> apoyo educativo y clases de refuerzo correspondientes a ${safe(monthLabel(month))}.</section><footer class="receipt-sign"><div><small>Recibido por</small><strong>Patricia Trillo</strong></div><div><small>Firma electrónica interna</small><strong>${safe(code)}</strong></div></footer></main>`;
+    return `<main class="receipt-slip"><header class="receipt-head"><div class="receipt-brand"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Recibí interno · no factura</span></div></div><div class="receipt-code"><strong>${safe(code)}</strong><span>${safe(generated)}</span></div></header><section class="receipt-title"><h1>RECIBÍ</h1><p>${safe(monthLabel(month))} · ${safe(paymentModeLabel(s))} · ${safe(paymentMethodLabel(pay.payment_method))}</p></section><section class="receipt-grid"><div><small>Alumno/a</small><strong>${safe(displayName(s))}</strong><span>${safe(academicLine(s))}</span></div><div><small>Estado</small><strong>${safe(paidText)}</strong><span>${pay.paid_date?fmtDate(pay.paid_date):'Fecha no registrada'}</span></div><div><small>Tarifa</small><strong>${safe(tariff)}</strong><span>${safe(detail)}</span></div><div><small>Importe</small><strong class="receipt-amount">${money(pausedBilling?0:amount)}</strong><span>${c.present} asist. registradas · ${billableClasses||0} clases computadas · ${c.justified} justif.</span></div><div><small>Forma de pago</small><strong>${safe(paymentMethodLabel(pay.payment_method))}</strong><span>${pay.payment_method?'Registrada':'No indicada'}</span></div></section><section class="receipt-concept"><strong>Concepto:</strong> apoyo educativo y clases de refuerzo correspondientes a ${safe(monthLabel(month))}.</section><footer class="receipt-sign"><div><small>Recibido por</small><strong>Patricia Trillo</strong></div><div><small>Firma electrónica interna</small><strong>${safe(code)}</strong></div></footer></main>`;
   }
   function receiptPrintDocument(title, body){
     return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(title)}</title><style>@page{size:A4;margin:10mm}*{box-sizing:border-box}body{margin:0;background:#f7f5ee;color:#172018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.actions{position:sticky;top:0;z-index:2;padding:8px;text-align:right;background:#f7f5ee}.actions button{border:0;border-radius:999px;background:#0b3d22;color:#fffdf8;font-weight:900;padding:8px 12px}.receipt-sheet{display:grid;gap:8mm;align-content:start}.receipt-slip{width:190mm;min-height:86mm;margin:0 auto;background:#fffdf8;border:1px solid #d9cfb7;border-left:5px solid #0b3d22;border-radius:10px;padding:8mm;break-inside:avoid;page-break-inside:avoid}.receipt-head{display:flex;justify-content:space-between;gap:10px;border-bottom:1.5px solid #b99a3b;padding-bottom:6px}.receipt-brand{display:flex;align-items:center;gap:9px}.receipt-brand img{width:34px;height:34px;object-fit:contain}.receipt-brand strong{display:block;font-family:Georgia,serif;font-size:15px;color:#0b3d22}.receipt-brand span,.receipt-code span{display:block;color:#6f6658;font-size:9px;font-weight:750}.receipt-code{text-align:right;font-size:9px;color:#4b443b}.receipt-title{display:flex;align-items:end;justify-content:space-between;margin:8px 0}.receipt-title h1{font-family:Georgia,serif;font-size:22px;letter-spacing:.16em;color:#0b3d22;margin:0}.receipt-title p{margin:0;color:#6f6658;font-weight:850;font-size:10px}.receipt-grid{display:grid;grid-template-columns:1.15fr .85fr 1.15fr .85fr;gap:6px}.receipt-grid div{border:1px solid #e2d8c2;border-radius:8px;padding:7px;background:#fff}.receipt-grid small,.receipt-sign small{display:block;text-transform:uppercase;letter-spacing:.08em;color:#8a753b;font-size:8px;font-weight:900;margin-bottom:3px}.receipt-grid strong{display:block;font-size:11px}.receipt-grid span{display:block;color:#6f6658;font-size:9px;margin-top:2px}.receipt-amount{font-size:16px!important;color:#0b3d22}.receipt-concept{border-left:3px solid #b99a3b;margin:8px 0;padding:5px 0 5px 8px;font-size:10px}.receipt-sign{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid #e2d8c2;padding-top:6px}.receipt-sign strong{font-family:Georgia,serif;font-size:12px}@media print{body{background:white}.actions{display:none}.receipt-slip{margin:0 auto 5mm}}</style></head><body><div class="actions"><button onclick="window.print()">Descargar o guardar como PDF</button></div><section class="receipt-sheet">${body}</section><script>setTimeout(()=>window.print(),350)</script></body></html>`;
@@ -8427,7 +8583,7 @@ function classroomCard(c,i=0){
   };
   window.TribecaPrintQuarterReceipts = function(userId, month){
     const s=(State.data.students||[]).find(x=>String(x.id)===String(userId)); if(!s) return toast('Selecciona un alumno para generar los recibís.');
-    const months=quarterMonthsFor(month).filter(m=>paymentMonthRecord(userId,m).paid || calculatePaymentAmount(userId,m).amount>0);
+    const months=quarterMonthsFor(month).filter(m=>{ const calc=calculatePaymentAmount(userId,m); return paymentMonthRecord(userId,m).paid || paymentFinancialAmountV222(userId,m,calc)>0; });
     const html=months.map(m=>paymentReceiptMarkup(userId,m)).join(''); const w=window.open('', '_blank'); if(!w) return toast('No se pudo abrir la ventana de impresión.');
     w.document.write(receiptPrintDocument(`Recibís trimestrales ${displayName(s)}`, html || '<p>No hay recibís disponibles para este trimestre.</p>')); w.document.close();
   };
