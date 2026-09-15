@@ -1,12 +1,21 @@
-/* Tribeca Aula · Service worker v220 · PWA, caché ligera, push con payload cifrado y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v220';
+/* Tribeca Aula · Service worker v221 · PWA multiplataforma, caché de app shell, push y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v221';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
+  './',
+  './index.html',
+  './styles.css?v=220',
+  './app.js?v=216',
+  './supabase-config.js',
+  './supabase-auth.js?v=221',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
   './assets/tribeca-pwa-icon-512.png',
   './assets/favicon.png',
   './assets/favicon.ico',
+  './assets/logo-tribeca.png',
+  './assets/tribeca-academia-logo.png',
+  './assets/watermark-tribeca.png',
   './assets/ius/presentations/ius-01-bienvenida.html',
   './assets/ius/presentations/ius-02-de-facto-de-iure.html',
   './assets/ius/presentations/ius-03-fuentes-derecho.html',
