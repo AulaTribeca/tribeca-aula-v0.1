@@ -1,5 +1,6 @@
-/* Tribeca Aula v225 · preferencias de legibilidad por perfil.
-   OpenDyslexic se sirve desde su repositorio público bajo licencia SIL Open Font License. */
+/* Tribeca Aula v227 · perfil de lectura optimizada.
+   OpenDyslexic se sirve desde su distribución pública bajo SIL Open Font License.
+   La maquetación prioriza estructura, contraste, longitud de línea y espaciado moderado. */
 @font-face {
   font-family: "OpenDyslexic";
   src: url("https://cdn.jsdelivr.net/gh/madjeek-web/open-dyslexic@main/OpenDyslexic-2025/opendyslexic-regular-webfont.woff2") format("woff2");
@@ -16,22 +17,41 @@
   font-display: swap;
 }
 
-body.tribeca-profile-readable,
-body.tribeca-profile-readable *:not(.tribeca-a11y-widget):not(.tribeca-a11y-widget *) {
-  font-family: "OpenDyslexic", "Atkinson Hyperlegible", Verdana, Arial, sans-serif !important;
+body.tribeca-profile-readable {
+  --tribeca-profile-font-scale: 1;
+  --tribeca-profile-letter-spacing: 0.005em;
+  --tribeca-profile-word-spacing: 0.015em;
+  --tribeca-profile-line-height: 1.5;
+  --tribeca-profile-reading-width: 68ch;
+  background: #f5f1e7 !important;
+  background-image: none !important;
 }
 
-body.tribeca-profile-readable {
-  --tribeca-profile-font-scale: 1.05;
-  --tribeca-profile-letter-spacing: 0.015em;
-  --tribeca-profile-line-height: 1.55;
+/* OpenDyslexic para interfaz y prosa. La notación matemática conserva una fuente matemática. */
+body.tribeca-profile-readable,
+body.tribeca-profile-readable *:not(.tribeca-a11y-widget):not(.tribeca-a11y-widget *) {
+  font-family: "OpenDyslexic", Verdana, Arial, sans-serif !important;
 }
 
 body.tribeca-profile-readable :where(
+  .katex, .katex *, .MathJax, .MathJax *, math, math *,
+  .math, .math *, .formula, .formula *, .fraction, .fraction *,
+  code, code *, pre, pre *
+) {
+  font-family: "Cambria Math", "STIX Two Math", "STIXGeneral", serif !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  font-style: normal !important;
+}
+
+/* El espaciado extra es deliberadamente moderado: OpenDyslexic ya es una fuente ancha. */
+body.tribeca-profile-readable :where(
   p, li, td, th, label, input, textarea, select, button, small,
-  .muted, .meta, .description, .subject-card, .student-classroom-card
+  .muted, .meta, .description, .subject-card, .student-classroom-card,
+  .material-body, .publication-body, .content-body
 ) {
   letter-spacing: var(--tribeca-profile-letter-spacing) !important;
+  word-spacing: var(--tribeca-profile-word-spacing) !important;
 }
 
 body.tribeca-profile-readable :where(
@@ -39,23 +59,176 @@ body.tribeca-profile-readable :where(
   .material-body, .publication-body, .content-body
 ) {
   line-height: var(--tribeca-profile-line-height) !important;
-  text-align: left;
-  hyphens: none;
+  text-align: left !important;
+  hyphens: none !important;
   overflow-wrap: break-word;
+}
+
+body.tribeca-profile-readable :where(p, li, .material-body, .publication-body, .content-body) {
+  max-width: min(var(--tribeca-profile-reading-width), 100%);
 }
 
 body.tribeca-profile-readable :where(em, i, cite, blockquote) {
   font-style: normal !important;
 }
 
-body.tribeca-profile-readable :where(p, li, .material-body, .publication-body, .content-body) {
-  max-width: min(72ch, 100%);
+body.tribeca-profile-readable :where(button, a, h1, h2, h3, h4, h5, h6) {
+  text-decoration-thickness: .1em;
+  text-underline-offset: .18em;
 }
 
-body.tribeca-profile-readable .hero-card,
-body.tribeca-profile-readable .subject-card,
+/* Fondo plano y jerarquía visual estable: sin patrones decorativos que compitan con el contenido. */
+body.tribeca-profile-readable :where(
+  .panel, .student-classroom-card, .subject-card, .tool-window,
+  .window-panel, .quick-card, .material-collapse-card
+) {
+  background-color: #fffdf7 !important;
+  background-image: none !important;
+  box-shadow: 0 8px 24px rgba(36, 40, 32, .06) !important;
+}
+
+body.tribeca-profile-readable .main-nav,
+body.tribeca-profile-readable .control-field,
+body.tribeca-profile-readable .profile-button {
+  background: #fffdf7 !important;
+  background-image: none !important;
+}
+
+body.tribeca-profile-readable .nav-btn.is-active {
+  background: #174b34 !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* La bienvenida del alumno no debe reservar una segunda columna vacía. */
+body.tribeca-profile-readable .hero-welcome-card {
+  min-height: 0 !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: .5rem !important;
+  padding: 1.55rem 1.8rem !important;
+  overflow: visible;
+}
+
+body.tribeca-profile-readable .hero-welcome-card .hero-main {
+  border-right: 0 !important;
+  padding-right: 0 !important;
+  max-width: var(--tribeca-profile-reading-width);
+}
+
+body.tribeca-profile-readable .hero-card h1 {
+  font-size: clamp(1.9rem, 2.6vw, 2.5rem) !important;
+  line-height: 1.25 !important;
+  margin-bottom: .55rem !important;
+}
+
+body.tribeca-profile-readable .hero-card p {
+  margin: .3rem 0 !important;
+}
+
+body.tribeca-profile-readable .eyebrow {
+  letter-spacing: .045em !important;
+  line-height: 1.35 !important;
+  margin-bottom: .55rem !important;
+}
+
+/* Clases y materias: agrupadas, compactas y sin grandes vacíos. */
+body.tribeca-profile-readable .section-heading {
+  margin-top: 1.35rem !important;
+  margin-bottom: .7rem !important;
+  align-items: baseline;
+}
+
+body.tribeca-profile-readable .student-classroom-area,
+body.tribeca-profile-readable .focus-study-area {
+  margin-top: .8rem !important;
+}
+
 body.tribeca-profile-readable .student-classroom-card,
-body.tribeca-profile-readable .panel,
-body.tribeca-profile-readable .tool-window {
-  word-spacing: 0.04em;
+body.tribeca-profile-readable .focus-classroom-card-v223 {
+  gap: .8rem !important;
+  padding: 1.35rem 1.5rem !important;
+  border-left-width: .35rem !important;
+}
+
+body.tribeca-profile-readable .student-classroom-card > header {
+  align-items: center !important;
+}
+
+body.tribeca-profile-readable .student-classroom-card > header h3 {
+  font-size: clamp(1.45rem, 1.8vw, 1.9rem) !important;
+  line-height: 1.3 !important;
+}
+
+body.tribeca-profile-readable .student-classroom-card > header strong {
+  min-width: 3.2rem !important;
+  height: 3.2rem !important;
+  box-shadow: none !important;
+}
+
+body.tribeca-profile-readable .student-class-subject-grid,
+body.tribeca-profile-readable .focus-study-grid,
+body.tribeca-profile-readable #subjectsGrid {
+  gap: .75rem !important;
+  margin-top: .35rem !important;
+}
+
+body.tribeca-profile-readable .student-class-subject-grid {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 24rem)) !important;
+  justify-content: start;
+}
+
+body.tribeca-profile-readable .student-class-subject-grid > *,
+body.tribeca-profile-readable .focus-study-grid > * {
+  min-height: 3.8rem !important;
+  padding-top: .85rem !important;
+  padding-bottom: .85rem !important;
+  border-radius: 14px !important;
+  text-transform: none !important;
+}
+
+/* Texto continuo nunca en mayúsculas por CSS. */
+body.tribeca-profile-readable :where(
+  .subject-card, .student-classroom-card, .material-body, .publication-body,
+  .content-body, .tool-window
+) :where(p, li, label, button, a) {
+  text-transform: none !important;
+}
+
+/* Escritura y números: campos claros, foco visible y cifras estables. */
+body.tribeca-profile-readable :where(input, textarea, select) {
+  line-height: 1.45 !important;
+}
+
+body.tribeca-profile-readable :where(input[type="number"], .number, .numeric, .equation, .formula, .math) {
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+body.tribeca-profile-readable :where(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid #9a7720 !important;
+  outline-offset: 3px !important;
+}
+
+/* Reducir estímulos que no aportan información. */
+body.tribeca-profile-readable *,
+body.tribeca-profile-readable *::before,
+body.tribeca-profile-readable *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+
+body.tribeca-profile-readable :where(.hero-watermark) {
+  opacity: .08 !important;
+}
+
+@media (max-width: 760px) {
+  body.tribeca-profile-readable .hero-welcome-card,
+  body.tribeca-profile-readable .student-classroom-card,
+  body.tribeca-profile-readable .focus-classroom-card-v223 {
+    padding: 1.2rem !important;
+  }
+
+  body.tribeca-profile-readable .student-class-subject-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
