@@ -1,38 +1,23 @@
-/* Tribeca Aula v227 · perfil de lectura optimizada.
-   OpenDyslexic se sirve desde su distribución pública bajo SIL Open Font License.
-   La maquetación prioriza estructura, contraste, longitud de línea y espaciado moderado. */
-@font-face {
-  font-family: "OpenDyslexic";
-  src: url("https://cdn.jsdelivr.net/gh/madjeek-web/open-dyslexic@main/OpenDyslexic-2025/opendyslexic-regular-webfont.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "OpenDyslexic";
-  src: url("https://cdn.jsdelivr.net/gh/madjeek-web/open-dyslexic@main/OpenDyslexic-2025/opendyslexic-bold-webfont.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 700 900;
-  font-display: swap;
-}
+/* Tribeca Aula v228 · perfil de lectura optimizada.
+   Fuente sencilla sans serif, jerarquía estable, espaciado moderado y notación matemática intacta. */
 
 body.tribeca-profile-readable {
   --tribeca-profile-font-scale: 1;
-  --tribeca-profile-letter-spacing: 0.005em;
-  --tribeca-profile-word-spacing: 0.015em;
+  --tribeca-profile-letter-spacing: 0em;
+  --tribeca-profile-word-spacing: 0.01em;
   --tribeca-profile-line-height: 1.5;
   --tribeca-profile-reading-width: 68ch;
   background: #f5f1e7 !important;
   background-image: none !important;
 }
 
-/* OpenDyslexic para interfaz y prosa. La notación matemática conserva una fuente matemática. */
+/* Verdana para interfaz y prosa: sencilla, estable y con caracteres bien diferenciados. */
 body.tribeca-profile-readable,
 body.tribeca-profile-readable *:not(.tribeca-a11y-widget):not(.tribeca-a11y-widget *) {
-  font-family: "OpenDyslexic", Verdana, Arial, sans-serif !important;
+  font-family: Verdana, Arial, Helvetica, sans-serif !important;
 }
 
+/* Fórmulas, fracciones y código no deben deformarse por la fuente de lectura. */
 body.tribeca-profile-readable :where(
   .katex, .katex *, .MathJax, .MathJax *, math, math *,
   .math, .math *, .formula, .formula *, .fraction, .fraction *,
@@ -44,7 +29,6 @@ body.tribeca-profile-readable :where(
   font-style: normal !important;
 }
 
-/* El espaciado extra es deliberadamente moderado: OpenDyslexic ya es una fuente ancha. */
 body.tribeca-profile-readable :where(
   p, li, td, th, label, input, textarea, select, button, small,
   .muted, .meta, .description, .subject-card, .student-classroom-card,
@@ -77,7 +61,7 @@ body.tribeca-profile-readable :where(button, a, h1, h2, h3, h4, h5, h6) {
   text-underline-offset: .18em;
 }
 
-/* Fondo plano y jerarquía visual estable: sin patrones decorativos que compitan con el contenido. */
+/* Fondo plano y jerarquía visual estable. */
 body.tribeca-profile-readable :where(
   .panel, .student-classroom-card, .subject-card, .tool-window,
   .window-panel, .quick-card, .material-collapse-card
@@ -100,7 +84,7 @@ body.tribeca-profile-readable .nav-btn.is-active {
   box-shadow: none !important;
 }
 
-/* La bienvenida del alumno no debe reservar una segunda columna vacía. */
+/* Bienvenida compacta: sin columna vacía ni grandes zonas muertas. */
 body.tribeca-profile-readable .hero-welcome-card {
   min-height: 0 !important;
   grid-template-columns: minmax(0, 1fr) !important;
@@ -126,12 +110,12 @@ body.tribeca-profile-readable .hero-card p {
 }
 
 body.tribeca-profile-readable .eyebrow {
-  letter-spacing: .045em !important;
+  letter-spacing: .025em !important;
   line-height: 1.35 !important;
   margin-bottom: .55rem !important;
 }
 
-/* Clases y materias: agrupadas, compactas y sin grandes vacíos. */
+/* Clases y materias: agrupadas, compactas y fáciles de recorrer. */
 body.tribeca-profile-readable .section-heading {
   margin-top: 1.35rem !important;
   margin-bottom: .7rem !important;
@@ -186,7 +170,7 @@ body.tribeca-profile-readable .focus-study-grid > * {
   text-transform: none !important;
 }
 
-/* Texto continuo nunca en mayúsculas por CSS. */
+/* Texto continuo: sin mayúsculas forzadas. */
 body.tribeca-profile-readable :where(
   .subject-card, .student-classroom-card, .material-body, .publication-body,
   .content-body, .tool-window
@@ -194,7 +178,7 @@ body.tribeca-profile-readable :where(
   text-transform: none !important;
 }
 
-/* Escritura y números: campos claros, foco visible y cifras estables. */
+/* Escritura y números. */
 body.tribeca-profile-readable :where(input, textarea, select) {
   line-height: 1.45 !important;
 }
@@ -218,7 +202,7 @@ body.tribeca-profile-readable *::after {
 }
 
 body.tribeca-profile-readable :where(.hero-watermark) {
-  opacity: .08 !important;
+  opacity: .06 !important;
 }
 
 @media (max-width: 760px) {
