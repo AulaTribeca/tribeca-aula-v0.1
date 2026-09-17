@@ -1,0 +1,61 @@
+/* Tribeca Aula v225 · preferencias de legibilidad por perfil.
+   OpenDyslexic se sirve desde su repositorio público bajo licencia SIL Open Font License. */
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("https://cdn.jsdelivr.net/gh/madjeek-web/open-dyslexic@main/OpenDyslexic-2025/opendyslexic-regular-webfont.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("https://cdn.jsdelivr.net/gh/madjeek-web/open-dyslexic@main/OpenDyslexic-2025/opendyslexic-bold-webfont.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+}
+
+body.tribeca-profile-readable,
+body.tribeca-profile-readable *:not(.tribeca-a11y-widget):not(.tribeca-a11y-widget *) {
+  font-family: "OpenDyslexic", "Atkinson Hyperlegible", Verdana, Arial, sans-serif !important;
+}
+
+body.tribeca-profile-readable {
+  --tribeca-profile-font-scale: 1.05;
+  --tribeca-profile-letter-spacing: 0.015em;
+  --tribeca-profile-line-height: 1.55;
+}
+
+body.tribeca-profile-readable :where(
+  p, li, td, th, label, input, textarea, select, button, small,
+  .muted, .meta, .description, .subject-card, .student-classroom-card
+) {
+  letter-spacing: var(--tribeca-profile-letter-spacing) !important;
+}
+
+body.tribeca-profile-readable :where(
+  p, li, td, th, label, textarea, .muted, .meta, .description,
+  .material-body, .publication-body, .content-body
+) {
+  line-height: var(--tribeca-profile-line-height) !important;
+  text-align: left;
+  hyphens: none;
+  overflow-wrap: break-word;
+}
+
+body.tribeca-profile-readable :where(em, i, cite, blockquote) {
+  font-style: normal !important;
+}
+
+body.tribeca-profile-readable :where(p, li, .material-body, .publication-body, .content-body) {
+  max-width: min(72ch, 100%);
+}
+
+body.tribeca-profile-readable .hero-card,
+body.tribeca-profile-readable .subject-card,
+body.tribeca-profile-readable .student-classroom-card,
+body.tribeca-profile-readable .panel,
+body.tribeca-profile-readable .tool-window {
+  word-spacing: 0.04em;
+}
