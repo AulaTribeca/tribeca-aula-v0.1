@@ -1,4 +1,4 @@
-/* Tribeca Aula v228 · perfil de lectura optimizada.
+/* Tribeca Aula v229 · perfil de lectura optimizada e interfaz mínima.
    Fuente sencilla sans serif, jerarquía estable, espaciado moderado y notación matemática intacta. */
 
 body.tribeca-profile-readable {
@@ -215,4 +215,104 @@ body.tribeca-profile-readable :where(.hero-watermark) {
   body.tribeca-profile-readable .student-class-subject-grid {
     grid-template-columns: 1fr !important;
   }
+}
+
+
+/* Interfaz mínima por perfil: solo información académica accionable. */
+body.tribeca-profile-minimal .video-classes-home-v173 {
+  display: none !important;
+}
+
+body.tribeca-profile-minimal .hero-welcome-card .eyebrow,
+body.tribeca-profile-minimal .hero-welcome-card .hero-main > p:not(.muted),
+body.tribeca-profile-minimal .section-heading > span,
+body.tribeca-profile-minimal .student-classroom-card > header p,
+body.tribeca-profile-minimal .student-classroom-card > header strong,
+body.tribeca-profile-minimal .student-classroom-card > .progress,
+body.tribeca-profile-minimal .student-classroom-card > small,
+body.tribeca-profile-minimal .class-subject-card .subject-top,
+body.tribeca-profile-minimal .class-subject-card > p,
+body.tribeca-profile-minimal .class-subject-card .progress-row,
+body.tribeca-profile-minimal .class-subject-card .progress,
+body.tribeca-profile-minimal .class-subject-card > small,
+body.tribeca-profile-minimal .subject-detail-emblem,
+body.tribeca-profile-minimal .subject-detail-kicker,
+body.tribeca-profile-minimal .subject-detail-copy > p,
+body.tribeca-profile-minimal .subject-detail-progress,
+body.tribeca-profile-minimal .subject-detail-intro,
+body.tribeca-profile-minimal .subject-unit-card > summary em,
+body.tribeca-profile-minimal .publication-type-tag,
+body.tribeca-profile-minimal .material-summary-main > small,
+body.tribeca-profile-minimal .material-expand-hint,
+body.tribeca-profile-minimal .material-embed-block > div:first-child {
+  display: none !important;
+}
+
+body.tribeca-profile-minimal .hero-welcome-card {
+  padding-top: 1.15rem !important;
+  padding-bottom: 1.15rem !important;
+}
+
+body.tribeca-profile-minimal .student-classroom-area > .section-heading h2 {
+  font-size: 1.7rem !important;
+}
+
+body.tribeca-profile-minimal .student-classroom-card {
+  padding: 1rem 1.2rem !important;
+}
+
+body.tribeca-profile-minimal .student-classroom-card > header h3 {
+  margin: 0 !important;
+}
+
+body.tribeca-profile-minimal .class-subject-card {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0,1fr) !important;
+  align-items: center !important;
+  gap: .85rem !important;
+  padding: 1rem 1.15rem !important;
+}
+
+body.tribeca-profile-minimal .class-subject-card .subject-mark {
+  margin: 0 !important;
+}
+
+body.tribeca-profile-minimal .class-subject-card h3 {
+  margin: 0 !important;
+  line-height: 1.35 !important;
+}
+
+body.tribeca-profile-minimal .subject-detail-head {
+  min-height: 0 !important;
+  padding: 1.1rem 1.3rem !important;
+}
+
+body.tribeca-profile-minimal .subject-detail-copy h2 {
+  margin: 0 !important;
+}
+
+body.tribeca-profile-minimal .subject-units-list {
+  margin-top: .85rem !important;
+}
+
+body.tribeca-profile-minimal .subject-unit-card {
+  border-radius: 14px !important;
+}
+
+body.tribeca-profile-minimal .subject-unit-card > summary {
+  padding: .95rem 1.05rem !important;
+}
+
+body.tribeca-profile-minimal .material-collapse-summary {
+  padding: 1rem !important;
+}
+
+body.tribeca-profile-minimal .material-title-prominent {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+body.tribeca-profile-minimal .material-body-text:empty {
+  display: none !important;
 }
