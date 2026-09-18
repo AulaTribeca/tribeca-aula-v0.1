@@ -2416,16 +2416,24 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const teacher = roleTeacher();
     return (State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId) && u.active!==false && (teacher || !u.hidden)).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true}));
   }
+  function studentMaterialHasContent(m={}){
+    if(roleTeacher()) return true;
+    const textual=[m.body,m.description,m.content,m.text].some(v=>String(v??'').trim().length>0);
+    const linked=[m.file_url,m.link_url,m.embed_url,m.embed_code,m.image_url].some(v=>String(v??'').trim().length>0);
+    const attachments=Array.isArray(m.attachments) ? m.attachments : parseArrayField(m.attachments||[]);
+    const nativePayload=!!(m.quiz_json || m.activity_json || m.exam_json || m.schema_json);
+    return textual || linked || attachments.length>0 || nativePayload;
+  }
   function materialsForClassSubject(classSubjectId){
     const s=classSubjectById(classSubjectId);
     if(!s) return [];
-    return sortMaterialsAsc((State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_subject_id||'')===String(classSubjectId) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||'')))));
+    return sortMaterialsAsc((State.data.materials||[]).filter(m=>visibleForProfile(m) && studentMaterialHasContent(m) && (String(m.class_subject_id||'')===String(classSubjectId) || (String(m.class_id||'')===String(s.class_id) && String(m.subject||'')===String(s.subject||'')))));
   }
   function materialsForClassUnit(classUnitId, classSubjectId=''){
     const u=classUnitById(classUnitId);
     if(!u) return [];
     const s=classSubjectById(classSubjectId || u.class_subject_id);
-    return sortMaterialsAsc((State.data.materials||[]).filter(m=>visibleForProfile(m) && (String(m.class_unit_id||'')===String(classUnitId) || (s && String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||'')))));
+    return sortMaterialsAsc((State.data.materials||[]).filter(m=>visibleForProfile(m) && studentMaterialHasContent(m) && (String(m.class_unit_id||'')===String(classUnitId) || (s && String(m.class_subject_id||'')===String(s.id) && String(m.unit_title||m.unit||'')===String(u.title||'')))));
   }
   function classSubjectProgress(classSubjectId){
     const mats=materialsForClassSubject(classSubjectId);
