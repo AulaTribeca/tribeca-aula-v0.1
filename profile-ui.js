@@ -1,4 +1,4 @@
-/* Tribeca Aula v228 · aplicación silenciosa de preferencias visuales por perfil */
+/* Tribeca Aula v229 · lectura clara y modo de interfaz mínima por perfil */
 (() => {
   'use strict';
 
@@ -14,7 +14,7 @@
 
   function clearProfileUi(){
     if(!document.body) return;
-    document.body.classList.remove('tribeca-profile-readable');
+    document.body.classList.remove('tribeca-profile-readable','tribeca-profile-minimal');
     const root=document.documentElement;
     root.style.removeProperty('--tribeca-profile-font-scale');
     root.style.removeProperty('--tribeca-profile-letter-spacing');
@@ -67,6 +67,8 @@
     clearProfileUi();
     lastProfileId=String(profile.id||'');
     lastSignature=signature;
+
+    if(prefs.minimal_ui===true) document.body.classList.add('tribeca-profile-minimal');
 
     const font=String(prefs.font_family||'').toLowerCase();
     if(font==='verdana' || font==='accessible' || font==='opendyslexic'){
