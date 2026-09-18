@@ -316,3 +316,9 @@ body.tribeca-profile-minimal .material-title-prominent {
 body.tribeca-profile-minimal .material-body-text:empty {
   display: none !important;
 }
+
+
+body.tribeca-profile-minimal .subject-unit-card:has(> .subject-material-list > .empty-state),
+body.tribeca-profile-minimal .subject-units-list > .empty-state {
+  display: none !important;
+}
