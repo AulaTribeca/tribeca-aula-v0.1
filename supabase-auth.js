@@ -576,7 +576,7 @@
   }
 
   const TRIBECA_PWA_DISMISSED_KEY = 'tribeca-pwa-install-dismissed-v221';
-  const TRIBECA_PWA_INSTALLED_KEY = 'tribeca-pwa-installed-v230';
+  const TRIBECA_PWA_INSTALLED_KEY = 'tribeca-pwa-installed-v231';
   let tribecaDeferredInstallPrompt = null;
   function isTribecaStandalone(){
     const modes=['standalone','fullscreen','minimal-ui','window-controls-overlay'];
@@ -654,12 +654,19 @@
     let dismissed=false;
     try { dismissed=localStorage.getItem(TRIBECA_PWA_DISMISSED_KEY)==='1'; } catch(_e) {}
     const platform=tribecaPwaPlatform();
-    node.hidden = isTribecaInstalled() || dismissed;
-    if(!node.hidden){
+    const installed=isTribecaInstalled();
+    const nativeInstallAvailable=!!tribecaDeferredInstallPrompt;
+    const safariManualInstall=!!(platform.isiOS || platform.isMacSafari);
+    // Chromium/Edge/Opera: solo mostrar el CTA si el navegador confirma
+    // que la PWA es instalable. Si ya está instalada, beforeinstallprompt
+    // no se dispara y el aviso permanece oculto.
+    const shouldOffer=!installed && !dismissed && (nativeInstallAvailable || safariManualInstall);
+    node.hidden=!shouldOffer;
+    if(shouldOffer){
       const strong=node.querySelector('strong'); if(strong) strong.textContent=pwaText('install');
-      const span=node.querySelector('span'); if(span) span.textContent=platform.isiOS && !tribecaDeferredInstallPrompt ? pwaText('readyIOS') : pwaText('ready');
+      const span=node.querySelector('span'); if(span) span.textContent=platform.isiOS && !nativeInstallAvailable ? pwaText('readyIOS') : pwaText('ready');
       const btn=node.querySelector('[data-pwa-install]'); if(btn) btn.textContent=pwaText('installShort');
-      node.dataset.installMode = tribecaDeferredInstallPrompt ? 'native' : (platform.isiOS ? 'ios' : (platform.isMacSafari ? 'mac-safari' : 'manual'));
+      node.dataset.installMode = nativeInstallAvailable ? 'native' : (platform.isiOS ? 'ios' : 'mac-safari');
     }
   }
   async function handleTribecaPwaInstall(){
