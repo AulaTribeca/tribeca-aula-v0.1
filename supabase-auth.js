@@ -104,6 +104,13 @@
     suppressHistoryPush: false
   };
   window.TribecaAuth = State;
+  const TRIBECA_SAFE_PROFILE_SELECT_V230 = [
+    'id','username','auth_email','full_name','preferred_name','role','avatar_icon',
+    'personal_email','notification_preferences','center','municipality','stage','course',
+    'track','active','archived','created_at','updated_at','avatar_image_url',
+    'first_name','last_name','focus_mode_enabled','birth_date','student_photo_url',
+    'push_notifications_enabled','push_badge_enabled','ui_preferences'
+  ].join(',');
   const TRIBECA_TEACHER_PROFILE_IMAGE = 'assets/patricia-trillo-perfil.webp';
   const TRIBECA_LOGO_DEFAULT = 'assets/logo-tribeca.png';
   const TRIBECA_SEASONAL_LOGOS = { default: TRIBECA_LOGO_DEFAULT };
@@ -569,9 +576,22 @@
   }
 
   const TRIBECA_PWA_DISMISSED_KEY = 'tribeca-pwa-install-dismissed-v221';
+  const TRIBECA_PWA_INSTALLED_KEY = 'tribeca-pwa-installed-v230';
   let tribecaDeferredInstallPrompt = null;
   function isTribecaStandalone(){
-    return window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true;
+    const modes=['standalone','fullscreen','minimal-ui','window-controls-overlay'];
+    const displayMode=modes.some(mode=>window.matchMedia?.(`(display-mode: ${mode})`)?.matches);
+    const iosStandalone=window.navigator?.standalone === true;
+    const androidApp=String(document.referrer||'').startsWith('android-app://');
+    const standalone=!!(displayMode || iosStandalone || androidApp);
+    if(standalone){
+      try{ localStorage.setItem(TRIBECA_PWA_INSTALLED_KEY,'1'); }catch(_e){}
+    }
+    return standalone;
+  }
+  function isTribecaInstalled(){
+    if(isTribecaStandalone()) return true;
+    try{ return localStorage.getItem(TRIBECA_PWA_INSTALLED_KEY)==='1'; }catch(_e){ return false; }
   }
   function tribecaPwaPlatform(){
     const ua=String(window.navigator?.userAgent || '');
@@ -634,7 +654,7 @@
     let dismissed=false;
     try { dismissed=localStorage.getItem(TRIBECA_PWA_DISMISSED_KEY)==='1'; } catch(_e) {}
     const platform=tribecaPwaPlatform();
-    node.hidden = isTribecaStandalone() || dismissed;
+    node.hidden = isTribecaInstalled() || dismissed;
     if(!node.hidden){
       const strong=node.querySelector('strong'); if(strong) strong.textContent=pwaText('install');
       const span=node.querySelector('span'); if(span) span.textContent=platform.isiOS && !tribecaDeferredInstallPrompt ? pwaText('readyIOS') : pwaText('ready');
@@ -643,7 +663,7 @@
     }
   }
   async function handleTribecaPwaInstall(){
-    if(isTribecaStandalone()) return toast(pwaText('installed'));
+    if(isTribecaInstalled()) return toast(pwaText('installed'));
     if(tribecaDeferredInstallPrompt){
       const promptEvent = tribecaDeferredInstallPrompt;
       tribecaDeferredInstallPrompt = null;
@@ -670,13 +690,22 @@
   }
   window.addEventListener('beforeinstallprompt', ev=>{
     ev.preventDefault();
+    if(isTribecaInstalled()){
+      tribecaDeferredInstallPrompt = null;
+      updatePwaInstallCta();
+      return;
+    }
     tribecaDeferredInstallPrompt = ev;
     localStorage.removeItem(TRIBECA_PWA_DISMISSED_KEY);
     updatePwaInstallCta();
   });
   window.addEventListener('appinstalled', ()=>{
     tribecaDeferredInstallPrompt = null;
-    localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY, '1');
+    try{
+      localStorage.setItem(TRIBECA_PWA_INSTALLED_KEY, '1');
+      localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY, '1');
+    }catch(_e){}
+    document.getElementById('tribecaPwaInstallCta')?.remove();
     updatePwaInstallCta();
     toast(pwaText('offlineReady'));
   });
@@ -1200,7 +1229,7 @@
       State.session = res.data?.session || null; State.user = State.session?.user || null;
     }
     if(!State.user) return;
-    State.profile = await maybe(table('profiles').select('*').eq('id', State.user.id).single(), null);
+    State.profile = await maybe(table('profiles').select(TRIBECA_SAFE_PROFILE_SELECT_V230).eq('id', State.user.id).single(), null);
     if(!State.profile) throw new Error('No se encontró perfil vinculado a este usuario.');
     if(!State.activitySince){
       const key = `tribeca-last-session-${State.user.id}`;
@@ -1222,11 +1251,7 @@
       maybe(table('private_messages').select('*').order('created_at',{ascending:false}).limit(500), []).then(d=>State.data.messages=d||[]),
       maybe(table('user_badges').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.userBadges=d||[]),
       maybe(table('badge_claim_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.badgeClaims=d||[]),
-      maybe(table('password_reset_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.passwordRequests=d||[]),
-      maybe(table('user_presence').select('*').order('last_seen',{ascending:false}), []).then(d=>State.data.presence=d||[]),
-      maybe(table('teacher_activity_log').select('*').order('created_at',{ascending:false}).limit(300), []).then(d=>State.data.activity=d||[]),
       maybe(table('guidance_resources').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidance=d||[]),
-      maybe(table('guidance_link_clicks').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidanceLinkClicks=d||[]),
       maybe(table('subject_overrides').select('*').order('stage').order('course').order('subject'), []).then(d=>State.data.subjects=d||[]),
       maybe(table('material_completions').select('*'), []).then(d=>State.data.materialCompletions=d||[]),
       maybe(table('exam_attempts').select('*').order('completed_at',{ascending:false}), []).then(d=>State.data.examAttempts=d||[]),
@@ -1234,11 +1259,15 @@
       maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]),
       maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]),
       maybe(table('tribeca_class_subjects').select('*').order('sort_order').order('subject'), []).then(d=>State.data.classSubjects=d||[]),
-      maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[]),
-      maybe(table('teacher_tasks').select('*').order('task_date',{ascending:true}).order('created_at',{ascending:false}), []).then(d=>State.data.teacherTasks=d||[])
+      maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[])
     ];
     if(roleTeacher()) {
-      common.push(maybe(table('profiles').select('*').eq('role','student').order('center').order('stage').order('course').order('full_name'), []).then(d=>State.data.students=d||[]));
+      common.push(maybe(State.client.rpc('tribeca_teacher_list_students_secure_v230'), []).then(d=>State.data.students=d||[]));
+      common.push(maybe(table('password_reset_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.passwordRequests=d||[]));
+      common.push(maybe(table('user_presence').select('*').order('last_seen',{ascending:false}), []).then(d=>State.data.presence=d||[]));
+      common.push(maybe(table('teacher_activity_log').select('*').order('created_at',{ascending:false}).limit(300), []).then(d=>State.data.activity=d||[]));
+      common.push(maybe(table('guidance_link_clicks').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidanceLinkClicks=d||[]));
+      common.push(maybe(table('teacher_tasks').select('*').order('task_date',{ascending:true}).order('created_at',{ascending:false}), []).then(d=>State.data.teacherTasks=d||[]));
       common.push(maybe(table('grades').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
       common.push(maybe(table('difficult_subjects').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
       common.push(maybe(table('student_billing').select('*'), []).then(d=>State.data.billing=d||[]));
@@ -1247,6 +1276,12 @@
       common.push(maybe(table('payment_months').select('*').order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]));
       common.push(maybe(table('teacher_material_repository').select('*').order('stage').order('course').order('subject').order('unit_title').order('created_at',{ascending:false}), []).then(d=>State.data.materialRepository=d||[]));
     } else {
+      State.data.students=[];
+      State.data.passwordRequests=[];
+      State.data.presence=[];
+      State.data.activity=[];
+      State.data.guidanceLinkClicks=[];
+      State.data.teacherTasks=[];
       common.push(maybe(table('grades').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
       common.push(maybe(table('difficult_subjects').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
       if(isCarlaFinanceProfileV205(p)){
@@ -1644,7 +1679,7 @@
     const personalTools = roleTeacher()
       ? `<button type="button" data-t141-account-tool="guidance">Orientación académica</button>`
       : `<button type="button" data-t141-account-tool="guidance">Orientación académica</button><button type="button" data-t141-account-tool="grades">Calificaciones</button><button type="button" data-t141-account-tool="difficulties">Materias con dificultades</button>${isCarlaFinanceProfileV205(State.profile)?'<button type="button" data-t141-account-tool="myPayments">Mensualidad y asistencia</button>':''}`;
-    const installTool = isTribecaStandalone() ? '' : `<button type="button" data-pwa-install>${safe(pwaText('install'))}</button>`;
+    const installTool = isTribecaInstalled() ? '' : `<button type="button" data-pwa-install>${safe(pwaText('install'))}</button>`;
     const themeLabel = document.body.classList.contains('is-dark') ? 'Modo claro' : 'Modo oscuro';
     return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button><button type="button" data-t73-account-panel="appearance">Apariencia</button><button type="button" data-t167-toggle-theme>${safe(themeLabel)}</button>${personalTools}${installTool}`;
   }
@@ -6418,7 +6453,7 @@ render();
     let recipientId=fd.get('recipientId');
     let recipientName='Profesora';
     if(!teacher){
-      const t=await maybe(table('profiles').select('id,full_name,username').eq('role','teacher').limit(1), []);
+      const t=await maybe(State.client.rpc('tribeca_teacher_recipient_v230'), []);
       recipientId=t?.[0]?.id;
       recipientName=displayName(t?.[0]);
     } else {
