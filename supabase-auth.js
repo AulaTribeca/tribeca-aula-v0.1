@@ -7731,8 +7731,13 @@ function classroomCard(c,i=0){
       const {error}=await table('tribeca_class_students').upsert(upserts,{onConflict:'class_id,user_id'});
       if(error) throw error;
       if(mode==='promote'){
-        const {error:profileError}=await table('profiles').update({center:classroom.center,stage:classroom.stage,course:classroom.course}).in('id',selected);
-        if(profileError) console.warn('[Tribeca Aula] No se pudo actualizar centro/curso del perfil tras promoción:', profileError);
+        const profileUpdate=await State.client.rpc('tribeca_teacher_update_student_classification_v231',{
+          p_ids:selected,
+          p_center:classroom.center,
+          p_stage:classroom.stage,
+          p_course:classroom.course
+        });
+        if(profileUpdate.error) console.warn('[Tribeca Aula] No se pudo actualizar centro/curso del perfil tras promoción:', profileUpdate.error);
       }
     }
     await log('classroom', mode==='promote'?'Alumnado asignado/promocionado':'Lista de alumnado de clase actualizada',{class_id:classId,classroom:classroom.name||classroomAutoName(classroom.center,classroom.stage,classroom.course),selected:selected.length});
