@@ -1071,14 +1071,18 @@
   const subjectList = (p=State.profile) => {
     if(!p) return [];
     if(p.role !== 'teacher') {
-      const assignments = (State.data.classStudents||[]).filter(a=>String(a.user_id)===String(p.id) && a.active!==false);
-      const classIds = new Set(assignments.map(a=>String(a.class_id)));
-      const classSubjects = (State.data.classSubjects||[])
-        .filter(s=>classIds.has(String(s.class_id)) && s.active!==false && !s.hidden)
-        .sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.subject||'').localeCompare(String(b.subject||''),'es'))
-        .map(s=>s.subject)
-        .filter(Boolean);
-      if(classSubjects.length) return [...new Set(classSubjects)];
+      // Para alumnado, la única fuente de verdad son las materias creadas
+      // explícitamente dentro de sus clases activas y visibles.
+      // Cero materias creadas significa cero materias visibles: nunca
+      // recurrimos al catálogo curricular general.
+      const classIds = new Set(studentAssignedClasses(p.id).map(c=>String(c.id)));
+      return [...new Set(
+        (State.data.classSubjects||[])
+          .filter(s=>classIds.has(String(s.class_id)) && s.active!==false && !s.hidden)
+          .sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.subject||'').localeCompare(String(b.subject||''),'es'))
+          .map(s=>String(s.subject||'').trim())
+          .filter(Boolean)
+      )];
     }
     return subjectListFor(p.stage, p.course);
   };
@@ -4689,7 +4693,10 @@ render();
   function standaloneSubjectsContent(){
     const p=State.profile;
     const subjects=subjectList(p);
-    return `<section class="t36-standalone-head panel"><p class="eyebrow">Mis materias</p><h1>Materias de ${safe(p?.course||'')}</h1><p>${safe(academicLine(p))}</p></section><section class="subjects-grid t36-standalone-subjects" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
+    const cards=subjects.length
+      ? subjects.map((s,i)=>subjectCard(s,i)).join('')
+      : '<div class="empty-state">Aínda non tes materias asignadas.</div>';
+    return `<section class="t36-standalone-head panel"><p class="eyebrow">Mis materias</p><h1>Materias de ${safe(p?.course||'')}</h1><p>${safe(academicLine(p))}</p></section><section class="subjects-grid t36-standalone-subjects" id="subjectsGrid">${cards}</section>`;
   }
   function renderStandalonePage(target){
     const main = $('#inicio');
