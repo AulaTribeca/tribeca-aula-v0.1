@@ -585,7 +585,10 @@
     const androidApp=String(document.referrer||'').startsWith('android-app://');
     const standalone=!!(displayMode || iosStandalone || androidApp);
     if(standalone){
-      try{ localStorage.setItem(TRIBECA_PWA_INSTALLED_KEY,'1'); }catch(_e){}
+      try{
+        localStorage.setItem(TRIBECA_PWA_INSTALLED_KEY,'1');
+        localStorage.setItem(TRIBECA_PWA_DISMISSED_KEY,'1');
+      }catch(_e){}
     }
     return standalone;
   }
@@ -703,7 +706,6 @@
       return;
     }
     tribecaDeferredInstallPrompt = ev;
-    localStorage.removeItem(TRIBECA_PWA_DISMISSED_KEY);
     updatePwaInstallCta();
   });
   window.addEventListener('appinstalled', ()=>{
