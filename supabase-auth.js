@@ -4408,7 +4408,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
         form.querySelectorAll('input,button[data-t130-grade-quiz]').forEach(el=>el.disabled=true);
         if(canPersist){
           const savedAttempt=await saveExamAttempt(materialId, {title:quiz.title||'Test interactivo'}, {score:score10, max_score:10, answers, completed_at:new Date().toISOString(), quiz_score:score, quiz_total:total});
-          if(savedAttempt && typeof attemptPrintButton==='function') res.insertAdjacentHTML('beforeend', `<div class="attempt-pdf-actions-v148">${attemptPrintButton(savedAttempt,'Descargar este intento en PDF')}</div>`);
+          if(savedAttempt && typeof attemptPrintButton==='function') result.insertAdjacentHTML('beforeend', `<div class="attempt-pdf-actions-v148">${attemptPrintButton(savedAttempt,'Descargar este intento en PDF')}</div>`);
           if(typeof updateAttemptHistoryBox==='function') updateAttemptHistoryBox(container, materialId);
         }
         result.querySelector('[data-t130-retake-quiz]')?.addEventListener('click',()=>{ delete container.dataset.t99Rendered; renderNativeQuiz(container); container.scrollIntoView?.({behavior:'smooth',block:'start'}); });
