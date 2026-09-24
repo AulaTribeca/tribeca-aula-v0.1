@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Irregular verbs · practice</title>
+<style>
+:root{
+  --bg:#f6f7f5;--card:#ffffff;--ink:#172019;--muted:#667169;--line:#d6ddd7;
+  --accent:#235a43;--accent-soft:#e8f2ed;--ok:#22633f;--ok-bg:#e9f5ed;
+  --bad:#8b3131;--bad-bg:#fbecec;--warn:#765315;--warn-bg:#fff5dc;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:auto}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Verdana,Arial,sans-serif;line-height:1.5;font-size:16px}
+button,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #7ba793;outline-offset:2px}
+.wrap{max-width:940px;margin:0 auto;padding:16px}
+.head{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
+.head h1{font-size:1.42rem;margin:0 0 4px}
+.sub{color:var(--muted);font-size:.92rem;margin:0}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:.86rem;font-weight:700}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 16px}
+.tab{min-height:44px;border:1px solid #aeb8b1;background:#fff;border-radius:10px;font-weight:800;color:var(--ink)}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.study-card{min-height:320px;display:grid;align-content:center;text-align:center}
+.counter{font-size:.86rem;color:var(--muted);font-weight:700}
+.verb{font-size:2.1rem;font-weight:900;margin:12px 0 8px;letter-spacing:.02em}
+.reveal{margin:8px auto 0;max-width:560px}
+.forms{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.formbox{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafbf9}
+.formbox small{display:block;color:var(--muted);font-size:.78rem;margin-bottom:3px}
+.formbox strong{font-size:1.05rem}
+.meaning{font-weight:800;margin-top:12px}
+.note{color:var(--muted);font-size:.83rem;margin-top:8px}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.btn{min-height:44px;border-radius:10px;border:1px solid var(--accent);padding:9px 14px;font-weight:800;background:var(--accent);color:#fff}
+.btn.secondary{background:#fff;color:var(--accent)}
+.btn.ghost{background:#fff;color:var(--ink);border-color:#aeb8b1}
+.progressline{height:9px;background:#e5eae6;border-radius:999px;overflow:hidden;margin:14px 0}
+.progressline span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
+.practice-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.promptverb{font-size:1.65rem;font-weight:900;margin:18px 0 12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.field label{display:block;font-size:.82rem;font-weight:800;margin-bottom:5px}
+.field input{width:100%;min-height:46px;border:1px solid #aeb8b1;border-radius:9px;padding:9px 10px;background:#fff;color:var(--ink)}
+.field input.ok{border-color:var(--ok);background:var(--ok-bg)}
+.field input.bad{border-color:var(--bad);background:var(--bad-bg)}
+.feedback{min-height:52px;margin-top:12px;border-radius:10px;padding:10px 12px;background:#f5f6f4;color:var(--muted)}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.quick-question{font-size:1.24rem;font-weight:900;margin:18px 0 12px}
+.options{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.option{min-height:48px;text-align:left;border:1px solid #aeb8b1;background:#fff;border-radius:10px;padding:10px 12px;font-weight:750;color:var(--ink)}
+.option.correct{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
+.option.wrong{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.option:disabled{cursor:default;opacity:1}
+.search{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search input{flex:1 1 260px;min-height:44px;border:1px solid #aeb8b1;border-radius:9px;padding:9px 10px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+table{width:100%;border-collapse:collapse;min-width:660px}
+th,td{padding:10px 12px;border-bottom:1px solid #e4e8e4;text-align:left}
+th{background:#f0f3f0;font-size:.82rem;position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+.small{font-size:.85rem;color:var(--muted)}
+.hidden{display:none!important}
+.summary{border:1px solid var(--line);background:#fff;border-radius:12px;padding:14px;margin-top:12px}
+.summary strong{font-size:1.25rem}
+@media(max-width:700px){
+  body{font-size:15.5px}.wrap{padding:10px}.tabs{grid-template-columns:repeat(2,1fr)}
+  .card{padding:15px}.forms,.grid3,.options{grid-template-columns:1fr}
+  .verb{font-size:1.8rem}.promptverb{font-size:1.45rem}
+  .btn{flex:1 1 130px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap" id="app">
+  <div class="head">
+    <div>
+      <h1>Irregular verbs</h1>
+      <p class="sub">Forma base · past simple · past participle · significado</p>
+    </div>
+    <div class="stats" aria-label="Resumen">
+      <span class="pill" id="totalPill">31 verbos</span>
+      <span class="pill" id="scorePill">Aciertos: 0</span>
+      <span class="pill" id="streakPill">Racha: 0</span>
+    </div>
+  </div>
+
+  <nav class="tabs" aria-label="Modos de práctica">
+    <button type="button" class="tab active" data-tab="study">Estudia</button>
+    <button type="button" class="tab" data-tab="practice">Completa</button>
+    <button type="button" class="tab" data-tab="quick">Rápido</button>
+    <button type="button" class="tab" data-tab="list">Lista</button>
+  </nav>
+
+  <section class="panel active" id="study">
+    <div class="card study-card">
+      <div class="counter" id="studyCount"></div>
+      <div class="verb" id="studyBase"></div>
+      <button class="btn secondary" type="button" id="revealBtn">Mostrar formas</button>
+      <div class="reveal hidden" id="studyReveal">
+        <div class="forms">
+          <div class="formbox"><small>Past simple</small><strong id="studyPast"></strong></div>
+          <div class="formbox"><small>Past participle</small><strong id="studyPart"></strong></div>
+          <div class="formbox"><small>Significado</small><strong id="studyMeaning"></strong></div>
+        </div>
+        <div class="note" id="studyNote"></div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" type="button" id="prevStudy">Anterior</button>
+        <button class="btn ghost" type="button" id="randomStudy">Aleatorio</button>
+        <button class="btn" type="button" id="nextStudy">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="practice">
+    <div class="card">
+      <div class="practice-head">
+        <div><strong>Completa las tres formas</strong><div class="small" id="practiceMeta"></div></div>
+        <button class="btn secondary" type="button" id="restartPractice">Mezclar de nuevo</button>
+      </div>
+      <div class="progressline" aria-hidden="true"><span id="practiceBar"></span></div>
+      <div class="promptverb" id="practiceBase"></div>
+      <div class="grid3">
+        <div class="field"><label for="pastInput">Past simple</label><input id="pastInput" data-progress-key="past" autocomplete="off"></div>
+        <div class="field"><label for="partInput">Past participle</label><input id="partInput" data-progress-key="participle" autocomplete="off"></div>
+        <div class="field"><label for="meaningInput">Significado</label><input id="meaningInput" data-progress-key="meaning" autocomplete="off"></div>
+      </div>
+      <div class="feedback" id="practiceFeedback" aria-live="polite">Escribe las tres respuestas y comprueba.</div>
+      <div class="actions">
+        <button class="btn secondary" type="button" id="hintBtn">Pista</button>
+        <button class="btn" type="button" id="checkPractice">Comprobar</button>
+        <button class="btn hidden" type="button" id="nextPractice">Siguiente</button>
+      </div>
+      <div class="summary hidden" id="practiceSummary"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="quick">
+    <div class="card">
+      <div class="practice-head">
+        <div><strong>Reto rápido</strong><div class="small" id="quickMeta">20 preguntas · respuesta múltiple</div></div>
+        <button class="btn secondary" type="button" id="restartQuick">Nuevo reto</button>
+      </div>
+      <div class="progressline" aria-hidden="true"><span id="quickBar"></span></div>
+      <div class="quick-question" id="quickQuestion"></div>
+      <div class="options" id="quickOptions"></div>
+      <div class="feedback" id="quickFeedback" aria-live="polite">Elige una opción.</div>
+      <div class="actions">
+        <button class="btn hidden" type="button" id="nextQuick">Siguiente</button>
+      </div>
+      <div class="summary hidden" id="quickSummary"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="list">
+    <div class="card">
+      <div class="search">
+        <input id="searchInput" type="search" placeholder="Buscar verbo o significado" aria-label="Buscar verbo">
+        <button class="btn secondary" type="button" id="clearSearch">Limpiar</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Base</th><th>Past simple</th><th>Past participle</th><th>Significado</th></tr></thead>
+          <tbody id="verbTable"></tbody>
+        </table>
+      </div>
+      <p class="small">* En <strong>get</strong>, <em>got</em> es la forma habitual en inglés británico; <em>gotten</em> es frecuente en inglés americano. En <strong>learn</strong>, <em>learnt</em> y <em>learned</em> son correctas.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+var VERBS=[
+ {b:'be',p:'was / were',pp:'been',m:'ser / estar',pa:['was','were','was/were'],ppa:['been'],ma:['ser','estar','ser/estar','ser o estar']},
+ {b:'beat',p:'beat',pp:'beaten',m:'golpear / vencer',pa:['beat'],ppa:['beaten'],ma:['golpear','vencer','derrotar']},
+ {b:'bite',p:'bit',pp:'bitten',m:'morder',pa:['bit'],ppa:['bitten'],ma:['morder']},
+ {b:'bring',p:'brought',pp:'brought',m:'traer',pa:['brought'],ppa:['brought'],ma:['traer']},
+ {b:'build',p:'built',pp:'built',m:'construir',pa:['built'],ppa:['built'],ma:['construir']},
+ {b:'buy',p:'bought',pp:'bought',m:'comprar',pa:['bought'],ppa:['bought'],ma:['comprar']},
+ {b:'choose',p:'chose',pp:'chosen',m:'elegir',pa:['chose'],ppa:['chosen'],ma:['elegir','escoger']},
+ {b:'come',p:'came',pp:'come',m:'venir',pa:['came'],ppa:['come'],ma:['venir']},
+ {b:'cut',p:'cut',pp:'cut',m:'cortar',pa:['cut'],ppa:['cut'],ma:['cortar']},
+ {b:'dig',p:'dug',pp:'dug',m:'cavar',pa:['dug'],ppa:['dug'],ma:['cavar']},
+ {b:'do',p:'did',pp:'done',m:'hacer',pa:['did'],ppa:['done'],ma:['hacer']},
+ {b:'draw',p:'drew',pp:'drawn',m:'dibujar',pa:['drew'],ppa:['drawn'],ma:['dibujar']},
+ {b:'drive',p:'drove',pp:'driven',m:'conducir',pa:['drove'],ppa:['driven'],ma:['conducir']},
+ {b:'fall',p:'fell',pp:'fallen',m:'caer',pa:['fell'],ppa:['fallen'],ma:['caer','caerse']},
+ {b:'fight',p:'fought',pp:'fought',m:'luchar',pa:['fought'],ppa:['fought'],ma:['luchar','pelear']},
+ {b:'fly',p:'flew',pp:'flown',m:'volar',pa:['flew'],ppa:['flown'],ma:['volar']},
+ {b:'forget',p:'forgot',pp:'forgotten',m:'olvidar',pa:['forgot'],ppa:['forgotten'],ma:['olvidar','olvidarse']},
+ {b:'forgive',p:'forgave',pp:'forgiven',m:'perdonar',pa:['forgave'],ppa:['forgiven'],ma:['perdonar']},
+ {b:'freeze',p:'froze',pp:'frozen',m:'congelar',pa:['froze'],ppa:['frozen'],ma:['congelar','congelarse']},
+ {b:'get',p:'got',pp:'got',m:'conseguir / obtener',pa:['got'],ppa:['got','gotten'],ma:['conseguir','obtener','recibir']},
+ {b:'give',p:'gave',pp:'given',m:'dar',pa:['gave'],ppa:['given'],ma:['dar']},
+ {b:'go',p:'went',pp:'gone',m:'ir',pa:['went'],ppa:['gone'],ma:['ir','irse']},
+ {b:'grow',p:'grew',pp:'grown',m:'crecer',pa:['grew'],ppa:['grown'],ma:['crecer','cultivar']},
+ {b:'have',p:'had',pp:'had',m:'tener',pa:['had'],ppa:['had'],ma:['tener']},
+ {b:'hear',p:'heard',pp:'heard',m:'oír',pa:['heard'],ppa:['heard'],ma:['oir','oír','escuchar']},
+ {b:'hit',p:'hit',pp:'hit',m:'golpear',pa:['hit'],ppa:['hit'],ma:['golpear']},
+ {b:'hold',p:'held',pp:'held',m:'sostener / mantener',pa:['held'],ppa:['held'],ma:['sostener','mantener','sujetar']},
+ {b:'hurt',p:'hurt',pp:'hurt',m:'hacer daño / doler',pa:['hurt'],ppa:['hurt'],ma:['hacer daño','doler','herir']},
+ {b:'know',p:'knew',pp:'known',m:'saber / conocer',pa:['knew'],ppa:['known'],ma:['saber','conocer']},
+ {b:'learn',p:'learnt / learned',pp:'learnt / learned',m:'aprender',pa:['learnt','learned'],ppa:['learnt','learned'],ma:['aprender']},
+ {b:'leave',p:'left',pp:'left',m:'dejar / marcharse',pa:['left'],ppa:['left'],ma:['dejar','marcharse','salir','irse']}
+];
+
+var $=function(id){return document.getElementById(id);};
+var globalScore=0,globalStreak=0;
+var studyIndex=0,studyShown=false;
+var practiceOrder=[],practiceIndex=0,practiceCorrect=0,practiceWrong=[];
+var quickIndex=0,quickCorrect=0,quickLocked=false,quickQuestions=[];
+
+function normalize(s){
+ return String(s==null?'':s).trim().toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/[’']/g,'').replace(/\s+/g,' ').replace(/\s*\/\s*/g,'/');
+}
+function accepted(value,list){
+ var n=normalize(value);
+ return list.some(function(x){return normalize(x)===n;});
+}
+function shuffle(arr){
+ var a=arr.slice();
+ for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}
+ return a;
+}
+function updateStats(){
+ $('scorePill').textContent='Aciertos: '+globalScore;
+ $('streakPill').textContent='Racha: '+globalStreak;
+}
+function record(ok){
+ if(ok){globalScore++;globalStreak++;}else{globalStreak=0;}
+ updateStats();
+}
+function setTab(name){
+ document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});
+ document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('active',p.id===name);});
+}
+document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){setTab(b.dataset.tab);});});
+
+function renderStudy(){
+ var v=VERBS[studyIndex];
+ $('studyCount').textContent=(studyIndex+1)+' de '+VERBS.length;
+ $('studyBase').textContent=v.b;
+ $('studyPast').textContent=v.p;
+ $('studyPart').textContent=v.pp;
+ $('studyMeaning').textContent=v.m;
+ $('studyNote').textContent=v.b==='get'?'Participio: got (inglés británico); gotten también es válido en inglés americano.':(v.b==='learn'?'Learnt y learned son formas correctas.':'');
+ $('studyReveal').classList.toggle('hidden',!studyShown);
+ $('revealBtn').textContent=studyShown?'Ocultar formas':'Mostrar formas';
+}
+$('revealBtn').addEventListener('click',function(){studyShown=!studyShown;renderStudy();});
+$('prevStudy').addEventListener('click',function(){studyIndex=(studyIndex-1+VERBS.length)%VERBS.length;studyShown=false;renderStudy();});
+$('nextStudy').addEventListener('click',function(){studyIndex=(studyIndex+1)%VERBS.length;studyShown=false;renderStudy();});
+$('randomStudy').addEventListener('click',function(){
+ var n=studyIndex;
+ while(n===studyIndex && VERBS.length>1)n=Math.floor(Math.random()*VERBS.length);
+ studyIndex=n;studyShown=false;renderStudy();
+});
+
+function startPractice(){
+ practiceOrder=shuffle(VERBS.map(function(_,i){return i;}));
+ practiceIndex=0;practiceCorrect=0;practiceWrong=[];
+ $('practiceSummary').classList.add('hidden');
+ renderPractice();
+}
+function clearPracticeFields(){
+ ['pastInput','partInput','meaningInput'].forEach(function(id){var el=$(id);el.value='';el.classList.remove('ok','bad');el.disabled=false;});
+ $('practiceFeedback').className='feedback';
+ $('practiceFeedback').textContent='Escribe las tres respuestas y comprueba.';
+ $('checkPractice').classList.remove('hidden');
+ $('nextPractice').classList.add('hidden');
+ $('hintBtn').disabled=false;
+}
+function renderPractice(){
+ if(practiceIndex>=practiceOrder.length){finishPractice();return;}
+ clearPracticeFields();
+ var v=VERBS[practiceOrder[practiceIndex]];
+ $('practiceBase').textContent=v.b;
+ $('practiceMeta').textContent='Verbo '+(practiceIndex+1)+' de '+VERBS.length+' · '+practiceCorrect+' correctos';
+ $('practiceBar').style.width=(practiceIndex/VERBS.length*100)+'%';
+ $('pastInput').focus();
+}
+function gradePractice(){
+ var v=VERBS[practiceOrder[practiceIndex]];
+ var vals=[$('pastInput').value,$('partInput').value,$('meaningInput').value];
+ if(vals.some(function(x){return !String(x).trim();})){
+  $('practiceFeedback').className='feedback bad';
+  $('practiceFeedback').textContent='Completa los tres campos antes de comprobar.';
+  return;
+ }
+ var checks=[accepted(vals[0],v.pa),accepted(vals[1],v.ppa),accepted(vals[2],v.ma)];
+ ['pastInput','partInput','meaningInput'].forEach(function(id,i){$(id).classList.add(checks[i]?'ok':'bad');$(id).disabled=true;});
+ var all=checks.every(Boolean);
+ record(all);
+ if(all){
+  practiceCorrect++;
+  $('practiceFeedback').className='feedback ok';
+  $('practiceFeedback').textContent='Correcto. '+v.b+' · '+v.p+' · '+v.pp+' · '+v.m;
+ }else{
+  practiceWrong.push(v.b);
+  $('practiceFeedback').className='feedback bad';
+  $('practiceFeedback').textContent='Revisa: '+v.b+' · '+v.p+' · '+v.pp+' · '+v.m;
+ }
+ $('checkPractice').classList.add('hidden');
+ $('nextPractice').classList.remove('hidden');
+ $('hintBtn').disabled=true;
+}
+function finishPractice(){
+ $('practiceBar').style.width='100%';
+ $('practiceBase').textContent='Sesión terminada';
+ $('practiceMeta').textContent=VERBS.length+' verbos completados';
+ document.querySelector('.grid3').classList.add('hidden');
+ $('practiceFeedback').classList.add('hidden');
+ $('hintBtn').classList.add('hidden');
+ $('checkPractice').classList.add('hidden');
+ $('nextPractice').classList.add('hidden');
+ $('practiceSummary').classList.remove('hidden');
+ var wrong=Array.from(new Set(practiceWrong));
+ $('practiceSummary').innerHTML='<strong>'+practiceCorrect+' / '+VERBS.length+'</strong><p>'+(wrong.length?'Repasa especialmente: '+wrong.join(', ')+'.':'Has completado todos correctamente.')+'</p><button class="btn" type="button" id="againPractice">Repetir los 31</button>';
+ $('againPractice').addEventListener('click',function(){
+  document.querySelector('.grid3').classList.remove('hidden');
+  $('practiceFeedback').classList.remove('hidden');
+  $('hintBtn').classList.remove('hidden');
+  startPractice();
+ });
+}
+$('checkPractice').addEventListener('click',gradePractice);
+$('nextPractice').addEventListener('click',function(){practiceIndex++;renderPractice();});
+$('restartPractice').addEventListener('click',function(){
+ document.querySelector('.grid3').classList.remove('hidden');
+ $('practiceFeedback').classList.remove('hidden');
+ $('hintBtn').classList.remove('hidden');
+ startPractice();
+});
+$('hintBtn').addEventListener('click',function(){
+ var v=VERBS[practiceOrder[practiceIndex]];
+ $('practiceFeedback').className='feedback';
+ $('practiceFeedback').textContent='Pista: past empieza por "'+v.p.charAt(0)+'" y participle por "'+v.pp.charAt(0)+'".';
+});
+['pastInput','partInput','meaningInput'].forEach(function(id){
+ $(id).addEventListener('keydown',function(e){if(e.key==='Enter' && !$('checkPractice').classList.contains('hidden'))gradePractice();});
+});
+
+function uniqueOptions(correct,pool){
+ var vals=Array.from(new Set(pool.filter(function(x){return normalize(x)!==normalize(correct);})));
+ vals=shuffle(vals).slice(0,3);
+ vals.push(correct);
+ return shuffle(vals);
+}
+function makeQuickQuestion(){
+ var v=VERBS[Math.floor(Math.random()*VERBS.length)];
+ var types=['past','part','meaning','base'];
+ var type=types[Math.floor(Math.random()*types.length)];
+ var q={},pool;
+ if(type==='past'){
+  q.text='Past simple de "'+v.b+'"';
+  q.answer=v.p;
+  pool=VERBS.map(function(x){return x.p;});
+ }else if(type==='part'){
+  q.text='Past participle de "'+v.b+'"';
+  q.answer=v.pp;
+  pool=VERBS.map(function(x){return x.pp;});
+ }else if(type==='meaning'){
+  q.text='Significado de "'+v.b+'"';
+  q.answer=v.m;
+  pool=VERBS.map(function(x){return x.m;});
+ }else{
+  var clue=Math.random()<.5?v.p:v.pp;
+  q.text='¿Qué forma base corresponde a "'+clue+'"?';
+  q.answer=v.b;
+  pool=VERBS.map(function(x){return x.b;});
+ }
+ q.options=uniqueOptions(q.answer,pool);
+ return q;
+}
+function startQuick(){
+ quickIndex=0;quickCorrect=0;quickLocked=false;quickQuestions=[];
+ for(var i=0;i<20;i++)quickQuestions.push(makeQuickQuestion());
+ $('quickSummary').classList.add('hidden');
+ $('quickQuestion').classList.remove('hidden');
+ $('quickOptions').classList.remove('hidden');
+ $('quickFeedback').classList.remove('hidden');
+ renderQuick();
+}
+function renderQuick(){
+ if(quickIndex>=quickQuestions.length){finishQuick();return;}
+ quickLocked=false;
+ var q=quickQuestions[quickIndex];
+ $('quickMeta').textContent='Pregunta '+(quickIndex+1)+' de 20 · '+quickCorrect+' correctas';
+ $('quickBar').style.width=(quickIndex/20*100)+'%';
+ $('quickQuestion').textContent=q.text;
+ $('quickFeedback').className='feedback';
+ $('quickFeedback').textContent='Elige una opción.';
+ $('nextQuick').classList.add('hidden');
+ var box=$('quickOptions');box.innerHTML='';
+ q.options.forEach(function(opt){
+  var b=document.createElement('button');
+  b.type='button';b.className='option';b.textContent=opt;
+  b.addEventListener('click',function(){answerQuick(b,opt);});
+  box.appendChild(b);
+ });
+}
+function answerQuick(button,opt){
+ if(quickLocked)return;
+ quickLocked=true;
+ var q=quickQuestions[quickIndex],ok=normalize(opt)===normalize(q.answer);
+ record(ok);
+ if(ok)quickCorrect++;
+ document.querySelectorAll('#quickOptions .option').forEach(function(b){
+  b.disabled=true;
+  if(normalize(b.textContent)===normalize(q.answer))b.classList.add('correct');
+ });
+ if(!ok)button.classList.add('wrong');
+ $('quickFeedback').className='feedback '+(ok?'ok':'bad');
+ $('quickFeedback').textContent=ok?'Correcto.':'Respuesta correcta: '+q.answer;
+ $('nextQuick').classList.remove('hidden');
+}
+function finishQuick(){
+ $('quickBar').style.width='100%';
+ $('quickQuestion').classList.add('hidden');
+ $('quickOptions').classList.add('hidden');
+ $('quickFeedback').classList.add('hidden');
+ $('nextQuick').classList.add('hidden');
+ $('quickMeta').textContent='Reto completado';
+ $('quickSummary').classList.remove('hidden');
+ $('quickSummary').innerHTML='<strong>'+quickCorrect+' / 20</strong><p>'+Math.round(quickCorrect/20*100)+' % de aciertos.</p><button class="btn" type="button" id="againQuick">Nuevo reto</button>';
+ $('againQuick').addEventListener('click',startQuick);
+}
+$('nextQuick').addEventListener('click',function(){quickIndex++;renderQuick();});
+$('restartQuick').addEventListener('click',startQuick);
+
+function renderTable(filter){
+ var f=normalize(filter||'');
+ $('verbTable').innerHTML='';
+ VERBS.filter(function(v){
+  return !f || [v.b,v.p,v.pp,v.m].some(function(x){return normalize(x).indexOf(f)>=0;});
+ }).forEach(function(v){
+  var tr=document.createElement('tr');
+  [v.b,v.p,v.pp,v.m].forEach(function(x){var td=document.createElement('td');td.textContent=x;tr.appendChild(td);});
+  $('verbTable').appendChild(tr);
+ });
+}
+$('searchInput').addEventListener('input',function(){renderTable(this.value);});
+$('clearSearch').addEventListener('click',function(){$('searchInput').value='';renderTable('');$('searchInput').focus();});
+
+$('totalPill').textContent=VERBS.length+' verbos';
+renderStudy();
+renderTable('');
+startPractice();
+startQuick();
+updateStats();
+})();
+</script>
+</body>
+</html>
