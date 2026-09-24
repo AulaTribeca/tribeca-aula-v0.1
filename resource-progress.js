@@ -212,7 +212,7 @@ try{new MutationObserver(schedule).observe(document.documentElement,{subtree:tru
     const p=profile();
     if(!p?.id || p.role==='teacher' || !materialId) return String(html||'');
     const raw=String(html||'');
-    const script='<script>'+childBridgeSource(materialId,getState(materialId),p.id).replace(/<\\/script/gi,'<\\/script')+'<\\/script>';
+    const script='<script>'+childBridgeSource(materialId,getState(materialId),p.id).replace(/<\/script/gi,'<\\/script')+'<\\/script>';
     if(/<head[^>]*>/i.test(raw)) return raw.replace(/<head[^>]*>/i,m=>m+script);
     if(/<html[^>]*>/i.test(raw)) return raw.replace(/<html[^>]*>/i,m=>m+'<head>'+script+'</head>');
     return '<!doctype html><html><head><meta charset="utf-8">'+script+'</head><body>'+raw+'</body></html>';
