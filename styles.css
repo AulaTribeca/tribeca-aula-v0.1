@@ -17030,3 +17030,10 @@ body.is-dark,body.dark-mode,body.theme-dark{
   .student-class-card-meta-v232{justify-content:flex-start}
   .student-class-detail-head-v232{flex-direction:column}
 }
+
+body.is-focus-mode .student-classroom-card-v232{
+  display:grid !important;
+}
+body.is-focus-mode .student-classroom-area-v232 > .section-heading{
+  display:flex !important;
+}
