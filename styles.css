@@ -16966,3 +16966,67 @@ body.is-dark,body.dark-mode,body.theme-dark{
     max-height:none;
   }
 }
+
+
+/* Tribeca Aula v232 · portada do alumnado: clases navegables e videoclases discretas */
+.video-classes-home-v232.is-compact-empty{
+  min-height:0 !important;
+  padding:.72rem 1rem !important;
+  display:flex !important;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+  border-radius:16px !important;
+  box-shadow:none !important;
+}
+.video-home-compact-copy-v232{display:flex;align-items:center;gap:.7rem;min-width:0}
+.video-home-compact-copy-v232>div{display:grid;gap:.08rem;min-width:0}
+.video-home-compact-copy-v232 strong{font-size:.96rem}
+.video-home-compact-copy-v232 small{font-size:.82rem;color:var(--muted)}
+.video-home-icon-v232{display:grid;place-items:center;width:2.15rem;height:2.15rem;border-radius:10px;background:rgba(16,63,36,.08)}
+.video-home-open-v232{min-height:2.25rem !important;padding:.45rem .75rem !important;white-space:nowrap}
+.video-classes-home-v232.has-upcoming{border-left:.35rem solid var(--green)}
+.student-classroom-area-v232{gap:.8rem}
+.student-classroom-grid-v232{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.85rem}
+.student-classroom-card-v232{
+  min-height:0 !important;
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:1rem !important;
+  padding:1.05rem 1.15rem !important;
+  border-left:.35rem solid var(--green);
+  cursor:pointer;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.student-classroom-card-v232:hover,
+.student-classroom-card-v232:focus-visible{
+  transform:translateY(-2px);
+  border-color:var(--gold);
+  box-shadow:0 10px 26px rgba(22,33,24,.10) !important;
+  outline:none;
+}
+.student-class-card-main-v232{min-width:0}
+.student-class-card-main-v232 .eyebrow{margin:0 0 .22rem}
+.student-class-card-main-v232 h3{margin:0;font-size:clamp(1.15rem,1.6vw,1.5rem);line-height:1.2}
+.student-class-card-main-v232 p:last-child{margin:.28rem 0 0;color:var(--muted);font-size:.83rem}
+.student-class-card-meta-v232{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;justify-content:flex-end}
+.student-class-card-meta-v232 span{font-size:.75rem;font-weight:800;padding:.3rem .5rem;border-radius:999px;background:rgba(16,63,36,.07);white-space:nowrap}
+.student-class-card-meta-v232 b{font-size:1.25rem;color:var(--green)}
+.student-class-detail-v232{display:grid;gap:1rem;max-width:1180px;margin:0 auto}
+.student-class-detail-head-v232{display:flex;gap:1rem;align-items:flex-start;padding:1.2rem 1.3rem}
+.student-class-detail-head-v232>div{min-width:0}
+.student-class-detail-head-v232 h1{margin:.1rem 0 .25rem;font-size:clamp(1.7rem,3vw,2.5rem)}
+.student-class-detail-head-v232 p:last-child{margin:0;color:var(--muted)}
+.student-class-back-v232{flex:0 0 auto}
+.student-class-detail-body-v232{display:grid;gap:.85rem}
+.student-class-subject-grid-v232{grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) !important}
+.student-class-empty-v232{padding:2rem 1.25rem;text-align:center}
+@media(max-width:680px){
+  .video-classes-home-v232.is-compact-empty{align-items:flex-start}
+  .video-home-compact-copy-v232 small{display:none}
+  .student-classroom-grid-v232{grid-template-columns:1fr}
+  .student-classroom-card-v232{grid-template-columns:1fr}
+  .student-class-card-meta-v232{justify-content:flex-start}
+  .student-class-detail-head-v232{flex-direction:column}
+}
