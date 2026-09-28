@@ -19,7 +19,7 @@
   const startMonth = d => new Date(d.getFullYear(), d.getMonth(), 1);
   const fmtDate = iso => parseIso(iso).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
   const fmtLongDate = iso => parseIso(iso).toLocaleDateString('es-ES', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  const fmtDT = iso => iso ? new Date(iso).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+  const fmtDT = iso => iso ? new Date(iso).toLocaleString('gl-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
   const toast = (msg) => typeof window.showToast === 'function' ? window.showToast(msg) : alert(msg);
   const TRIBECA_QUERY_TIMEOUT_MS = 9000;
   function tribecaTimeoutPromise(ms=TRIBECA_QUERY_TIMEOUT_MS, label='operación') {
@@ -2359,7 +2359,7 @@
   function videoClassDateText(v={}){
     const raw=videoClassStartsAt(v);
     const t=raw ? Date.parse(raw) : NaN;
-    if(!Number.isFinite(t)) return 'Fecha por confirmar';
+    if(!Number.isFinite(t)) return 'Data por confirmar';
     return new Date(t).toLocaleString('es-ES',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   }
   function visibleVideoClasses(profile=State.profile){
@@ -2375,12 +2375,15 @@
   function videoClassVisibilityLabel(v={}){ return calendarEventVisibilityLabel(v); }
   function videoClassCard(v={}, teacher=false){
     const url=v.meet_url || v.url || v.link_url || '';
-    return `<article class="video-class-card-v173 ${v.hidden?'is-hidden-item':''}"><div class="video-class-icon-v173">🎥</div><div><p class="eyebrow">${safe(videoClassDateText(v))}</p><h3>${safe(v.title||'Videoclase')}</h3><p>${safe(v.description||v.body||'Videoclase por Google Meet con posibilidad de proyección de documentos.')}</p><small>${safe(videoClassVisibilityLabel(v))}${v.hidden?' · Oculta':''}</small><div class="inline-actions">${url?`<a class="primary-btn" href="${safe(url)}" target="_blank" rel="noopener">Entrar en Google Meet</a>`:''}${teacher?`<button type="button" class="secondary-btn" data-t173-toggle-video-class="${safe(v.id)}">${v.hidden?'Mostrar':'Ocultar'}</button><button type="button" class="danger-btn" data-t173-delete-video-class="${safe(v.id)}">Eliminar</button>`:''}</div></div></article>`;
+    return `<article class="video-class-card-v173 ${v.hidden?'is-hidden-item':''}"><div class="video-class-icon-v173">🎥</div><div><p class="eyebrow">${safe(videoClassDateText(v))}</p><h3>${safe(v.title||'Videoclase')}</h3><p>${safe(v.description||v.body||'Videoclase por Google Meet.')}</p><small>${safe(videoClassVisibilityLabel(v))}${v.hidden?' · Oculta':''}</small><div class="inline-actions">${url?`<a class="primary-btn" href="${safe(url)}" target="_blank" rel="noopener">Entrar en Google Meet</a>`:''}${teacher?`<button type="button" class="secondary-btn" data-t173-toggle-video-class="${safe(v.id)}">${v.hidden?'Mostrar':'Ocultar'}</button><button type="button" class="danger-btn" data-t173-delete-video-class="${safe(v.id)}">Eliminar</button>`:''}</div></div></article>`;
   }
   function videoClassesHomePanel(){
     const rows=upcomingVideoClasses(roleTeacher()?4:2);
-    const emptyText=roleTeacher() ? 'Todavía no tienes videoclases próximas programadas.' : 'Todavía no hay videoclases programadas para ti.';
-    return `<section class="video-classes-home-v173 video-classes-home-v175 window-panel"><div><p class="eyebrow">Videoclases</p><h2>${roleTeacher()?'Próximas videoclases':'Tus videoclases'}</h2><p class="meta">Enlaces de Google Meet disponibles desde el aula virtual.</p></div><div class="video-class-grid-v173">${rows.length?rows.map(v=>videoClassCard(v, roleTeacher())).join(''):`<article class="video-class-card-v173 video-class-empty-card-v175"><div class="video-class-icon-v173">🎥</div><div><p class="eyebrow">Google Meet</p><h3>Sin videoclases próximas</h3><p>${safe(emptyText)}</p><small>Cuando se programe una videoclase aparecerá aquí y en el apartado Videoclases.</small></div></article>`}</div><button type="button" class="secondary-btn" data-t16-tool="videoclasses">Abrir videoclases</button></section>`;
+    if(!roleTeacher() && !rows.length){
+      return `<section class="video-classes-home-v173 video-classes-home-v232 is-compact-empty window-panel" aria-label="Videoclases"><div class="video-home-compact-copy-v232"><span class="video-home-icon-v232" aria-hidden="true">🎥</span><div><strong>Videoclases</strong><small>Non hai ningunha videoclase programada.</small></div></div><button type="button" class="ghost-btn video-home-open-v232" data-t16-tool="videoclasses">Ver videoclases</button></section>`;
+    }
+    const emptyText=roleTeacher() ? 'Aínda non tes videoclases próximas programadas.' : 'Aínda non hai videoclases programadas para ti.';
+    return `<section class="video-classes-home-v173 video-classes-home-v175 video-classes-home-v232 window-panel ${rows.length?'has-upcoming':''}"><div><p class="eyebrow">Videoclases</p><h2>${roleTeacher()?'Próximas videoclases':'Próxima videoclase'}</h2><p class="meta">Ligazóns de Google Meet dispoñibles desde a aula virtual.</p></div><div class="video-class-grid-v173">${rows.length?rows.map(v=>videoClassCard(v, roleTeacher())).join(''):`<article class="video-class-card-v173 video-class-empty-card-v175"><div class="video-class-icon-v173">🎥</div><div><p class="eyebrow">Google Meet</p><h3>Sen videoclases próximas</h3><p>${safe(emptyText)}</p></div></article>`}</div><button type="button" class="secondary-btn" data-t16-tool="videoclasses">Abrir videoclases</button></section>`;
   }
   function videoClassTargetSelector(v=null){
     const classes=(State.data.classrooms||[]).filter(c=>c && c.active!==false && !c.hidden).sort((a,b)=>classroomLabel(a).localeCompare(classroomLabel(b),'es'));
@@ -2495,7 +2498,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const classes=studentAssignedClasses();
     if(!classes.length) return '';
     if(studentFocusModeEnabled(State.profile)) return focusStudentClassesMarkup(classes);
-    return `<section class="student-classroom-area"><div class="section-heading"><h2>Mis clases</h2><span>${classes.length} clase${classes.length===1?'':'s'} activa${classes.length===1?'':'s'}</span></div>${classes.map(studentClassroomCard).join('')}</section>`;
+    return `<section class="student-classroom-area student-classroom-area-v232"><div class="section-heading"><h2>As miñas clases</h2><span>${classes.length} ${classes.length===1?'clase activa':'clases activas'}</span></div><div class="student-classroom-grid-v232">${classes.map(studentClassroomCard).join('')}</div></section>`;
   }
   function focusStudentClassesMarkup(classes=studentAssignedClasses()){
     const visible=(classes||[]).filter(c=>c && c.active!==false && !c.hidden);
@@ -2544,14 +2547,35 @@ function studentAssignedClasses(studentId=State.profile?.id){
   function studentClassroomCard(c){
     const subjects=classSubjectsForStudentClass(c.id);
     const totalMaterials=subjects.reduce((acc,s)=>acc+materialsForClassSubject(s.id).length,0);
-    const done=subjects.reduce((acc,s)=>acc+materialsForClassSubject(s.id).filter(m=>isMaterialCompleted(m.id)).length,0);
-    const percent=totalMaterials?Math.round((done/totalMaterials)*100):0;
-    return `<article class="student-classroom-card panel">
-      <header><div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h3>${safe(classroomLabel(c))}</h3><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div><strong>${percent}%</strong></header>
-      <div class="progress"><span style="width:${percent}%"></span></div>
-      <small>${done}/${totalMaterials} materiales hechos.</small>
-      <div class="student-class-subject-grid">${subjects.length?subjects.map((s,i)=>classSubjectCard(s,i,c)).join(''):'<div class="empty-state">Esta clase todavía no tiene materias visibles.</div>'}</div>
+    return `<article class="student-classroom-card student-classroom-card-v232 panel" tabindex="0" role="button" data-student-class-id="${safe(c.id)}" aria-label="Abrir ${safe(classroomLabel(c))}">
+      <div class="student-class-card-main-v232">
+        <p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p>
+        <h3>${safe(classroomLabel(c))}</h3>
+        <p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p>
+      </div>
+      <div class="student-class-card-meta-v232">
+        <span>${subjects.length} ${subjects.length===1?'materia':'materias'}</span>
+        <span>${totalMaterials} ${totalMaterials===1?'material':'materiais'}</span>
+        <b aria-hidden="true">→</b>
+      </div>
     </article>`;
+  }
+  function studentClassDetailContent(classId=State.currentClassId){
+    const c=classById(classId);
+    if(!c) return '<div class="empty-state premium-empty">Non se atopou esta clase.</div>';
+    const allowed=studentAssignedClasses(State.profile?.id).some(x=>String(x.id)===String(c.id));
+    if(!roleTeacher() && !allowed) return '<div class="empty-state premium-empty">Esta clase non está dispoñible para a túa conta.</div>';
+    const subjects=classSubjectsForStudentClass(c.id);
+    return `<section class="student-class-detail-v232">
+      <header class="student-class-detail-head-v232 panel">
+        <button type="button" class="ghost-btn student-class-back-v232" data-t16-tool="home">← Volver</button>
+        <div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h1>${safe(classroomLabel(c))}</h1><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div>
+      </header>
+      <section class="student-class-detail-body-v232">
+        <div class="section-heading"><h2>Materias</h2><span>${subjects.length}</span></div>
+        ${subjects.length?`<div class="student-class-subject-grid student-class-subject-grid-v232">${subjects.map((s,i)=>classSubjectCard(s,i,c)).join('')}</div>`:'<div class="empty-state student-class-empty-v232">Aínda non tes materias asignadas.</div>'}
+      </section>
+    </section>`;
   }
   function classSubjectCard(s,i,c){
     if(studentFocusModeEnabled(State.profile)) return focusStudySubjectCard(s,c,i);
@@ -2565,10 +2589,10 @@ function studentAssignedClasses(studentId=State.profile?.id){
       <div class="subject-top"><span>${safe(c.course||'')}</span></div>
       <div class="subject-mark">${safe(vis.glyph)}</div>
       <h3>${safe(s.subject)}</h3>
-      <p>${mats.length} publicaciones · ${units.length||0} unidades</p>
+      <p>${mats.length} ${mats.length===1?'publicación':'publicacións'} · ${units.length||0} ${units.length===1?'unidade':'unidades'}</p>
       <div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div>
       <div class="progress"><span style="width:${pr.percent}%"></span></div>
-      <small>${pr.done}/${pr.total} publicaciones hechas.</small>
+      <small>${pr.done}/${pr.total} publicacións feitas.</small>
     </article>`;
   }
   function carlaFinanceMonthV205(){
@@ -2705,8 +2729,15 @@ function studentAssignedClasses(studentId=State.profile?.id){
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
-    $$('.subject-card[data-class-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('classSubjectDetail', {classSubjectId:card.dataset.classSubject, classId:card.dataset.classId, subject:card.dataset.subject});});});
-    $$('.subject-card[data-subject]:not([data-class-subject])').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); 
+    $('.student-classroom-card[data-student-class-id]').forEach(card=>{
+      if(card.dataset.classOpenBound==='1') return;
+      card.dataset.classOpenBound='1';
+      const open=()=>openTool('studentClassDetail',{classId:card.dataset.studentClassId});
+      card.addEventListener('click',ev=>{ev.preventDefault();open();});
+      card.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();}});
+    });
+    $('.subject-card[data-class-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('classSubjectDetail', {classSubjectId:card.dataset.classSubject, classId:card.dataset.classId, subject:card.dataset.subject});});});
+    $('.subject-card[data-subject]:not([data-class-subject])').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); 
   }
   function studentBadgeSummary(){ const earned=(State.data.userBadges||[]).filter(b=>b.user_id===State.profile?.id || b.student_id===State.profile?.id).length; if(earned) return `${earned} insignia${earned===1?'':'s'} asignada${earned===1?'':'s'} por la profesora`; return 'Sin insignias todavía.'; }
 
@@ -4659,7 +4690,7 @@ render();
     w.document.close();
   }
 
-  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',payments:'Pagos',attendance:'Asistencia y pausas',myPayments:'Mensualidad y asistencia',teacherSubjects:'Materias y materiales',videoclasses:'Videoclases',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
+  const titleMap = {newPublication:'Nueva publicación',newDate:'Nueva fecha',activityLog:'Qué ha ocurrido en el aula',teacherAlerts:'Alertas docentes',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfiles del alumnado',classrooms:'Clases',classroomDetail:'Clase',studentClassDetail:'Aula',payments:'Pagos',attendance:'Asistencia y pausas',myPayments:'Mensualidad y asistencia',teacherSubjects:'Materias y materiales',videoclasses:'Videoclases',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensajes',announcements:'Anuncios',profile:'Mi perfil',difficulties:'Mis materias con dificultades',grades:'Mis calificaciones',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(String(id)==='classOverview') id='home';
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
@@ -4723,7 +4754,7 @@ render();
     const cards=subjects.length
       ? subjects.map((s,i)=>subjectCard(s,i)).join('')
       : '<div class="empty-state">Aínda non tes materias asignadas.</div>';
-    return `<section class="t36-standalone-head panel"><p class="eyebrow">Mis materias</p><h1>Materias de ${safe(p?.course||'')}</h1><p>${safe(academicLine(p))}</p></section><section class="subjects-grid t36-standalone-subjects" id="subjectsGrid">${cards}</section>`;
+    return `<section class="t36-standalone-head panel"><p class="eyebrow">As miñas materias</p><h1>Materias de ${safe(p?.course||'')}</h1><p>${safe(academicLine(p))}</p></section><section class="subjects-grid t36-standalone-subjects" id="subjectsGrid">${cards}</section>`;
   }
   function renderStandalonePage(target){
     const main = $('#inicio');
@@ -4814,7 +4845,7 @@ render();
       bodyHtml = `<section class="window-panel"><h3>No se pudo cargar esta sección</h3><p class="login-note">${safe(error?.message || 'Error desconocido')}</p></section>`;
     }
 
-    const title = (id === 'classroomDetail' && State.currentClassId) ? (classroomLabel(classById(State.currentClassId)||{}) || 'Clase') : ((id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id)));
+    const title = ((id === 'classroomDetail' || id === 'studentClassDetail') && State.currentClassId) ? (classroomLabel(classById(State.currentClassId)||{}) || 'Aula') : ((id === 'classSubjectDetail' && State.currentSubject) ? State.currentSubject : (id === 'subjectDetail' && State.currentSubject ? State.currentSubject : (titleMap[id] || id)));
     const headHtml = '';
     const teacherNav=teacherSectionNavV219(id);
     main.innerHTML = `${headHtml}${teacherNav}<section class="t52-inline-tool ${safe(id)}-inline teacher-section-clean-v147" data-section-title="${safe(title)}">${bodyHtml}</section>`;
@@ -4880,7 +4911,7 @@ render();
     if(id==='badges' || id==='assignBadge') return '<div class="empty-state">Este apartado ya no está disponible en Tribeca Aula.</div>';
     if(id==='videoclasses' && !roleTeacher() && isIzamProfile(State.profile||{})) return '<div class="empty-state">Este apartado no está disponible en tu aula.</div>';
     if(id==='myPayments') return carlaFinanceContentV205();
-    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='videoclasses') return videoclassesContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
+    if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='studentClassDetail') return studentClassDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='videoclasses') return videoclassesContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
 
   function classSubjectOptions(stage = State.selectedSubjectStage, course = State.selectedSubjectCourse) {
@@ -6639,31 +6670,31 @@ render();
 
   function classSubjectDetailContent(classSubjectId){
     const s=classSubjectById(classSubjectId || State.currentClassSubjectId);
-    if(!s) return '<div class="empty-state premium-empty">No se encontró esta materia de clase.</div>';
+    if(!s) return '<div class="empty-state premium-empty">Non se atopou esta materia da clase.</div>';
     const c=classById(s.class_id) || {};
     const units=visibleClassUnitsForSubject(s.id).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || unitTitleOrder(a.title,b.title));
     const orphanMaterials=sortMaterialsAsc(materialsForClassSubject(s.id).filter(m=>!m.class_unit_id && !units.some(u=>String(m.unit_title||m.unit||'')===String(u.title||''))));
     const vis=subjectVisual(s.subject);
     const pr=classSubjectProgress(s.id);
-    const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card ${u.hidden?'is-hidden-classroom':''}" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} material${items.length===1?'':'es'}${u.hidden?' · oculta':''}</em></summary>${roleTeacher()?`<div class="class-unit-teacher-actions"><button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button><button type="button" class="secondary-btn" data-t127-new-video data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewVideo(this,event)">Crear vídeo</button>${classUnitEditDrawer(u,s)}</div>`:''}<div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidad todavía no tiene materiales visibles.</div>'}</div></details>`; }).join('');
-    const orphanHtml=orphanMaterials.length?`<details class="subject-unit-card" open><summary><span>Otros materiales</span><em>${orphanMaterials.length}</em></summary><div class="subject-material-list">${orphanMaterials.map(m=>materialCard(m)).join('')}</div></details>`:'';
+    const unitsHtml=units.map((u,idx)=>{ const items=materialsForClassUnit(u.id,s.id); return `<details class="subject-unit-card ${u.hidden?'is-hidden-classroom':''}" ${idx===0?'open':''}><summary><span>${safe(u.title)}</span><em>${items.length} ${items.length===1?'material':'materiais'}${u.hidden?' · oculta':''}</em></summary>${roleTeacher()?`<div class="class-unit-teacher-actions"><button type="button" class="primary-btn" data-t82-new-material data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewMaterial(this,event)">Crear material</button><button type="button" class="secondary-btn" data-t127-new-video data-class-id="${safe(s.class_id)}" data-subject="${safe(s.subject)}" data-unit="${safe(u.title)}" onclick="return window.TribecaClassroomNewVideo(this,event)">Crear vídeo</button>${classUnitEditDrawer(u,s)}</div>`:''}<div class="subject-material-list">${items.length?items.map(m=>materialCard(m)).join(''):'<div class="empty-state">Esta unidade aínda non ten materiais visibles.</div>'}</div></details>`; }).join('');
+    const orphanHtml=orphanMaterials.length?`<details class="subject-unit-card" open><summary><span>Outros materiais</span><em>${orphanMaterials.length}</em></summary><div class="subject-material-list">${orphanMaterials.map(m=>materialCard(m)).join('')}</div></details>`:'';
     return `<section class="t16-subject-detail subject-detail-premium class-subject-detail">
       <header class="subject-detail-head subject-0" style="--subject-color:${vis.color}">
         <div class="subject-detail-emblem">${safe(vis.glyph)}</div>
         <div class="subject-detail-copy">
           <span class="subject-detail-kicker">${safe(classroomLabel(c))}</span>
           <h2>${safe(s.subject)}</h2>
-          <p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))} · ${pr.total} publicaciones · progreso ${pr.percent}%</p>
+          <p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))} · ${pr.total} publicacións · progreso ${pr.percent}%</p>
           <div class="subject-detail-progress"><span style="width:${pr.percent}%"></span></div>
         </div>
       </header>
       <div class="subject-detail-intro window-panel">
-        <strong>Materiales organizados por unidades didácticas</strong>
-        <p>Las unidades aparecen en orden natural. Dentro de cada unidad, las publicaciones se ordenan por numeración, por el orden que arrastres manualmente o, si no hay orden definido, de más antiguas a más recientes.</p>
+        <strong>Materiais organizados por unidades didácticas</strong>
+        <p>As unidades aparecen en orde natural.</p>
       </div>
       ${roleTeacher()?classUnitCreateForm(s.id):''}
       <div class="subject-units-list">
-        ${unitsHtml}${orphanHtml || (!unitsHtml?'<div class="empty-state premium-empty">Todavía no hay publicaciones visibles en esta materia.</div>':'')}
+        ${unitsHtml}${orphanHtml || (!unitsHtml?'<div class="empty-state premium-empty">Aínda non hai publicacións visibles nesta materia.</div>':'')}
       </div>
     </section>`;
   }
