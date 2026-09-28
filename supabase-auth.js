@@ -2728,15 +2728,15 @@ function studentAssignedClasses(studentId=State.profile?.id){
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
-    $('.student-classroom-card[data-student-class-id]').forEach(card=>{
+    $$('.student-classroom-card[data-student-class-id]').forEach(card=>{
       if(card.dataset.classOpenBound==='1') return;
       card.dataset.classOpenBound='1';
       const open=()=>openTool('studentClassDetail',{classId:card.dataset.studentClassId});
       card.addEventListener('click',ev=>{ev.preventDefault();open();});
       card.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();}});
     });
-    $('.subject-card[data-class-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('classSubjectDetail', {classSubjectId:card.dataset.classSubject, classId:card.dataset.classId, subject:card.dataset.subject});});});
-    $('.subject-card[data-subject]:not([data-class-subject])').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); 
+    $$('.subject-card[data-class-subject]').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('classSubjectDetail', {classSubjectId:card.dataset.classSubject, classId:card.dataset.classId, subject:card.dataset.subject});});});
+    $$('.subject-card[data-subject]:not([data-class-subject])').forEach(card=>{card.addEventListener('click',ev=>{ev.preventDefault(); ev.stopPropagation(); openTool('subjectDetail', {subject:card.dataset.subject});});}); 
   }
   function studentBadgeSummary(){ const earned=(State.data.userBadges||[]).filter(b=>b.user_id===State.profile?.id || b.student_id===State.profile?.id).length; if(earned) return `${earned} insignia${earned===1?'':'s'} asignada${earned===1?'':'s'} por la profesora`; return 'Sin insignias todavía.'; }
 
