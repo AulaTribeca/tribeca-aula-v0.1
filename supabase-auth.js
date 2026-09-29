@@ -1284,42 +1284,109 @@
     return [];
   }
 
+
+  async function runDataTasksV236(tasks=[], batchSize=5){
+    const list=(tasks||[]).filter(fn=>typeof fn==='function');
+    const size=Math.max(1, Number(batchSize||5));
+    for(let i=0;i<list.length;i+=size){
+      const batch=list.slice(i,i+size);
+      await Promise.allSettled(batch.map(fn=>Promise.resolve().then(fn)));
+    }
+  }
+
+  function visibleAssignedClassIdsV236(profile=State.profile){
+    if(!profile?.id) return [];
+    const ids=(State.data.classStudents||[])
+      .filter(a=>String(a.user_id)===String(profile.id) && a.active!==false)
+      .map(a=>classById(a.class_id))
+      .filter(c=>c && c.active!==false && !c.hidden)
+      .map(c=>String(c.id));
+    return [...new Set(ids)];
+  }
+
+  async function loadMaterialsReliableV236(){
+    const previous=Array.isArray(State.data.materials) ? State.data.materials : [];
+    let lastError=null;
+    for(let attempt=1;attempt<=3;attempt++){
+      try{
+        let query=table('subject_materials').select('*').order('created_at',{ascending:false});
+        if(!roleTeacher()){
+          const classIds=visibleAssignedClassIdsV236(State.profile);
+          if(classIds.length) query=query.in('class_id',classIds);
+        }
+        const response=await tribecaWithTimeout(query, 15000, 'Carga de materiales');
+        if(response?.error) throw response.error;
+        const rows=Array.isArray(response?.data) ? response.data : [];
+        State.data.materials=rows;
+        State.materialsLoadError='';
+        return rows;
+      }catch(error){
+        lastError=error;
+        console.warn(`[Tribeca Aula] Carga de materiales: intento ${attempt}/3 fallido:`, error?.message || error);
+        if(attempt<3) await new Promise(resolve=>setTimeout(resolve, 550*attempt));
+      }
+    }
+    State.materialsLoadError=String(lastError?.message || 'No se pudieron cargar los materiales.');
+    if(previous.length){
+      State.data.materials=previous;
+      return previous;
+    }
+    State.data.materials=[];
+    return [];
+  }
+
   async function loadData(force=false) {
     if(!State.profile || (!force && Date.now() - State.loadedAt < 1200)) return;
     State.loadedAt = Date.now(); const p=State.profile;
+
     if(roleTeacher()) await loadTeacherStudentsV235();
+
+    // v236: primero la topología del aula. Evita calcular clases/materias con datos parciales
+    // y permite que cada alumno descargue únicamente los materiales de sus clases visibles.
+    await runDataTasksV236([
+      ()=>maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]),
+      ()=>maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]),
+      ()=>maybe(table('tribeca_class_subjects').select('*').order('sort_order').order('subject'), []).then(d=>State.data.classSubjects=d||[]),
+      ()=>maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[])
+    ],4);
+
+    // Materiales son críticos para el panel principal: se cargan con reintentos y sin competir
+    // contra veinte peticiones simultáneas. Para alumnado con clases nuevas se filtran por clase.
+    await loadMaterialsReliableV236();
+
+    // Datos críticos ligeros del panel principal.
+    await runDataTasksV236([
+      ()=>maybe(table('tribeca_video_classes').select('*').order('starts_at',{ascending:true}), []).then(d=>State.data.videoClasses=d||[]),
+      ()=>maybe(table('material_completions').select('*'), []).then(d=>State.data.materialCompletions=d||[])
+    ],2);
+
+    // El resto se procesa por tandas para no saturar PostgREST.
     const common = [
-      maybe(table('subject_materials').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.materials=d||[]),
-      maybe(table('announcements').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.announcements=d||[]),
-      maybe(table('calendar_events').select('*').order('event_date',{ascending:true}), []).then(d=>State.data.events=d||[]),
-      maybe(table('tribeca_video_classes').select('*').order('starts_at',{ascending:true}), []).then(d=>State.data.videoClasses=d||[]),
-      maybe(table('private_messages').select('*').order('created_at',{ascending:false}).limit(500), []).then(d=>State.data.messages=d||[]),
-      maybe(table('user_badges').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.userBadges=d||[]),
-      maybe(table('badge_claim_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.badgeClaims=d||[]),
-      maybe(table('guidance_resources').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidance=d||[]),
-      maybe(table('subject_overrides').select('*').order('stage').order('course').order('subject'), []).then(d=>State.data.subjects=d||[]),
-      maybe(table('material_completions').select('*'), []).then(d=>State.data.materialCompletions=d||[]),
-      maybe(table('exam_attempts').select('*').order('completed_at',{ascending:false}), []).then(d=>State.data.examAttempts=d||[]),
-      maybe(table('student_pauses').select('*').order('start_date',{ascending:false}), []).then(d=>State.data.studentPauses=d||[]),
-      maybe(table('tribeca_classes').select('*').order('center').order('stage').order('course').order('name'), []).then(d=>State.data.classrooms=d||[]),
-      maybe(table('tribeca_class_students').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.classStudents=d||[]),
-      maybe(table('tribeca_class_subjects').select('*').order('sort_order').order('subject'), []).then(d=>State.data.classSubjects=d||[]),
-      maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[])
+      ()=>maybe(table('announcements').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.announcements=d||[]),
+      ()=>maybe(table('calendar_events').select('*').order('event_date',{ascending:true}), []).then(d=>State.data.events=d||[]),
+      ()=>maybe(table('private_messages').select('*').order('created_at',{ascending:false}).limit(500), []).then(d=>State.data.messages=d||[]),
+      ()=>maybe(table('user_badges').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.userBadges=d||[]),
+      ()=>maybe(table('badge_claim_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.badgeClaims=d||[]),
+      ()=>maybe(table('guidance_resources').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidance=d||[]),
+      ()=>maybe(table('subject_overrides').select('*').order('stage').order('course').order('subject'), []).then(d=>State.data.subjects=d||[]),
+      ()=>maybe(table('exam_attempts').select('*').order('completed_at',{ascending:false}), []).then(d=>State.data.examAttempts=d||[]),
+      ()=>maybe(table('student_pauses').select('*').order('start_date',{ascending:false}), []).then(d=>State.data.studentPauses=d||[])
     ];
     if(roleTeacher()) {
-      // El alumnado ya se cargó de forma prioritaria y con reintentos antes del resto del panel.
-      common.push(maybe(table('password_reset_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.passwordRequests=d||[]));
-      common.push(maybe(table('user_presence').select('*').order('last_seen',{ascending:false}), []).then(d=>State.data.presence=d||[]));
-      common.push(maybe(table('teacher_activity_log').select('*').order('created_at',{ascending:false}).limit(300), []).then(d=>State.data.activity=d||[]));
-      common.push(maybe(table('guidance_link_clicks').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidanceLinkClicks=d||[]));
-      common.push(maybe(table('teacher_tasks').select('*').order('task_date',{ascending:true}).order('created_at',{ascending:false}), []).then(d=>State.data.teacherTasks=d||[]));
-      common.push(maybe(table('grades').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
-      common.push(maybe(table('difficult_subjects').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
-      common.push(maybe(table('student_billing').select('*'), []).then(d=>State.data.billing=d||[]));
-      common.push(maybe(table('student_schedules').select('*').order('weekday').order('start_time'), []).then(d=>State.data.schedules=d||[]));
-      common.push(maybe(table('attendance_records').select('*').order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]));
-      common.push(maybe(table('payment_months').select('*').order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]));
-      common.push(maybe(table('teacher_material_repository').select('*').order('stage').order('course').order('subject').order('unit_title').order('created_at',{ascending:false}), []).then(d=>State.data.materialRepository=d||[]));
+      common.push(
+        ()=>maybe(table('password_reset_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.passwordRequests=d||[]),
+        ()=>maybe(table('user_presence').select('*').order('last_seen',{ascending:false}), []).then(d=>State.data.presence=d||[]),
+        ()=>maybe(table('teacher_activity_log').select('*').order('created_at',{ascending:false}).limit(300), []).then(d=>State.data.activity=d||[]),
+        ()=>maybe(table('guidance_link_clicks').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.guidanceLinkClicks=d||[]),
+        ()=>maybe(table('teacher_tasks').select('*').order('task_date',{ascending:true}).order('created_at',{ascending:false}), []).then(d=>State.data.teacherTasks=d||[]),
+        ()=>maybe(table('grades').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]),
+        ()=>maybe(table('difficult_subjects').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]),
+        ()=>maybe(table('student_billing').select('*'), []).then(d=>State.data.billing=d||[]),
+        ()=>maybe(table('student_schedules').select('*').order('weekday').order('start_time'), []).then(d=>State.data.schedules=d||[]),
+        ()=>maybe(table('attendance_records').select('*').order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]),
+        ()=>maybe(table('payment_months').select('*').order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]),
+        ()=>maybe(table('teacher_material_repository').select('*').order('stage').order('course').order('subject').order('unit_title').order('created_at',{ascending:false}), []).then(d=>State.data.materialRepository=d||[])
+      );
     } else {
       State.data.students=[];
       State.data.passwordRequests=[];
@@ -1327,14 +1394,18 @@
       State.data.activity=[];
       State.data.guidanceLinkClicks=[];
       State.data.teacherTasks=[];
-      common.push(maybe(table('grades').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]));
-      common.push(maybe(table('difficult_subjects').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]));
-      common.push(maybe(table('student_resource_progress').select('*').eq('user_id',p.id).order('updated_at',{ascending:false}), []).then(d=>State.data.resourceProgress=d||[]));
+      common.push(
+        ()=>maybe(table('grades').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.grades=d||[]),
+        ()=>maybe(table('difficult_subjects').select('*').eq('user_id',p.id).order('created_at',{ascending:false}), []).then(d=>State.data.difficulties=d||[]),
+        ()=>maybe(table('student_resource_progress').select('*').eq('user_id',p.id).order('updated_at',{ascending:false}), []).then(d=>State.data.resourceProgress=d||[])
+      );
       if(isCarlaFinanceProfileV205(p)){
-        common.push(maybe(table('student_billing').select('*').eq('user_id',p.id), []).then(d=>State.data.billing=d||[]));
-        common.push(maybe(table('student_schedules').select('*').eq('user_id',p.id).order('weekday').order('start_time'), []).then(d=>State.data.schedules=d||[]));
-        common.push(maybe(table('attendance_records').select('*').eq('user_id',p.id).order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]));
-        common.push(maybe(table('payment_months').select('*').eq('user_id',p.id).order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]));
+        common.push(
+          ()=>maybe(table('student_billing').select('*').eq('user_id',p.id), []).then(d=>State.data.billing=d||[]),
+          ()=>maybe(table('student_schedules').select('*').eq('user_id',p.id).order('weekday').order('start_time'), []).then(d=>State.data.schedules=d||[]),
+          ()=>maybe(table('attendance_records').select('*').eq('user_id',p.id).order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]),
+          ()=>maybe(table('payment_months').select('*').eq('user_id',p.id).order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[])
+        );
       } else {
         State.data.billing=[];
         State.data.schedules=[];
@@ -1342,7 +1413,7 @@
         State.data.paymentMonths=[];
       }
     }
-    await Promise.allSettled(common);
+    await runDataTasksV236(common,5);
     updateBadges();
     deferTribecaBackgroundTask(() => processDueScheduledPublications(), 1800);
   }
