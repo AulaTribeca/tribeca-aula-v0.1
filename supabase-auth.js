@@ -1276,19 +1276,22 @@
     let lastError=null;
     for(let attempt=1; attempt<=3; attempt++){
       try{
-        const response=await tribecaWithTimeout(
-          table('profiles')
-            .select(TRIBECA_STUDENT_SUMMARY_SELECT_V237)
-            .eq('role','student')
-            .order('center')
-            .order('stage')
-            .order('course')
-            .order('full_name'),
+        let response=await tribecaWithTimeout(
+          State.client.rpc('tribeca_teacher_list_students_summary_v239'),
           10000,
           'Carga del alumnado'
         );
+        if(response?.error){
+          console.warn('[Tribeca Aula] RPC ligera de alumnado no disponible; usando RPC completa de respaldo.');
+          response=await tribecaWithTimeout(
+            State.client.rpc('tribeca_teacher_list_students_secure_v230'),
+            15000,
+            'Carga de respaldo del alumnado'
+          );
+        }
         if(response?.error) throw response.error;
         const rows=(Array.isArray(response?.data) ? response.data : []).map(s=>({...s,_summary_only_v237:true}));
+        if(!rows.length && previous.length) return previous;
         State.data.students=rows;
         State.teacherStudentsLoadError='';
         return rows;
@@ -1314,12 +1317,12 @@
     if(current && !current._summary_only_v237) return current;
     try{
       const response=await tribecaWithTimeout(
-        table('profiles').select('*').eq('id',id).single(),
+        State.client.rpc('tribeca_teacher_get_student_secure_v239',{p_user_id:id}),
         12000,
         'Carga de ficha del alumno'
       );
       if(response?.error) throw response.error;
-      const full=response?.data || null;
+      const full=Array.isArray(response?.data) ? (response.data[0] || null) : (response?.data || null);
       if(!full) return current;
       State.data.students=(State.data.students||[]).map(s=>String(s.id)===id?{...s,...full,_summary_only_v237:false}:s);
       return {...current,...full,_summary_only_v237:false};
@@ -7253,7 +7256,7 @@ render();
     return (State.data.students||[]).filter(s=>ids.has(String(s.id))).sort((a,b)=>displayName(a).localeCompare(displayName(b),'es'));
   }
   function classroomStudentsCount(classId){
-    return classroomStudents(classId).length;
+    return classroomAssignments(classId).length;
   }
   function unassignedStudents(){
     const assigned=new Set(activeClassAssignments().map(x=>String(x.user_id)));
@@ -7270,14 +7273,18 @@ render();
   }
   function classroomPeoplePanel(c){
     const students=classroomStudents(c.id);
+    const total=classroomStudentsCount(c.id);
     const assignmentOpen=classroomAssignmentBox(c).replace('<details class="classroom-assignment-box">','<details class="classroom-assignment-box" open>');
+    const peopleMarkup=students.length
+      ? students.map(s=>`<button type="button" class="classroom-person-row classroom-person-row-v91 classroom-person-button" data-t114-open-student-profile="${safe(s.id)}"><span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span><div><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small></div></button>`).join('')
+      : (total ? `<div class="empty-state">Hay ${total} alumno${total===1?'':'s'} asignado${total===1?'':'s'}, pero sus nombres no se han podido cargar todavía.</div>` : '<div class="empty-state">Todavía no hay alumnado asignado.</div>');
     return `<section class="classroom-people-panel classroom-people-panel-v92">
       <header class="classroom-section-title">
-        <div><h3>Alumnado</h3><p>${students.length} alumno${students.length===1?'':'s'}</p></div>
+        <div><h3>Alumnado</h3><p>${total} alumno${total===1?'':'s'}</p></div>
       </header>
-      <div class="classroom-people-list classroom-people-list-v92">${students.length?students.map(s=>`<button type="button" class="classroom-person-row classroom-person-row-v91 classroom-person-button" data-t114-open-student-profile="${safe(s.id)}"><span>${safe((displayName(s)||'?').slice(0,1).toUpperCase())}</span><div><strong>${safe(displayName(s))}</strong><small>${safe(s.username||'')} · ${safe(academicLine(s))}</small></div></button>`).join(''):'<div class="empty-state">Todavía no hay alumnado asignado.</div>'}</div>
+      <div class="classroom-people-list classroom-people-list-v92">${peopleMarkup}</div>
       <details class="classroom-assignment-compact">
-        <summary><span>Editar alumnado</span><em>${students.length}</em></summary>
+        <summary><span>Editar alumnado</span><em>${total}</em></summary>
         ${assignmentOpen}
       </details>
     </section>`;
@@ -7437,7 +7444,7 @@ function classroomsContent(){
 
 function classroomCard(c,i=0){
     const assigned=classroomStudents(c.id);
-    const students=assigned.length;
+    const students=classroomStudentsCount(c.id);
     const names=assigned.slice(0,4).map(s=>`<li>${safe(displayName(s))}</li>`).join('');
     const label=classroomLabel(c);
     return `<article class="classroom-google-card classroom-google-card-v92 ${classroomThemeClass(c)} ${c.hidden?'is-hidden-classroom':''} ${c.active===false?'is-inactive-classroom':''}" style="${safe(classroomThemeStyle(c))}" data-t90-open-class="${safe(c.id)}" tabindex="0" role="button" aria-label="Abrir clase ${safe(label)}">
