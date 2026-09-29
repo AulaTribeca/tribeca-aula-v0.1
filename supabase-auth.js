@@ -1118,6 +1118,23 @@
   function subjectIsHidden(stage, course, subject){
     return subjectOverride(stage, course, subject)?.active === false;
   }
+  const TRIBECA_STUDENT_SUMMARY_SELECT_V237 = [
+    'id','username','auth_email','full_name','preferred_name','role','avatar_icon','personal_email',
+    'notification_preferences','center','municipality','stage','course','track','needs_adaptation',
+    'active','created_at','updated_at','avatar_image_url','nee_types','neae_types','observations',
+    'archived','schedule_notes','personalized_attention','first_name','last_name','focus_mode_enabled',
+    'father_full_name','mother_full_name','address','birth_date','family_phone','emergency_phone',
+    'family_email','preferred_contact','family_group_id','family_name','school_tutor','support_reason',
+    'learning_goals','initial_assessment','family_coordination','diagnosis_notes',
+    'push_notifications_enabled','push_badge_enabled','ui_preferences'
+  ].join(',');
+  const TRIBECA_MATERIAL_META_SELECT_V237 = [
+    'id','subject','stage','course','track','unit_title','material_type','title','description','file_url',
+    'hidden','created_by','created_at','updated_at','image_url','link_url','font_size','badge_codes',
+    'center','target_scope','target_user_ids','attachments','class_id','class_subject_id','class_unit_id',
+    'embed_url','embed_height','unit','active','notes','scheduled_at','target_class_ids','display_order','sort_order'
+  ].join(',');
+
   const table = name => State.client.from(name);
   async function maybe(promise, fallback=null) {
     try {
@@ -1260,19 +1277,25 @@
     for(let attempt=1; attempt<=3; attempt++){
       try{
         const response=await tribecaWithTimeout(
-          State.client.rpc('tribeca_teacher_list_students_secure_v230'),
-          12000,
+          table('profiles')
+            .select(TRIBECA_STUDENT_SUMMARY_SELECT_V237)
+            .eq('role','student')
+            .order('center')
+            .order('stage')
+            .order('course')
+            .order('full_name'),
+          10000,
           'Carga del alumnado'
         );
         if(response?.error) throw response.error;
-        const rows=Array.isArray(response?.data) ? response.data : [];
+        const rows=(Array.isArray(response?.data) ? response.data : []).map(s=>({...s,_summary_only_v237:true}));
         State.data.students=rows;
         State.teacherStudentsLoadError='';
         return rows;
       }catch(error){
         lastError=error;
         console.warn(`[Tribeca Aula] Carga de alumnado: intento ${attempt}/3 fallido:`, error?.message || error);
-        if(attempt<3) await new Promise(resolve=>setTimeout(resolve, attempt*650));
+        if(attempt<3) await new Promise(resolve=>setTimeout(resolve, attempt*500));
       }
     }
     State.teacherStudentsLoadError=String(lastError?.message || 'No se pudo cargar el alumnado.');
@@ -1284,6 +1307,27 @@
     return [];
   }
 
+  async function loadFullStudentByIdV237(studentId){
+    const id=String(studentId||'').trim();
+    if(!id || !roleTeacher()) return (State.data.students||[]).find(s=>String(s.id)===id) || null;
+    const current=(State.data.students||[]).find(s=>String(s.id)===id) || null;
+    if(current && !current._summary_only_v237) return current;
+    try{
+      const response=await tribecaWithTimeout(
+        table('profiles').select('*').eq('id',id).single(),
+        12000,
+        'Carga de ficha del alumno'
+      );
+      if(response?.error) throw response.error;
+      const full=response?.data || null;
+      if(!full) return current;
+      State.data.students=(State.data.students||[]).map(s=>String(s.id)===id?{...s,...full,_summary_only_v237:false}:s);
+      return {...current,...full,_summary_only_v237:false};
+    }catch(error){
+      console.warn('[Tribeca Aula] No se pudo cargar la ficha completa:', error?.message || error);
+      return current;
+    }
+  }
 
   async function runDataTasksV236(tasks=[], batchSize=5){
     const list=(tasks||[]).filter(fn=>typeof fn==='function');
@@ -1309,14 +1353,14 @@
     let lastError=null;
     for(let attempt=1;attempt<=3;attempt++){
       try{
-        let query=table('subject_materials').select('*').order('created_at',{ascending:false});
+        let query=table('subject_materials').select(TRIBECA_MATERIAL_META_SELECT_V237).order('created_at',{ascending:false});
         if(!roleTeacher()){
           const classIds=visibleAssignedClassIdsV236(State.profile);
           if(classIds.length) query=query.in('class_id',classIds);
         }
         const response=await tribecaWithTimeout(query, 15000, 'Carga de materiales');
         if(response?.error) throw response.error;
-        const rows=Array.isArray(response?.data) ? response.data : [];
+        const rows=(Array.isArray(response?.data) ? response.data : []).map(m=>({...m,_metadata_only_v237:true}));
         State.data.materials=rows;
         State.materialsLoadError='';
         return rows;
@@ -1413,13 +1457,21 @@
         State.data.paymentMonths=[];
       }
     }
-    await runDataTasksV236(common,5);
-    updateBadges();
-    deferTribecaBackgroundTask(() => processDueScheduledPublications(), 1800);
+    const finishSecondaryV237=async()=>{
+      await runDataTasksV236(common,5);
+      updateBadges();
+      deferTribecaBackgroundTask(() => processDueScheduledPublications(), 1800);
+      if(!force && State.profile){
+        if(!State.activeInlineSection) renderApp();
+        else if(['payments','attendance','studentProfiles','teacherAlerts','activityAnalytics'].includes(State.activeInlineSection)) rerender();
+      }
+    };
+    if(force) await finishSecondaryV237();
+    else deferTribecaBackgroundTask(()=>finishSecondaryV237(),120);
   }
   async function updatePresence() {
     const p=State.profile; if(!p) return;
-    await maybe(table('user_presence').upsert({ user_id:p.id, display_name:displayName(p), role:p.role, center:p.center, stage:p.stage, course:p.course, avatar_icon:p.avatar_icon || '💡', avatar_image_url:teacherProfileImageUrl(p) || null, last_seen:new Date().toISOString() }, { onConflict:'user_id' }));
+    await maybe(table('user_presence').upsert({ user_id:p.id, username:p.username||'', full_name:p.full_name||displayName(p), preferred_name:p.preferred_name||null, role:p.role, center:p.center||null, municipality:p.municipality||null, stage:p.stage||null, course:p.course||null, track:p.track||'', avatar_icon:p.avatar_icon || '💡', avatar_image_url:teacherProfileImageUrl(p) || null, online:true, last_seen:new Date().toISOString(), updated_at:new Date().toISOString() }, { onConflict:'user_id' }));
   }
   async function log(action_type, title, details={}) {
     const p=State.profile; if(!p) return;
@@ -2572,7 +2624,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     return (State.data.classUnits||[]).filter(u=>String(u.class_subject_id)===String(classSubjectId) && u.active!==false && (teacher || !u.hidden)).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0) || String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true}));
   }
   function studentMaterialHasContent(m={}){
-    if(roleTeacher()) return true;
+    if(roleTeacher() || m?._metadata_only_v237) return true;
     const textual=[m.body,m.description,m.content,m.text].some(v=>String(v??'').trim().length>0);
     const linked=[m.file_url,m.link_url,m.embed_url,m.embed_code,m.image_url].some(v=>String(v??'').trim().length>0);
     const attachments=Array.isArray(m.attachments) ? m.attachments : parseArrayField(m.attachments||[]);
@@ -4767,14 +4819,41 @@ render();
   }
 
 
-  function openMaterialInNewWindow(materialId){
-    const m=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
-    if(!m) return toast('No se encontró la publicación.');
+  async function loadFullMaterialByIdV237(materialId){
+    const id=String(materialId||'').trim();
+    if(!id) return null;
+    const current=(State.data.materials||[]).find(x=>String(x.id)===id) || null;
+    if(current && !current._metadata_only_v237) return current;
+    try{
+      const response=await tribecaWithTimeout(
+        table('subject_materials').select('*').eq('id',id).single(),
+        20000,
+        'Carga del material'
+      );
+      if(response?.error) throw response.error;
+      const full=response?.data || null;
+      if(!full) return current;
+      State.data.materials=(State.data.materials||[]).map(m=>String(m.id)===id?{...m,...full,_metadata_only_v237:false}:m);
+      return {...current,...full,_metadata_only_v237:false};
+    }catch(error){
+      console.warn('[Tribeca Aula] No se pudo cargar el material completo:', error?.message || error);
+      return current;
+    }
+  }
+
+  async function openMaterialInNewWindow(materialId){
+    const existing=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
+    if(!existing) return toast('No se encontró la publicación.');
+    const w=window.open('', '_blank');
+    if(!w) return toast('El navegador ha bloqueado la ventana emergente.');
+    try{
+      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Cargando…</title><style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#f7f4ec;color:#173b2b}strong{font-size:18px}</style></head><body><strong>Cargando recurso…</strong></body></html>');
+      w.document.close();
+    }catch(_e){}
+    const m=await loadFullMaterialByIdV237(materialId) || existing;
     const meta=materialTypeMeta(materialVisualKind(m));
     const attachments=normalizeAttachments(m);
     const body=m.body||m.description||m.content||m.text||'';
-    const w=window.open('', '_blank');
-    if(!w) return toast('El navegador ha bloqueado la ventana emergente.');
     const attachmentHtml=attachments.length?`<section class="files"><h2>Archivos adjuntos</h2>${attachments.map((att,i)=>{ const url=att.url||att.href||att.path||att.publicUrl||att.public_url||''; const name=att.name||att.filename||att.file_name||`Archivo ${i+1}`; const type=String(att.type||att.mime_type||'').toLowerCase(); return url?`<a class="attachment" href="${safe(url)}" target="_blank" rel="noopener">${/^image\//.test(type)?`<img src="${safe(url)}" alt="">`:''}<span>📎 ${safe(name)}</span></a>`:`<p>📎 ${safe(name)}</p>`; }).join('')}</section>`:'';
     const openEmbedSource=materialEmbedSource(m);
     const isSchemaOpen=openEmbedSource?.mode==='schemaActivity' || materialVisualKind(m)==='schema';
@@ -4795,6 +4874,10 @@ render();
   const titleMap = {newPublication:'Nova publicación',newDate:'Nova data',activityLog:'Que ocorreu na aula',teacherAlerts:'Alertas docentes',teacherDocuments:'Documentos PDF',activityAnalytics:'Actividad del alumnado',passwordRequests:'Solicitudes de recuperación',studentProfiles:'Perfís do alumnado',classrooms:'Clases',classroomDetail:'Clase',studentClassDetail:'Aula',payments:'Pagos',attendance:'Asistencia e pausas',myPayments:'Mensualidade e asistencia',teacherSubjects:'Materias e materiais',videoclasses:'Videoclases',guidance:'Orientación académica',calendar:'Calendario',messages:'Mensaxes',announcements:'Anuncios',profile:'O meu perfil',difficulties:'Materias con dificultades',grades:'As miñas cualificacións',subjectDetail:'Materia',aboutTribeca:'Detrás de Tribeca',legal:'Aviso legal',support:'Soporte',contact:'Contacto'};
   function openTool(id, opts={}) {
     if(String(id)==='classOverview') id='home';
+    if(String(id)==='studentProfiles' && roleTeacher()){
+      const sid=State.selectedStudentId || (State.data.students||[])[0]?.id || '';
+      if(sid) loadFullStudentByIdV237(sid).then(()=>{ if(State.activeInlineSection==='studentProfiles') rerender(); });
+    }
     if(!roleTeacher() && State.profile && activePauseFor(State.profile.id)) { renderApp(); return; }
     closeAccountMenu();
     setTribecaHistory(id, opts || {});
@@ -8943,7 +9026,7 @@ function classroomCard(c,i=0){
       const hideE=ev.target.closest?.('[data-t16-hide-event]'); if(hideE){ await maybe(table('calendar_events').update({hidden:true}).eq('id',hideE.dataset.t16HideEvent)); await loadData(true); rerender(); return; }
       const delE=ev.target.closest?.('[data-t16-delete-event]'); if(delE){ if(confirm('¿Eliminar esta fecha?')){ await maybe(table('calendar_events').delete().eq('id',delE.dataset.t16DeleteEvent)); await loadData(true); rerender(); } return; }
       const profileKpi=ev.target.closest?.('[data-profile-kpi-filter]'); if(profileKpi){ ev.preventDefault(); ev.stopPropagation(); State.profileKpiFilter=profileKpi.dataset.profileKpiFilter || 'all'; State.selectedStudentId=null; rerender(); return; }
-      const st=ev.target.closest?.('[data-t16-select-student]'); if(st){ State.selectedStudentId=st.dataset.t16SelectStudent; rerender(); return; }
+      const st=ev.target.closest?.('[data-t16-select-student]'); if(st){ State.selectedStudentId=st.dataset.t16SelectStudent; if(State.activeInlineSection==='studentProfiles') await loadFullStudentByIdV237(State.selectedStudentId); rerender(); return; }
       const attToggle=ev.target.closest?.('[data-t22-attendance-toggle]'); if(attToggle && !ev.target.closest('button')){ await toggleAttendance(attToggle); return; }
       const attBtn=ev.target.closest?.('[data-t16-attendance]'); if(attBtn){ await saveAttendance(attBtn); return; }
       const endPauseBtn=ev.target.closest?.('[data-t50-end-pause]'); if(endPauseBtn){ ev.preventDefault(); ev.stopPropagation(); await endStudentPause(endPauseBtn.dataset.t50EndPause); return; }
@@ -8961,7 +9044,7 @@ function classroomCard(c,i=0){
       const toggleMat=ev.target.closest?.('[data-t16-toggle-mat]'); if(toggleMat){ const m=(State.data.materials||[]).find(x=>x.id===toggleMat.dataset.t16ToggleMat); await maybe(table('subject_materials').update({hidden:!m?.hidden}).eq('id',toggleMat.dataset.t16ToggleMat)); await loadData(true); rerender(); return; }
       const delMat=ev.target.closest?.('[data-t16-delete-mat]'); if(delMat){ await maybe(table('subject_materials').delete().eq('id',delMat.dataset.t16DeleteMat)); await loadData(true); rerender(); return; }
       const editAnn=ev.target.closest?.('[data-t32-edit-ann]'); if(editAnn){ ev.preventDefault(); ev.stopPropagation(); const a=(State.data.announcements||[]).find(x=>String(x.id)===String(editAnn.dataset.t32EditAnn)); if(a){ State.pendingPublicationEdit={table:'announcements', id:a.id, item:{...a}, kind:'announcement'}; openTool('newPublication'); } return; }
-      const editMat=ev.target.closest?.('[data-t32-edit-mat]'); if(editMat){ ev.preventDefault(); ev.stopPropagation(); const m=(State.data.materials||[]).find(x=>String(x.id)===String(editMat.dataset.t32EditMat)); if(m){ State.pendingPublicationEdit={table:'subject_materials', id:m.id, item:{...m}, kind:normalizeMaterialKind(m.material_type||m.type)}; State.currentSubject=m.subject || State.currentSubject; openTool('newPublication'); } return; }
+      const editMat=ev.target.closest?.('[data-t32-edit-mat]'); if(editMat){ ev.preventDefault(); ev.stopPropagation(); const m=await loadFullMaterialByIdV237(editMat.dataset.t32EditMat); if(m){ State.pendingPublicationEdit={table:'subject_materials', id:m.id, item:{...m}, kind:normalizeMaterialKind(m.material_type||m.type)}; State.currentSubject=m.subject || State.currentSubject; openTool('newPublication'); } return; }
       if(ev.target.closest?.('[data-t32-cancel-publication-edit]')){ ev.preventDefault(); ev.stopPropagation(); State.pendingPublicationEdit=null; State.prefillPublicationSubject=null; State.prefillPublicationKind=null; openTool('newPublication'); return; }
       const selectVisible=ev.target.closest?.('[data-t32-select-visible]'); if(selectVisible){ ev.preventDefault(); const form=selectVisible.closest('form'); form?.querySelectorAll('.t32-badge-student:not([hidden]) input[name="userIds"]').forEach(i=>{ i.checked=true; }); return; }
       const clearAll=ev.target.closest?.('[data-t32-clear-all]'); if(clearAll){ ev.preventDefault(); clearAll.closest('form')?.querySelectorAll('input[name="userIds"]').forEach(i=>{ i.checked=false; }); return; }
@@ -9445,7 +9528,7 @@ function classroomCard(c,i=0){
       });
     }
     if(!State.client){ showLogin(); applySeasonalLogos(document); return; }
-    try { await hydrate(true); ensureLanguageDefault(); } catch(e) { console.warn(e); }
+    try { await hydrate(false); ensureLanguageDefault(); } catch(e) { console.warn(e); }
     if(State.user && State.profile){
       hideLogin();
       const initial=tribecaStateFromUrl();
