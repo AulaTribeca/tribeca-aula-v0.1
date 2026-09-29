@@ -1253,9 +1253,41 @@
     await refreshSelfPause();
     if(!State.selfPause) updatePresence().catch(()=>{});
   }
+  async function loadTeacherStudentsV235(){
+    if(!roleTeacher()) return [];
+    const previous=Array.isArray(State.data.students) ? State.data.students : [];
+    let lastError=null;
+    for(let attempt=1; attempt<=3; attempt++){
+      try{
+        const response=await tribecaWithTimeout(
+          State.client.rpc('tribeca_teacher_list_students_secure_v230'),
+          12000,
+          'Carga del alumnado'
+        );
+        if(response?.error) throw response.error;
+        const rows=Array.isArray(response?.data) ? response.data : [];
+        State.data.students=rows;
+        State.teacherStudentsLoadError='';
+        return rows;
+      }catch(error){
+        lastError=error;
+        console.warn(`[Tribeca Aula] Carga de alumnado: intento ${attempt}/3 fallido:`, error?.message || error);
+        if(attempt<3) await new Promise(resolve=>setTimeout(resolve, attempt*650));
+      }
+    }
+    State.teacherStudentsLoadError=String(lastError?.message || 'No se pudo cargar el alumnado.');
+    if(previous.length){
+      State.data.students=previous;
+      return previous;
+    }
+    State.data.students=[];
+    return [];
+  }
+
   async function loadData(force=false) {
     if(!State.profile || (!force && Date.now() - State.loadedAt < 1200)) return;
     State.loadedAt = Date.now(); const p=State.profile;
+    if(roleTeacher()) await loadTeacherStudentsV235();
     const common = [
       maybe(table('subject_materials').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.materials=d||[]),
       maybe(table('announcements').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.announcements=d||[]),
@@ -1275,7 +1307,7 @@
       maybe(table('tribeca_class_units').select('*').order('sort_order').order('title'), []).then(d=>State.data.classUnits=d||[])
     ];
     if(roleTeacher()) {
-      common.push(maybe(State.client.rpc('tribeca_teacher_list_students_secure_v230'), []).then(d=>State.data.students=d||[]));
+      // El alumnado ya se cargó de forma prioritaria y con reintentos antes del resto del panel.
       common.push(maybe(table('password_reset_requests').select('*').order('created_at',{ascending:false}), []).then(d=>State.data.passwordRequests=d||[]));
       common.push(maybe(table('user_presence').select('*').order('last_seen',{ascending:false}), []).then(d=>State.data.presence=d||[]));
       common.push(maybe(table('teacher_activity_log').select('*').order('created_at',{ascending:false}).limit(300), []).then(d=>State.data.activity=d||[]));
