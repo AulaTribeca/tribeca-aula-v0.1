@@ -4844,7 +4844,117 @@ render();
     }
   }
 
+  function tribecaUseAppleMaterialViewerV240(){
+    const ua=String(navigator.userAgent||'');
+    const platform=String(navigator.platform||'');
+    const touchMac=platform==='MacIntel' && Number(navigator.maxTouchPoints||0)>1;
+    return /iPhone|iPad|iPod/i.test(ua) || touchMac;
+  }
+
+  function tribecaCloseAppleMaterialViewerV240(){
+    const viewer=document.getElementById('tribecaAppleMaterialViewerV240');
+    if(viewer) viewer.remove();
+    document.documentElement.classList.remove('tribeca-material-viewer-open-v240');
+    document.body?.classList.remove('tribeca-material-viewer-open-v240');
+  }
+  window.TribecaCloseAppleMaterialViewerV240=tribecaCloseAppleMaterialViewerV240;
+
+  function tribecaAppleMaterialViewerShellV240(title='Publicación'){
+    tribecaCloseAppleMaterialViewerV240();
+    const viewer=document.createElement('section');
+    viewer.id='tribecaAppleMaterialViewerV240';
+    viewer.setAttribute('role','dialog');
+    viewer.setAttribute('aria-modal','true');
+    viewer.innerHTML=`<style>
+      html.tribeca-material-viewer-open-v240,body.tribeca-material-viewer-open-v240{overflow:hidden!important}
+      #tribecaAppleMaterialViewerV240{position:fixed;inset:0;z-index:2147483000;background:#f7f4ec;color:#172018;display:flex;flex-direction:column;width:100%;height:100dvh;min-height:100vh}
+      #tribecaAppleMaterialViewerV240 *{box-sizing:border-box}
+      #tribecaAppleMaterialViewerV240 .tav240-head{flex:0 0 auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 12px 10px;border-bottom:1px solid #d8d1c0;background:#fffdf8;box-shadow:0 2px 12px rgba(20,30,24,.08)}
+      #tribecaAppleMaterialViewerV240 .tav240-head button{appearance:none;border:1px solid #cfc6b2;background:#fff;color:#0b3d22;border-radius:999px;min-height:42px;padding:8px 13px;font-weight:900;font-size:14px}
+      #tribecaAppleMaterialViewerV240 .tav240-title{min-width:0}
+      #tribecaAppleMaterialViewerV240 .tav240-title strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;color:#0b3d22}
+      #tribecaAppleMaterialViewerV240 .tav240-title small{display:block;color:#6a6458;font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #tribecaAppleMaterialViewerV240 .tav240-body{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 10px calc(14px + env(safe-area-inset-bottom))}
+      #tribecaAppleMaterialViewerV240 .tav240-card{max-width:1100px;margin:0 auto;background:#fffdf8;border:1px solid #ded6c4;border-radius:14px;overflow:hidden}
+      #tribecaAppleMaterialViewerV240 .tav240-desc{padding:10px 12px;border-bottom:1px solid #ece5d6;font-size:13px;line-height:1.45}
+      #tribecaAppleMaterialViewerV240 .tav240-resource{padding:0}
+      #tribecaAppleMaterialViewerV240 .tav240-resource .material-embed-block{margin:0!important;border:0!important;border-radius:0!important;padding:8px!important;background:#fff!important}
+      #tribecaAppleMaterialViewerV240 .tav240-resource .material-embed-block>div:first-child{padding:4px 4px 8px}
+      #tribecaAppleMaterialViewerV240 iframe{display:block;width:100%!important;min-height:calc(100dvh - 150px)!important;height:calc(100dvh - 150px)!important;border:0!important;border-radius:8px;background:#fff}
+      #tribecaAppleMaterialViewerV240 .tav240-loading{display:grid;place-items:center;min-height:55vh;padding:32px;text-align:center;color:#0b3d22;font-weight:850}
+      #tribecaAppleMaterialViewerV240 .tav240-error{padding:24px 16px;text-align:center;color:#742020}
+      @media (min-width:760px){#tribecaAppleMaterialViewerV240 .tav240-body{padding:16px}#tribecaAppleMaterialViewerV240 iframe{min-height:calc(100dvh - 165px)!important;height:calc(100dvh - 165px)!important}}
+    </style>
+    <header class="tav240-head">
+      <button type="button" data-tav240-close>← Volver</button>
+      <div class="tav240-title"><strong>${safe(title||'Publicación')}</strong><small>Tribeca Aula · visor compatible con iPhone/iPad</small></div>
+      <span></span>
+    </header>
+    <div class="tav240-body"><div class="tav240-card"><div class="tav240-loading">Cargando publicación…</div></div></div>`;
+    viewer.querySelector('[data-tav240-close]')?.addEventListener('click',tribecaCloseAppleMaterialViewerV240);
+    document.body.appendChild(viewer);
+    document.documentElement.classList.add('tribeca-material-viewer-open-v240');
+    document.body.classList.add('tribeca-material-viewer-open-v240');
+    return viewer;
+  }
+
+  function tribecaConvertDataIframesToSrcdocV240(root){
+    if(!root?.querySelectorAll) return;
+    root.querySelectorAll('iframe[src^="data:text/html"]').forEach(frame=>{
+      try{
+        const src=String(frame.getAttribute('src')||'');
+        const marker=';base64,';
+        const i=src.indexOf(marker);
+        if(i<0) return;
+        const b64=src.slice(i+marker.length);
+        const html=decodeBase64Utf8(b64);
+        frame.removeAttribute('src');
+        frame.srcdoc=html;
+      }catch(error){
+        console.warn('[Tribeca Aula] No se pudo convertir el iframe para Safari iOS:',error);
+      }
+    });
+  }
+
+  async function openMaterialInAppleViewerV240(materialId){
+    const existing=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
+    if(!existing) return toast('No se encontró la publicación.');
+    const viewer=tribecaAppleMaterialViewerShellV240(existing.title||'Publicación');
+    const card=viewer.querySelector('.tav240-card');
+    try{
+      const m=await loadFullMaterialByIdV237(materialId) || existing;
+      if(!document.body.contains(viewer)) return;
+      const source=materialEmbedSource(m);
+      const body=String(m.body||m.description||m.content||m.text||'').trim();
+      const desc=body ? `<div class="tav240-desc">${safe(body).replace(/\n/g,'<br>')}</div>` : '';
+      let resource='';
+      if(source.mode==='schemaActivity' && source.activity){
+        const html=schemaActivityStandaloneHtml(source.activity,m);
+        resource=`<iframe title="${safe(m.title||'Recurso')}" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads" allow="fullscreen; clipboard-write; autoplay" allowfullscreen></iframe>`;
+        card.innerHTML=desc+`<div class="tav240-resource">${resource}</div>`;
+        const frame=card.querySelector('iframe');
+        if(frame) frame.srcdoc=html;
+      }else{
+        resource=materialEmbedMarkup(m);
+        if(!resource && m.link_url) resource=`<p style="padding:16px"><a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir recurso</a></p>`;
+        card.innerHTML=desc+`<div class="tav240-resource">${resource || '<div class="tav240-error">Esta publicación no contiene un recurso visualizable.</div>'}</div>`;
+        tribecaConvertDataIframesToSrcdocV240(card);
+        hydrateNativeQuizzes?.(card);
+        hydrateInteractiveEmbeds?.(card);
+      }
+      const title=viewer.querySelector('.tav240-title strong');
+      if(title) title.textContent=m.title||'Publicación';
+    }catch(error){
+      console.error('[Tribeca Aula] Error al abrir publicación en iPhone/iPad:',error);
+      if(card) card.innerHTML=`<div class="tav240-error"><strong>No se pudo abrir esta publicación.</strong><p>${safe(error?.message||'Error de carga')}</p></div>`;
+    }
+  }
+
   async function openMaterialInNewWindow(materialId){
+    if(tribecaUseAppleMaterialViewerV240()){
+      await openMaterialInAppleViewerV240(materialId);
+      return;
+    }
     const existing=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
     if(!existing) return toast('No se encontró la publicación.');
     const w=window.open('', '_blank');
