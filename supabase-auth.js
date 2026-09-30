@@ -4954,10 +4954,7 @@ render();
       const m=await loadFullMaterialByIdV237(materialId) || existing;
       const source=materialEmbedSource(m);
       if(source?.html){
-        const html=(window.TribecaProgress && m?.id)
-          ? window.TribecaProgress.injectBridgeIntoHtml(source.html,m.id)
-          : source.html;
-        if(tribecaOpenAppleHtmlDirectV241(html,m.title||'Publicación')) return;
+        if(tribecaOpenAppleHtmlDirectV241(source.html,m.title||'Publicación')) return;
       }
       if(source?.src && !['exam','quiz','schemaActivity'].includes(source.mode)){
         // Para recursos alojados como documento real, Safari los maneja mejor en navegación superior.
