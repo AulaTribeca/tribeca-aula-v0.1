@@ -4916,15 +4916,58 @@ render();
     });
   }
 
+  function tribecaAppleStandaloneHtmlV241(html='', title='Publicación'){
+    let out=String(html||'');
+    if(!out.trim()) return '';
+    const toolbar=`<style id="tribecaAppleDirectStyleV241">
+      #tribecaAppleDirectBackV241{position:fixed;z-index:2147483647;top:max(10px,env(safe-area-inset-top));left:10px;appearance:none;border:1px solid #cfc6b2;background:#fffdf8;color:#0b3d22;border-radius:999px;min-height:42px;padding:8px 14px;font:900 14px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.18);-webkit-tap-highlight-color:transparent}
+      #tribecaAppleDirectBackV241:active{transform:scale(.98)}
+    </style>
+    <button id="tribecaAppleDirectBackV241" type="button" onclick="window.location.reload()">← Volver a Tribeca Aula</button>`;
+    if(/<body\b[^>]*>/i.test(out)) out=out.replace(/<body\b[^>]*>/i,m=>m+toolbar);
+    else out=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(title||'Publicación')}</title></head><body>${toolbar}${out}</body></html>`;
+    return out;
+  }
+
+  function tribecaOpenAppleHtmlDirectV241(html='',title='Publicación'){
+    const direct=tribecaAppleStandaloneHtmlV241(html,title);
+    if(!direct) return false;
+    try{
+      document.open('text/html','replace');
+      document.write(direct);
+      document.close();
+      window.scrollTo(0,0);
+      return true;
+    }catch(error){
+      console.error('[Tribeca Aula] Safari iOS: no se pudo abrir HTML directo:',error);
+      return false;
+    }
+  }
+
   async function openMaterialInAppleViewerV240(materialId){
     const existing=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
     if(!existing) return toast('No se encontró la publicación.');
-    const viewer=tribecaAppleMaterialViewerShellV240(existing.title||'Publicación');
-    const card=viewer.querySelector('.tav240-card');
+
+    // v241: Safari/WebKit funciona con mucha más fiabilidad cuando el HTML del recurso
+    // se convierte en el documento principal, sin popup, iframe, srcdoc ni data URL.
     try{
       const m=await loadFullMaterialByIdV237(materialId) || existing;
-      if(!document.body.contains(viewer)) return;
       const source=materialEmbedSource(m);
+      if(source?.html){
+        const html=(window.TribecaProgress && m?.id)
+          ? window.TribecaProgress.injectBridgeIntoHtml(source.html,m.id)
+          : source.html;
+        if(tribecaOpenAppleHtmlDirectV241(html,m.title||'Publicación')) return;
+      }
+      if(source?.src && !['exam','quiz','schemaActivity'].includes(source.mode)){
+        // Para recursos alojados como documento real, Safari los maneja mejor en navegación superior.
+        window.location.href=String(source.src);
+        return;
+      }
+
+      // Recursos nativos de Tribeca que no son un documento HTML completo conservan el visor interno.
+      const viewer=tribecaAppleMaterialViewerShellV240(m.title||'Publicación');
+      const card=viewer.querySelector('.tav240-card');
       const body=String(m.body||m.description||m.content||m.text||'').trim();
       const desc=body ? `<div class="tav240-desc">${safe(body).replace(/\n/g,'<br>')}</div>` : '';
       let resource='';
@@ -4936,16 +4979,16 @@ render();
         if(frame) frame.srcdoc=html;
       }else{
         resource=materialEmbedMarkup(m);
-        if(!resource && m.link_url) resource=`<p style="padding:16px"><a href="${safe(m.link_url)}" target="_blank" rel="noopener">Abrir recurso</a></p>`;
+        if(!resource && m.link_url) resource=`<p style="padding:16px"><a href="${safe(m.link_url)}" target="_self">Abrir recurso</a></p>`;
         card.innerHTML=desc+`<div class="tav240-resource">${resource || '<div class="tav240-error">Esta publicación no contiene un recurso visualizable.</div>'}</div>`;
         tribecaConvertDataIframesToSrcdocV240(card);
         hydrateNativeQuizzes?.(card);
         hydrateInteractiveEmbeds?.(card);
       }
-      const title=viewer.querySelector('.tav240-title strong');
-      if(title) title.textContent=m.title||'Publicación';
     }catch(error){
       console.error('[Tribeca Aula] Error al abrir publicación en iPhone/iPad:',error);
+      const viewer=tribecaAppleMaterialViewerShellV240(existing.title||'Publicación');
+      const card=viewer.querySelector('.tav240-card');
       if(card) card.innerHTML=`<div class="tav240-error"><strong>No se pudo abrir esta publicación.</strong><p>${safe(error?.message||'Error de carga')}</p></div>`;
     }
   }
