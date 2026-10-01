@@ -1,0 +1,120 @@
+      .on('broadcast',{event:'input'},({payload})=>onRemoteInput(payload))
+      .on('broadcast',{event:'state'},({payload})=>onSnapshot(payload))
+      .on('broadcast',{event:'profile'},({payload})=>onProfile(payload))
+      .on('broadcast',{event:'admin'},({payload})=>onAdminEvent(payload))
+      .on('broadcast',{event:'start'},({payload})=>onStart(payload))
+      .on('broadcast',{event:'leave'},({payload})=>onLeave(payload))
+      .subscribe(async status=>{
+        if(status==='SUBSCRIBED'){
+          state.subscribed=true;
+          if(isHost){
+            state.hostId=state.id; state.players={}; state.inputs={};
+            state.players[state.id]=makePlayer(state.id,state.name,true);
+            showRoomReady();
+            await send('welcome',{to:'*',hostId:state.id,players:serializePlayers(),started:false});
+          } else {
+            state.waitingForHost=true; roomStatus.textContent='Buscando anfitriona…'; showRoomReady(false);
+            await send('hello',{id:state.id,name:state.name,skin:'classic'});
+            setTimeout(()=>{ if(state.waitingForHost) showError('No encuentro una anfitriona activa con ese código. Comprueba el código y vuelve a intentarlo.'); },3500);
+          }
+        }
+      });
+  }
+
+  async function send(event,payload){
+    if(!state.channel||!state.subscribed)return;
+    try{ await state.channel.send({type:'broadcast',event,payload}); }catch(e){ console.warn('broadcast',e); }
+  }
+
+  function showRoomReady(host=true){
+    homeActions.hidden=true; joinBox.hidden=true; roomReady.hidden=false; roomCodeDisplay.textContent=state.room;
+    roomStatus.textContent=host?'Sala lista':'Conectando…'; updateLobbyCount();
+  }
+  function updateLobbyCount(){
+    const n=Object.keys(state.players).length;
+    playerCountEl.textContent = n<=1 ? 'Esperando a tu alumno…' : `${n} jugadores conectados. Ya podéis entrar.`;
+  }
+  function serializePlayers(){ return Object.values(state.players).map(publicPlayer); }
+
+  async function onHello(p){
+    if(!state.isHost||!p||!p.id)return;
+    if(Object.keys(state.players).length>=MAX_PLAYERS){ await send('welcome',{to:p.id,error:'Sala llena'}); return; }
+    if(!state.players[p.id]) state.players[p.id]=makePlayer(p.id,p.name,false);
+    state.inputs[p.id]={}; state.players[p.id].lastSeen=Date.now();
+    await send('welcome',{to:p.id,hostId:state.id,players:serializePlayers(),started:state.started});
+    await send('state',buildSnapshot()); updateLobbyCount(); updateScoreboard();
+  }
+  function onWelcome(p){
+    if(state.isHost||!p||!(p.to===state.id||p.to==='*'))return;
+    if(p.error){showError(p.error);return;}
+    state.hostId=p.hostId; state.waitingForHost=false; state.players={};
+    (p.players||[]).forEach(x=>state.players[x.id]=x);
+    roomStatus.textContent='Conectado. Esperando a que la anfitriona inicie la partida…'; document.getElementById('startGame').hidden=true; updateLobbyCount(); updateScoreboard();
+    if(p.started) enterGame(false);
+  }
+  function onRemoteInput(p){
+    if(!state.isHost||!p||!p.id||p.id===state.id)return;
+    if(!state.players[p.id])return;
+    state.inputs[p.id]=p.input||{}; state.players[p.id].lastSeen=Date.now();
+  }
+  function onSnapshot(p){
+    if(state.isHost||!p||p.room!==state.room)return;
+    const local=state.players[state.id]; const incoming={};
+    (p.players||[]).forEach(x=>incoming[x.id]=x);
+    state.players=incoming; state.projectiles=p.projectiles||[]; state.walls=p.walls||[]; state.explosions=p.explosions||[]; state.tanks=p.tanks||[];
+    if(local&&state.players[state.id]){
+      // keep tiny local metadata only; authoritative position comes from host
+    }
+    updateHud(); updateScoreboard();
+  }
+  function onProfile(p){
+    if(!p||!p.id)return;
+    if(state.isHost && state.players[p.id] && p.skin && SKINS.some(s=>s.id===p.skin && (!s.exclusive || p.id===state.id))){ state.players[p.id].skin=p.skin; }
+  }
+  function onAdminEvent(p){
+    if(!state.isHost||!p||p.from!==state.id)return;
+  }
+  function onStart(p){ if(!p||p.room!==state.room)return; enterGame(state.isHost); }
+  function onLeave(p){ if(state.isHost&&p&&p.id&&state.players[p.id]){ delete state.players[p.id]; delete state.inputs[p.id]; updateLobbyCount(); updateScoreboard(); } }
+
+  function enterGame(hostFlag){
+    state.started=true; lobby.hidden=true; hud.hidden=false; document.getElementById('hudRoom').textContent=state.room; adminPanel.hidden=!state.isHost;
+    if(state.isHost && !state.players[state.id]) state.players[state.id]=makePlayer(state.id,state.name,true);
+    renderSkinGrid(); updateWeaponBar(); updateHud(); updateScoreboard();
+  }
+
+  function buildSnapshot(){
+    return {room:state.room,t:Date.now(),players:serializePlayers(),projectiles:state.projectiles,walls:state.walls,explosions:state.explosions,tanks:state.tanks};
+  }
+
+  // ---------- Simulation ----------
+  function simulate(dt){
+    if(!state.isHost||!state.started)return;
+    const t=now();
+    // host input is local
+    state.inputs[state.id]=state.localInput;
+
+    for(const p of Object.values(state.players)){
+      if(!p.alive){
+        if(t>=p.respawnAt){ respawnPlayer(p); }
+        continue;
+      }
+      const inp=state.inputs[p.id]||{};
+      if(p.shield && t>p.shieldUntil) p.shield=false;
+      const speed=p.tank?145:260;
+      let dx=(inp.right?1:0)-(inp.left?1:0), dy=(inp.down?1:0)-(inp.up?1:0);
+      const mag=Math.hypot(dx,dy)||1; dx/=mag; dy/=mag;
+      p.vx=lerp(p.vx,dx*speed,Math.min(1,dt*11)); p.vy=lerp(p.vy,dy*speed,Math.min(1,dt*11));
+      p.x=clamp(p.x+p.vx*dt,p.r,WORLD.w-p.r); p.y=clamp(p.y+p.vy*dt,p.r,WORLD.h-p.r);
+      if(Number.isFinite(inp.aimAngle)) p.angle=inp.aimAngle; else { const aim=screenToWorld(inp.aimX??state.mouse.x, inp.aimY??state.mouse.y, p); p.angle=Math.atan2(aim.y-p.y,aim.x-p.x); }
+      collideWalls(p);
+      if(inp.dash && !p.tank && t-p.lastDash>1600){ p.lastDash=t; p.x=clamp(p.x+Math.cos(p.angle)*150,p.r,WORLD.w-p.r); p.y=clamp(p.y+Math.sin(p.angle)*150,p.r,WORLD.h-p.r); }
+      if(inp.build && t-p.lastBuild>650){ p.lastBuild=t; placeWall(p); }
+      if(typeof inp.weapon==='number') p.weapon=clamp(inp.weapon,0,WEAPONS.length-1);
+      if(inp.shoot) fireWeapon(p,t);
+    }
+
+    updateProjectiles(dt,t); updateWalls(t); updateExplosions(t);
+    // timeout disconnected players after 15s
+    for(const p of Object.values(state.players)){ if(!p.isHost && Date.now()-p.lastSeen>15000){ delete state.players[p.id]; delete state.inputs[p.id]; } }
+  }
