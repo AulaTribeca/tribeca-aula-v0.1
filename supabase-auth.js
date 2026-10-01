@@ -4851,7 +4851,9 @@ render();
     const touchMac=platform==='MacIntel' && touchPoints>1;
     const appleMobile=/iPhone|iPad|iPod/i.test(ua) || touchMac;
     const android=/Android/i.test(ua);
-    return appleMobile || android;
+    let coarseTouch=false;
+    try{ coarseTouch=touchPoints>0 && !!window.matchMedia?.('(pointer: coarse)')?.matches; }catch(_e){ coarseTouch=false; }
+    return appleMobile || android || coarseTouch;
   }
 
   function tribecaUseAppleMaterialViewerV240(){
