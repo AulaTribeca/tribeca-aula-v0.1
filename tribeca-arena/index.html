@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#0a0d12" />
+  <title>Tribeca Arena</title>
+  <link rel="stylesheet" href="arena.css?v=1" />
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" aria-label="Tribeca Arena"></canvas>
+
+    <section id="lobby" class="overlay lobby">
+      <div class="lobby-card">
+        <div class="brand-row">
+          <div class="brand-mark">T</div>
+          <div>
+            <p class="eyebrow">TRIBECA LABS</p>
+            <h1>Tribeca Arena</h1>
+          </div>
+        </div>
+        <p class="intro">Arena privada multijugador. Sin cuentas, sin instalaciones. Crea una sala y comparte el enlace.</p>
+
+        <label class="field">
+          <span>Tu nombre</span>
+          <input id="playerName" maxlength="18" autocomplete="off" placeholder="Nombre" value="Profe" />
+        </label>
+
+        <div id="homeActions" class="actions two">
+          <button id="createRoom" class="primary">Crear sala privada</button>
+          <button id="showJoin" class="secondary">Unirme con código</button>
+        </div>
+
+        <div id="joinBox" class="join-box" hidden>
+          <label class="field">
+            <span>Código de sala</span>
+            <input id="roomCode" maxlength="8" autocomplete="off" placeholder="ABC123" />
+          </label>
+          <div class="actions two">
+            <button id="joinRoom" class="primary">Entrar</button>
+            <button id="cancelJoin" class="secondary">Volver</button>
+          </div>
+        </div>
+
+        <div id="roomReady" class="room-ready" hidden>
+          <p class="status"><span class="dot"></span><span id="roomStatus">Sala lista</span></p>
+          <div class="room-code-wrap">
+            <span>CÓDIGO</span>
+            <strong id="roomCodeDisplay">------</strong>
+          </div>
+          <div class="actions two">
+            <button id="copyInvite" class="primary">Copiar enlace para tu alumno</button>
+            <button id="startGame" class="secondary">Entrar en la arena</button>
+          </div>
+          <p class="micro" id="playerCount">Esperando jugadores…</p>
+        </div>
+
+        <p id="lobbyError" class="error" hidden></p>
+      </div>
+    </section>
+
+    <section id="hud" class="hud" hidden>
+      <div class="topbar">
+        <div class="room-pill"><span class="live-dot"></span><span id="hudRoom">------</span></div>
+        <div class="scoreboard" id="scoreboard"></div>
+        <button id="leaveBtn" class="icon-btn">Salir</button>
+      </div>
+
+      <div class="left-hud">
+        <div class="meter-block">
+          <div class="meter-label"><span>VIDA</span><strong id="hpText">100</strong></div>
+          <div class="meter"><i id="hpBar"></i></div>
+        </div>
+        <div class="meter-block" id="armorBlock">
+          <div class="meter-label"><span>BLINDAJE</span><strong id="armorText">0</strong></div>
+          <div class="meter armor"><i id="armorBar"></i></div>
+        </div>
+        <div id="statusChips" class="status-chips"></div>
+      </div>
+
+      <div class="weaponbar" id="weaponbar"></div>
+
+      <aside id="adminPanel" class="admin-panel" hidden>
+        <div class="admin-head">
+          <div><small>CONTROL DE ANFITRIONA</small><strong>ADMIN</strong></div>
+          <button id="collapseAdmin" class="icon-btn">−</button>
+        </div>
+        <div class="admin-body">
+          <button data-admin="god">G · God Mode</button>
+          <button data-admin="tank">T · Tanque</button>
+          <button data-admin="heal">H · Curación total</button>
+          <button data-admin="nova">X · Nova Strike</button>
+          <button data-admin="arsenal">R · Arsenal infinito</button>
+          <button data-admin="teleport">F · Teletransporte al cursor</button>
+          <button data-admin="shield">Z · Escudo de energía</button>
+        </div>
+      </aside>
+
+      <button id="skinButton" class="skin-button">Skins</button>
+      <section id="skinDrawer" class="skin-drawer" hidden>
+        <div class="drawer-head"><strong>SKIN LAB</strong><button id="closeSkins" class="icon-btn">×</button></div>
+        <div id="skinGrid" class="skin-grid"></div>
+      </section>
+
+      <div id="toast" class="toast" aria-live="polite"></div>
+      <div id="respawn" class="respawn" hidden><strong id="respawnText">RESPAWN</strong></div>
+      <div class="controls-tip">WASD mover · Ratón apuntar · Click disparar · 1–6 armas · Q construir · Espacio dash</div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="arena.js?v=1"></script>
+</body>
+</html>
