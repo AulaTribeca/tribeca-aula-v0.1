@@ -1,0 +1,120 @@
+(() => {
+  'use strict';
+
+  const SUPABASE_URL = 'https://fuhkvjyfwkggjaqxfsgv.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_yGmv_IkjLrNrJrX8aOPi6A_GtOk8C_2';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession:false } });
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const lobby = document.getElementById('lobby');
+  const hud = document.getElementById('hud');
+  const playerNameInput = document.getElementById('playerName');
+  const roomInput = document.getElementById('roomCode');
+  const lobbyError = document.getElementById('lobbyError');
+  const roomReady = document.getElementById('roomReady');
+  const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+  const roomStatus = document.getElementById('roomStatus');
+  const playerCountEl = document.getElementById('playerCount');
+  const homeActions = document.getElementById('homeActions');
+  const joinBox = document.getElementById('joinBox');
+  const scoreboard = document.getElementById('scoreboard');
+  const hpBar = document.getElementById('hpBar');
+  const hpText = document.getElementById('hpText');
+  const armorBar = document.getElementById('armorBar');
+  const armorText = document.getElementById('armorText');
+  const armorBlock = document.getElementById('armorBlock');
+  const statusChips = document.getElementById('statusChips');
+  const weaponbar = document.getElementById('weaponbar');
+  const adminPanel = document.getElementById('adminPanel');
+  const skinDrawer = document.getElementById('skinDrawer');
+  const skinGrid = document.getElementById('skinGrid');
+  const toastEl = document.getElementById('toast');
+  const respawnEl = document.getElementById('respawn');
+  const respawnText = document.getElementById('respawnText');
+
+  const params = new URLSearchParams(location.search);
+  const seededRoom = sanitizeCode(params.get('room') || '');
+  const seededName = params.get('name');
+  if (seededRoom) roomInput.value = seededRoom;
+  if (seededName) playerNameInput.value = seededName.slice(0,18);
+
+  const WORLD = { w: 2200, h: 1400 };
+  const WALL_THICK = 18;
+  const MAX_PLAYERS = 6;
+  const TICK = 1000/60;
+  const SNAPSHOT_MS = 50;
+  const INPUT_MS = 33;
+
+  const WEAPONS = [
+    { id:'blaster', name:'Blaster', rate:280, speed:880, damage:20, radius:4, spread:0.015, pellets:1, ammo:Infinity, color:'#baffc4' },
+    { id:'rifle', name:'Rifle', rate:95, speed:1050, damage:11, radius:3, spread:0.045, pellets:1, ammo:180, color:'#83d8ff' },
+    { id:'shotgun', name:'Shotgun', rate:650, speed:760, damage:12, radius:4, spread:0.22, pellets:7, ammo:42, color:'#ffd38d' },
+    { id:'rocket', name:'Rocket', rate:900, speed:520, damage:58, radius:7, spread:0.01, pellets:1, ammo:16, explosive:120, color:'#ff977e' },
+    { id:'rail', name:'Railgun', rate:1150, speed:1450, damage:82, radius:3, spread:0, pellets:1, ammo:14, pierce:true, color:'#d49bff' },
+    { id:'nova', name:'Nova', rate:1400, speed:640, damage:120, radius:11, spread:0, pellets:1, ammo:8, explosive:190, admin:true, color:'#ff4ddb' },
+  ];
+
+  const SKINS = [
+    {id:'classic',name:'Classic',a:'#65d4ff',b:'#d5f6ff'},
+    {id:'emerald',name:'Emerald',a:'#0a6b39',b:'#80ff9c'},
+    {id:'ice',name:'Ice',a:'#367cff',b:'#d7fbff'},
+    {id:'magma',name:'Magma',a:'#7b1008',b:'#ffb12e'},
+    {id:'gold',name:'Gold',a:'#8a5a00',b:'#fff0a0'},
+    {id:'void',name:'Void',a:'#1b053c',b:'#ce63ff'},
+    {id:'cyber',name:'Cyber',a:'#00a990',b:'#ff42cf'},
+    {id:'storm',name:'Storm',a:'#344d7c',b:'#b9d5ff'},
+    {id:'toxic',name:'Toxic',a:'#5b7a0a',b:'#d9ff49'},
+    {id:'carbon',name:'Carbon',a:'#1d222a',b:'#8f9baa'},
+    {id:'tribeca',name:'Tribeca Prime',a:'#053f2b',b:'#adffbd',exclusive:true},
+    {id:'boss',name:'Final Boss',a:'#4a0014',b:'#ff335f',exclusive:true},
+  ];
+
+  const state = {
+    id: crypto.randomUUID(), name:'', room:'', isHost:false, hostId:null, channel:null, subscribed:false,
+    started:false, localInput:{up:false,down:false,left:false,right:false,shoot:false,dash:false,build:false,aimX:0,aimY:0,weapon:0},
+    inputSeq:0, inputs:{}, players:{}, projectiles:[], walls:[], explosions:[], tanks:[], pickups:[],
+    lastFrame:performance.now(), lastSnapshot:0, lastInputSend:0, camera:{x:0,y:0}, mouse:{x:innerWidth/2,y:innerHeight/2},
+    admin:{god:false, arsenal:false, shield:false}, waitingForHost:false, pendingStart:false
+  };
+
+  function sanitizeCode(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8); }
+  function randomCode(){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function dist2(a,b){ const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy; }
+  function now(){ return performance.now(); }
+  function showError(msg){ lobbyError.hidden=false; lobbyError.textContent=msg; }
+  function clearError(){ lobbyError.hidden=true; lobbyError.textContent=''; }
+  let toastTimer;
+  function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1500); }
+
+  function resize(){
+    const dpr=Math.min(devicePixelRatio||1,2);
+    canvas.width=Math.floor(innerWidth*dpr); canvas.height=Math.floor(innerHeight*dpr);
+    canvas.style.width=innerWidth+'px'; canvas.style.height=innerHeight+'px'; ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  addEventListener('resize',resize); resize();
+
+  function makePlayer(id,name,isHost=false){
+    const spawn = isHost ? {x:WORLD.w*.32,y:WORLD.h*.5}:{x:WORLD.w*.68+Math.random()*120-60,y:WORLD.h*.5+Math.random()*160-80};
+    return { id,name:name||'Jugador',x:spawn.x,y:spawn.y,vx:0,vy:0,r:20,angle:0,hp:100,maxHp:100,armor:0,maxArmor:0,alive:true,respawnAt:0,
+      skin:isHost?'tribeca':'classic',weapon:0,ammo:WEAPONS.map(w=>w.ammo),lastShot:0,lastDash:0,lastBuild:0,kills:0,deaths:0,isHost,god:false,tank:false,shield:false,shieldUntil:0,
+      hitFlash:0,invulnUntil:0, connectedAt:Date.now(), lastSeen:Date.now() };
+  }
+
+  function publicPlayer(p){
+    return {id:p.id,name:p.name,x:p.x,y:p.y,vx:p.vx,vy:p.vy,r:p.r,angle:p.angle,hp:p.hp,maxHp:p.maxHp,armor:p.armor,maxArmor:p.maxArmor,alive:p.alive,respawnAt:p.respawnAt,skin:p.skin,weapon:p.weapon,ammo:p.ammo,kills:p.kills,deaths:p.deaths,isHost:p.isHost,god:p.god,tank:p.tank,shield:p.shield,shieldUntil:p.shieldUntil,hitFlash:p.hitFlash};
+  }
+
+  async function connectRoom(room, isHost){
+    clearError();
+    state.name=(playerNameInput.value.trim()||'Jugador').slice(0,18); state.room=sanitizeCode(room); state.isHost=isHost; state.started=false;
+    if(!state.room){ showError('Introduce un código de sala válido.'); return; }
+    if(state.channel){ try{ await sb.removeChannel(state.channel); }catch{} }
+    const channel = sb.channel('tribeca-arena:'+state.room, { config:{ broadcast:{self:false,ack:false} } });
+    state.channel=channel;
+    channel
+      .on('broadcast',{event:'hello'},({payload})=>onHello(payload))
+      .on('broadcast',{event:'welcome'},({payload})=>onWelcome(payload))
