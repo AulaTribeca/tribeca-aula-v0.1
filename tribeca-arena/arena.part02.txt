@@ -1,0 +1,120 @@
+
+  function screenToWorld(sx,sy,pref){
+    const cam=getCamera(pref||state.players[state.id]);
+    return {x:cam.x+(sx||innerWidth/2),y:cam.y+(sy||innerHeight/2)};
+  }
+  function getCamera(p){
+    const cx=clamp((p?.x||WORLD.w/2)-innerWidth/2,0,Math.max(0,WORLD.w-innerWidth));
+    const cy=clamp((p?.y||WORLD.h/2)-innerHeight/2,0,Math.max(0,WORLD.h-innerHeight)); return {x:cx,y:cy};
+  }
+  function collideWalls(p){
+    for(const w of state.walls){
+      if(w.hp<=0)continue; const minX=w.x-w.w/2-p.r,maxX=w.x+w.w/2+p.r,minY=w.y-w.h/2-p.r,maxY=w.y+w.h/2+p.r;
+      if(p.x>minX&&p.x<maxX&&p.y>minY&&p.y<maxY){
+        const left=Math.abs(p.x-minX),right=Math.abs(maxX-p.x),top=Math.abs(p.y-minY),bottom=Math.abs(maxY-p.y); const m=Math.min(left,right,top,bottom);
+        if(m===left)p.x=minX; else if(m===right)p.x=maxX; else if(m===top)p.y=minY; else p.y=maxY;
+      }
+    }
+  }
+  function placeWall(p){
+    const a=p.angle+Math.PI/2; const cx=p.x+Math.cos(p.angle)*72,cy=p.y+Math.sin(p.angle)*72; const horiz=Math.abs(Math.cos(a))>Math.abs(Math.sin(a));
+    state.walls.push({id:crypto.randomUUID(),x:cx,y:cy,w:horiz?110:WALL_THICK,h:horiz?WALL_THICK:110,hp:180,maxHp:180,owner:p.id,expires:now()+14000});
+  }
+  function fireWeapon(p,t){
+    let wi=p.tank?3:p.weapon; const w=WEAPONS[wi]; if(!w)return;
+    if(w.admin&&!p.isHost)return;
+    if(t-p.lastShot<w.rate)return;
+    if(!(p.isHost && state.admin.arsenal) && Number.isFinite(p.ammo[wi]) && p.ammo[wi]<=0)return;
+    p.lastShot=t; if(!(p.isHost && state.admin.arsenal)&&Number.isFinite(p.ammo[wi]))p.ammo[wi]--;
+    const pellets=p.tank?1:w.pellets;
+    for(let i=0;i<pellets;i++){
+      const spread=(Math.random()-.5)*2*w.spread; const a=p.angle+spread; const speed=p.tank?600:w.speed; const damage=p.tank?90:w.damage;
+      state.projectiles.push({id:crypto.randomUUID(),owner:p.id,x:p.x+Math.cos(a)*(p.r+14),y:p.y+Math.sin(a)*(p.r+14),vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:p.tank?9:w.radius,damage,explosive:p.tank?150:(w.explosive||0),pierce:w.pierce||false,color:p.tank?'#ffd36a':w.color,life:2000,created:t,hit:[]});
+    }
+  }
+  function updateProjectiles(dt,t){
+    const keep=[];
+    for(const b of state.projectiles){
+      b.x+=b.vx*dt;b.y+=b.vy*dt; let dead=(t-b.created>b.life||b.x<0||b.y<0||b.x>WORLD.w||b.y>WORLD.h);
+      for(const w of state.walls){ if(dead||w.hp<=0)continue; if(Math.abs(b.x-w.x)<w.w/2+b.r&&Math.abs(b.y-w.y)<w.h/2+b.r){ w.hp-=b.damage; impact(b.x,b.y,b.color,12); if(b.explosive)explode(b,b.owner); dead=true; } }
+      for(const p of Object.values(state.players)){
+        if(dead||!p.alive||p.id===b.owner||b.hit.includes(p.id))continue;
+        const rr=p.r+b.r; if((p.x-b.x)**2+(p.y-b.y)**2<=rr*rr){ b.hit.push(p.id); applyDamage(p,b.damage,b.owner); impact(b.x,b.y,b.color,14); if(b.explosive)explode(b,b.owner); if(!b.pierce)dead=true; }
+      }
+      if(!dead)keep.push(b);
+    }
+    state.projectiles=keep;
+  }
+  function applyDamage(p,dmg,attackerId){
+    const t=now(); if(p.god||t<p.invulnUntil)return; if(p.shield)dmg*=.32;
+    if(p.armor>0){ const take=Math.min(p.armor,dmg); p.armor-=take; dmg-=take; }
+    p.hp-=dmg; p.hitFlash=t+120;
+    if(p.hp<=0){
+      p.hp=0;p.alive=false;p.deaths++;p.respawnAt=t+2500;
+      const a=state.players[attackerId]; if(a)a.kills++;
+      impact(p.x,p.y,'#ff5f70',30);
+    }
+  }
+  function explode(b,owner){
+    state.explosions.push({id:crypto.randomUUID(),x:b.x,y:b.y,r:0,max:b.explosive,created:now(),life:360,color:b.color});
+    for(const p of Object.values(state.players)){ if(!p.alive||p.id===owner)continue; const d=Math.hypot(p.x-b.x,p.y-b.y); if(d<b.explosive){ applyDamage(p,b.damage*(1-d/b.explosive)*.8,owner); } }
+    for(const w of state.walls){ const d=Math.hypot(w.x-b.x,w.y-b.y); if(d<b.explosive)w.hp-=b.damage*.7; }
+  }
+  function impact(x,y,color,count){
+    state.explosions.push({id:crypto.randomUUID(),x,y,r:0,max:Math.max(18,count*2),created:now(),life:180,color});
+  }
+  function updateWalls(t){ state.walls=state.walls.filter(w=>w.hp>0&&t<w.expires); }
+  function updateExplosions(t){ state.explosions=state.explosions.filter(e=>t-e.created<e.life); }
+  function respawnPlayer(p){
+    const side=p.isHost?.32:.68; p.x=WORLD.w*side+Math.random()*100-50;p.y=WORLD.h*.5+Math.random()*260-130;p.vx=p.vy=0;p.hp=p.maxHp;p.alive=true;p.invulnUntil=now()+900;
+    if(p.tank){p.armor=p.maxArmor||1000;} else {p.armor=0;}
+  }
+
+  // ---------- Admin powers ----------
+  function adminPower(kind){
+    if(!state.isHost)return; const p=state.players[state.id]; if(!p)return;
+    if(kind==='god'){ p.god=!p.god; state.admin.god=p.god; toast(p.god?'GOD MODE ACTIVADO':'God Mode desactivado'); }
+    if(kind==='tank'){
+      p.tank=!p.tank; if(p.tank){p.r=32;p.maxArmor=1000;p.armor=1000;p.maxHp=220;p.hp=Math.max(p.hp,220); toast('TANQUE DESPLEGADO');}
+      else {p.r=20;p.maxArmor=0;p.armor=0;p.maxHp=100;p.hp=Math.min(p.hp,100);toast('Tanque desactivado');}
+    }
+    if(kind==='heal'){p.hp=p.maxHp;p.armor=p.maxArmor;toast('Curación completa');}
+    if(kind==='arsenal'){state.admin.arsenal=!state.admin.arsenal;toast(state.admin.arsenal?'ARSENAL INFINITO':'Munición normal');}
+    if(kind==='shield'){p.shield=true;p.shieldUntil=now()+12000;toast('Escudo de energía: 12 s');}
+    if(kind==='teleport'){const w=screenToWorld(state.mouse.x,state.mouse.y,p);p.x=clamp(w.x,p.r,WORLD.w-p.r);p.y=clamp(w.y,p.r,WORLD.h-p.r);impact(p.x,p.y,'#83d8ff',20);toast('Teletransporte');}
+    if(kind==='nova'){
+      const w=screenToWorld(state.mouse.x,state.mouse.y,p); state.explosions.push({id:crypto.randomUUID(),x:w.x,y:w.y,r:0,max:280,created:now(),life:700,color:'#ff4ddb'});
+      for(const q of Object.values(state.players)){if(q.id===p.id||!q.alive)continue;const d=Math.hypot(q.x-w.x,q.y-w.y);if(d<280)applyDamage(q,180*(1-d/280),p.id);} for(const wall of state.walls){if(Math.hypot(wall.x-w.x,wall.y-w.y)<300)wall.hp-=250;} toast('NOVA STRIKE');
+    }
+    updateHud(); updateAdminButtons();
+  }
+
+  // ---------- Rendering ----------
+  function render(){
+    const me=state.players[state.id]||Object.values(state.players)[0]; const cam=getCamera(me); state.camera=cam;
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    // background
+    ctx.fillStyle='#0d131b';ctx.fillRect(0,0,innerWidth,innerHeight);
+    ctx.save();ctx.translate(-cam.x,-cam.y);
+    drawWorld();
+    for(const w of state.walls)drawWall(w);
+    for(const e of state.explosions)drawExplosion(e);
+    for(const b of state.projectiles)drawProjectile(b);
+    for(const p of Object.values(state.players))drawPlayer(p);
+    ctx.restore();
+    drawCrosshair();
+  }
+  function drawWorld(){
+    const g=80; ctx.strokeStyle='rgba(255,255,255,.035)';ctx.lineWidth=1;
+    for(let x=0;x<=WORLD.w;x+=g){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,WORLD.h);ctx.stroke();}
+    for(let y=0;y<=WORLD.h;y+=g){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(WORLD.w,y);ctx.stroke();}
+    ctx.strokeStyle='rgba(136,255,155,.25)';ctx.lineWidth=4;ctx.strokeRect(2,2,WORLD.w-4,WORLD.h-4);
+    // cover blocks
+    const blocks=[[520,270,180,70],[1080,220,100,210],[1450,430,210,80],[760,820,130,190],[1300,920,250,70],[1760,840,90,210]];
+    for(const [x,y,w,h] of blocks){ctx.fillStyle='#161f2a';ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=2;ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);}
+  }
+  function drawWall(w){ ctx.save();ctx.translate(w.x,w.y);ctx.fillStyle='rgba(120,175,220,.28)';ctx.strokeStyle='rgba(145,210,255,.8)';ctx.lineWidth=2;ctx.fillRect(-w.w/2,-w.h/2,w.w,w.h);ctx.strokeRect(-w.w/2,-w.h/2,w.w,w.h);ctx.restore(); }
+  function drawProjectile(b){ctx.save();ctx.shadowBlur=16;ctx.shadowColor=b.color;ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();ctx.restore();}
+  function drawExplosion(e){const age=now()-e.created,t=clamp(age/e.life,0,1),r=e.max*Math.sin(Math.min(1,t)*Math.PI*.9);ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle=e.color;ctx.lineWidth=4;ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.stroke();ctx.fillStyle=e.color;ctx.globalAlpha=(1-t)*.08;ctx.fill();ctx.restore();}
+  function skinDef(id){return SKINS.find(s=>s.id===id)||SKINS[0];}
+  function drawPlayer(p){
