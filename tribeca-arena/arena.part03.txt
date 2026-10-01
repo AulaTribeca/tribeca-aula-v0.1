@@ -1,0 +1,89 @@
+    const s=skinDef(p.skin); ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
+    if(!p.alive){ctx.globalAlpha=.18;}
+    if(p.shield){ctx.save();ctx.rotate(-p.angle);ctx.strokeStyle='rgba(110,210,255,.8)';ctx.lineWidth=4;ctx.shadowBlur=18;ctx.shadowColor='#6ed2ff';ctx.beginPath();ctx.arc(0,0,p.r+11,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    if(p.god){ctx.save();ctx.rotate(-p.angle);ctx.strokeStyle='#8cff9e';ctx.lineWidth=3;ctx.setLineDash([5,5]);ctx.beginPath();ctx.arc(0,0,p.r+16,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    if(p.tank){
+      ctx.fillStyle='#27331f';ctx.strokeStyle='#9fb565';ctx.lineWidth=3;ctx.fillRect(-38,-28,76,56);ctx.strokeRect(-38,-28,76,56);
+      ctx.fillStyle=s.a;ctx.fillRect(-22,-19,44,38);ctx.strokeStyle=s.b;ctx.strokeRect(-22,-19,44,38);ctx.fillStyle='#3c4634';ctx.fillRect(0,-6,55,12);
+    } else {
+      const grd=ctx.createLinearGradient(-p.r,-p.r,p.r,p.r);grd.addColorStop(0,s.a);grd.addColorStop(1,s.b);ctx.fillStyle=grd;ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=2;ctx.shadowBlur=18;ctx.shadowColor=s.b;ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle='#dce5ee';ctx.fillRect(7,-4,p.r+20,8);
+    }
+    ctx.rotate(-p.angle);ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(-32,-p.r-26,64,6);ctx.fillStyle=p.hp/p.maxHp>.3?'#61ed80':'#ff6072';ctx.fillRect(-32,-p.r-26,64*clamp(p.hp/p.maxHp,0,1),6);
+    ctx.font='700 11px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(p.name+(p.isHost?' ★':''),0,-p.r-34);ctx.restore();
+  }
+  function drawCrosshair(){ if(!state.started)return;ctx.save();ctx.translate(state.mouse.x,state.mouse.y);ctx.strokeStyle='rgba(220,255,225,.85)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.moveTo(-16,0);ctx.lineTo(-5,0);ctx.moveTo(16,0);ctx.lineTo(5,0);ctx.moveTo(0,-16);ctx.lineTo(0,-5);ctx.moveTo(0,16);ctx.lineTo(0,5);ctx.stroke();ctx.restore(); }
+
+  // ---------- UI ----------
+  function updateScoreboard(){
+    scoreboard.innerHTML=Object.values(state.players).sort((a,b)=>b.kills-a.kills).map(p=>{const s=skinDef(p.skin);return `<span class="score-chip"><i style="background:${s.b}"></i><span>${esc(p.name)}</span><b>${p.kills||0}/${p.deaths||0}</b></span>`}).join('');
+  }
+  function updateWeaponBar(){
+    const me=state.players[state.id]; if(!me)return;
+    weaponbar.innerHTML=WEAPONS.map((w,i)=>{if(w.admin&&!state.isHost)return'';const ammo=state.admin.arsenal?'∞':(Number.isFinite(me.ammo?.[i])?me.ammo[i]:'∞');return `<div class="weapon-slot ${me.weapon===i?'active':''}" data-w="${i}"><small>${i+1}</small><strong>${w.name}</strong><div class="ammo">${ammo}</div></div>`}).join('');
+  }
+  function updateHud(){
+    const p=state.players[state.id]; if(!p)return;
+    hpText.textContent=Math.max(0,Math.round(p.hp));hpBar.style.width=(clamp(p.hp/p.maxHp,0,1)*100)+'%';
+    armorText.textContent=Math.max(0,Math.round(p.armor||0));armorBar.style.width=((p.maxArmor?clamp(p.armor/p.maxArmor,0,1):0)*100)+'%';armorBlock.style.display=p.maxArmor?'block':'none';
+    const chips=[];if(p.god)chips.push('<span class="status-chip god">GOD MODE</span>');if(p.tank)chips.push('<span class="status-chip tank">TANK</span>');if(p.shield)chips.push('<span class="status-chip shield">SHIELD</span>');if(state.admin.arsenal)chips.push('<span class="status-chip">∞ AMMO</span>');statusChips.innerHTML=chips.join('');
+    if(!p.alive){respawnEl.hidden=false;respawnText.textContent='RESPAWN '+Math.max(0,Math.ceil((p.respawnAt-now())/1000));}else respawnEl.hidden=true;
+    updateWeaponBar(); updateAdminButtons();
+  }
+  function updateAdminButtons(){
+    if(!state.isHost)return; const p=state.players[state.id];
+    adminPanel.querySelectorAll('[data-admin]').forEach(b=>{const k=b.dataset.admin; b.classList.toggle('active',(k==='god'&&p?.god)||(k==='tank'&&p?.tank)||(k==='arsenal'&&state.admin.arsenal)||(k==='shield'&&p?.shield));});
+  }
+  function renderSkinGrid(){
+    skinGrid.innerHTML=SKINS.filter(s=>!s.exclusive||state.isHost).map(s=>`<button class="skin-card ${state.players[state.id]?.skin===s.id?'active':''}" data-skin="${s.id}"><div class="skin-preview" style="background:linear-gradient(135deg,${s.a},${s.b})"></div><b>${s.name}</b><small>${s.exclusive?'Solo anfitriona':'Disponible'}</small>${s.exclusive?'<span class="exclusive-badge">EXCLUSIVA</span>':''}</button>`).join('');
+  }
+
+  // ---------- Input ----------
+  const keyMap={KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right'};
+  addEventListener('keydown',e=>{
+    if(keyMap[e.code]){state.localInput[keyMap[e.code]]=true;e.preventDefault();}
+    if(e.code==='Space'){state.localInput.dash=true;e.preventDefault();}
+    if(e.code==='KeyQ'){state.localInput.build=true;e.preventDefault();}
+    if(/^Digit[1-6]$/.test(e.code)){const i=Number(e.code.slice(-1))-1;if(!WEAPONS[i].admin||state.isHost)state.localInput.weapon=i;}
+    if(state.isHost){const adminKeys={KeyG:'god',KeyT:'tank',KeyH:'heal',KeyX:'nova',KeyR:'arsenal',KeyF:'teleport',KeyZ:'shield'};if(adminKeys[e.code]){adminPower(adminKeys[e.code]);e.preventDefault();}}
+  });
+  addEventListener('keyup',e=>{if(keyMap[e.code])state.localInput[keyMap[e.code]]=false;if(e.code==='Space')state.localInput.dash=false;if(e.code==='KeyQ')state.localInput.build=false;});
+  addEventListener('mousemove',e=>{state.mouse.x=e.clientX;state.mouse.y=e.clientY;state.localInput.aimX=e.clientX;state.localInput.aimY=e.clientY;const p=state.players[state.id];if(p){const cam=getCamera(p);const wx=cam.x+e.clientX,wy=cam.y+e.clientY;state.localInput.aimAngle=Math.atan2(wy-p.y,wx-p.x);}});
+  addEventListener('mousedown',e=>{if(e.button===0)state.localInput.shoot=true;});addEventListener('mouseup',e=>{if(e.button===0)state.localInput.shoot=false;});
+  addEventListener('contextmenu',e=>e.preventDefault());
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){state.localInput.shoot=false;state.localInput.up=state.localInput.down=state.localInput.left=state.localInput.right=false;}});
+
+  // ---------- Main loop ----------
+  function frame(ts){
+    const dt=Math.min(.05,(ts-state.lastFrame)/1000||0);state.lastFrame=ts;
+    if(state.started){
+      if(state.isHost){simulate(dt);if(ts-state.lastSnapshot>SNAPSHOT_MS){state.lastSnapshot=ts;send('state',buildSnapshot());updateHud();updateScoreboard();}}
+      else if(ts-state.lastInputSend>INPUT_MS){state.lastInputSend=ts;send('input',{id:state.id,input:{...state.localInput}});updateHud();}
+      render();
+    } else renderAttract(ts);
+    requestAnimationFrame(frame);
+  }
+  function renderAttract(ts){ctx.clearRect(0,0,innerWidth,innerHeight);ctx.fillStyle='#0b1017';ctx.fillRect(0,0,innerWidth,innerHeight);const cx=innerWidth/2,cy=innerHeight/2;for(let i=0;i<26;i++){const a=i*.7+ts*.00008*(i%3+1),r=80+i*20;ctx.fillStyle=`rgba(${70+i*4},${120+i*3},255,${.035+i*.001})`;ctx.beginPath();ctx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,2+(i%3),0,Math.PI*2);ctx.fill();}}
+  requestAnimationFrame(frame);
+
+  // ---------- Buttons ----------
+  document.getElementById('createRoom').onclick=()=>connectRoom(randomCode(),true);
+  document.getElementById('showJoin').onclick=()=>{homeActions.hidden=true;joinBox.hidden=false;roomInput.focus();};
+  document.getElementById('cancelJoin').onclick=()=>{joinBox.hidden=true;homeActions.hidden=false;clearError();};
+  document.getElementById('joinRoom').onclick=()=>connectRoom(roomInput.value,false);
+  roomInput.addEventListener('input',()=>roomInput.value=sanitizeCode(roomInput.value));
+  document.getElementById('copyInvite').onclick=async()=>{
+    const u=new URL(location.href);u.search='';u.searchParams.set('room',state.room);try{await navigator.clipboard.writeText(u.toString());toast('Enlace copiado');document.getElementById('copyInvite').textContent='Enlace copiado ✓';setTimeout(()=>document.getElementById('copyInvite').textContent='Copiar enlace para tu alumno',1400);}catch{prompt('Copia este enlace:',u.toString());}
+  };
+  document.getElementById('startGame').onclick=async()=>{if(state.isHost){state.started=true;await send('start',{room:state.room});enterGame(true);}else enterGame(false);};
+  document.getElementById('leaveBtn').onclick=async()=>{await send('leave',{id:state.id});location.href=location.pathname;};
+  document.getElementById('collapseAdmin').onclick=()=>adminPanel.classList.toggle('collapsed');
+  adminPanel.addEventListener('click',e=>{const b=e.target.closest('[data-admin]');if(b)adminPower(b.dataset.admin);});
+  document.getElementById('skinButton').onclick=()=>{renderSkinGrid();skinDrawer.hidden=false;};document.getElementById('closeSkins').onclick=()=>skinDrawer.hidden=true;
+  skinGrid.addEventListener('click',e=>{const b=e.target.closest('[data-skin]');if(!b)return;const id=b.dataset.skin,s=skinDef(id);if(s.exclusive&&!state.isHost)return;const p=state.players[state.id];if(p){p.skin=id;renderSkinGrid();if(state.isHost){}else send('profile',{id:state.id,skin:id});updateScoreboard();}});
+  weaponbar.addEventListener('click',e=>{const b=e.target.closest('[data-w]');if(b)state.localInput.weapon=Number(b.dataset.w);});
+
+  // Auto-open join view when URL contains room code.
+  if(seededRoom){homeActions.hidden=true;joinBox.hidden=false;roomInput.value=seededRoom;roomInput.focus();}
+
+  addEventListener('beforeunload',()=>{try{send('leave',{id:state.id});}catch{}});
+})();
