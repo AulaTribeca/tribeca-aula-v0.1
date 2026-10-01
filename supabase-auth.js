@@ -4844,11 +4844,18 @@ render();
     }
   }
 
-  function tribecaUseAppleMaterialViewerV240(){
+  function tribecaUseDirectTouchMaterialViewerV242(){
     const ua=String(navigator.userAgent||'');
     const platform=String(navigator.platform||'');
-    const touchMac=platform==='MacIntel' && Number(navigator.maxTouchPoints||0)>1;
-    return /iPhone|iPad|iPod/i.test(ua) || touchMac;
+    const touchPoints=Number(navigator.maxTouchPoints||0);
+    const touchMac=platform==='MacIntel' && touchPoints>1;
+    const appleMobile=/iPhone|iPad|iPod/i.test(ua) || touchMac;
+    const android=/Android/i.test(ua);
+    return appleMobile || android;
+  }
+
+  function tribecaUseAppleMaterialViewerV240(){
+    return tribecaUseDirectTouchMaterialViewerV242();
   }
 
   function tribecaCloseAppleMaterialViewerV240(){
@@ -4887,7 +4894,7 @@ render();
     </style>
     <header class="tav240-head">
       <button type="button" data-tav240-close>← Volver</button>
-      <div class="tav240-title"><strong>${safe(title||'Publicación')}</strong><small>Tribeca Aula · visor compatible con iPhone/iPad</small></div>
+      <div class="tav240-title"><strong>${safe(title||'Publicación')}</strong><small>Tribeca Aula · visor compatible con tablet y móvil</small></div>
       <span></span>
     </header>
     <div class="tav240-body"><div class="tav240-card"><div class="tav240-loading">Cargando publicación…</div></div></div>`;
@@ -4920,8 +4927,31 @@ render();
     let out=String(html||'');
     if(!out.trim()) return '';
     const toolbar=`<style id="tribecaAppleDirectStyleV241">
-      #tribecaAppleDirectBackV241{position:fixed;z-index:2147483647;top:max(10px,env(safe-area-inset-top));left:10px;appearance:none;border:1px solid #cfc6b2;background:#fffdf8;color:#0b3d22;border-radius:999px;min-height:42px;padding:8px 14px;font:900 14px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.18);-webkit-tap-highlight-color:transparent}
-      #tribecaAppleDirectBackV241:active{transform:scale(.98)}
+      #tribecaAppleDirectBackV241{
+        all:initial!important;
+        position:fixed!important;
+        z-index:2147483647!important;
+        top:max(10px,env(safe-area-inset-top))!important;
+        left:10px!important;
+        display:inline-flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        box-sizing:border-box!important;
+        min-width:148px!important;
+        min-height:44px!important;
+        padding:9px 14px!important;
+        border:1px solid #cfc6b2!important;
+        border-radius:999px!important;
+        background:#fffdf8!important;
+        color:#0b3d22!important;
+        font:900 14px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;
+        box-shadow:0 5px 18px rgba(0,0,0,.20)!important;
+        -webkit-tap-highlight-color:transparent!important;
+        cursor:pointer!important;
+        opacity:1!important;
+        visibility:visible!important;
+        pointer-events:auto!important;
+      }
     </style>
     <button id="tribecaAppleDirectBackV241" type="button" onclick="window.location.reload()">← Volver a Tribeca Aula</button>`;
     if(/<body\b[^>]*>/i.test(out)) out=out.replace(/<body\b[^>]*>/i,m=>m+toolbar);
@@ -4948,7 +4978,7 @@ render();
     const existing=(State.data.materials||[]).find(x=>String(x.id)===String(materialId));
     if(!existing) return toast('No se encontró la publicación.');
 
-    // v241: Safari/WebKit funciona con mucha más fiabilidad cuando el HTML del recurso
+    // v241: Los navegadores táctiles funcionan con mucha más fiabilidad cuando el HTML del recurso
     // se convierte en el documento principal, sin popup, iframe, srcdoc ni data URL.
     try{
       const m=await loadFullMaterialByIdV237(materialId) || existing;
@@ -4957,7 +4987,7 @@ render();
         if(tribecaOpenAppleHtmlDirectV241(source.html,m.title||'Publicación')) return;
       }
       if(source?.src && !['exam','quiz','schemaActivity'].includes(source.mode)){
-        // Para recursos alojados como documento real, Safari los maneja mejor en navegación superior.
+        // Para recursos alojados como documento real, Los navegadores de tablet los manejan mejor en navegación superior.
         window.location.href=String(source.src);
         return;
       }
@@ -4983,7 +5013,7 @@ render();
         hydrateInteractiveEmbeds?.(card);
       }
     }catch(error){
-      console.error('[Tribeca Aula] Error al abrir publicación en iPhone/iPad:',error);
+      console.error('[Tribeca Aula] Error al abrir publicación en dispositivo táctil:',error);
       const viewer=tribecaAppleMaterialViewerShellV240(existing.title||'Publicación');
       const card=viewer.querySelector('.tav240-card');
       if(card) card.innerHTML=`<div class="tav240-error"><strong>No se pudo abrir esta publicación.</strong><p>${safe(error?.message||'Error de carga')}</p></div>`;
@@ -4991,7 +5021,7 @@ render();
   }
 
   async function openMaterialInNewWindow(materialId){
-    if(tribecaUseAppleMaterialViewerV240()){
+    if(tribecaUseDirectTouchMaterialViewerV242()){
       await openMaterialInAppleViewerV240(materialId);
       return;
     }
