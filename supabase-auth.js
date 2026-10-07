@@ -2256,8 +2256,27 @@
     if(!m) return null;
     return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3]), iso:`${m[1]}-${m[2]}-${m[3]}`};
   }
+  function studentBirthdayPartsV244(profile={}){
+    const full=parseStudentBirthDate(profile.birth_date || profile.date_of_birth);
+    if(full) return full;
+    const prefs=(profile.ui_preferences && typeof profile.ui_preferences==='object') ? profile.ui_preferences : {};
+    const raw=String(prefs.birthday_md || '').trim();
+    const md=raw.match(/^(\d{2})-(\d{2})$/);
+    if(md){
+      const month=Number(md[1]);
+      const day=Number(md[2]);
+      if(month>=1 && month<=12 && day>=1 && day<=31) return {year:null,month,day,iso:''};
+    }
+    const obj=prefs.birthday && typeof prefs.birthday==='object' ? prefs.birthday : null;
+    if(obj){
+      const month=Number(obj.month);
+      const day=Number(obj.day);
+      if(month>=1 && month<=12 && day>=1 && day<=31) return {year:null,month,day,iso:''};
+    }
+    return null;
+  }
   function birthdayMatchesDate(profile={}, date=new Date()){
-    const b=parseStudentBirthDate(profile.birth_date || profile.date_of_birth);
+    const b=studentBirthdayPartsV244(profile);
     return !!b && b.month===date.getMonth()+1 && b.day===date.getDate();
   }
   function ageOnBirthday(profile={}, date=new Date()){
@@ -2858,14 +2877,9 @@ function studentAssignedClasses(studentId=State.profile?.id){
   }
 
   function studentBirthdayGreetingV216(profile={}, date=new Date()){
-    const raw=String(profile.birth_date || profile.date_of_birth || '').trim();
-    const match=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(!match) return '';
-    const month=Number(match[2]);
-    const day=Number(match[3]);
-    if(month!==date.getMonth()+1 || day!==date.getDate()) return '';
-    const first=String(profile.first_name || firstPart(profile.full_name || displayName(profile)) || displayName(profile) || '').trim();
-    return first ? `feliz cumple, ${first}` : '';
+    if(!birthdayMatchesDate(profile,date)) return '';
+    const first=String(profile.preferred_name || profile.first_name || firstPart(profile.full_name || displayName(profile)) || displayName(profile) || '').trim();
+    return first ? `¡Feliz cumpleaños, ${first}! 🎂` : '¡Feliz cumpleaños! 🎂';
   }
   function studentWelcomeHeadingV216(profile={}){
     const birthday=studentBirthdayGreetingV216(profile,new Date());
