@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Present Simple review</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#6b7280;--line:#dfe4ee;--ok:#16794b;--bad:#b42318;--accent:#1f4e8c;--soft:#eef4ff}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{padding:12px}
+.wrap{max-width:980px;margin:0 auto}
+header{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:12px}
+h1{font-size:clamp(24px,5vw,36px);margin:0 0 6px}
+header p{margin:0;color:var(--muted);font-size:14px}
+.help{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.help div{background:var(--soft);border-radius:12px;padding:10px;font-size:13px;line-height:1.35}
+.help strong{display:block;margin-bottom:3px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tab{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:15px}
+.tab.active{background:#172033;color:#fff;border-color:#172033}
+.panel{display:none}
+.panel.active{display:block}
+.section-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.section-head h2{font-size:20px;margin:0}
+.section-head span{font-size:12px;color:var(--muted)}
+.exercise{border:1px solid var(--line);border-radius:14px;padding:12px;margin:9px 0;background:#fff}
+.exercise .num{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px}
+.sentence{font-size:17px;line-height:1.55;font-weight:650}
+.blank{display:inline-block;vertical-align:middle;min-width:86px;max-width:145px;width:28vw;border:0;border-bottom:2px solid #9ca3af;background:#f9fafb;padding:7px 8px;font:inherit;text-align:center;border-radius:8px 8px 0 0;outline:none}
+.blank:focus{border-bottom-color:var(--accent);background:#eef4ff}
+.verb{color:#6b7280;font-size:14px;font-weight:600}
+.feedback{display:none;margin-top:8px;padding:8px 10px;border-radius:10px;font-size:13px;line-height:1.4}
+.exercise.ok{border-color:#8fd0b1;background:#fbfffd}
+.exercise.bad{border-color:#f0aaa4;background:#fffafa}
+.exercise.ok .feedback{display:block;background:#e9f8f0;color:#0f6b41}
+.exercise.bad .feedback{display:block;background:#fff0ee;color:#962d22}
+.actions{position:sticky;bottom:0;margin-top:12px;background:rgba(245,247,251,.96);backdrop-filter:blur(8px);padding:10px 0 calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions button{min-height:46px;border:0;border-radius:14px;font-weight:900;font-size:15px}
+#check{background:#172033;color:#fff}
+#reset{background:#fff;border:1px solid var(--line);color:#172033}
+.score{margin-top:12px;background:#172033;color:#fff;border-radius:14px;padding:12px 14px;font-weight:800;display:none}
+.score.show{display:block}
+@media(max-width:640px){
+ body{padding:8px}
+ header,.section-card{border-radius:14px;padding:12px}
+ .help{grid-template-columns:1fr}
+ .sentence{font-size:16px}
+ .blank{width:34vw;min-width:78px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Present Simple review</h1>
+  <p>Complete the sentences. Use the verb in brackets. Positive, negative and questions.</p>
+  <div class="help">
+    <div><strong>Positive</strong>I/You/We/They <b>play</b><br>He/She/It <b>plays</b></div>
+    <div><strong>Negative</strong>I/You/We/They <b>don't play</b><br>He/She/It <b>doesn't play</b></div>
+    <div><strong>Question</strong><b>Do</b> you <b>play</b>?<br><b>Does</b> she <b>play</b>?</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="pokemon">Pokémon</button>
+  <button class="tab" data-tab="football">Football</button>
+</div>
+
+<section class="panel active" id="pokemon">
+<div class="section-card">
+  <div class="section-head"><h2>Pokémon</h2><span>10 exercises</span></div>
+  <div id="pokemonList"></div>
+</div>
+</section>
+
+<section class="panel" id="football">
+<div class="section-card">
+  <div class="section-head"><h2>Football</h2><span>10 exercises</span></div>
+  <div id="footballList"></div>
+</div>
+</section>
+
+<div class="score" id="score"></div>
+<div class="actions">
+  <button id="check" type="button">Check answers</button>
+  <button id="reset" type="button">Reset</button>
+</div>
+</div>
+
+<script>
+const EXERCISES=[
+ {theme:"pokemon", parts:["Pikachu "," badminton every Saturday. "], verb:"play", answers:["plays"]},
+ {theme:"pokemon", parts:["The trainers "," gymnastics at night. "], verb:"not / do", answers:["don't do","do not do"]},
+ {theme:"pokemon", parts:[""," Eevee "," swimming on Mondays? "], verb:"go", answers:["does","go"]},
+ {theme:"pokemon", parts:["We "," table tennis after training. "], verb:"play", answers:["play"]},
+ {theme:"pokemon", parts:["Bulbasaur "," happy when it wins. "], verb:"feel", answers:["feels"]},
+ {theme:"pokemon", parts:["I "," climbing when it rains. "], verb:"not / go", answers:["don't go","do not go"]},
+ {theme:"pokemon", parts:[""," the trainers "," hockey every week? "], verb:"play", answers:["do","play"]},
+ {theme:"pokemon", parts:["Squirtle "," swimming every morning. "], verb:"go", answers:["goes"]},
+ {theme:"pokemon", parts:["They "," scared during easy battles. "], verb:"not / feel", answers:["don't feel","do not feel"]},
+ {theme:"pokemon", parts:[""," Charmander "," archery on Fridays? "], verb:"do", answers:["does","do"]},
+ {theme:"football", parts:["Our goalkeeper "," every Tuesday. "], verb:"train", answers:["trains"]},
+ {theme:"football", parts:["The players "," before the match. "], verb:"not / eat", answers:["don't eat","do not eat"]},
+ {theme:"football", parts:[""," your team "," at the sports centre? "], verb:"train", answers:["does","train"]},
+ {theme:"football", parts:["I "," football after school. "], verb:"play", answers:["play"]},
+ {theme:"football", parts:["My brother "," the ball very well. "], verb:"kick", answers:["kicks"]},
+ {theme:"football", parts:["We "," tired before training. "], verb:"not / feel", answers:["don't feel","do not feel"]},
+ {theme:"football", parts:[""," you "," your football boots every day? "], verb:"wear", answers:["do","wear"]},
+ {theme:"football", parts:["The striker "," two goals every Saturday. "], verb:"score", answers:["scores"]},
+ {theme:"football", parts:["Our coach "," late for training. "], verb:"not / arrive", answers:["doesn't arrive","does not arrive"]},
+ {theme:"football", parts:[""," the goalkeeper "," gloves in every match? "], verb:"wear", answers:["does","wear"]}
+];
+
+function normalize(v){return String(v||"").trim().toLowerCase().replace(/\s+/g," ");}
+function makeExercise(ex,i){
+  const card=document.createElement("article"); card.className="exercise"; card.dataset.index=i;
+  const n=document.createElement("div"); n.className="num"; n.textContent="Exercise "+(i+1);
+  const s=document.createElement("div"); s.className="sentence";
+  const inputs=[];
+  ex.parts.forEach((part,idx)=>{
+    if(idx>0){
+      const input=document.createElement("input"); input.className="blank"; input.autocomplete="off";
+      input.setAttribute("aria-label","Answer "+idx+" for exercise "+(i+1));
+      input.dataset.slot=idx-1; inputs.push(input); s.appendChild(input);
+    }
+    s.appendChild(document.createTextNode(part));
+  });
+  const verb=document.createElement("span"); verb.className="verb"; verb.textContent="("+ex.verb+")";
+  s.appendChild(document.createTextNode(" ")); s.appendChild(verb);
+  const f=document.createElement("div"); f.className="feedback";
+  card.append(n,s,f);
+  return card;
+}
+EXERCISES.forEach((ex,i)=>{
+  const target=document.getElementById(ex.theme+"List");
+  target.appendChild(makeExercise(ex,i));
+});
+
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id===btn.dataset.tab));
+  window.scrollTo({top:0,behavior:"smooth"});
+}));
+
+document.getElementById("check").addEventListener("click",()=>{
+  let correct=0;
+  EXERCISES.forEach((ex,i)=>{
+    const card=document.querySelector('.exercise[data-index="'+i+'"]');
+    const values=[...card.querySelectorAll(".blank")].map(x=>normalize(x.value));
+    let ok=false;
+    if(values.length===1){
+      ok=ex.answers.map(normalize).includes(values[0]);
+    }else{
+      ok=values.every((v,idx)=>v===normalize(ex.answers[idx]));
+    }
+    card.classList.remove("ok","bad"); card.classList.add(ok?"ok":"bad");
+    const fb=card.querySelector(".feedback");
+    if(ok){ correct++; fb.textContent="Correct."; }
+    else{
+      const answer=values.length===1 ? ex.answers.join(" / ") : ex.answers.join(" … ");
+      fb.innerHTML="Correct answer: <strong>"+answer.replace(/</g,"&lt;")+"</strong>";
+    }
+  });
+  const score=document.getElementById("score");
+  score.textContent="Score: "+correct+" / "+EXERCISES.length;
+  score.classList.add("show");
+  score.scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+
+document.getElementById("reset").addEventListener("click",()=>{
+  document.querySelectorAll(".blank").forEach(x=>x.value="");
+  document.querySelectorAll(".exercise").forEach(x=>x.classList.remove("ok","bad"));
+  document.getElementById("score").classList.remove("show");
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+</script>
+</body>
+</html>
