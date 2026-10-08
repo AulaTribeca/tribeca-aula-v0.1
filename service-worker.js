@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v244 · PWA multiplataforma, caché de app shell, push y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v244';
+/* Tribeca Aula · Service worker v246 · PWA multiplataforma, caché de app shell, push y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v246';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -10,7 +10,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=235',
-  './supabase-auth.js?v=244',
+  './supabase-auth.js?v=246',
   './profile-ui.js?v=229',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
@@ -113,7 +113,12 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, './index.html', 3000));
+    const isResourceDocument = url.pathname.includes('/resources/');
+    if (isResourceDocument) {
+      event.respondWith(networkFirst(request, null, 8000));
+    } else {
+      event.respondWith(networkFirst(request, './index.html', 3000));
+    }
     return;
   }
   if (/\.(?:js|css)$/i.test(url.pathname)) {
