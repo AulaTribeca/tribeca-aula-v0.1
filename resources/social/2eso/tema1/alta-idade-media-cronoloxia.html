@@ -191,7 +191,7 @@ dialog::backdrop{background:rgba(0,0,0,.72)}
 
   <section class="view section-card" id="quizView" hidden>
     <div class="quiz-top">
-      <div><h2>Práctica de cronoloxía</h2><p>46 preguntas · corrección inmediata · podes ver a resposta correcta.</p></div>
+      <div><h2>Práctica de cronoloxía</h2><p>46 preguntas · corrección inmediata · podes repetila tantas veces como queiras · cada intento gárdase por separado.</p></div>
       <div class="badge" id="scoreBadge">0 acertos</div>
     </div>
     <div class="progress-wrap" aria-label="Progreso"><div class="progress" id="progress"></div></div>
@@ -213,7 +213,11 @@ dialog::backdrop{background:rgba(0,0,0,.72)}
       <h2>Práctica completada</h2>
       <div class="score" id="finalScore"></div>
       <p id="finalText"></p>
-      <button type="button" class="action primary" id="restartBtn">Repetir desde o inicio</button>
+      <p id="attemptSaveStatus" aria-live="polite" style="font-weight:800;color:#416052"></p>
+      <div class="actions">
+        <button type="button" class="action primary" id="restartBtn">Repetir desde o inicio</button>
+        <button type="button" class="action" id="returnAulaBtn" hidden>← Volver a Tribeca Aula</button>
+      </div>
     </section>
     <div class="quiz-footer">
       <span id="answeredInfo">0/46 comprobadas</span>
@@ -274,7 +278,88 @@ optionsEl=document.getElementById("options"),feedbackEl=document.getElementById(
 scoreBadge=document.getElementById("scoreBadge"),answeredInfo=document.getElementById("answeredInfo"),checkBtn=document.getElementById("checkBtn"),
 showBtn=document.getElementById("showBtn"),prevBtn=document.getElementById("prevBtn"),nextBtn=document.getElementById("nextBtn"),
 quizCard=document.getElementById("quizCard"),summary=document.getElementById("summary"),finalScore=document.getElementById("finalScore"),
-finalText=document.getElementById("finalText"),restartBtn=document.getElementById("restartBtn");
+finalText=document.getElementById("finalText"),restartBtn=document.getElementById("restartBtn"),
+attemptSaveStatus=document.getElementById("attemptSaveStatus"),returnAulaBtn=document.getElementById("returnAulaBtn");
+const MATERIAL_ID="f1fdb128-fa23-41db-9355-15fdb84ba028";
+const ATTEMPT_QUEUE_KEY="tribeca-external-attempt-queue-v245";
+let currentAttemptSaved=false,currentAttemptId="";
+function newAttemptId(){
+  try{return crypto.randomUUID();}catch(_e){return "att-"+Date.now()+"-"+Math.random().toString(16).slice(2);}
+}
+function readAttemptQueue(){
+  try{const rows=JSON.parse(localStorage.getItem(ATTEMPT_QUEUE_KEY)||"[]");return Array.isArray(rows)?rows:[];}catch(_e){return [];}
+}
+function writeAttemptQueue(rows){
+  try{localStorage.setItem(ATTEMPT_QUEUE_KEY,JSON.stringify((rows||[]).slice(-80)));}catch(_e){}
+}
+function removeQueuedAttempt(attemptId){
+  writeAttemptQueue(readAttemptQueue().filter(r=>String(r?.attempt?.attemptId||r?.attemptId||"")!==String(attemptId||"")));
+}
+function buildAttemptPayload(){
+  const st=stats();
+  const score=Number(((st.correct/QUESTIONS.length)*10).toFixed(2));
+  const percent=Math.round((st.correct/QUESTIONS.length)*100);
+  return {
+    attemptId:currentAttemptId||newAttemptId(),
+    title:"Tema 1 · A Alta Idade Media · Práctica de cronoloxía",
+    subject:"Ciencias Sociais",
+    unit_title:"Tema 1",
+    score,
+    max_score:10,
+    percent,
+    correct:st.correct,
+    checked:st.checked,
+    total:QUESTIONS.length,
+    completed_at:new Date().toISOString(),
+    answers:QUESTIONS.map((q,i)=>{
+      const s=state[i];
+      return {
+        question:q.q,
+        section:q.section,
+        selected:s.selected,
+        selected_text:s.selected===null?null:q.options[s.selected],
+        correct_answer:q.answer,
+        correct_text:q.options[q.answer],
+        checked:!!s.checked,
+        correct:!!s.correct,
+        revealed:!!s.revealed,
+        fraction:s.checked&&s.correct?1:0
+      };
+    }),
+    correction:{kind:"cronoloxia-tema1",language:"gl"}
+  };
+}
+function saveCurrentAttempt(){
+  const st=stats();
+  if(currentAttemptSaved || st.checked===0) return;
+  currentAttemptId=currentAttemptId||newAttemptId();
+  const attempt=buildAttemptPayload();
+  currentAttemptSaved=true;
+  const queued=readAttemptQueue().filter(r=>String(r?.attempt?.attemptId||"")!==currentAttemptId);
+  queued.push({materialId:MATERIAL_ID,attempt});
+  writeAttemptQueue(queued);
+  attemptSaveStatus.textContent="Intento gardado. Tribeca Aula sincronizará o resultado automaticamente.";
+  const msg={type:"TRIBECA_EXTERNAL_ATTEMPT_V245",materialId:MATERIAL_ID,attempt};
+  try{if(window.parent&&window.parent!==window)window.parent.postMessage(msg,location.origin);}catch(_e){}
+  try{if(window.opener&&!window.opener.closed)window.opener.postMessage(msg,location.origin);}catch(_e){}
+  try{if(window.top&&window.top!==window&&window.top.opener&&!window.top.opener.closed)window.top.opener.postMessage(msg,location.origin);}catch(_e){}
+}
+window.addEventListener("message",ev=>{
+  const d=ev.data||{};
+  if(d.type!=="TRIBECA_EXTERNAL_ATTEMPT_ACK_V245"||String(d.attemptId||"")!==String(currentAttemptId||""))return;
+  if(d.ok){
+    removeQueuedAttempt(currentAttemptId);
+    attemptSaveStatus.textContent="Intento gardado correctamente en Tribeca Aula.";
+  }else if(d.error){
+    attemptSaveStatus.textContent="O intento queda gardado e sincronizarase ao volver a Tribeca Aula.";
+  }
+});
+try{
+  if(window.top===window){
+    returnAulaBtn.hidden=false;
+    returnAulaBtn.addEventListener("click",()=>{location.href="/tribeca-aula-v0.1/#inicio";});
+  }
+}catch(_e){}
 function stats(){const checked=state.filter(s=>s.checked).length;const correct=state.filter(s=>s.checked&&s.correct).length;return{checked,correct};}
 function esc(text){return String(text).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[ch]);}
 function updateTop(){const st=stats();progressEl.style.width=((index+1)/QUESTIONS.length*100)+"%";scoreBadge.textContent=st.correct+(st.correct===1?" acerto":" acertos");answeredInfo.textContent=st.checked+"/"+QUESTIONS.length+" comprobadas";}
@@ -301,9 +386,9 @@ showBtn.addEventListener("click",()=>{const s=state[index];if(s.checked||s.revea
 prevBtn.addEventListener("click",()=>{if(index>0){index--;render();window.scrollTo(0,0);}});
 nextBtn.addEventListener("click",()=>{if(index<QUESTIONS.length-1){index++;render();window.scrollTo(0,0);}else showSummary();});
 function showSummary(){const st=stats();quizCard.style.display="none";summary.classList.add("show");progressEl.style.width="100%";finalScore.textContent=st.correct+" / "+QUESTIONS.length;
-if(st.checked===0)finalText.textContent="Aínda non comprobaches respostas. Podes volver e facer a práctica ao teu ritmo.";
-else{const pct=Math.round(st.correct/QUESTIONS.length*100);finalText.textContent="Acertaches o "+pct+"% do total. Respostas comprobadas: "+st.checked+" de "+QUESTIONS.length+".";}window.scrollTo(0,0);}
-restartBtn.addEventListener("click",()=>{state=QUESTIONS.map(()=>({selected:null,checked:false,correct:false,revealed:false}));index=0;render();window.scrollTo(0,0);});
+if(st.checked===0){finalText.textContent="Aínda non comprobaches respostas. Podes volver e facer a práctica ao teu ritmo.";attemptSaveStatus.textContent="";}
+else{const pct=Math.round(st.correct/QUESTIONS.length*100);finalText.textContent="Acertaches o "+pct+"% do total. Respostas comprobadas: "+st.checked+" de "+QUESTIONS.length+".";saveCurrentAttempt();}window.scrollTo(0,0);}
+restartBtn.addEventListener("click",()=>{state=QUESTIONS.map(()=>({selected:null,checked:false,correct:false,revealed:false}));index=0;currentAttemptSaved=false;currentAttemptId="";attemptSaveStatus.textContent="";render();window.scrollTo(0,0);});
 render();
 })();
 </script>
