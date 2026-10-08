@@ -1269,6 +1269,7 @@
     await loadData(force);
     await refreshSelfPause();
     if(!State.selfPause) updatePresence().catch(()=>{});
+    if(!roleTeacher()) deferTribecaBackgroundTask(()=>flushExternalAttemptQueueV245(),300);
   }
   async function loadTeacherStudentsV235(){
     if(!roleTeacher()) return [];
@@ -3994,6 +3995,128 @@ function studentAssignedClasses(studentId=State.profile?.id){
     toast(`Ejercicio corregido: ${Number(row.score).toFixed(2)}/10. Intento guardado.`);
     return savedAttempt;
   }
+
+  const TRIBECA_EXTERNAL_ATTEMPT_QUEUE_V245='tribeca-external-attempt-queue-v245';
+
+  function tribecaExternalAttemptQueueV245(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(TRIBECA_EXTERNAL_ATTEMPT_QUEUE_V245)||'[]');
+      return Array.isArray(raw)?raw:[];
+    }catch(_e){ return []; }
+  }
+  function tribecaWriteExternalAttemptQueueV245(rows=[]){
+    try{ localStorage.setItem(TRIBECA_EXTERNAL_ATTEMPT_QUEUE_V245,JSON.stringify((rows||[]).slice(-80))); }catch(_e){}
+  }
+  function tribecaRemoveQueuedExternalAttemptV245(attemptId){
+    const id=String(attemptId||'');
+    if(!id) return;
+    tribecaWriteExternalAttemptQueueV245(tribecaExternalAttemptQueueV245().filter(x=>String(x?.attemptId||'')!==id));
+  }
+  async function persistExternalExamAttemptV245(materialId,payload={},opts={}){
+    if(!materialId || !State.profile?.id || roleTeacher()) return null;
+    const attemptId=String(payload.attemptId||payload.external_attempt_id||'').trim();
+    if(!attemptId) throw new Error('El intento no tiene identificador.');
+
+    const material=(State.data.materials||[]).find(m=>String(m.id)===String(materialId)) || {};
+    try{
+      const duplicate=await table('exam_attempts')
+        .select('id,completed_at')
+        .eq('user_id',State.profile.id)
+        .eq('material_id',materialId)
+        .contains('correction',{external_attempt_id:attemptId})
+        .limit(1);
+      if(!duplicate.error && Array.isArray(duplicate.data) && duplicate.data.length){
+        tribecaRemoveQueuedExternalAttemptV245(attemptId);
+        return duplicate.data[0];
+      }
+    }catch(_e){}
+
+    const maxScore=Number(payload.max_score||10) || 10;
+    const score=Math.max(0,Math.min(maxScore,Number(payload.score||0)));
+    const completedAt=payload.completed_at || new Date().toISOString();
+    const correction={
+      ...(payload.correction && typeof payload.correction==='object' ? payload.correction : {}),
+      external_attempt_id:attemptId,
+      source:'external-html-v245',
+      correct:Number(payload.correct||0),
+      checked:Number(payload.checked||0),
+      total:Number(payload.total||0),
+      percent:Number(payload.percent||0)
+    };
+    const row={
+      user_id:State.profile.id,
+      material_id:materialId,
+      class_id:material.class_id || null,
+      class_subject_id:material.class_subject_id || null,
+      class_unit_id:material.class_unit_id || null,
+      subject:material.subject || payload.subject || '',
+      unit_title:material.unit_title || material.unit || payload.unit_title || '',
+      title:material.title || payload.title || 'Actividad interactiva',
+      score,
+      max_score:maxScore,
+      percent:Number.isFinite(Number(payload.percent)) ? Math.max(0,Math.min(100,Math.round(Number(payload.percent)))) : Math.round(score/maxScore*100),
+      answers:Array.isArray(payload.answers)?payload.answers:[],
+      correction,
+      completed_at:completedAt
+    };
+    const inserted=await table('exam_attempts').insert(row).select('*').single();
+    if(inserted.error) throw inserted.error;
+    await maybe(
+      table('material_completions').upsert({
+        user_id:State.profile.id,
+        material_id:materialId,
+        subject:row.subject||null,
+        completed:true,
+        completed_at:completedAt,
+        updated_at:new Date().toISOString()
+      },{onConflict:'user_id,material_id'}),
+      null
+    );
+    await window.TribecaProgress?.markCompleted?.(materialId);
+    State.data.examAttempts=[inserted.data,...(State.data.examAttempts||[]).filter(x=>String(x.id)!==String(inserted.data?.id))];
+    tribecaRemoveQueuedExternalAttemptV245(attemptId);
+    if(!opts.silent) toast(`Intento guardado: ${Number(score).toFixed(2)}/${Number(maxScore).toFixed(0)}.`);
+    return inserted.data;
+  }
+
+  async function flushExternalAttemptQueueV245(){
+    if(!State.profile?.id || roleTeacher()) return;
+    const queue=tribecaExternalAttemptQueueV245();
+    for(const rec of queue){
+      const materialId=String(rec?.materialId||'');
+      const attempt=rec?.attempt || rec;
+      if(!materialId || !attempt?.attemptId) continue;
+      const material=(State.data.materials||[]).find(m=>String(m.id)===materialId);
+      if(!material) continue;
+      try{ await persistExternalExamAttemptV245(materialId,attempt,{silent:true}); }
+      catch(error){ console.warn('[Tribeca Aula] No se pudo sincronizar un intento externo:',error?.message||error); }
+    }
+  }
+
+  if(!window.__tribecaExternalAttemptBridgeV245){
+    window.__tribecaExternalAttemptBridgeV245=true;
+    window.addEventListener('message',async ev=>{
+      const d=ev.data||{};
+      if(d.type!=='TRIBECA_EXTERNAL_ATTEMPT_V245') return;
+      if(ev.origin && ev.origin!==location.origin) return;
+      const materialId=String(d.materialId||'');
+      const attempt=d.attempt||{};
+      if(!materialId || !attempt.attemptId || roleTeacher()) return;
+      const known=(State.data.materials||[]).some(m=>String(m.id)===materialId);
+      if(!known) return;
+      let ok=false,errorText='';
+      try{
+        await persistExternalExamAttemptV245(materialId,attempt,{silent:true});
+        ok=true;
+      }catch(error){ errorText=String(error?.message||error); }
+      try{ ev.source?.postMessage?.({type:'TRIBECA_EXTERNAL_ATTEMPT_ACK_V245',attemptId:attempt.attemptId,ok,error:errorText},ev.origin||'*'); }catch(_e){}
+    });
+    window.addEventListener('pageshow',()=>{
+      if(State.profile?.id && !roleTeacher()) deferTribecaBackgroundTask(()=>flushExternalAttemptQueueV245(),350);
+    });
+  }
+  window.TribecaPersistExternalAttemptV245=persistExternalExamAttemptV245;
+  window.TribecaFlushExternalAttemptQueueV245=flushExternalAttemptQueueV245;
 
   function hydrateNativeExams(root=document){
     const scope=root && root.querySelectorAll ? root : document;
