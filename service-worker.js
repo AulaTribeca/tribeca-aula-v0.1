@@ -1,16 +1,16 @@
-/* Tribeca Aula · Service worker v247 · PWA multiplataforma, caché de app shell, push y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v247';
+/* Tribeca Aula · Service worker v248 · PWA multiplataforma, caché de app shell, push y badge */
+const TRIBECA_CACHE = 'tribeca-aula-static-v248';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
   './index.html',
-  './styles.css?v=233',
+  './styles.css?v=234',
   './profile-ui.css?v=229',
   './app.js?v=216',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=235',
-  './supabase-auth.js?v=247',
+  './supabase-auth.js?v=248',
   './profile-ui.js?v=229',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
