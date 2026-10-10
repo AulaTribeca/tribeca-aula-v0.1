@@ -1581,7 +1581,9 @@
   }
   function focusModeEnabledForProfile(profile = State.profile){
     if(!profile || typeof profile !== 'object') return false;
-    return profile.focus_mode_enabled === true || profile.focus_mode_enabled === 'true' || profile.focus_mode === true || profile.simplified_view === true || profile.ui_mode === 'focus';
+    // La preferencia oficial solo proviene de profiles.focus_mode_enabled.
+    // No restaurar modos antiguos desde propiedades heredadas del navegador.
+    return profile.focus_mode_enabled === true || profile.focus_mode_enabled === 'true';
   }
   function studentFocusModeEnabled(profile = State.profile){
     return !!profile && !roleTeacher() && focusModeEnabledForProfile(profile);
@@ -1929,9 +1931,6 @@
   }
   function simplifyTribecaNavigation(){
     document.querySelectorAll('[data-public-tool-link], .public-tool-lumen, .public-tool-itinera, .main-nav [data-tool="guidance"], .main-nav [data-tool="badges"], .main-nav [data-tool="difficulties"], .main-nav [data-tool="grades"], .main-nav [data-tool="assignBadge"], [data-t16-tool="assignBadge"], [data-tool="badges"]').forEach(el=>el.remove?.());
-    if(!roleTeacher() && isIzamProfile(State.profile||{})){
-      document.querySelectorAll('.main-nav [data-tool="videoclasses"], [data-t16-tool="videoclasses"], .video-classes-home-v173, .video-classes-home-v175').forEach(el=>el.remove?.());
-    }
     document.querySelectorAll('.utility-bar .control-field, .utility-bar label, .utility-bar .select-wrap').forEach(el=>{
       const txt = normalizeLooseText(el.textContent || '');
       const sel = el.matches?.('select') ? el : el.querySelector?.('select');
@@ -5418,7 +5417,6 @@ render();
   function enableDrag(win){ const bar=$('.window-titlebar',win); if(!bar || bar.dataset.dragReady) return; bar.dataset.dragReady='1'; bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button')||win.classList.contains('is-maximized')) return; const r=win.getBoundingClientRect(); const ox=e.clientX-r.left, oy=e.clientY-r.top; win.style.transform='none'; const move=me=>{win.style.left=`${me.clientX-ox}px`;win.style.top=`${me.clientY-oy}px`;}; const up=()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);}; document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); }); }
   function toolContent(id) {
     if(id==='badges' || id==='assignBadge') return '<div class="empty-state">Este apartado ya no está disponible en Tribeca Aula.</div>';
-    if(id==='videoclasses' && !roleTeacher() && isIzamProfile(State.profile||{})) return '<div class="empty-state">Este apartado no está disponible en tu aula.</div>';
     if(id==='myPayments') return carlaFinanceContentV205();
     if(id==='newPublication') return newPublicationContent(); if(id==='newDate') return calendarContent(true); if(id==='calendar') return calendarContent(false); if(id==='activityLog') return activityContent(); if(id==='teacherAlerts') return alertsContent(); if(id==='activityAnalytics') return activityAnalyticsContent(); if(id==='teacherDocuments') return teacherDocumentsContent(); if(id==='passwordRequests') return passwordRequestsContent(); if(id==='studentProfiles') return studentProfilesContent(); if(id==='classrooms') return classroomsContent(); if(id==='classroomDetail') return classroomDetailContent(State.currentClassId); if(id==='studentClassDetail') return studentClassDetailContent(State.currentClassId); if(id==='teacherSubjects') return teacherSubjectsContent(); if(id==='videoclasses') return videoclassesContent(); if(id==='materialRepository') return materialRepositoryContent(); if(id==='guidance') return guidanceContent(); if(id==='payments') return paymentsContent(); if(id==='attendance') return attendanceContent(); if(id==='messages') return messagesContent(); if(id==='announcements') return announcementsContent(); if(id==='profile') return profileContent(); if(id==='difficulties') return difficultiesContent(); if(id==='grades') return gradesContent(); if(id==='subjectDetail') return subjectDetailContent(State.currentSubject); if(id==='classSubjectDetail') return classSubjectDetailContent(State.currentClassSubjectId); if(id==='aboutTribeca') return aboutTribecaContent(); if(id==='legal') return legalContent(); if(id==='support') return supportContent(); if(id==='contact') return contactContent(); return '<div class="empty-state">Herramienta sin contenido.</div>';
   }
