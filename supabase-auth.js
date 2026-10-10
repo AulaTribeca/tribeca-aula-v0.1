@@ -1750,7 +1750,7 @@
     const official = officialEvents.filter(Boolean).filter(e=> roleTeacher() || ['national','galicia','local','school','school-proposal'].includes(e.type) || ((p?.center||'').includes('Cee') && e.type==='local-cee') || ((p?.center||'').includes('Fisterra') && e.type==='local-fisterra'));
     return [...official, ...db].filter(e=>e && (!e.hidden || e.official || roleTeacher() || e.created_by===p?.id));
   }
-  function canEditEvent(e) { const p=State.profile; if(!p || e.official) return false; if(roleTeacher()) return true; if(e.created_by === p.id) return true; const scope=e.scope||e.target_scope; if(['classes','class_ids','classrooms'].includes(scope)) return visibleByTargetClasses(e,p); if(scope==='class' && e.center===p.center && e.stage===p.stage && e.course===p.course) return true; return false; }
+  function canEditEvent(e) { const p=State.profile; if(!p || e.official) return false; return roleTeacher() || String(e.created_by||'') === String(p.id); }
 
   function pauseRecords(userId){ return (State.data.studentPauses||[]).filter(x=>String(x.user_id)===String(userId)); }
   function pauseCoversDate(pause, iso=todayIso()){
@@ -6030,25 +6030,29 @@ render();
   }
   async function saveCalendarEventViaRpcOrTable(rec){
     const classIds = parseArrayField(rec.target_class_ids || []);
+    // El RPC se mantiene para los clientes ya instalados. Los eventos de varias
+    // clases se guardan directamente porque incluyen target_class_ids (jsonb).
     const useDirect = ['classes','class_ids','classrooms'].includes(rec.scope || rec.target_scope || '') || classIds.length > 0;
-    const directSave = async(fallbackError=null)=>{
+    const directSave = async()=>{
       const row={...rec};
       delete row.id;
       if(rec.id){
         delete row.created_by;
-        const direct=await table('calendar_events').update(row).eq('id', rec.id);
-        if(direct.error) throw fallbackError || direct.error;
+        const direct=await table('calendar_events').update(row).eq('id',rec.id).select('id');
+        if(direct.error) throw direct.error;
+        if(!direct.data?.length) throw new Error('No tienes permiso para modificar esta fecha.');
         return direct;
       }
-      const direct=await table('calendar_events').insert(row);
-      if(direct.error) throw fallbackError || direct.error;
+      const direct=await table('calendar_events').insert(row).select('id');
+      if(direct.error) throw direct.error;
+      if(!direct.data?.length) throw new Error('No se pudo confirmar la creación de la fecha.');
       return direct;
     };
     if(useDirect) return await directSave();
     const rpc=await State.client.rpc('tribeca_save_calendar_event_v27',{p_payload:rec});
-    if(!rpc?.error) return rpc;
-    console.warn('[Tribeca Aula] RPC calendario falló, se intenta guardado directo:', rpc.error?.message || rpc.error);
-    return await directSave(rpc.error);
+    if(!rpc?.error && rpc?.data?.ok !== false) return rpc;
+    console.warn('[Tribeca Aula] RPC calendario falló, se intenta guardado directo:', rpc?.error?.message || rpc?.error);
+    return await directSave();
   }
   async function saveEvent(form){
     const btn = form?.querySelector?.('[data-t25-save-event], [type="submit"]');
@@ -6105,9 +6109,11 @@ render();
     } catch(e){
       console.error('[Tribeca Aula] No se pudo guardar el evento:', e);
       const msg = String(e?.message || e?.details || 'No se pudo guardar el evento.');
-      const friendly = /event_type|calendar_events|tribeca_save_calendar_event_v27|violates check|constraint/i.test(msg)
-        ? 'No se pudo guardar el evento. Ejecuta el SQL de la v121 en Supabase y vuelve a intentarlo.'
-        : msg;
+      const friendly = /row.level security|permission denied|no tienes permiso|42501|403/i.test(msg)
+        ? 'No tienes permiso para modificar esta fecha. Solo puedes editar tus propias fechas.'
+        : /uuid\[\]|jsonb|target_user_ids|calendar_events|tribeca_save_calendar_event_v27|violates check|constraint/i.test(msg)
+          ? 'No se pudo guardar la fecha. Actualiza Tribeca Aula y vuelve a intentarlo.'
+          : msg;
       setStatus(friendly,'error');
       toast(friendly);
     } finally {
