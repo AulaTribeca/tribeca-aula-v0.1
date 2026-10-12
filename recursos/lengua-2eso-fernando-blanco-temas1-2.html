@@ -40,7 +40,7 @@ pairs:[
 ['«Árbol» según nombre común o propio.','Común'],['«María» según nombre común o propio.','Propio'],['«Silla» según posibilidad de contar unidades.','Contable'],['«Arena» como sustancia, según posibilidad de contar unidades.','No contable'],['«Oveja» según individual o colectivo.','Individual'],['«Rebaño» según individual o colectivo.','Colectivo'],['«Alegre» según el grado.','Positivo'],['«Más alegre que su hermana» según el grado.','Comparativo'],['«Muy alegre» según el grado.','Superlativo'],['«Menos alto que» según el grado.','Comparativo'],['«Tan alto como» según el grado.','Comparativo'],['«Altísimo» según el grado.','Superlativo'],['«Flota» como agrupación de barcos.','Colectivo'],['«Perro» según individual o colectivo.','Individual'],['«Río Miño» como nombre geográfico particular.','Propio'],['«Belleza» según común o propio.','Común'],['«Harina» como sustancia, según contabilidad.','No contable'],['«Libro» según contabilidad.','Contable'],['«Cordillera» como conjunto de montañas.','Colectivo']]},
 {id:'determinantes',name:'Determinantes y pronombres',syn:'Reconocer cuándo acompañan y cuándo sustituyen al nombre',theory:[
 '<b>Determinantes:</b> acompañan al sustantivo y concretan su referencia: artículos, demostrativos, posesivos, numerales, indefinidos, interrogativos, exclamativos y relativos.',
-'<b>Pronombres:</b> desempeñan funciones propias del grupo nominal sin acompañar directamente a un sustantivo. Pueden ser personales, demostrativos, indefinidos, relativos, interrogativos o exclamativos.',
+'<b>Pronombres:</b> desempeñan funciones propias del grupo nominal sin acompañar directamente a un sustantivo. Pueden ser personales (tónicos como «nosotros» y átonos como «me», «lo», «nos»), posesivos, demostrativos, indefinidos, relativos, interrogativos o exclamativos.',
 '<b>Prueba práctica:</b> «Aquella mochila» → <b>aquella</b> es determinante. «Aquella es mía» → <b>aquella</b> es pronombre. En «¡Qué día!», qué acompaña a un sustantivo.'],
 options:['Determinante','Pronombre personal','Pronombre demostrativo','Pronombre indefinido','Pronombre relativo','Pronombre interrogativo','Pronombre exclamativo','Pronombre posesivo','Determinante posesivo'],
 pairs:[
@@ -53,7 +53,7 @@ options:['Obligación','Probabilidad','Futuro / intención','Inicio de acción',
 pairs:[
 ['«Tienes que estudiar».','Obligación'],['«Has de terminar hoy».','Obligación'],['«Debes guardar silencio».','Obligación'],['«Debe de tener unos cuarenta años».','Probabilidad'],['«Voy a estudiar esta tarde».','Futuro / intención'],['«Se echó a correr».','Inicio de acción'],['«Se puso a hablar».','Inicio de acción'],['«Acaba de salir».','Acción recién terminada'],['«Estoy leyendo ahora».','Acción en desarrollo'],['«Anda diciendo mentiras».','Acción en desarrollo'],['«Viene a costar cincuenta euros».','Aproximación'],['«Llevo leídos cuatro capítulos».','Resultado'],['La forma verbal «escribir».','Infinitivo'],['La forma verbal «corriendo».','Gerundio'],['La forma verbal «escrito».','Participio'],['«Estaban jugando» indica una…','Acción en desarrollo'],['«Debería de estar en casa» expresa…','Probabilidad'],['«Voy a estudiar mañana» (ir a + infinitivo con sentido prospectivo).','Futuro / intención'],['«Acabo de ver esa película».','Acción recién terminada']]},
 {id:'narracion',name:'El género narrativo',syn:'Narrador interno y externo, personajes, tiempo y espacio',theory:[
-'<b>Narración:</b> relato de acontecimientos reales o ficticios. El narrador es la voz que cuenta los hechos; no debe confundirse con el autor.',
+'<b>Narración:</b> relato de acontecimientos reales o ficticios, compuesto en prosa o en verso. El narrador es la voz que cuenta los hechos; no debe confundirse con el autor. El relato se sitúa en un tiempo y en un espacio.',
 '<b>Narrador interno:</b> participa como personaje; puede ser protagonista o testigo. <b>Externo:</b> narra desde fuera; omnisciente si conoce pensamientos y sentimientos, u objetivo si se limita a hechos observables. <b>Múltiple:</b> distintas voces o puntos de vista.',
 '<b>Personajes:</b> protagonistas y secundarios; planos (poca evolución) y redondos (complejidad y cambios). También existen personajes antagonistas.'],
 options:['Narrador protagonista','Narrador testigo','Narrador externo omnisciente','Narrador externo objetivo','Narrador múltiple','Personaje plano','Personaje redondo','Antagonista'],
@@ -98,7 +98,7 @@ const extra=[
 [{q:'En «Estos niños juegan», «estos» es un…',a:'determinante'},
 {q:'En «Estos juegan», «estos» es un…',a:'pronombre'},
 {q:'En «¿Quién viene?», «quién» es un pronombre…',a:'interrogativo'},
-{q:'En «Ella respondió», «ella» es un pronombre…',a:'personal'}],
+{q:'En «Ella respondió», «ella» es un pronombre…',a:'personal'},{q:'En «La profesora los llamó», «los» es un pronombre…',a:'personal'},{q:'En «El libro que leí», «que» es un pronombre…',a:'relativo'},{q:'En «Aquella casa es antigua», «aquella» es un…',a:'determinante'},{q:'En «Las alumnas leen», «las» es un…',a:'determinante'}],
 [{q:'Forma no personal del verbo terminada normalmente en -ando o -iendo.',a:'gerundio'},
 {q:'Forma no personal de «comer» que se utiliza en tiempos compuestos.',a:'comido'},
 {q:'En «tienen que salir», ¿qué significado transmite la perífrasis?',a:'obligación'},
@@ -106,7 +106,7 @@ const extra=[
 [{q:'Narrador externo que conoce pensamientos: narrador…',a:'omnisciente'},
 {q:'Narrador que participa en la historia y cuenta lo que observa: narrador…',a:'testigo'},
 {q:'Personaje de gran complejidad psicológica: personaje…',a:'redondo'},
-{q:'Narrador que relata su propia aventura como personaje principal: narrador…',a:'protagonista'}],
+{q:'Narrador que relata su propia aventura como personaje principal: narrador…',a:'protagonista'},{q:'Una narración literaria puede estar escrita en prosa o en…',a:'verso'},{q:'La voz que relata una novela es el…',a:'narrador'},{q:'El lugar donde suceden los hechos de una narración es el…',a:'espacio'},{q:'El momento o período en que ocurren los hechos es el…',a:'tiempo'}],
 [{q:'Nombre de la repetición de sonidos para crear un efecto expresivo.',a:'aliteración'},
 {q:'Recurso que compara expresamente mediante «como».',a:'símil|comparación|simil'},
 {q:'Figura que atribuye cualidades humanas a seres no humanos.',a:'personificación'},
@@ -114,11 +114,11 @@ const extra=[
 [{q:'Relación entre «fruta» y «manzana»: fruta es un…',a:'hiperónimo|hiperonimo'},
 {q:'«Des-» en «deshacer» es un…',a:'prefijo'},
 {q:'Dos palabras de significado opuesto son…',a:'antónimas|antonimas'},
-{q:'¿Qué recurso se basa en una relación de contigüidad entre dos realidades?',a:'metonimia'}],
+{q:'¿Qué recurso se basa en una relación de contigüidad entre dos realidades?',a:'metonimia'},{q:'La palabra «banco» con significados diversos relacionados presenta…',a:'polisemia'},{q:'El significado sugerido emocionalmente por «hogar» se denomina…',a:'connotación|connotacion'},{q:'En «silla, mesa, sofá», las palabras pertenecen a un mismo campo…',a:'semántico|semantico'}],
 [{q:'Escribe con tilde si corresponde: «No se (cuando/cuándo) vendrá». Solo la palabra.',a:'cuándo'},
 {q:'Escribe con tilde si corresponde: «Ven (cuando/cuándo) puedas». Solo la palabra.',a:'cuando'},
 {q:'Separa en sílabas la palabra «país», con guion.',a:'pa-ís'},
-{q:'Separa en sílabas la palabra «poeta», con guion.',a:'po-e-ta'}]
+{q:'Separa en sílabas la palabra «poeta», con guion.',a:'po-e-ta'},{q:'Escribe con la tilde que corresponda: «No se (como/cómo) hacerlo». Solo la palabra.',a:'cómo'},{q:'Escribe con la tilde que corresponda: «Hazlo (como/cómo) quieras». Solo la palabra.',a:'como'},{q:'La tilde de «baúl» recae sobre una vocal cerrada…',a:'tónica|tonica'}]
 ];
 function question(q,a,choices,reason,uid){return {q:q,a:a,choices:choices||null,reason:reason||'',uid:uid||''};}
 const pools=sections.map(function(s,index){
