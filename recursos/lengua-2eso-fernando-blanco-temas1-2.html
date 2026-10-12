@@ -139,7 +139,8 @@ const examPlan=[
 {name:'10. Ortografía y acentuación',idx:8,picks:[3,7,12,21,23]}
 ];
 const materialId=new URLSearchParams(location.search).get('materialId')||(function(){try{return window.frameElement&&window.frameElement.getAttribute('data-tribeca-progress-material')||'';}catch(e){return '';}})();
-const key='tribeca-lengua-fb-2eso-t1t2-v1'+(materialId?'-'+materialId:'');
+const sessionUserId=(function(){try{const v=JSON.parse(localStorage.getItem('sb-fuhkvjyfwkggjaqxfsgv-auth-token')||'null');return v&&v.user&&v.user.id?String(v.user.id):'';}catch(e){return '';}})();
+const key='tribeca-lengua-fb-2eso-t1t2-v1'+(materialId?'-'+materialId:'')+(sessionUserId?'-'+sessionUserId:'-sin-sesion');
 let memory={mode:'home',topic:0,step:0,practice:{},answers:{},examAnswers:{},examPage:0,examResult:null,history:[]};
 try{const old=JSON.parse(localStorage.getItem(key)||'null');if(old&&typeof old==='object')memory=Object.assign(memory,old);}catch(e){}
 if(!memory.examAnswers||typeof memory.examAnswers!=='object')memory.examAnswers={};
