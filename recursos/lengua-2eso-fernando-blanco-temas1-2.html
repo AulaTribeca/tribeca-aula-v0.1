@@ -140,8 +140,9 @@ const examPlan=[
 ];
 const materialId=new URLSearchParams(location.search).get('materialId')||(function(){try{return window.frameElement&&window.frameElement.getAttribute('data-tribeca-progress-material')||'';}catch(e){return '';}})();
 const key='tribeca-lengua-fb-2eso-t1t2-v1'+(materialId?'-'+materialId:'');
-let memory={mode:'home',topic:0,step:0,practice:{},answers:{},examPage:0,examResult:null,history:[]};
+let memory={mode:'home',topic:0,step:0,practice:{},answers:{},examAnswers:{},examPage:0,examResult:null,history:[]};
 try{const old=JSON.parse(localStorage.getItem(key)||'null');if(old&&typeof old==='object')memory=Object.assign(memory,old);}catch(e){}
+if(!memory.examAnswers||typeof memory.examAnswers!=='object')memory.examAnswers={};
 const $=function(sel){return document.querySelector(sel);};
 const esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});};
 const norm=function(v){return String(v==null?'':v).normalize('NFC').toLocaleLowerCase('es').trim().replace(/[¿?¡!.,;:]+$/g,'').replace(/\s+/g,' ');};
