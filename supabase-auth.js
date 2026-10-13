@@ -3228,6 +3228,11 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const m=raw.match(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/i);
     return m ? m[1].trim() : '';
   }
+  function tribecaIframeOnlyEmbedV249(code=''){
+    const raw=stripEmbedCodeFence(code);
+    if(!raw) return false;
+    return /^\s*<iframe\b[\s\S]*?<\/iframe>\s*$/i.test(raw);
+  }
   function normalizeVideoUrl(url=''){
     const raw=String(url||'').trim();
     if(!raw) return {src:'', direct:false, provider:''};
@@ -4597,18 +4602,21 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(schemaActivity) return {src:'', mode:'schemaActivity', html:'', quiz:null, exam:null, activity:schemaActivity};
     const presentationKind=normalizeMaterialKind(m.material_type || m.type)==='presentation';
     if(clean && presentationKind){
-      const iframeSrc=extractIframeSrc(clean);
-      if(iframeSrc) return {src:iframeSrc, mode:'presentation', html:'', quiz:null, exam:null};
+      if(tribecaIframeOnlyEmbedV249(clean)){
+        const iframeSrc=extractIframeSrc(clean);
+        if(iframeSrc) return {src:iframeSrc, mode:'presentation', html:'', quiz:null, exam:null};
+      }
       return {src:'', mode:'presentationHtml', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null};
     }
     if(clean){
       if(/^\s*[\[{]/.test(clean) || clean.startsWith('tribeca-exam-json::') || clean.startsWith('tribeca-schema-json::')) return {src:'', mode:'quizError', html:'', quiz:null, exam:null};
-      const iframeSrc=extractIframeSrc(clean);
+      const iframeOnly=tribecaIframeOnlyEmbedV249(clean);
+      const iframeSrc=iframeOnly ? extractIframeSrc(clean) : '';
       if(iframeSrc && (videoKind || isVideoEmbedSource(iframeSrc))){
         const v=normalizeVideoUrl(iframeSrc);
         return {src:v.src || iframeSrc, mode:'video', html:'', quiz:null, exam:null, direct:!!v.direct, provider:v.provider};
       }
-      if(/<video[\s>]/i.test(clean)) return {src:'', mode:'videoHtml', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null, direct:false, provider:'html'};
+      if(/<video[\s>]/i.test(clean) && iframeOnly) return {src:'', mode:'videoHtml', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null, direct:false, provider:'html'};
       if(iframeSrc) return {src:iframeSrc, mode:'iframe', html:'', quiz:null, exam:null};
       return {src:'', mode:'html', html:normalizeEmbeddedHtml(clean), quiz:null, exam:null};
     }
