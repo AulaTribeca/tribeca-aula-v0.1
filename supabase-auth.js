@@ -6991,7 +6991,9 @@ render();
         if(existingPaid!==null) pay.amount_paid=existingPaid;
         pay.billing_snapshot=(existing.billing_snapshot && typeof existing.billing_snapshot==='object') ? existing.billing_snapshot : {};
       } else {
-        const calc=calculatePaymentAmount(rec.user_id,month,rec);
+        const previousBilling=(State.data.billing||[]).find(b=>String(b.user_id)===String(rec.user_id))||{};
+        // Preserva las reglas de asistencia y fecha de inicio al cerrar un pago.
+        const calc=calculatePaymentAmount(rec.user_id,month,{...previousBilling,...rec});
         pay.amount_due_snapshot=Number(calc.amount||0);
         pay.amount_paid=Number(calc.amount||0);
         pay.billing_snapshot={
