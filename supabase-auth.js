@@ -8686,12 +8686,43 @@ function classroomCard(c,i=0){
 
   function difficultiesContent(){ const rows=State.data.difficulties||[]; return `<div class="window-grid"><section class="window-panel"><h3>Añadir o modificar materia</h3><form id="t16DifficultyForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><input type="hidden" name="id"><label>Materia<select name="subject">${subjectList().map(s=>`<option>${safe(s)}</option>`).join('')}</select></label><label>Nivel de dificultad<select name="level"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Muy alta</option></select></label><label>Explica las dificultades<textarea name="notes" rows="4" placeholder="Describe qué contenidos, tareas o situaciones te resultan difíciles."></textarea></label><button class="primary-btn" type="submit">Guardar</button></form></section><section class="window-panel"><h3>Mis materias con dificultades</h3>${rows.length?rows.map(d=>`<article class="list-item"><strong>${safe(d.subject)}</strong><p>${safe(d.level)} · ${safe(d.notes||'')}</p><button data-t16-edit-diff="${d.id}">Editar</button><button data-t16-delete-diff="${d.id}">Eliminar</button></article>`).join(''):'<div class="empty-state">No has indicado materias con dificultades.</div>'}</section></div>`; }
   async function saveDifficulty(form){ const fd=new FormData(form); const rec={user_id:State.profile.id,subject:fd.get('subject'),level:fd.get('level'),notes:fd.get('notes')||''}; if(fd.get('id')) await maybe(table('difficult_subjects').update(rec).eq('id',fd.get('id'))); else await maybe(table('difficult_subjects').insert(rec)); await log('difficulty','Materia con dificultad actualizada',rec); await loadData(true); toast('Guardado.'); renderApp(); rerender(); }
+  // Catálogo exclusivo de calificaciones. No concede acceso a aulas ni publica materias.
+  // Referencia curricular: decretos 156/2022 (ESO) y 157/2022 (Bachillerato), Galicia.
+  const TRIBECA_GALICIA_GRADES_V249 = {
+    'ESO · 1.º': ['Biología y Geología','Educación Física','Educación Plástica, Visual y Audiovisual','Geografía e Historia','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Segunda Lengua Extranjera','Tecnología y Digitalización'],
+    'ESO · 2.º': ['Educación Física','Física y Química','Geografía e Historia','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música','Segunda Lengua Extranjera','Tecnología y Digitalización'],
+    'ESO · 3.º': ['Biología y Geología','Cultura Clásica','Educación Digital','Educación en Valores Cívicos y Éticos','Educación Física','Educación Plástica, Visual y Audiovisual','Física y Química','Geografía e Historia','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas','Música','Oratoria','Segunda Lengua Extranjera'],
+    'ESO · 3.º PDC': ['Ámbito Científico-Tecnológico','Ámbito Lingüístico y Social','Educación Física','Educación Plástica, Visual y Audiovisual','Lengua Extranjera','Música','Tecnología y Digitalización'],
+    'ESO · 4.º': ['Biología y Geología','Cultura Clásica','Digitalización','Economía y Emprendimiento','Educación Física','Expresión Artística','Filosofía','Física y Química','Formación y Orientación Personal y Profesional','Geografía e Historia','Latín','Lengua Castellana y Literatura','Lengua Extranjera','Lengua Gallega y Literatura','Matemáticas A','Matemáticas B','Música','Oratoria','Segunda Lengua Extranjera','Tecnología'],
+    'Bachillerato · 1.º · Comunes': ['Educación Física','Filosofía','Lengua Castellana y Literatura I','Lengua Extranjera I','Lengua Gallega y Literatura I'],
+    'Bachillerato · 1.º · Artes plásticas': ['Dibujo Artístico I','Cultura Audiovisual','Dibujo Técnico Aplicado a las Artes Plásticas y al Diseño I','Proyectos Artísticos','Volumen'],
+    'Bachillerato · 1.º · Música y escénicas': ['Análisis Musical I','Artes Escénicas I','Coro y Técnica Vocal I','Cultura Audiovisual','Lenguaje y Práctica Musical'],
+    'Bachillerato · 1.º · Ciencias y Tecnología': ['Matemáticas I','Biología, Geología y Ciencias Ambientales','Dibujo Técnico I','Física y Química','Tecnología e Ingeniería I'],
+    'Bachillerato · 1.º · Humanidades y Sociales': ['Latín I','Matemáticas Aplicadas a las Ciencias Sociales I','Economía','Griego I','Historia del Mundo Contemporáneo','Literatura Universal'],
+    'Bachillerato · 1.º · General': ['Matemáticas Generales','Economía, Emprendimiento y Actividad Empresarial'],
+    'Bachillerato · 1.º · Optativas': ['Anatomía Aplicada','Antropología','Cultura Científica','Segunda Lengua Extranjera I','Literatura Gallega del Siglo XX y de la Actualidad','Tecnologías de la Información y de la Comunicación I'],
+    'Bachillerato · 2.º · Comunes': ['Historia de España','Historia de la Filosofía','Lengua Castellana y Literatura II','Lengua Extranjera II','Lengua Gallega y Literatura II'],
+    'Bachillerato · 2.º · Artes plásticas': ['Dibujo Artístico II','Dibujo Técnico Aplicado a las Artes Plásticas y al Diseño II','Diseño','Fundamentos Artísticos','Técnicas de Expresión Gráfico-Plástica'],
+    'Bachillerato · 2.º · Música y escénicas': ['Análisis Musical II','Artes Escénicas II','Coro y Técnica Vocal II','Historia de la Música y de la Danza','Literatura Dramática'],
+    'Bachillerato · 2.º · Ciencias y Tecnología': ['Matemáticas II','Matemáticas Aplicadas a las Ciencias Sociales II','Biología','Dibujo Técnico II','Física','Geología y Ciencias Ambientales','Química','Tecnología e Ingeniería II'],
+    'Bachillerato · 2.º · Humanidades y Sociales': ['Latín II','Matemáticas Aplicadas a las Ciencias Sociales II','Empresa y Diseño de Modelos de Negocio','Geografía','Griego II','Historia del Arte'],
+    'Bachillerato · 2.º · General': ['Ciencias Generales','Movimientos Culturales y Artísticos'],
+    'Bachillerato · 2.º · Optativas': ['Métodos Estadísticos y Numéricos','Psicología','Segunda Lengua Extranjera II','Tecnologías de la Información y de la Comunicación II','Geografía, Historia, Arte y Patrimonio de Galicia']
+  };
+  function gradeCurriculumOptionsV249(rows){
+    const seen = new Set();
+    const groups = Object.entries(TRIBECA_GALICIA_GRADES_V249).map(([name, values])=>{
+      const items = values.filter(value=>{if(seen.has(value))return false;seen.add(value);return true;});
+      return items.length ? '<optgroup label="'+safe(name)+'">'+items.map(value=>'<option value="'+safe(value)+'">'+safe(value)+'</option>').join('')+'</optgroup>' : '';
+    }).join('');
+    const legacy=[...new Set([...(rows||[]).map(g=>String(g.subject||'').trim()), ...subjectList()])].filter(x=>x&&!seen.has(x));
+    return groups + (legacy.length?'<optgroup label="Materias ya utilizadas o propias">'+legacy.map(x=>'<option value="'+safe(x)+'">'+safe(x)+'</option>').join('')+'</optgroup>':'');
+  }
   function gradesContent(){
     const rows=(State.data.grades||[]).filter(g=>String(g.user_id||g.student_id||'')===String(State.profile?.id||''));
-    const subjects=subjectList();
     const bySubject=gradeSubjectSummaries(rows);
     const overall=gradeSummary(rows);
-    const subjectOptions=subjects.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join('');
+    const subjectOptions=gradeCurriculumOptionsV249(rows);
     const subjectCards=bySubject.length ? bySubject.map(s=>{
       const evals = ['Primera evaluación','Segunda evaluación','Tercera evaluación'].map(ev=>{
         const evSum=gradeSummary(s.items.filter(x=>String(x.evaluation||'')===ev));
