@@ -4648,6 +4648,12 @@ function studentAssignedClasses(studentId=State.profile?.id){
   function presentationEmbedMarkup(source={}, m={}){
     const height=Math.max(420, Math.min(Number(m.embed_height||720), 1800));
     const title=safe(m.title||'Presentación');
+    // Bioloxía 3.º ESO (Manuela Rial): cargar el documento HTML real sin reescribirlo
+    // mediante data: o srcdoc. Así conserva los eventos de sus ejercicios y diagramas.
+    if(String(m.id||'')==='4067c2c7-d184-47c1-be73-950b3a1ddd5b' && /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/resources\/bioloxia-3eso-manuela-rial-unidade-1-repaso\.html(?:[?#].*)?$/i.test(String(source.src||''))){
+      const href=safe(source.src);
+      return `<section class="material-embed-block material-presentation-block"><div><strong>Repaso interactivo · Bioloxía</strong><small>Exercicios autocorrixibles e esquema da célula</small></div><iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups" src="${href}" style="min-height:${height}px" referrerpolicy="same-origin"></iframe><a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir actividade a pantalla completa</a></section>`;
+    }
     const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(source.html||'',m.id||'') : (source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
     let srcAttr=' src="about:blank"';
