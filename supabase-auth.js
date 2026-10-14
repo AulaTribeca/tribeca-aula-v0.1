@@ -6845,6 +6845,8 @@ render();
   function defaultPresentForScheduledDay(userId,d,bill=null){
     const b=bill || (State.data.billing||[]).find(x=>String(x.user_id)===String(userId)) || {};
     const tariff=String(b.tariff_type||'group');
+    // Alumnado de asistencia ocasional: el horario orienta, pero solo se cobra la asistencia registrada.
+    if(String(b.attendance_policy||'assumed_present')==='confirmed_only') return false;
     if(tariff==='individual') return true;
     if(tariff==='mixed' && String(d?.type||'group')==='individual') return true;
     return false;
@@ -6884,7 +6886,7 @@ render();
     if(tariff==='individual'){
       billableClasses=billableScheduled.length+extraExplicitPresent.length;
       amount=billableClasses*rate;
-      detail=`${billableClasses} clases previstas/computadas × ${money(rate)}${absent||justified?` · ${absent+justified} falta/s descontada/s`:''}`;
+      detail=`${billableClasses} ${String(bill.attendance_policy||'')==='confirmed_only'?'clases con asistencia confirmada':'clases previstas/computadas'} × ${money(rate)}${absent||justified?` · ${absent+justified} falta/s descontada/s`:''}`;
     } else if(tariff==='mixed'){
       individualPresent=billableIndividualScheduled.length+extraIndividualPresent;
       billableClasses=individualPresent;
@@ -6895,7 +6897,7 @@ render();
       billableClasses=0;
       detail='Cuota fija mensual completa, sin prorrateo';
     }
-    return {amount,detail,present:actualPresent,billableClasses,individualPresent,fixedGroupDays:activeDays.filter(d=>d.type!=='individual').length,absent,justified,paused,totalDays:eligibleDays.length,activeDays:activeDays.length,assumedPresent:tariff==='individual'||tariff==='mixed'};
+    return {amount,detail,present:actualPresent,billableClasses,individualPresent,fixedGroupDays:activeDays.filter(d=>d.type!=='individual').length,absent,justified,paused,totalDays:eligibleDays.length,activeDays:activeDays.length,assumedPresent:String(bill.attendance_policy||'')!=='confirmed_only' && (tariff==='individual'||tariff==='mixed')};
   }
   function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); const amount=paymentFinancialAmountV222(userId,month,c); const detail=paymentSnapshotDetailV222(pay,c); return `<strong>Total: ${money(amount)}</strong><p>${safe(detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
   function paymentStudentHistory(userId){
