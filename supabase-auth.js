@@ -4681,6 +4681,14 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(source.mode==='schemaActivity') return schemaActivityMarkup(source.activity, m);
     if(source.mode==='video' || source.mode==='videoHtml') return videoEmbedMarkup(source, m);
     if(source.mode==='presentation' || source.mode==='presentationHtml') return presentationEmbedMarkup(source, m);
+    // Repaso Matemáticas 3.º ESO: cargar un documento HTML propio y real.
+    // Evita srcdoc/data: y mantiene el avance de los ejercicios en este navegador.
+    if(String(m.id||'')==='880174da-e2b2-4ac8-a8d1-fb0bd2112924' &&
+      /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/resources\/matematicas-3eso-agra-de-raices-tema-1-repaso\.html(?:[?#].*)?$/i.test(String(source.src||''))){
+      const href=safe(source.src);
+      const height=Math.max(720,Math.min(Number(m.embed_height||960),1800));
+      return `<section class="material-embed-block material-embed-block-v98"><div><strong>Repaso interactivo de Matemáticas</strong><small>20 ejercicios · Corrección y soluciones desarrolladas</small></div><iframe title="Repaso para el examen de Matemáticas · Tema 1" loading="eager" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" src="${href}" style="min-height:${height}px"></iframe><a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir repaso a pantalla completa</a></section>`;
+    }
     if(!source.src && !source.html) return tribecaMissingEmbedNoticeV198(m);
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
     const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(source.html,m.id||'') : (source.html||'');
