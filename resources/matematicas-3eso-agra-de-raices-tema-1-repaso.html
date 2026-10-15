@@ -88,6 +88,12 @@ button{cursor:pointer}
 .review-body p{margin:7px 0}
 .solution{margin-top:12px;padding:12px;border-left:3px solid var(--accent);background:#f7f9f8}
 .solution-math{margin:9px 0;font-size:1.02rem;line-height:1.8}
+.step-solution{margin-top:16px;border:1px solid #c9d9d2;border-radius:11px;background:#fafcfb;padding:14px;overflow-wrap:anywhere}
+.step-solution .feedback-head{font-weight:800;margin:0 0 8px}
+.step-solution p{margin:8px 0}
+.step-solution .solution{margin-top:12px}
+.step-solution .answer-display{vertical-align:middle}
+.btn-solution{background:var(--accent-soft);color:var(--accent);border-color:#b4cfc5}
 .answer-display{display:inline-flex;align-items:center;gap:5px;min-height:30px}
 .tag-ok,.tag-bad{font-size:.78rem;font-weight:800;border-radius:999px;padding:3px 7px}
 .tag-ok{color:var(--good);background:var(--good-bg)}
@@ -144,8 +150,10 @@ button{cursor:pointer}
     <div id="validation" class="notice hidden"></div>
     <div class="actions">
       <button id="prevBtn" class="btn btn-secondary" type="button">Anterior</button>
+      <button id="showSolutionBtn" class="btn btn-solution" type="button" aria-controls="stepSolution">Corregir y ver solución</button>
       <button id="nextBtn" class="btn btn-primary" type="button">Siguiente</button>
     </div>
+    <div id="stepSolution" class="step-solution hidden" aria-live="polite"></div>
   </section>
 
   <section id="results" class="card hidden">
@@ -185,7 +193,8 @@ const initialState={
   attempts:0,
   best:null,
   last:null,
-  lastWrong:[]
+  lastWrong:[],
+  revealed:{}
 };
 let state=loadState();
 
@@ -202,6 +211,7 @@ function loadState(){
     }
   }catch(e){}
   if(!Array.isArray(s.activeIds)||s.activeIds.length===0) s.activeIds=QUESTIONS.map(q=>q.id);
+  if(!s.revealed || typeof s.revealed!=="object" || Array.isArray(s.revealed)) s.revealed={};
   s.index=Math.max(0,Math.min(Number(s.index)||0,s.activeIds.length-1));
   return s;
 }
@@ -233,7 +243,22 @@ function parseFractionString(s){
 function decimalNumber(v){
   if(typeof v==="number") return v;
   if(typeof v!=="string") return NaN;
-  return Number(v.trim().replace(/\s/g,"").replace(",","."));
+  const text=v.trim().replace(",",".");
+  const m=text.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:L|litros?|páginas?|paginas?)?$/i);
+  return m?Number(m[1]):NaN;
+}
+function fractionFromInput(a){
+  if(!a) return null;
+  const n=String(a.num??"").trim(),d=String(a.den??"").trim();
+  if(!d && /^-?\d+\s*\/\s*-?\d+$/.test(n)){
+    const bits=n.split("/");
+    return normalizeFraction(Number(bits[0]),Number(bits[1]));
+  }
+  if(!/^-?\d+$/.test(n))return null;
+  // Un entero escrito solo en el numerador equivale a entero/1.
+  if(!d)return normalizeFraction(Number(n),1);
+  if(!/^-?\d+$/.test(d))return null;
+  return normalizeFraction(Number(n),Number(d));
 }
 function isCorrect(q,a){
   if(!a) return false;
@@ -243,7 +268,7 @@ function isCorrect(q,a){
     return Number.isFinite(got)&&Math.abs(got-Number(q.answer))<=(q.tolerance||1e-9);
   }
   if(q.type==="fraction"){
-    const got=normalizeFraction(Number(a.num),Number(a.den));
+    const got=fractionFromInput(a);
     const exp=parseFractionString(q.answer);
     return !!got&&!!exp&&got.n===exp.n&&got.d===exp.d;
   }
@@ -256,8 +281,10 @@ function answerHTML(q,a){
   if(!a) return '<span class="muted">Sin respuesta</span>';
   if(q.type==="fraction"){
     const n=(a.num??"").toString(), d=(a.den??"").toString();
-    if(!n||!d) return '<span>Sin respuesta</span>';
-    return fracHTML(n,d);
+    if(!n&&!d) return '<span>Sin respuesta</span>';
+    const parsed=fractionFromInput(a);
+    if(parsed)return parsed.d===1?escapeHTML(String(parsed.n)):fracHTML(parsed.n,parsed.d);
+    return escapeHTML([n,d].filter(Boolean).join(" / ")||"Sin respuesta");
   }
   if(q.type==="mcq"){
     const opt=q.options.find(o=>o.value===a.value);
@@ -315,6 +342,7 @@ function renderQuiz(){
       if(nv===""&&dv===""){delete state.answers[q.id]}
       else state.answers[q.id]={num:nv,den:dv};
       saveState();updateProgressOnly();
+      if(state.revealed[q.id])renderStepSolution(q);
     };
     num.addEventListener("input",persist);den.addEventListener("input",persist);
     box.append(num,line,den);area.appendChild(box);
@@ -326,6 +354,7 @@ function renderQuiz(){
       const v=inp.value.trim();
       if(v==="") delete state.answers[q.id]; else state.answers[q.id]={value:v};
       saveState();updateProgressOnly();
+      if(state.revealed[q.id])renderStepSolution(q);
     });
     area.appendChild(inp);
     $("answerNote").textContent="Puedes usar coma o punto para los decimales.";
@@ -347,33 +376,45 @@ function renderQuiz(){
   }
 
   $("prevBtn").disabled=state.index===0;
-  $("nextBtn").textContent=state.index===state.activeIds.length-1?"Corregir y ver nota":"Siguiente";
+  $("nextBtn").textContent=state.index===state.activeIds.length-1?"Terminar y ver soluciones":"Siguiente";
+  renderStepSolution(q);
   window.scrollTo(0,0);
 }
+function renderStepSolution(q){
+  const panel=$("stepSolution"),btn=$("showSolutionBtn");
+  if(!state.revealed[q.id]){
+    panel.classList.add("hidden");
+    panel.innerHTML="";
+    btn.textContent="Corregir y ver solución";
+    return;
+  }
+  const answer=state.answers[q.id];
+  const valid=!!answer && (q.type==="fraction"?!!fractionFromInput(answer):
+    q.type==="number"?Number.isFinite(decimalNumber(answer.value)):!!answer.value);
+  const status=!valid?"Sin responder":isCorrect(q,answer)?"Respuesta correcta":"Respuesta para revisar";
+  panel.innerHTML='<div class="feedback-head">'+escapeHTML(status)+'</div>'+
+    '<p><strong>Tu respuesta:</strong> <span class="answer-display">'+answerHTML(q,answer)+'</span></p>'+
+    '<p><strong>Respuesta correcta:</strong> <span class="answer-display">'+correctAnswerHTML(q)+'</span></p>'+
+    '<div class="solution"><strong>Desarrollo completo:</strong>'+q.solution+'</div>';
+  panel.classList.remove("hidden");
+  btn.textContent="Solución visible";
+}
+$("showSolutionBtn").addEventListener("click",()=>{
+  const q=currentQuestion();
+  if(!q)return;
+  state.revealed[q.id]=true;
+  saveState();
+  renderStepSolution(q);
+});
 function updateProgressOnly(){
   $("progressBar").style.width=((answeredCount()/state.activeIds.length)*100)+"%";
 }
-function validateCurrent(){
-  const q=currentQuestion(),a=state.answers[q.id];
-  if(!a) return false;
-  if(q.type==="fraction"){
-    if(a.num===""||a.den==="") return false;
-    const n=Number(a.num),d=Number(a.den);
-    return Number.isInteger(n)&&Number.isInteger(d)&&d!==0;
-  }
-  if(q.type==="number") return Number.isFinite(decimalNumber(a.value));
-  if(q.type==="mcq") return !!a.value;
-  return false;
-}
+// Ninguna respuesta es obligatoria: tampoco las fracciones enteras o entradas incompletas.
+// Las respuestas omitidas se revisan después y sus soluciones están disponibles en cada pregunta.
 $("prevBtn").addEventListener("click",()=>{
   if(state.index>0){state.index--;saveState();renderQuiz()}
 });
 $("nextBtn").addEventListener("click",()=>{
-  if(!validateCurrent()){
-    $("validation").textContent="Completa una respuesta válida antes de continuar.";
-    $("validation").classList.remove("hidden");
-    return;
-  }
   if(state.index<state.activeIds.length-1){
     state.index++;saveState();renderQuiz();
   }else finishAttempt();
@@ -458,7 +499,8 @@ function startAttempt(ids,mode){
     attempts:preservedAttempts,
     best:preservedBest,
     last:state.last,
-    lastWrong:[]
+    lastWrong:[],
+    revealed:{}
   };
   saveState();renderQuiz();
 }
