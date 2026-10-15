@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Repaso Tema 1 · Matemáticas 3.º ESO</title>
+<style>
+:root{
+  --bg:#f5f6f7; --card:#ffffff; --ink:#20262b; --muted:#66717a; --line:#dce1e4;
+  --accent:#315f56; --accent-soft:#e8f0ee; --good:#205d43; --good-bg:#e8f3ed;
+  --bad:#8b3131; --bad-bg:#f9eaea; --warn:#76521b; --warn-bg:#fff4dd;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:auto}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:1.5;
+}
+button,input{font:inherit}
+button{cursor:pointer}
+#tribeca-mates-t1{max-width:920px;margin:0 auto;padding:14px 14px 36px}
+.head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  border-bottom:1px solid var(--line);padding:4px 0 12px;margin-bottom:12px
+}
+.title{font-size:1.15rem;font-weight:800}
+.meta{font-size:.86rem;color:var(--muted);text-align:right}
+.progress{height:8px;border-radius:999px;background:#e3e7e9;overflow:hidden;margin-bottom:16px}
+.progress span{display:block;height:100%;background:var(--accent);width:0;transition:width .2s ease}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+.qtop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.badge{display:inline-block;padding:4px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:.8rem;font-weight:800}
+.skill{font-size:.85rem;color:var(--muted);margin-top:5px}
+.counter{font-size:.88rem;color:var(--muted);white-space:nowrap}
+.prompt{font-size:1.22rem;font-weight:700;line-height:1.7;margin:20px 0}
+.mathline{display:inline-flex;align-items:center;gap:.18em;flex-wrap:wrap}
+.frac{
+  display:inline-grid;grid-template-rows:auto auto;vertical-align:middle;
+  text-align:center;line-height:1.05;margin:0 .14em;min-width:1.35em
+}
+.frac>span:first-child{border-bottom:1.6px solid currentColor;padding:0 .18em .08em}
+.frac>span:last-child{padding:.08em .18em 0}
+.repeat{text-decoration:overline;text-decoration-thickness:1.4px}
+.answer-note{font-size:.88rem;color:var(--muted);margin-top:8px}
+.number-input{
+  width:min(100%,330px);min-height:48px;border:1px solid #aeb8bd;border-radius:10px;
+  padding:10px 12px;background:#fff;color:var(--ink)
+}
+.frac-input{display:inline-grid;grid-template-rows:auto 1px auto;gap:5px;width:110px;vertical-align:middle}
+.frac-input input{
+  width:100%;height:45px;border:1px solid #aeb8bd;border-radius:8px;text-align:center;padding:6px
+}
+.frac-input .line{height:1.5px;background:var(--ink);width:100%}
+.options{display:grid;gap:10px}
+.option{
+  min-height:52px;width:100%;border:1px solid #b7c0c5;border-radius:10px;background:#fff;color:var(--ink);
+  padding:10px 14px;text-align:left;display:flex;align-items:center;gap:11px
+}
+.option.selected{border:2px solid var(--accent);background:var(--accent-soft)}
+.letter{width:32px;height:32px;display:grid;place-items:center;border:1px solid #b7c0c5;border-radius:50%;font-weight:800;background:#fff;flex:0 0 32px}
+.actions{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:22px}
+.btn{min-height:46px;padding:9px 15px;border-radius:9px;border:1px solid transparent;font-weight:750}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:#fff;border-color:#9faab0;color:var(--ink)}
+.btn-light{background:#fff;border-color:var(--line);color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:default}
+.notice{font-size:.88rem;color:var(--warn);background:var(--warn-bg);padding:8px 10px;border-radius:8px;margin-top:12px}
+.hidden{display:none!important}
+.result-top{text-align:center;padding:8px 0 18px;border-bottom:1px solid var(--line)}
+.score{font-size:3.3rem;font-weight:900;line-height:1}
+.score small{font-size:1.25rem;color:var(--muted)}
+.result-label{font-size:1rem;font-weight:700;margin-top:8px}
+.result-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.stat{border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+.stat strong{display:block;font-size:1.3rem}
+.block-results{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0 22px}
+.block-card{border:1px solid var(--line);border-radius:10px;padding:12px}
+.block-card strong{display:block}
+.review-title{font-size:1.15rem;margin:22px 0 10px}
+.review-item{border:1px solid var(--line);border-radius:10px;margin:9px 0;overflow:hidden;background:#fff}
+.review-summary{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;cursor:pointer;font-weight:700
+}
+.review-summary.ok{background:var(--good-bg)}
+.review-summary.bad{background:var(--bad-bg)}
+.review-body{padding:14px;border-top:1px solid var(--line)}
+.review-body p{margin:7px 0}
+.solution{margin-top:12px;padding:12px;border-left:3px solid var(--accent);background:#f7f9f8}
+.solution-math{margin:9px 0;font-size:1.02rem;line-height:1.8}
+.answer-display{display:inline-flex;align-items:center;gap:5px;min-height:30px}
+.tag-ok,.tag-bad{font-size:.78rem;font-weight:800;border-radius:999px;padding:3px 7px}
+.tag-ok{color:var(--good);background:var(--good-bg)}
+.tag-bad{color:var(--bad);background:var(--bad-bg)}
+.resume-box{margin-bottom:14px;padding:10px 12px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:.9rem}
+@media(max-width:680px){
+  body{font-size:16px}
+  #tribeca-mates-t1{padding:9px}
+  .card{padding:17px 13px}
+  .head,.qtop{align-items:flex-start}
+  .head{flex-direction:column}
+  .meta{text-align:left}
+  .block-results,.result-stats{grid-template-columns:1fr}
+  .actions .btn{flex:1 1 130px}
+}
+@media print{
+  body{background:#fff;color:#000}
+  #tribeca-mates-t1{max-width:none;padding:0}
+  .head,.progress,.actions,.no-print{display:none!important}
+  .card{border:0;padding:0}
+  .review-item{break-inside:avoid;border:1px solid #aaa}
+  .review-body{display:block!important}
+  .solution{background:#fff;border-left:2px solid #000}
+}
+</style>
+</head>
+<body>
+<main id="tribeca-mates-t1">
+  <header class="head">
+    <div>
+      <div class="title">Tema 1 · Fracciones, números decimales y potencias</div>
+      <div class="skill">Repaso para el examen · 3.º ESO</div>
+    </div>
+    <div class="meta">
+      <div id="attemptInfo">Intento 1</div>
+      <div id="bestInfo">Mejor nota: —</div>
+    </div>
+  </header>
+
+  <div id="resumeBox" class="resume-box hidden"></div>
+  <div class="progress"><span id="progressBar"></span></div>
+
+  <section id="quiz" class="card">
+    <div class="qtop">
+      <div>
+        <span id="blockBadge" class="badge"></span>
+        <div id="skillText" class="skill"></div>
+      </div>
+      <div id="counter" class="counter"></div>
+    </div>
+    <div id="prompt" class="prompt"></div>
+    <div id="answerArea"></div>
+    <div id="answerNote" class="answer-note"></div>
+    <div id="validation" class="notice hidden"></div>
+    <div class="actions">
+      <button id="prevBtn" class="btn btn-secondary" type="button">Anterior</button>
+      <button id="nextBtn" class="btn btn-primary" type="button">Siguiente</button>
+    </div>
+  </section>
+
+  <section id="results" class="card hidden">
+    <div class="result-top">
+      <div id="score" class="score"></div>
+      <div id="resultLabel" class="result-label"></div>
+    </div>
+    <div id="resultStats" class="result-stats"></div>
+    <div id="blockResults" class="block-results"></div>
+    <div class="actions no-print">
+      <button id="retryAllBtn" class="btn btn-primary" type="button">Repetir prueba completa</button>
+      <button id="retryWrongBtn" class="btn btn-secondary" type="button">Repetir solo los fallos</button>
+      <button id="printBtn" class="btn btn-light" type="button">Imprimir resultados</button>
+    </div>
+    <h2 class="review-title">Soluciones y desarrollo completo</h2>
+    <div id="review"></div>
+  </section>
+</main>
+
+<script>
+(function(){
+"use strict";
+const ROOT=document.getElementById("tribeca-mates-t1");
+if(ROOT.dataset.ready==="1") return;
+ROOT.dataset.ready="1";
+
+const QUESTIONS=[{"id": 1, "block": "Fracciones", "skill": "Operaciones combinadas", "type": "fraction", "prompt": "Calcula y simplifica:\n        <span class=\"mathline\">\n          <span class=\"frac\"><span>3</span><span>4</span></span>\n          − <span class=\"frac\"><span>5</span><span>6</span></span>\n          + <span class=\"frac\"><span>7</span><span>12</span></span>\n        </span>", "answer": "1/2", "solution": "\n          <p>Buscamos un denominador común. El m.c.m. de 4, 6 y 12 es 12.</p>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>3</span><span>4</span></span>\n            = <span class=\"frac\"><span>9</span><span>12</span></span>,\n            &nbsp;\n            <span class=\"frac\"><span>5</span><span>6</span></span>\n            = <span class=\"frac\"><span>10</span><span>12</span></span>\n          </div>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>9</span><span>12</span></span>\n            − <span class=\"frac\"><span>10</span><span>12</span></span>\n            + <span class=\"frac\"><span>7</span><span>12</span></span>\n            =\n            <span class=\"frac\"><span>6</span><span>12</span></span>\n            =\n            <strong><span class=\"frac\"><span>1</span><span>2</span></span></strong>\n          </div>"}, {"id": 2, "block": "Fracciones", "skill": "Paréntesis y producto", "type": "fraction", "prompt": "Calcula y simplifica:\n        <span class=\"mathline\">\n          [\n          <span class=\"frac\"><span>2</span><span>3</span></span>\n          − (\n          <span class=\"frac\"><span>1</span><span>4</span></span>\n          + <span class=\"frac\"><span>1</span><span>6</span></span>\n          )]\n          · <span class=\"frac\"><span>12</span><span>5</span></span>\n        </span>", "answer": "3/5", "solution": "\n          <p>Primero resolvemos el paréntesis:</p>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>1</span><span>4</span></span>\n            + <span class=\"frac\"><span>1</span><span>6</span></span>\n            =\n            <span class=\"frac\"><span>3</span><span>12</span></span>\n            + <span class=\"frac\"><span>2</span><span>12</span></span>\n            =\n            <span class=\"frac\"><span>5</span><span>12</span></span>\n          </div>\n          <p>Después:</p>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>2</span><span>3</span></span>\n            − <span class=\"frac\"><span>5</span><span>12</span></span>\n            =\n            <span class=\"frac\"><span>8</span><span>12</span></span>\n            − <span class=\"frac\"><span>5</span><span>12</span></span>\n            =\n            <span class=\"frac\"><span>3</span><span>12</span></span>\n            =\n            <span class=\"frac\"><span>1</span><span>4</span></span>\n          </div>\n          <p>Finalmente:</p>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>1</span><span>4</span></span>\n            · <span class=\"frac\"><span>12</span><span>5</span></span>\n            =\n            <span class=\"frac\"><span>12</span><span>20</span></span>\n            =\n            <strong><span class=\"frac\"><span>3</span><span>5</span></span></strong>\n          </div>"}, {"id": 3, "block": "Fracciones", "skill": "División y suma", "type": "fraction", "prompt": "Calcula y simplifica:\n        <span class=\"mathline\">\n          <span class=\"frac\"><span>5</span><span>8</span></span>\n          ÷ <span class=\"frac\"><span>15</span><span>16</span></span>\n          + <span class=\"frac\"><span>1</span><span>3</span></span>\n        </span>", "answer": "1/1", "solution": "\n          <p>Dividir por una fracción equivale a multiplicar por su inversa:</p>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>5</span><span>8</span></span>\n            ÷ <span class=\"frac\"><span>15</span><span>16</span></span>\n            =\n            <span class=\"frac\"><span>5</span><span>8</span></span>\n            · <span class=\"frac\"><span>16</span><span>15</span></span>\n            =\n            <span class=\"frac\"><span>2</span><span>3</span></span>\n          </div>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>2</span><span>3</span></span>\n            + <span class=\"frac\"><span>1</span><span>3</span></span>\n            =\n            <span class=\"frac\"><span>3</span><span>3</span></span>\n            = <strong>1</strong>\n          </div>"}, {"id": 4, "block": "Fracciones", "skill": "Potencia de fracciones y signos", "type": "fraction", "prompt": "Calcula y simplifica:\n        <span class=\"mathline\">\n          −(\n          <span class=\"frac\"><span>3</span><span>5</span></span>\n          )<sup>2</sup>\n          +\n          <span class=\"frac\"><span>7</span><span>10</span></span>\n          ·\n          <span class=\"frac\"><span>4</span><span>7</span></span>\n        </span>", "answer": "1/25", "solution": "\n          <div class=\"solution-math\">\n            −(\n            <span class=\"frac\"><span>3</span><span>5</span></span>\n            )<sup>2</sup>\n            =\n            −<span class=\"frac\"><span>9</span><span>25</span></span>\n          </div>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>7</span><span>10</span></span>\n            ·\n            <span class=\"frac\"><span>4</span><span>7</span></span>\n            =\n            <span class=\"frac\"><span>28</span><span>70</span></span>\n            =\n            <span class=\"frac\"><span>2</span><span>5</span></span>\n          </div>\n          <div class=\"solution-math\">\n            −<span class=\"frac\"><span>9</span><span>25</span></span>\n            +\n            <span class=\"frac\"><span>2</span><span>5</span></span>\n            =\n            −<span class=\"frac\"><span>9</span><span>25</span></span>\n            +\n            <span class=\"frac\"><span>10</span><span>25</span></span>\n            =\n            <strong><span class=\"frac\"><span>1</span><span>25</span></span></strong>\n          </div>"}, {"id": 5, "block": "Fracciones", "skill": "Comparación de números racionales", "type": "mcq", "prompt": "¿Cuál de estos números es el mayor?", "options": [{"value": "a", "html": "−<span class='frac'><span>2</span><span>3</span></span>"}, {"value": "b", "html": "−<span class='frac'><span>3</span><span>4</span></span>"}, {"value": "c", "html": "<span class='frac'><span>5</span><span>8</span></span>"}, {"value": "d", "html": "<span class='frac'><span>7</span><span>10</span></span>"}], "answer": "d", "solution": "\n          <p>Pasamos a decimal para comparar:</p>\n          <div class=\"solution-math\">\n            −<span class=\"frac\"><span>2</span><span>3</span></span> ≈ −0,667;\n            &nbsp;−<span class=\"frac\"><span>3</span><span>4</span></span> = −0,75;\n            &nbsp;<span class=\"frac\"><span>5</span><span>8</span></span> = 0,625;\n            &nbsp;<span class=\"frac\"><span>7</span><span>10</span></span> = 0,7\n          </div>\n          <p>El mayor es <strong><span class=\"frac\"><span>7</span><span>10</span></span></strong>.</p>"}, {"id": 6, "block": "Fracciones", "skill": "Problema con fracciones", "type": "number", "prompt": "Un libro se lee así: el primer día se lee\n        <span class=\"frac\"><span>2</span><span>5</span></span>\n        del total y el segundo día\n        <span class=\"frac\"><span>1</span><span>3</span></span>\n        de lo que quedaba. Después del segundo día quedan 72 páginas. ¿Cuántas páginas tiene el libro?", "answer": 180, "solution": "\n          <p>Después del primer día queda:</p>\n          <div class=\"solution-math\">\n            1 − <span class=\"frac\"><span>2</span><span>5</span></span>\n            = <span class=\"frac\"><span>3</span><span>5</span></span>\n          </div>\n          <p>El segundo día se lee un tercio de lo que quedaba, por lo que permanecen dos tercios de ese resto:</p>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>2</span><span>3</span></span>\n            · <span class=\"frac\"><span>3</span><span>5</span></span>\n            =\n            <span class=\"frac\"><span>2</span><span>5</span></span>\n          </div>\n          <p>Por tanto, <span class=\"frac\"><span>2</span><span>5</span></span> del libro son 72 páginas:</p>\n          <div class=\"solution-math\">\n            Total = 72 ·\n            <span class=\"frac\"><span>5</span><span>2</span></span>\n            = <strong>180 páginas</strong>\n          </div>"}, {"id": 7, "block": "Fracciones", "skill": "Operación combinada con corchetes", "type": "fraction", "prompt": "Calcula y simplifica:\n        <span class=\"mathline\">\n          1 − [\n          <span class=\"frac\"><span>3</span><span>4</span></span>\n          − (\n          <span class=\"frac\"><span>2</span><span>3</span></span>\n          · <span class=\"frac\"><span>3</span><span>8</span></span>\n          )]\n        </span>", "answer": "1/2", "solution": "\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>2</span><span>3</span></span>\n            ·\n            <span class=\"frac\"><span>3</span><span>8</span></span>\n            =\n            <span class=\"frac\"><span>6</span><span>24</span></span>\n            =\n            <span class=\"frac\"><span>1</span><span>4</span></span>\n          </div>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>3</span><span>4</span></span>\n            −\n            <span class=\"frac\"><span>1</span><span>4</span></span>\n            =\n            <span class=\"frac\"><span>1</span><span>2</span></span>\n          </div>\n          <div class=\"solution-math\">\n            1 −\n            <span class=\"frac\"><span>1</span><span>2</span></span>\n            =\n            <strong><span class=\"frac\"><span>1</span><span>2</span></span></strong>\n          </div>"}, {"id": 8, "block": "Números decimales", "skill": "Decimal exacto a fracción", "type": "fraction", "prompt": "Convierte <strong>2,375</strong> en una fracción irreducible.", "answer": "19/8", "solution": "\n          <p>Es un decimal exacto con tres cifras decimales:</p>\n          <div class=\"solution-math\">\n            2,375 =\n            <span class=\"frac\"><span>2375</span><span>1000</span></span>\n          </div>\n          <p>Simplificamos dividiendo numerador y denominador entre 125:</p>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>2375</span><span>1000</span></span>\n            =\n            <strong><span class=\"frac\"><span>19</span><span>8</span></span></strong>\n          </div>"}, {"id": 9, "block": "Números decimales", "skill": "Periódico puro a fracción", "type": "fraction", "prompt": "Convierte <strong>0,<span class=\"repeat\">27</span></strong> en una fracción irreducible.", "answer": "3/11", "solution": "\n          <p>Sea x = 0,<span class=\"repeat\">27</span>. El período tiene dos cifras.</p>\n          <div class=\"solution-math\">100x = 27,<span class=\"repeat\">27</span></div>\n          <p>Restamos las dos igualdades:</p>\n          <div class=\"solution-math\">\n            100x − x = 27,<span class=\"repeat\">27</span> − 0,<span class=\"repeat\">27</span>\n          </div>\n          <div class=\"solution-math\">99x = 27</div>\n          <div class=\"solution-math\">\n            x = <span class=\"frac\"><span>27</span><span>99</span></span>\n            =\n            <strong><span class=\"frac\"><span>3</span><span>11</span></span></strong>\n          </div>"}, {"id": 10, "block": "Números decimales", "skill": "Periódico mixto a fracción", "type": "fraction", "prompt": "Convierte <strong>1,2<span class=\"repeat\">3</span></strong> en una fracción irreducible.", "answer": "37/30", "solution": "\n          <p>Sea x = 1,2<span class=\"repeat\">3</span>. Hay una cifra no periódica y una cifra periódica.</p>\n          <div class=\"solution-math\">10x = 12,<span class=\"repeat\">3</span></div>\n          <div class=\"solution-math\">100x = 123,<span class=\"repeat\">3</span></div>\n          <p>Restamos:</p>\n          <div class=\"solution-math\">100x − 10x = 123,<span class=\"repeat\">3</span> − 12,<span class=\"repeat\">3</span></div>\n          <div class=\"solution-math\">90x = 111</div>\n          <div class=\"solution-math\">\n            x =\n            <span class=\"frac\"><span>111</span><span>90</span></span>\n            =\n            <strong><span class=\"frac\"><span>37</span><span>30</span></span></strong>\n          </div>"}, {"id": 11, "block": "Números decimales", "skill": "Periódico mixto de mayor dificultad", "type": "fraction", "prompt": "Convierte <strong>0,45<span class=\"repeat\">6</span></strong> en una fracción irreducible.", "answer": "137/300", "solution": "\n          <p>Sea x = 0,45<span class=\"repeat\">6</span>. Hay dos cifras no periódicas y una periódica.</p>\n          <div class=\"solution-math\">100x = 45,<span class=\"repeat\">6</span></div>\n          <div class=\"solution-math\">1000x = 456,<span class=\"repeat\">6</span></div>\n          <p>Restamos:</p>\n          <div class=\"solution-math\">1000x − 100x = 456,<span class=\"repeat\">6</span> − 45,<span class=\"repeat\">6</span></div>\n          <div class=\"solution-math\">900x = 411</div>\n          <div class=\"solution-math\">\n            x =\n            <span class=\"frac\"><span>411</span><span>900</span></span>\n            =\n            <strong><span class=\"frac\"><span>137</span><span>300</span></span></strong>\n          </div>"}, {"id": 12, "block": "Números decimales", "skill": "Operaciones combinadas con decimales", "type": "number", "prompt": "Calcula: <strong>3,75 − 1,2 · 0,5 + 0,08</strong>", "answer": 3.23, "tolerance": 0.001, "solution": "\n          <p>Primero hacemos la multiplicación:</p>\n          <div class=\"solution-math\">1,2 · 0,5 = 0,6</div>\n          <p>Después sumas y restas de izquierda a derecha:</p>\n          <div class=\"solution-math\">3,75 − 0,6 + 0,08 = 3,15 + 0,08 = <strong>3,23</strong></div>"}, {"id": 13, "block": "Números decimales", "skill": "Fracción a decimal", "type": "number", "prompt": "Expresa como número decimal:\n        <span class=\"frac\"><span>11</span><span>16</span></span>", "answer": 0.6875, "tolerance": 1e-05, "solution": "\n          <p>Dividimos numerador entre denominador:</p>\n          <div class=\"solution-math\">11 ÷ 16 = <strong>0,6875</strong></div>"}, {"id": 14, "block": "Números decimales", "skill": "Problema con decimales", "type": "number", "prompt": "Un depósito contiene 12,5 L. Se utilizan 3,75 L y después otros 2,6 L. ¿Cuántos litros quedan?", "answer": 6.15, "tolerance": 0.001, "solution": "\n          <p>Sumamos primero lo utilizado:</p>\n          <div class=\"solution-math\">3,75 + 2,6 = 6,35 L</div>\n          <p>Restamos esa cantidad al contenido inicial:</p>\n          <div class=\"solution-math\">12,5 − 6,35 = <strong>6,15 L</strong></div>"}, {"id": 15, "block": "Potencias", "skill": "Producto y cociente de potencias", "type": "number", "prompt": "Calcula: <strong>2<sup>5</sup> · 2<sup>3</sup> ÷ 2<sup>4</sup></strong>", "answer": 16, "solution": "\n          <p>Al multiplicar potencias de la misma base sumamos exponentes y al dividirlos los restamos:</p>\n          <div class=\"solution-math\">\n            2<sup>5</sup> · 2<sup>3</sup> ÷ 2<sup>4</sup>\n            = 2<sup>5+3−4</sup>\n            = 2<sup>4</sup>\n            = <strong>16</strong>\n          </div>"}, {"id": 16, "block": "Potencias", "skill": "Signos y paréntesis", "type": "number", "prompt": "Calcula: <strong>(−3)<sup>4</sup> − 3<sup>3</sup></strong>", "answer": 54, "solution": "\n          <div class=\"solution-math\">(−3)<sup>4</sup> = 81</div>\n          <div class=\"solution-math\">3<sup>3</sup> = 27</div>\n          <div class=\"solution-math\">81 − 27 = <strong>54</strong></div>\n          <p>La primera potencia es positiva porque la base negativa está entre paréntesis y el exponente es par.</p>"}, {"id": 17, "block": "Potencias", "skill": "Potencias de fracciones", "type": "fraction", "prompt": "Calcula y simplifica:\n        <span class=\"mathline\">\n          (\n          <span class=\"frac\"><span>3</span><span>2</span></span>\n          )<sup>3</sup>\n          ·\n          (\n          <span class=\"frac\"><span>2</span><span>3</span></span>\n          )<sup>2</sup>\n        </span>", "answer": "3/2", "solution": "\n          <div class=\"solution-math\">\n            (\n            <span class=\"frac\"><span>3</span><span>2</span></span>\n            )<sup>3</sup>\n            =\n            <span class=\"frac\"><span>27</span><span>8</span></span>\n          </div>\n          <div class=\"solution-math\">\n            (\n            <span class=\"frac\"><span>2</span><span>3</span></span>\n            )<sup>2</sup>\n            =\n            <span class=\"frac\"><span>4</span><span>9</span></span>\n          </div>\n          <div class=\"solution-math\">\n            <span class=\"frac\"><span>27</span><span>8</span></span>\n            ·\n            <span class=\"frac\"><span>4</span><span>9</span></span>\n            =\n            <span class=\"frac\"><span>108</span><span>72</span></span>\n            =\n            <strong><span class=\"frac\"><span>3</span><span>2</span></span></strong>\n          </div>"}, {"id": 18, "block": "Potencias", "skill": "Potencia de una potencia", "type": "number", "prompt": "Calcula: <strong>(5<sup>2</sup>)<sup>3</sup> · 5 ÷ 5<sup>5</sup></strong>", "answer": 25, "solution": "\n          <p>Potencia de una potencia: multiplicamos exponentes.</p>\n          <div class=\"solution-math\">(5<sup>2</sup>)<sup>3</sup> = 5<sup>6</sup></div>\n          <div class=\"solution-math\">\n            5<sup>6</sup> · 5<sup>1</sup> ÷ 5<sup>5</sup>\n            = 5<sup>6+1−5</sup>\n            = 5<sup>2</sup>\n            = <strong>25</strong>\n          </div>"}, {"id": 19, "block": "Potencias", "skill": "Diferencia entre base negativa y signo exterior", "type": "number", "prompt": "Calcula: <strong>−2<sup>4</sup> + (−2)<sup>4</sup></strong>", "answer": 0, "solution": "\n          <p>Sin paréntesis, el signo menos no forma parte de la base:</p>\n          <div class=\"solution-math\">−2<sup>4</sup> = −(2<sup>4</sup>) = −16</div>\n          <p>Con paréntesis, la base es −2:</p>\n          <div class=\"solution-math\">(−2)<sup>4</sup> = 16</div>\n          <div class=\"solution-math\">−16 + 16 = <strong>0</strong></div>"}, {"id": 20, "block": "Potencias", "skill": "Propiedades combinadas", "type": "mcq", "prompt": "Simplifica como una única potencia:\n        <strong>(3<sup>4</sup> · 3<sup>2</sup>)<sup>2</sup> ÷ 3<sup>5</sup></strong>", "options": [{"value": "a", "html": "3<sup>3</sup>"}, {"value": "b", "html": "3<sup>7</sup>"}, {"value": "c", "html": "3<sup>12</sup>"}, {"value": "d", "html": "3<sup>19</sup>"}], "answer": "b", "solution": "\n          <p>Primero agrupamos el producto interior:</p>\n          <div class=\"solution-math\">3<sup>4</sup> · 3<sup>2</sup> = 3<sup>6</sup></div>\n          <p>Después aplicamos la potencia de una potencia:</p>\n          <div class=\"solution-math\">(3<sup>6</sup>)<sup>2</sup> = 3<sup>12</sup></div>\n          <p>Finalmente dividimos potencias de la misma base:</p>\n          <div class=\"solution-math\">3<sup>12</sup> ÷ 3<sup>5</sup> = <strong>3<sup>7</sup></strong></div>"}];
+const STORAGE_KEY="tribeca_matematicas_3eso_agra_tema1_repaso_v1";
+const $=id=>document.getElementById(id);
+
+const initialState={
+  mode:"full",
+  activeIds:QUESTIONS.map(q=>q.id),
+  index:0,
+  answers:{},
+  finished:false,
+  attempts:0,
+  best:null,
+  last:null,
+  lastWrong:[]
+};
+let state=loadState();
+
+function cloneInitial(){
+  return JSON.parse(JSON.stringify(initialState));
+}
+function loadState(){
+  let s=cloneInitial();
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(parsed && typeof parsed==="object") s=Object.assign(s,parsed);
+    }
+  }catch(e){}
+  if(!Array.isArray(s.activeIds)||s.activeIds.length===0) s.activeIds=QUESTIONS.map(q=>q.id);
+  s.index=Math.max(0,Math.min(Number(s.index)||0,s.activeIds.length-1));
+  return s;
+}
+function saveState(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){}
+}
+function qById(id){return QUESTIONS.find(q=>q.id===id)}
+function currentQuestion(){return qById(state.activeIds[state.index])}
+function activeQuestions(){return state.activeIds.map(qById).filter(Boolean)}
+
+function gcd(a,b){
+  a=Math.abs(a); b=Math.abs(b);
+  while(b){const t=b;b=a%b;a=t}
+  return a||1;
+}
+function normalizeFraction(n,d){
+  n=Number(n); d=Number(d);
+  if(!Number.isInteger(n)||!Number.isInteger(d)||d===0) return null;
+  if(d<0){n=-n;d=-d}
+  const g=gcd(n,d);
+  return {n:n/g,d:d/g};
+}
+function parseFractionString(s){
+  if(typeof s!=="string") return null;
+  const m=s.trim().match(/^(-?\d+)\/(-?\d+)$/);
+  if(!m) return null;
+  return normalizeFraction(Number(m[1]),Number(m[2]));
+}
+function decimalNumber(v){
+  if(typeof v==="number") return v;
+  if(typeof v!=="string") return NaN;
+  return Number(v.trim().replace(/\s/g,"").replace(",","."));
+}
+function isCorrect(q,a){
+  if(!a) return false;
+  if(q.type==="mcq") return a.value===q.answer;
+  if(q.type==="number"){
+    const got=decimalNumber(a.value);
+    return Number.isFinite(got)&&Math.abs(got-Number(q.answer))<=(q.tolerance||1e-9);
+  }
+  if(q.type==="fraction"){
+    const got=normalizeFraction(Number(a.num),Number(a.den));
+    const exp=parseFractionString(q.answer);
+    return !!got&&!!exp&&got.n===exp.n&&got.d===exp.d;
+  }
+  return false;
+}
+function fracHTML(n,d){
+  return '<span class="frac"><span>'+escapeHTML(String(n))+'</span><span>'+escapeHTML(String(d))+'</span></span>';
+}
+function answerHTML(q,a){
+  if(!a) return '<span class="muted">Sin respuesta</span>';
+  if(q.type==="fraction"){
+    const n=(a.num??"").toString(), d=(a.den??"").toString();
+    if(!n||!d) return '<span>Sin respuesta</span>';
+    return fracHTML(n,d);
+  }
+  if(q.type==="mcq"){
+    const opt=q.options.find(o=>o.value===a.value);
+    return opt?opt.html:"Sin respuesta";
+  }
+  return escapeHTML(String(a.value).replace(".",","));
+}
+function correctAnswerHTML(q){
+  if(q.type==="fraction"){
+    const f=parseFractionString(q.answer);
+    return f.d===1?escapeHTML(String(f.n)):fracHTML(f.n,f.d);
+  }
+  if(q.type==="mcq"){
+    const opt=q.options.find(o=>o.value===q.answer);
+    return opt?opt.html:"";
+  }
+  return escapeHTML(String(q.answer).replace(".",","));
+}
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+}
+function answeredCount(){
+  return state.activeIds.filter(id=>state.answers[id]).length;
+}
+function updateHeader(){
+  const shownAttempt=state.finished?state.attempts:(state.attempts+1);
+  $("attemptInfo").textContent="Intento "+shownAttempt+(state.mode==="wrong"?" · repaso de fallos":"");
+  $("bestInfo").textContent="Mejor nota: "+(state.best===null?"—":state.best.toFixed(1)+" / 10");
+}
+function renderQuiz(){
+  state.finished=false;
+  $("quiz").classList.remove("hidden");
+  $("results").classList.add("hidden");
+  const q=currentQuestion();
+  if(!q) return;
+  updateHeader();
+  const done=answeredCount();
+  $("progressBar").style.width=((done/state.activeIds.length)*100)+"%";
+  $("blockBadge").textContent=q.block;
+  $("skillText").textContent=q.skill;
+  $("counter").textContent=(state.index+1)+" / "+state.activeIds.length;
+  $("prompt").innerHTML=q.prompt;
+  $("validation").classList.add("hidden");
+  const area=$("answerArea");area.innerHTML="";
+  const saved=state.answers[q.id];
+
+  if(q.type==="fraction"){
+    const box=document.createElement("div");box.className="frac-input";
+    const num=document.createElement("input");num.type="text";num.inputMode="numeric";num.setAttribute("aria-label","Numerador");num.placeholder="numerador";
+    const line=document.createElement("div");line.className="line";
+    const den=document.createElement("input");den.type="text";den.inputMode="numeric";den.setAttribute("aria-label","Denominador");den.placeholder="denominador";
+    if(saved){num.value=saved.num??"";den.value=saved.den??""}
+    const persist=()=>{
+      const nv=num.value.trim(),dv=den.value.trim();
+      if(nv===""&&dv===""){delete state.answers[q.id]}
+      else state.answers[q.id]={num:nv,den:dv};
+      saveState();updateProgressOnly();
+    };
+    num.addEventListener("input",persist);den.addEventListener("input",persist);
+    box.append(num,line,den);area.appendChild(box);
+    $("answerNote").textContent="Escribe numerador y denominador. Se aceptan fracciones equivalentes.";
+  }else if(q.type==="number"){
+    const inp=document.createElement("input");inp.className="number-input";inp.type="text";inp.inputMode="decimal";inp.placeholder="Resultado";
+    if(saved) inp.value=saved.value??"";
+    inp.addEventListener("input",()=>{
+      const v=inp.value.trim();
+      if(v==="") delete state.answers[q.id]; else state.answers[q.id]={value:v};
+      saveState();updateProgressOnly();
+    });
+    area.appendChild(inp);
+    $("answerNote").textContent="Puedes usar coma o punto para los decimales.";
+  }else{
+    const wrap=document.createElement("div");wrap.className="options";
+    q.options.forEach((opt,i)=>{
+      const b=document.createElement("button");b.type="button";b.className="option";
+      if(saved&&saved.value===opt.value)b.classList.add("selected");
+      const l=document.createElement("span");l.className="letter";l.textContent=String.fromCharCode(65+i);
+      const t=document.createElement("span");t.innerHTML=opt.html;
+      b.append(l,t);
+      b.addEventListener("click",()=>{
+        state.answers[q.id]={value:opt.value};saveState();renderQuiz();
+      });
+      wrap.appendChild(b);
+    });
+    area.appendChild(wrap);
+    $("answerNote").textContent="Selecciona una opción.";
+  }
+
+  $("prevBtn").disabled=state.index===0;
+  $("nextBtn").textContent=state.index===state.activeIds.length-1?"Corregir y ver nota":"Siguiente";
+  window.scrollTo(0,0);
+}
+function updateProgressOnly(){
+  $("progressBar").style.width=((answeredCount()/state.activeIds.length)*100)+"%";
+}
+function validateCurrent(){
+  const q=currentQuestion(),a=state.answers[q.id];
+  if(!a) return false;
+  if(q.type==="fraction"){
+    if(a.num===""||a.den==="") return false;
+    const n=Number(a.num),d=Number(a.den);
+    return Number.isInteger(n)&&Number.isInteger(d)&&d!==0;
+  }
+  if(q.type==="number") return Number.isFinite(decimalNumber(a.value));
+  if(q.type==="mcq") return !!a.value;
+  return false;
+}
+$("prevBtn").addEventListener("click",()=>{
+  if(state.index>0){state.index--;saveState();renderQuiz()}
+});
+$("nextBtn").addEventListener("click",()=>{
+  if(!validateCurrent()){
+    $("validation").textContent="Completa una respuesta válida antes de continuar.";
+    $("validation").classList.remove("hidden");
+    return;
+  }
+  if(state.index<state.activeIds.length-1){
+    state.index++;saveState();renderQuiz();
+  }else finishAttempt();
+});
+
+function scoreAttempt(){
+  const qs=activeQuestions();
+  const correct=qs.filter(q=>isCorrect(q,state.answers[q.id])).length;
+  return {correct,total:qs.length,score:(correct/qs.length)*10};
+}
+function finishAttempt(){
+  const result=scoreAttempt();
+  state.finished=true;
+  state.attempts=(Number(state.attempts)||0)+1;
+  state.last=result.score;
+  if(state.mode==="full" && (state.best===null||result.score>state.best))state.best=result.score;
+  state.lastWrong=activeQuestions().filter(q=>!isCorrect(q,state.answers[q.id])).map(q=>q.id);
+  saveState();
+  renderResults(result);
+}
+function labelFor(score){
+  if(score>=9) return "Dominio muy alto del tema";
+  if(score>=7.5) return "Buen dominio, con algunos aspectos que revisar";
+  if(score>=6) return "Base suficiente, pero conviene reforzar los errores";
+  if(score>=5) return "Dominio básico: necesita consolidación";
+  return "Necesita reforzar el tema antes del examen";
+}
+function renderResults(result){
+  $("quiz").classList.add("hidden");
+  $("results").classList.remove("hidden");
+  updateHeader();
+  $("progressBar").style.width="100%";
+  $("score").innerHTML=result.score.toFixed(1).replace(".",",")+' <small>/ 10</small>';
+  $("resultLabel").textContent=labelFor(result.score);
+  $("resultStats").innerHTML=
+    statHTML(result.correct+" / "+result.total,"Correctos")+
+    statHTML((result.total-result.correct)+"","Incorrectos")+
+    statHTML((result.correct/result.total*100).toFixed(0)+" %","Acierto");
+
+  const blocks={};
+  activeQuestions().forEach(q=>{
+    if(!blocks[q.block])blocks[q.block]={ok:0,total:0};
+    blocks[q.block].total++;
+    if(isCorrect(q,state.answers[q.id]))blocks[q.block].ok++;
+  });
+  $("blockResults").innerHTML=Object.entries(blocks).map(([name,v])=>{
+    const pct=Math.round(v.ok/v.total*100);
+    return '<div class="block-card"><strong>'+escapeHTML(name)+'</strong><span>'+v.ok+' de '+v.total+' · '+pct+' %</span></div>';
+  }).join("");
+
+  $("retryWrongBtn").disabled=state.lastWrong.length===0;
+  $("retryWrongBtn").textContent=state.lastWrong.length===0?"No hay fallos que repetir":"Repetir solo los fallos ("+state.lastWrong.length+")";
+
+  $("review").innerHTML=activeQuestions().map(q=>{
+    const a=state.answers[q.id],ok=isCorrect(q,a);
+    return '<details class="review-item">'+
+      '<summary class="review-summary '+(ok?'ok':'bad')+'">'+
+        '<span>'+q.id+'. '+escapeHTML(q.skill)+'</span>'+
+        '<span class="'+(ok?'tag-ok':'tag-bad')+'">'+(ok?'Correcto':'Revisar')+'</span>'+
+      '</summary>'+
+      '<div class="review-body">'+
+        '<p><strong>Tu respuesta:</strong> <span class="answer-display">'+answerHTML(q,a)+'</span></p>'+
+        '<p><strong>Respuesta correcta:</strong> <span class="answer-display">'+correctAnswerHTML(q)+'</span></p>'+
+        '<div class="solution"><strong>Desarrollo:</strong>'+q.solution+'</div>'+
+      '</div>'+
+    '</details>';
+  }).join("");
+  window.scrollTo(0,0);
+}
+function statHTML(value,label){
+  return '<div class="stat"><strong>'+escapeHTML(value)+'</strong><span>'+escapeHTML(label)+'</span></div>';
+}
+function startAttempt(ids,mode){
+  const preservedBest=state.best;
+  const preservedAttempts=state.attempts;
+  state={
+    mode:mode,
+    activeIds:ids.slice(),
+    index:0,
+    answers:{},
+    finished:false,
+    attempts:preservedAttempts,
+    best:preservedBest,
+    last:state.last,
+    lastWrong:[]
+  };
+  saveState();renderQuiz();
+}
+$("retryAllBtn").addEventListener("click",()=>startAttempt(QUESTIONS.map(q=>q.id),"full"));
+$("retryWrongBtn").addEventListener("click",()=>{
+  if(state.lastWrong.length)startAttempt(state.lastWrong,"wrong");
+});
+$("printBtn").addEventListener("click",()=>{
+  document.querySelectorAll(".review-item").forEach(d=>d.open=true);
+  setTimeout(()=>window.print(),50);
+});
+
+function init(){
+  updateHeader();
+  if(state.finished){
+    const r=scoreAttempt();
+    renderResults(r);
+  }else{
+    const done=answeredCount();
+    if(done>0){
+      $("resumeBox").classList.remove("hidden");
+      $("resumeBox").textContent="Progreso recuperado: "+done+" de "+state.activeIds.length+" ejercicios respondidos.";
+    }
+    renderQuiz();
+  }
+}
+init();
+})();
+</script>
+</body>
+</html>
