@@ -53,7 +53,8 @@ jobs:
       - name: Aula sintética sin acceso a la base de datos
         env:
           CI: 'true'
-        run: npx playwright test tests/synthetic-classroom.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit --reporter=line
+          TRIBECA_AUDIT_PREVIEW_FIX: ${{ startsWith(github.ref, 'refs/heads/audit/playwright-readonly-') && '1' || '0' }}
+        run: npx playwright test tests/synthetic-classroom.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
 
   roles-readonly:
     name: Perfiles de prueba (sin operaciones de escritura)
