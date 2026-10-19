@@ -80,8 +80,11 @@ No compartas los valores de las contraseñas por esta conversación.
 
 ## Ejecución
 
-La rama de auditoría prueba automáticamente la carga pública con cada cambio en sus
-archivos, sin usar secretos. Requiere que las Actions estén habilitadas.
+Las ramas de auditoría ejecutan las pruebas públicas y las clases ficticias
+con cada cambio. En `main`, tras cada actualización, las pruebas públicas se
+repiten **sin secretos** y la prueba sintética espera que GitHub Pages haya
+propagado `resource-progress.js?v=256` antes de comprobar el visor. Requiere
+que GitHub Actions esté habilitado.
 
 El botón **Run workflow** de `workflow_dispatch` en GitHub normalmente solo estará
 disponible una vez que el flujo se haya incorporado explícitamente a `main`.
@@ -103,9 +106,8 @@ en una rama de auditoría.
 - Navegación por teclado y desbordamiento horizontal en escritorio y teléfono.
 - Alumno: acceso, navegación y verificación de que **no tiene rol docente**.
 - Aula, materia, unidad, publicaciones y un HTML embebido: comprobación en un
-  estado de navegador completamente ficticio. En la prueba autenticada, la
-  cuenta QA de alumno comienza sin ninguna clase real; se comprueba ese hecho
-  antes de inyectar datos de memoria.
+  estado de navegador completamente ficticio. Las cuentas QA autenticadas se emplean **solo para comprobar acceso y rol**.
+  Nunca se inyectan recursos en sus sesiones ni se prueba el guardado de progreso.
 - Profesora: acceso, herramientas y clases; sin gestionar pagos ni perfiles.
 - Emulación de Chrome escritorio, Chrome móvil y WebKit iPad para perfiles.
 - Sin vídeo, capturas, trazas, HAR, informes HTML ni estados de autenticación.
