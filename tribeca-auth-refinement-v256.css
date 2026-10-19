@@ -16,6 +16,7 @@ body.tribeca-preserve-v253 #tribecaAuthOverlay .auth-card {
 #tribecaAuthOverlay .auth-brand strong { font-size: max(1.15rem, 18px); }
 #tribecaAuthOverlay .auth-brand span { font-size: max(.875rem, 14px); font-weight: 500; }
 #tribecaAuthOverlay .auth-form { gap: 16px; }
+#tribecaAuthOverlay .auth-form[hidden] { display: none !important; }
 #tribecaAuthOverlay .auth-form :is(h1, h2) {
   font-size: max(1.5rem, 24px);
   line-height: 1.2;

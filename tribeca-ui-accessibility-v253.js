@@ -27,6 +27,16 @@
   }
   function init() {
     check(document.body);
+    // Tras alternar acceso/recuperación, el teclado entra en el formulario activo.
+    document.addEventListener('click', event => {
+      const toggle = event.target.closest?.('#tribecaAuthOverlay [data-t16-forgot], #tribecaAuthOverlay [data-t16-login]');
+      if (!toggle) return;
+      const formId = toggle.hasAttribute('data-t16-forgot') ? 't16ResetForm' : 't16LoginForm';
+      queueMicrotask(() => {
+        const form = document.getElementById(formId);
+        if (form && !form.hidden) form.querySelector('input:not([disabled])')?.focus();
+      });
+    });
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) check(node);

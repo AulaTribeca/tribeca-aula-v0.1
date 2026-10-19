@@ -1,5 +1,20 @@
 import { test, expect } from '@playwright/test';
 
+test('Acceso y recuperación muestran un solo formulario y transfieren el foco', async ({ page }) => {
+  await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
+  const login = page.locator('#t16LoginForm');
+  const reset = page.locator('#t16ResetForm');
+  await expect(login).toBeVisible({ timeout: 45_000 });
+  await login.locator('[data-t16-forgot]').click();
+  await expect(reset).toBeVisible();
+  await expect(login).toBeHidden();
+  await expect(reset.locator('input[name="username"]')).toBeFocused();
+  await reset.locator('[data-t16-login]').click();
+  await expect(login).toBeVisible();
+  await expect(reset).toBeHidden();
+  await expect(login.locator('input[name="username"]')).toBeFocused();
+});
+
 test('El acceso conserva texto legible y controles táctiles', async ({ page }) => {
   await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });

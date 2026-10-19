@@ -16,7 +16,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './resource-progress.js?v=256',
   './supabase-auth.js?v=255.1',
   './profile-ui.js?v=229',
-  './tribeca-ui-accessibility-v253.js',
+  './tribeca-ui-accessibility-v253.js?v=256.1',
   './tribeca-material-toggle-v254.js?v=254.1',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',

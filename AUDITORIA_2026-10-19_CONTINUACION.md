@@ -48,9 +48,24 @@ rutas de navegación, anclas, nombres de campos, logotipos ni tokens de marca.
 URL nueva: `tribeca-auth-refinement-v256.css?v=256.1`.
 Metadato de interfaz: 256.1; caché: tribeca-aula-static-v256-1.
 
-Product Design figura instalado, pero sus operaciones no estaban expuestas
-en la sesión al preparar este cambio. No atribuirle esta revisión ni presentar
-este ajuste acotado como una evaluación visual completa de los paneles.
+Product Design se ha aplicado en la continuación del 19/10/2026 a las
+pantallas públicas de acceso y recuperación, capturadas desde el navegador.
+No se ha auditado todavía el panel autenticado.
+
+## Segunda revisión: Product Design
+
+1. Acceso: marca reconocible y acción principal clara; texto excesivamente
+   pequeño en la versión publicada. Corregido en esta propuesta.
+2. Recuperación: al activar la recuperación permanecían visibles ambos
+   formularios. La regla display:grid prevalecía sobre hidden en el formulario
+   de acceso. Se añade una regla explícita para hidden y se traslada el foco al
+   primer campo del formulario activo, en ambos sentidos.
+3. Panel docente/alumno: pendiente de sesión visible autenticada en el navegador.
+
+La nueva regresión de alternancia y foco se ha superado en Chromium escritorio
+ y móvil (dos pruebas adicionales). No se ha enviado ninguna solicitud de
+recuperación ni modificado ninguna credencial.
+URL del script de accesibilidad actualizada: tribeca-ui-accessibility-v253.js?v=256.1.
 
 Pendiente: revisión especializada del panel docente y del alumno, comparación
 con la propuesta v257 y pruebas visuales en móvil y escritorio con estados
