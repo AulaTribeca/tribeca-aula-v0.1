@@ -38,12 +38,22 @@ jobs:
           node-version: '24'
       - name: Dependencias de pruebas
         run: npm install --no-audit --no-fund --ignore-scripts
-      - name: Motor de navegador
-        run: npx playwright install --with-deps chromium
+      - name: Motores de navegador público y ficticio
+        run: npx playwright install --with-deps chromium webkit
+      - name: Verificar sintaxis de escenarios y tests
+        run: |
+          node --check tests/fixtures/browser-classroom.mjs
+          node --check tests/synthetic-classroom.spec.mjs
+          node --check tests/roles-readonly.spec.mjs
+          npx playwright test --list tests/synthetic-classroom.spec.mjs tests/roles-readonly.spec.mjs
       - name: Pruebas públicas
         env:
           CI: 'true'
         run: npx playwright test tests/public-smoke.spec.mjs --project=desktop-chromium --project=mobile-chromium
+      - name: Aula sintética sin acceso a la base de datos
+        env:
+          CI: 'true'
+        run: npx playwright test tests/synthetic-classroom.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
 
   roles-readonly:
     name: Perfiles de prueba (sin operaciones de escritura)
