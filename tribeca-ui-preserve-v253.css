@@ -1,0 +1,165 @@
+/* Tribeca Aula v253 - evolución visual conservadora.
+   Complementa los estilos existentes; no sustituye colores de marca, logos, rutas ni componentes.
+   Ámbito: body.tribeca-preserve-v253. Sin dependencias externas. */
+body.tribeca-preserve-v253 {
+  --tribeca-ui-space-xs: .55rem;
+  --tribeca-ui-space-sm: .85rem;
+  --tribeca-ui-space-md: 1.25rem;
+  --tribeca-ui-space-lg: 1.8rem;
+  --tribeca-ui-border: var(--line);
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+body.tribeca-preserve-v253 .tribeca-skip-link {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 30000;
+  display: inline-flex;
+  align-items: center;
+  background: var(--panel-solid);
+  color: var(--text);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-sm);
+  padding: 11px 15px;
+  font-size: 15px;
+  font-family: system-ui, sans-serif;
+  font-weight: 750;
+  text-decoration: none;
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-180%);
+  opacity: 0;
+  pointer-events: none;
+}
+body.tribeca-preserve-v253 .tribeca-skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+body.tribeca-preserve-v253 #inicio {
+  scroll-margin-top: calc(var(--header-h, 108px) + 1.5rem);
+  min-width: 0;
+}
+body.tribeca-preserve-v253 :is(.page-shell, .tool-window, .window-body, .window-panel, .student-class-detail-v232, .teacher-dashboard) {
+  min-width: 0;
+}
+body.tribeca-preserve-v253 :is(.hero-card h1, .teacher-welcome-copy h2, .student-class-detail-head-v232 h1, .window-panel h2, .section-heading h2) {
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+body.tribeca-preserve-v253 :is(.window-panel, .hero-main, .student-class-card-main-v232) > p {
+  line-height: 1.55;
+  overflow-wrap: break-word;
+}
+body.tribeca-preserve-v253 :is(.window-panel h2, .window-panel h3, .section-heading h2) {
+  line-height: 1.24;
+}
+body.tribeca-preserve-v253 :is(.teacher-section-nav-v219, .main-nav) {
+  scrollbar-gutter: stable;
+}
+body.tribeca-preserve-v253 :is(.main-nav .nav-btn, .teacher-section-nav-v219 button) {
+  text-underline-offset: .16em;
+  touch-action: manipulation;
+}
+body.tribeca-preserve-v253 :is(
+  button, a[href], input, select, textarea, summary,
+  [role="button"], [role="tab"], [tabindex="0"]
+):focus-visible {
+  outline: 3px solid var(--gold) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 5px var(--panel-solid);
+}
+body.tribeca-preserve-v253 :is(
+  .teacher-quick-class-card, .classroom-person-button, .student-classroom-card-v232
+):focus-visible {
+  outline: 3px solid var(--gold) !important;
+  outline-offset: 3px !important;
+}
+body.tribeca-preserve-v253 :is(.form-row, .control-field):focus-within {
+  border-radius: var(--radius-sm);
+}
+body.tribeca-preserve-v253 :is(.form-row, .control-field) :is(input, select, textarea) {
+  caret-color: var(--green);
+}
+body.tribeca-preserve-v253 :is(.form-row, .window-panel) :is(input, select, textarea):not([type="hidden"]) {
+  min-width: 0;
+}
+body.tribeca-preserve-v253 :is(.form-row label, .control-field span) {
+  line-height: 1.38;
+}
+body.tribeca-preserve-v253 :is(.form-status, .notice, [role="alert"]) {
+  overflow-wrap: anywhere;
+}
+body.tribeca-preserve-v253 :is(
+  .student-classroom-card-v232, .v210-profile-card,
+  .attendance-student-card-v146, .finance-student-card-v146
+) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+body.tribeca-preserve-v253 :is(
+  .student-classroom-card-v232, .v210-profile-card,
+  .attendance-student-card-v146, .finance-student-card-v146
+):hover {
+  transform: translateY(-1px);
+}
+body.tribeca-preserve-v253 .student-class-detail-head-v232 {
+  gap: 1.2rem;
+}
+body.tribeca-preserve-v253 :is(.material-embed-block, .material-body, .publication-body) {
+  min-width: 0;
+  max-width: 100%;
+}
+body.tribeca-preserve-v253 :is(.material-embed-block, .material-body, .publication-body) :is(img, video, canvas) {
+  max-width: 100%;
+}
+body.tribeca-preserve-v253 :is(.window-panel, .teacher-dashboard, .student-class-detail-v232) :is(p, li) {
+  overflow-wrap: break-word;
+}
+@media (max-width: 760px) {
+  body.tribeca-preserve-v253 :is(.form-row input, .form-row select, .form-row textarea, .auth-card input) {
+    font-size: 16px !important;
+  }
+  body.tribeca-preserve-v253 .student-class-detail-head-v232 {
+    gap: .9rem;
+    padding: 1.1rem 1.2rem;
+  }
+  body.tribeca-preserve-v253 .student-classroom-grid-v232 {
+    gap: .75rem;
+  }
+  body.tribeca-preserve-v253 .student-classroom-card-v232 {
+    padding: 1.15rem !important;
+  }
+  body.tribeca-preserve-v253 .teacher-section-nav-v219 {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (pointer: coarse) {
+  body.tribeca-preserve-v253 :is(
+    .form-grid button, .teacher-section-nav-v219 button,
+    .student-class-back-v232, .student-classroom-card-v232
+  ) {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(body.tribeca-preserve-v253) {
+    scroll-behavior: auto !important;
+  }
+  body.tribeca-preserve-v253,
+  body.tribeca-preserve-v253 *,
+  body.tribeca-preserve-v253 *::before,
+  body.tribeca-preserve-v253 *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  body.tribeca-preserve-v253 .tribeca-skip-link { display: none !important; }
+}
