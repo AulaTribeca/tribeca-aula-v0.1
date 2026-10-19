@@ -18,6 +18,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './profile-ui.js?v=229',
   './tribeca-ui-accessibility-v253.js',
   './tribeca-material-toggle-v254.js?v=254.1',
+  './tribeca-keyboard-activation-v257.js?v=257',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
   './assets/tribeca-pwa-icon-512.png',
