@@ -31,6 +31,11 @@ cierre HTML válido `</script>`. Un parser HTML no cierra con él la etiqueta
 Se ha preparado un cambio de **una única expresión de cierre** en
 `resource-progress.js`, solamente dentro de esta rama.
 
+La rama también prepara el **cambio de versión del recurso** a
+`resource-progress.js?v=256` en `index.html` y en la lista de precaché de la PWA,
+así como una clave de caché `tribeca-aula-static-v256`. Esto evita que tras la
+publicación el alumnado siga utilizando el script defectuoso almacenado en caché.
+
 Para probarlo **antes de publicarlo**, la batería anónima de Playwright
 intercepta exclusivamente la solicitud del archivo `resource-progress.js` de
 GitHub Pages y le proporciona el archivo corregido desde el checkout de la rama.
