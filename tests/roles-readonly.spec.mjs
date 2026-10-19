@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// Never commit real users, passwords, tokens or storageState. GitHub repository is public.
-// One login per role/project only; login itself may write attendance-independent audit logs.
+// Se prueban cuentas QA, nunca perfiles reales del alumnado.
 const accounts = {
   student: {
     username: process.env.TRIBECA_AUDIT_STUDENT_USER,
@@ -16,9 +15,8 @@ const accounts = {
 async function logIn(page, role) {
   const account = accounts[role];
   if (!account?.username || !account?.password) {
-    throw new Error('Faltan secretos de la cuenta de pruebas del rol solicitado.');
+    throw new Error('Faltan secretos de la cuenta de auditoría solicitada.');
   }
-
   const response = await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
   expect(response?.ok()).toBeTruthy();
   const form = page.locator('#t16LoginForm');
@@ -28,53 +26,52 @@ async function logIn(page, role) {
   await form.locator('button[type="submit"]').click();
   await expect(page.locator('body')).not.toHaveClass(/auth-locked/, { timeout: 60_000 });
   await expect(page.locator('main#inicio')).toBeVisible();
+  await expect(page.locator('#tribecaAuthOverlay')).toBeHidden();
 }
 
-function assertNoHorizontalOverflow(page) {
-  return page.evaluate(() => {
-    const pageWidth = document.documentElement.scrollWidth;
-    const screenWidth = document.documentElement.clientWidth;
-    return pageWidth <= screenWidth + 2;
-  });
+async function noHorizontalOverflow(page) {
+  return page.evaluate(() => document.documentElement.scrollWidth <=
+    document.documentElement.clientWidth + 2);
 }
 
-test.describe('Cuenta de alumno: navegación sin escrituras', () => {
-  test.skip(!accounts.student.username || !accounts.student.password, 'No hay cuenta de prueba de alumno configurada.');
-  test('Panel, clase, materia y despliegue de publicación', async ({ page }) => {
+test.describe('Cuenta QA alumno: acceso sin escrituras', () => {
+  test.skip(!accounts.student.username || !accounts.student.password, 'Sin secretos de alumno QA.');
+  test('Inicia sesión con su perfil y mantiene la interfaz navegable', async ({ page }) => {
     await logIn(page, 'student');
+    await expect(page.locator('main#inicio')).toBeVisible();
+    await expect(page.locator('.teacher-dashboard')).toHaveCount(0);
+    expect(await noHorizontalOverflow(page), 'Desbordamiento horizontal en alumno QA').toBeTruthy();
+  });
 
+  test('Clases y publicación de QA, si existe una clase de ensayo aislada', async ({ page }) => {
+    test.skip(process.env.TRIBECA_AUDIT_CLASS_FIXTURE !== '1',
+      'Pendiente: el aula QA aislada no existe en producción. Nunca utilizar clases de menores para suplirla.');
+    await logIn(page, 'student');
     const classes = page.locator('.student-classroom-card-v232[data-student-class-id]');
-    await expect(classes.first(), 'La cuenta de prueba debe tener una clase asignada').toBeVisible();
+    await expect(classes.first()).toBeVisible();
     await classes.first().click();
-
     const subjects = page.locator('.student-class-detail-v232 .class-subject-card');
-    await expect(subjects.first(), 'La clase de prueba necesita una materia publicada').toBeVisible();
+    await expect(subjects.first()).toBeVisible();
     await subjects.first().click();
-
-    const publication = page.locator('details.material-collapse-card');
-    await expect(publication.first(), 'La materia de prueba necesita al menos una publicación').toBeVisible();
-    await publication.first().locator('summary').click();
-    await expect(publication.first()).toHaveAttribute('open', '');
-
-    // Intentionally do not press "Marcar como feita", save a grade or attempt an exam.
-    // Do not click external links or download teaching materials during this first audit.
-    expect(await assertNoHorizontalOverflow(page), 'Desbordamiento horizontal dentro del aula').toBeTruthy();
+    const publications = page.locator('details.material-collapse-card');
+    await expect(publications.first()).toBeVisible();
+    await publications.first().locator('summary').click();
+    await expect(publications.first()).toHaveAttribute('open', '');
+    // Nunca marcar materiales como completados ni enviar calificaciones.
   });
 });
 
-test.describe('Cuenta docente: navegación sin escrituras', () => {
-  test.skip(!accounts.teacher.username || !accounts.teacher.password, 'No hay cuenta de prueba de profesora configurada.');
-  test('Panel docente, herramientas y clases visibles', async ({ page }) => {
+test.describe('Cuenta QA profesora: acceso sin escrituras', () => {
+  test.skip(!accounts.teacher.username || !accounts.teacher.password, 'Sin secretos de profesora QA.');
+  test('Tiene panel docente y herramientas esenciales visibles', async ({ page }) => {
     await logIn(page, 'teacher');
     const dashboard = page.locator('.teacher-dashboard');
-    await expect(dashboard, 'La cuenta de prueba no parece tener rol docente').toBeVisible();
-    await expect(dashboard.locator('.t16-tool-card[data-t16-tool="studentProfiles"]')).toBeVisible();
-    await expect(dashboard.locator('.t16-tool-card[data-t16-tool="classrooms"]')).toBeVisible();
-    await expect(dashboard.locator('.t16-tool-card[data-t16-tool="payments"]')).toBeVisible();
-    await expect(dashboard.locator('.t16-tool-card[data-t16-tool="attendance"]')).toBeVisible();
+    await expect(dashboard).toBeVisible();
+    for (const action of ['studentProfiles','classrooms','payments','attendance']) {
+      await expect(dashboard.locator(`.t16-tool-card[data-t16-tool="${action}"]`)).toBeVisible();
+    }
     await expect(dashboard.locator('.teacher-quick-class-card').first()).toBeVisible();
-
-    // Only inspect the dashboard; opening financial forms is a later, separate test.
-    expect(await assertNoHorizontalOverflow(page), 'Desbordamiento horizontal del panel docente').toBeTruthy();
+    expect(await noHorizontalOverflow(page), 'Desbordamiento horizontal en profesora QA').toBeTruthy();
+    // No abrir formularios de pago, cambiar clases, alterar perfiles ni publicar.
   });
 });
