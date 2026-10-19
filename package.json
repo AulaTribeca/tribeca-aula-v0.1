@@ -1,0 +1,15 @@
+{
+  "name": "tribeca-aula-quality-audit",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Auditoria E2E de solo lectura de Tribeca Aula, sin integracion en produccion",
+  "scripts": {
+    "test:audit": "playwright test",
+    "test:audit:public": "playwright test tests/public-smoke.spec.mjs",
+    "test:audit:roles": "playwright test tests/roles-readonly.spec.mjs",
+    "test:audit:list": "playwright test --list"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1"
+  }
+}

@@ -1,0 +1,78 @@
+# Tribeca Aula / auditoría de lectura.
+# Repo PUBLIC: never print environment, page contents, screenshots, traces or sessions.
+name: Tribeca Aula - pruebas de solo lectura
+
+on:
+  push:
+    branches:
+      - 'audit/playwright-readonly-*'
+  workflow_dispatch:
+    inputs:
+      alcance:
+        description: 'Pruebas públicas o también perfiles de prueba'
+        required: true
+        default: publico
+        type: choice
+        options:
+          - publico
+          - completo
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tribeca-playwright-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  public-smoke:
+    name: Carga pública y accesibilidad (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout (lectura)
+        uses: actions/checkout@v5
+      - name: Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Dependencias de pruebas
+        run: npm install --no-audit --no-fund --ignore-scripts
+      - name: Motor de navegador
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas públicas
+        env:
+          CI: 'true'
+        run: npx playwright test tests/public-smoke.spec.mjs --project=desktop-chromium --project=mobile-chromium
+
+  roles-readonly:
+    name: Perfiles de prueba (sin operaciones de escritura)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.alcance == 'completo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CI: 'true'
+      TRIBECA_AUDIT_STUDENT_USER: ${{ secrets.TRIBECA_AUDIT_STUDENT_USER }}
+      TRIBECA_AUDIT_STUDENT_PASSWORD: ${{ secrets.TRIBECA_AUDIT_STUDENT_PASSWORD }}
+      TRIBECA_AUDIT_TEACHER_USER: ${{ secrets.TRIBECA_AUDIT_TEACHER_USER }}
+      TRIBECA_AUDIT_TEACHER_PASSWORD: ${{ secrets.TRIBECA_AUDIT_TEACHER_PASSWORD }}
+    steps:
+      - name: Verificar presencia de secretos (sin revelar valores)
+        shell: bash
+        run: |
+          if [[ -z "$TRIBECA_AUDIT_STUDENT_USER" || -z "$TRIBECA_AUDIT_STUDENT_PASSWORD" || -z "$TRIBECA_AUDIT_TEACHER_USER" || -z "$TRIBECA_AUDIT_TEACHER_PASSWORD" ]]; then
+            echo "::error::Faltan credenciales de prueba. Configura los cuatro secretos de GitHub Actions indicados en AUDITORIA_PLAYWRIGHT.md."
+            exit 1
+          fi
+      - name: Checkout (lectura)
+        uses: actions/checkout@v5
+      - name: Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Dependencias de pruebas
+        run: npm install --no-audit --no-fund --ignore-scripts
+      - name: Motores de navegador
+        run: npx playwright install --with-deps chromium webkit
+      - name: Verificar perfiles de prueba
+        run: npx playwright test tests/roles-readonly.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
