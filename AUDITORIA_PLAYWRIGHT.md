@@ -15,27 +15,62 @@ Este repositorio de GitHub es **PÚBLICO**. Por tanto:
 - Nunca concedas claves de servicio de Supabase ni permiso de administrador de GitHub a las
   cuentas de prueba.
 
-## Cuentas de prueba
+## Cuentas de prueba: alta segura y separación de permisos
 
-Crea, de la manera habitual y autorizada en Tribeca Aula, dos **cuentas de prueba**:
+**Es obligatorio crear primero los usuarios en Supabase Auth.** No crear una
+entrada anticipada con rol docente en `public.user_directory_seed`: Tribeca
+tiene un trigger que puede confirmar automáticamente los correos presembrados,
+lo que podría permitir un registro indebido si se habilitan los registros.
 
-1. Alumno: rol estudiante, al menos una clase asignada, una materia visible y una
-   publicación de prueba. No utilizar una cuenta real de un menor.
-2. Profesora: rol docente de pruebas, **sin compartir la contraseña de tu cuenta personal**.
-   Si la plataforma no permite una cuenta docente independiente, detente y avisa: no
-   copies ni reutilices credenciales de producción para probar sin revisar el alcance.
+### Paso que realiza la propietaria en el Dashboard
 
-Configura estos **cuatro secretos** en:
-`GitHub > AulaTribeca/tribeca-aula-v0.1 > Settings > Secrets and variables > Actions > New repository secret`.
+En `https://supabase.com/dashboard/project/fuhkvjyfwkggjaqxfsgv/auth/users`:
 
-| Nombre exacto del secreto | Contenido |
+1. **Authentication > Users > Add user > Create new user**.
+2. Alumno: correo `tribeca_qa_alumno@tribecaaula.test`.
+3. Profesora: correo `tribeca_qa_docente@tribecaaula.test`.
+4. Elige **dos contraseñas diferentes, largas y aleatorias**. Guárdalas
+   en un gestor de contraseñas; nunca en chat, tickets ni commits.
+5. Marca **Auto Confirm User** / **Confirmar usuario** si aparece,
+   pues los dominios `.test` no reciben correo real.
+6. Crea ambos usuarios y comprueba que aparecen en Authentication > Users.
+
+Las cuentas nuevas reciben inicialmente rol `student` por el trigger
+`handle_new_auth_user`, y los identificadores derivados del correo son
+`tribeca_qa_alumno` y `tribeca_qa_docente`. **No convertir en profesora**
+hasta verificar que la identidad de Auth corresponde exactamente al correo
+establecido y que no existía previamente.
+
+### Paso que realiza la auditoría después
+
+- Consultar `auth.users` y `public.profiles` sin exponer hashes,
+  correos privados, tokens ni contraseñas.
+- Asignar `teacher` solo al perfil QA autorizado después de verificar el ID.
+- Mantener el perfil QA de alumno como `student`.
+- Aislar los materiales y relaciones de la cuenta QA de alumno mediante un
+  aula o recursos de prueba autorizados, sin tocar matrículas de menores.
+- Comprobar inicio de sesión de ambas cuentas y que se muestran sus roles.
+- No utilizar las credenciales de la profesora real ni del alumnado.
+
+**Aviso:** un rol `teacher` en el proyecto de producción puede acceder
+a información real y potencialmente modificarla. Las pruebas de
+Playwright son de lectura, pero la cuenta requiere protección adicional.
+Más adelante conviene ejecutar los tests en un entorno de staging
+separado de la base de datos real.
+
+### Guardar secretos para Playwright
+
+En `GitHub > Settings > Secrets and variables > Actions > New repository secret`,
+introduce cada valor **directamente desde tu gestor de contraseñas**.
+
+| Nombre exacto | Contenido |
 |---|---|
-| `TRIBECA_AUDIT_STUDENT_USER` | Usuario de la cuenta de prueba de alumno |
-| `TRIBECA_AUDIT_STUDENT_PASSWORD` | Contraseña de esa cuenta |
-| `TRIBECA_AUDIT_TEACHER_USER` | Usuario de la cuenta de prueba de profesora |
-| `TRIBECA_AUDIT_TEACHER_PASSWORD` | Contraseña de esa cuenta |
+| `TRIBECA_AUDIT_STUDENT_USER` | `tribeca_qa_alumno` |
+| `TRIBECA_AUDIT_STUDENT_PASSWORD` | Contraseña de alumno QA |
+| `TRIBECA_AUDIT_TEACHER_USER` | `tribeca_qa_docente` |
+| `TRIBECA_AUDIT_TEACHER_PASSWORD` | Contraseña de profesora QA |
 
-**No compartas los valores por chat ni en un archivo del repositorio.**
+No compartas los valores de las contraseñas por esta conversación.
 
 ## Ejecución
 
