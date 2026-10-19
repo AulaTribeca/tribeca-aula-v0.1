@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 // Las estructuras de prueba son 100% ficticias. Nunca se inicia sesión ni
 // se leen datos privados, y jamás se guardan capturas/trazas en un repo público.
 const visualCSS = await readFile(new URL('../tribeca-visual-system-v257.css', import.meta.url), 'utf8');
+const keyboardHelper = await readFile(new URL('../tribeca-keyboard-activation-v257.js', import.meta.url), 'utf8');
 const teacherFixture = `
 <section class="teacher-dashboard t16-dashboard">
   <section class="teacher-welcome-panel teacher-welcome-panel-v114 window-panel">
@@ -118,4 +119,47 @@ test('La propuesta visual no sustituye los temas alternativos ni los estados de 
   const focus = await page.locator('.t16-tool-card').first().evaluate(el => getComputedStyle(el).backgroundColor);
   // La regla v257 de tema claro no debe pintar encima del modo de concentración.
   expect(focus).not.toBe(light);
+});
+
+test('Enter y Espacio activan tarjetas no nativas una sola vez', async ({ page }) => {
+  await initPreview(page, 'teacher');
+  await page.evaluate(() => {
+    window.__qaClicks = { tool:0, classCard:0 };
+    const tool = document.querySelector('.t16-tool-card');
+    const classroom = document.querySelector('.teacher-quick-class-card');
+    tool.dataset.t16Tool = 'classrooms';
+    classroom.dataset.t90OpenClass = 'qa-synthetic';
+    tool.addEventListener('click', () => window.__qaClicks.tool++);
+    classroom.addEventListener('click', () => window.__qaClicks.classCard++);
+  });
+  await page.addScriptTag({ content: keyboardHelper });
+  const tool = page.locator('.t16-tool-card').first();
+  await tool.focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.__qaClicks.tool)).toBe(1);
+  const classroom = page.locator('.teacher-quick-class-card').first();
+  await classroom.focus();
+  await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.__qaClicks.classCard)).toBe(1);
+});
+
+test('La activacion de materias por teclado no interfiere con tarjetas ya gestionadas', async ({ page }) => {
+  await initPreview(page, 'student');
+  await page.evaluate(() => {
+    window.__qaClicks = { subject:0, classroom:0 };
+    const subject = document.querySelector('.class-subject-card');
+    subject.dataset.classSubject = 'qa-synthetic';
+    subject.classList.add('subject-card');
+    subject.addEventListener('click', () => window.__qaClicks.subject++);
+    document.querySelector('.student-classroom-card-v232').addEventListener('click',
+      () => window.__qaClicks.classroom++);
+  });
+  await page.addScriptTag({ content: keyboardHelper });
+  await page.locator('.class-subject-card').focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.__qaClicks.subject)).toBe(1);
+  await page.locator('.student-classroom-card-v232').focus();
+  await page.keyboard.press('Space');
+  // Las tarjetas del alumno ya tienen su manejador propio: no añadir un segundo.
+  expect(await page.evaluate(() => window.__qaClicks.classroom)).toBe(0);
 });
