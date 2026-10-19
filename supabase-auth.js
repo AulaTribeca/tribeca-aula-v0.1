@@ -2674,13 +2674,13 @@ function studentAssignedClasses(studentId=State.profile?.id){
   function studentClassesMarkup(){
     const classes=studentAssignedClasses();
     if(!classes.length) return '';
-    return `<section class="student-classroom-area student-classroom-area-v232"><div class="section-heading"><h2>As miñas clases</h2><span>${classes.length} ${classes.length===1?'clase activa':'clases activas'}</span></div><div class="student-classroom-grid-v232">${classes.map(studentClassroomCard).join('')}</div></section>`;
+    return `<section class="student-classroom-area student-classroom-area-v232"><div class="section-heading"><h2>${safe(uiLabel('myClasses'))}</h2><span>${classes.length} ${safe(uiLabel(classes.length===1?'activeClass':'activeClasses'))}</span></div><div class="student-classroom-grid-v232">${classes.map(studentClassroomCard).join('')}</div></section>`;
   }
   function focusStudentClassesMarkup(classes=studentAssignedClasses()){
     const visible=(classes||[]).filter(c=>c && c.active!==false && !c.hidden);
     if(!visible.length) return `<section class="focus-study-area panel"><h2>A miña clase</h2><p>Aínda non tes ningunha clase activa asignada.</p></section>`;
     return `<section class="focus-study-area focus-classroom-area-v223">
-      <div class="section-heading focus-study-heading"><h2>${visible.length===1?'A miña clase':'As miñas clases'}</h2><span>${visible.length} ${visible.length===1?'clase activa':'clases activas'}</span></div>
+      <div class="section-heading focus-study-heading"><h2>${safe(uiLabel(visible.length===1?'myClass':'myClasses'))}</h2><span>${visible.length} ${safe(uiLabel(visible.length===1?'activeClass':'activeClasses'))}</span></div>
       ${visible.map(c=>{
         const subjects=classSubjectsForStudentClass(c.id);
         return `<article class="student-classroom-card focus-classroom-card-v223 panel" data-focus-class-id="${safe(c.id)}">
@@ -2690,7 +2690,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
               <h3>${safe(classroomLabel(c))}</h3>
               <p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p>
             </div>
-            <strong>${subjects.length} ${subjects.length===1?'materia':'materias'}</strong>
+            <strong>${subjects.length} ${safe(uiLabel(subjects.length===1?'classSubject':'classSubjectPlural'))}</strong>
           </header>
           <div class="student-class-subject-grid focus-study-grid">
             ${subjects.length?subjects.map((s,i)=>focusStudySubjectCard(s,c,i)).join(''):'<div class="empty-state">Aínda non tes materias asignadas.</div>'}
@@ -2730,8 +2730,8 @@ function studentAssignedClasses(studentId=State.profile?.id){
         <p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p>
       </div>
       <div class="student-class-card-meta-v232">
-        <span>${subjects.length} ${subjects.length===1?'materia':'materias'}</span>
-        <span>${totalMaterials} ${totalMaterials===1?'material':'materiais'}</span>
+        <span>${subjects.length} ${safe(uiLabel(subjects.length===1?'classSubject':'classSubjectPlural'))}</span>
+        <span>${totalMaterials} ${safe(uiLabel(totalMaterials===1?'materialSingular':'materialPlural'))}</span>
         <b aria-hidden="true">→</b>
       </div>
     </article>`;
@@ -2748,7 +2748,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
         <div><p class="eyebrow">${safe(c.academic_year||currentAcademicYearLabel())}</p><h1>${safe(classroomLabel(c))}</h1><p>${safe([c.center,c.stage,c.course].filter(Boolean).join(' · '))}</p></div>
       </header>
       <section class="student-class-detail-body-v232">
-        <div class="section-heading"><h2>Materias</h2><span>${subjects.length}</span></div>
+        <div class="section-heading"><h2>${safe(uiLabel('classSubjects'))}</h2><span>${subjects.length}</span></div>
         ${subjects.length?`<div class="student-class-subject-grid student-class-subject-grid-v232">${subjects.map((s,i)=>classSubjectCard(s,i,c)).join('')}</div>`:'<div class="empty-state student-class-empty-v232">Aínda non tes materias asignadas.</div>'}
       </section>
     </section>`;
@@ -2765,10 +2765,10 @@ function studentAssignedClasses(studentId=State.profile?.id){
       <div class="subject-top"><span>${safe(c.course||'')}</span></div>
       <div class="subject-mark">${safe(vis.glyph)}</div>
       <h3>${safe(s.subject)}</h3>
-      <p>${mats.length} ${mats.length===1?'publicación':'publicacións'} · ${units.length||0} ${units.length===1?'unidade':'unidades'}</p>
-      <div class="progress-row"><span>Progreso</span><strong>${pr.percent}%</strong></div>
+      <p>${mats.length} ${safe(uiLabel(mats.length===1?'publication':'publications'))} · ${units.length||0} ${safe(uiLabel(units.length===1?'unit':'units'))}</p>
+      <div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div>
       <div class="progress"><span style="width:${pr.percent}%"></span></div>
-      <small>${pr.done}/${pr.total} publicacións feitas.</small>
+      <small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}</small>
     </article>`;
   }
   function carlaFinanceMonthV205(){
@@ -2857,6 +2857,15 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const dict={
       personalPanel:{es:'Panel personal de aprendizaje',gl:'Panel persoal de aprendizaxe',en:'Personal learning panel',fr:'Espace personnel d’apprentissage',pl:'Osobisty panel nauki',de:'Persönlicher Lernbereich',pt:'Painel pessoal de aprendizagem'},
       hello:{es:'Hola',gl:'Ola',en:'Hello',fr:'Bonjour',pl:'Witaj',de:'Hallo',pt:'Olá'},
+      myClasses:{"es":"Mis clases","gl":"As miñas clases","en":"My classes","fr":"Mes classes","pl":"Moje klasy","de":"Meine Klassen","pt":"As minhas turmas"},
+      myClass:{"es":"Mi clase","gl":"A miña clase","en":"My class","fr":"Ma classe","pl":"Moja klasa","de":"Meine Klasse","pt":"A minha turma"},
+      activeClass:{"es":"clase activa","gl":"clase activa","en":"active class","fr":"classe active","pl":"aktywna klasa","de":"aktive Klasse","pt":"turma ativa"},
+      activeClasses:{"es":"clases activas","gl":"clases activas","en":"active classes","fr":"classes actives","pl":"aktywne klasy","de":"aktive Klassen","pt":"turmas ativas"},
+      classSubject:{"es":"materia","gl":"materia","en":"subject","fr":"matière","pl":"przedmiot","de":"Fach","pt":"disciplina"},
+      classSubjectPlural:{"es":"materias","gl":"materias","en":"subjects","fr":"matières","pl":"przedmioty","de":"Fächer","pt":"disciplinas"},
+      materialSingular:{"es":"material","gl":"material","en":"resource","fr":"ressource","pl":"materiał","de":"Material","pt":"material"},
+      materialPlural:{"es":"materiales","gl":"materiais","en":"resources","fr":"ressources","pl":"materiały","de":"Materialien","pt":"materiais"},
+      classSubjects:{"es":"Materias","gl":"Materias","en":"Subjects","fr":"Matières","pl":"Przedmioty","de":"Fächer","pt":"Disciplinas"},
       mySubjects:{es:'Mis materias',gl:'As miñas materias',en:'My subjects',fr:'Mes matières',pl:'Moje przedmioty',de:'Meine Fächer',pt:'As minhas disciplinas'},
       publications:{es:'publicaciones',gl:'publicacións',en:'posts',fr:'publications',pl:'publikacje',de:'Veröffentlichungen',pt:'publicações'},
       publication:{es:'publicación',gl:'publicación',en:'post',fr:'publication',pl:'publikacja',de:'Veröffentlichung',pt:'publicação'},
