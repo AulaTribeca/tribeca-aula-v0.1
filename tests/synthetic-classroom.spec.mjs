@@ -6,7 +6,7 @@ import {
 // Tests sin credenciales ni acceso a datos de menores. Todo es memoria local.
 test('Aula ficticia: navegación de clase, materia, unidad y publicación', async ({ page }) => {
   // Una defensa adicional: las peticiones PostgREST no salen al exterior.
-  await page.route(/\\/rest\\/v1\\//, route => route.abort());
+  await page.route(/\/rest\/v1\//, route => route.abort());
   await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });
 
