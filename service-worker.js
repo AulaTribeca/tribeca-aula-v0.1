@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v253 · caché coherente y actualizaciones sin interrumpir sesiones */
-const TRIBECA_CACHE = 'tribeca-aula-static-v253';
+/* Tribeca Aula · Service worker v254 · actualización visual sin recargas forzadas */
+const TRIBECA_CACHE = 'tribeca-aula-static-v254';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -7,11 +7,12 @@ const TRIBECA_INSTALL_ASSETS = [
   './styles.css?v=234',
   './profile-ui.css?v=229',
   './tribeca-ui-preserve-v253.css',
+  './tribeca-ui-modern-v254.css?v=254',
   './app.js?v=216',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=235',
-  './supabase-auth.js?v=253',
+  './supabase-auth.js?v=254',
   './profile-ui.js?v=229',
   './tribeca-ui-accessibility-v253.js',
   './manifest.webmanifest',
