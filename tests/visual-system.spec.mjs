@@ -171,3 +171,36 @@ test('La activacion de materias por teclado no interfiere con tarjetas ya gestio
   // Las tarjetas del alumno ya tienen su manejador propio: no añadir un segundo.
   expect(await page.evaluate(() => window.__qaClicks.classroom)).toBe(0);
 });
+
+function contrastRatio(cssA, cssB) {
+  const channels = css => {
+    const match = css.match(/rgba?\(([^)]+)\)/);
+    if (!match) throw new Error('Color CSS inesperado en comprobacion de contraste.');
+    return match[1].split(',').slice(0,3).map(Number).map(v => {
+      const c = v / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+  };
+  const luminance = css => {
+    const [r,g,b] = channels(css);
+    return r * 0.2126 + g * 0.7152 + b * 0.0722;
+  };
+  const a = luminance(cssA), b = luminance(cssB);
+  return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
+}
+
+test('Textos del panel docente mantienen contraste AA computado en navegador', async ({page}) => {
+  await initPreview(page, 'teacher');
+  const colors = await page.evaluate(() => {
+    const card = document.querySelector('.t16-teacher-tools .t16-tool-card');
+    const description = card.querySelector('p');
+    const title = card.querySelector('h3');
+    return {
+      bg: getComputedStyle(card).backgroundColor,
+      description: getComputedStyle(description).color,
+      title: getComputedStyle(title).color,
+    };
+  });
+  expect(contrastRatio(colors.description, colors.bg)).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatio(colors.title, colors.bg)).toBeGreaterThanOrEqual(4.5);
+});
