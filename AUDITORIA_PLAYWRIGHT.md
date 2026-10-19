@@ -1,7 +1,7 @@
 # Auditoría Playwright de Tribeca Aula
 
 **Estado:** infraestructura de pruebas en la rama `audit/playwright-readonly-2026-10-19`.
-**La web publicada y Supabase no se modifican al crear esta rama.**
+**La rama no modifica la web publicada.** Se han creado dos cuentas QA en Supabase Auth y se ha asignado a una el rol docente autorizado; no se han alterado las cuentas de los alumnos.
 
 ## Seguridad primero
 
@@ -22,7 +22,11 @@ entrada anticipada con rol docente en `public.user_directory_seed`: Tribeca
 tiene un trigger que puede confirmar automáticamente los correos presembrados,
 lo que podría permitir un registro indebido si se habilitan los registros.
 
-### Paso que realiza la propietaria en el Dashboard
+### Cuentas creadas y verificadas (19/10/2026)
+
+Los dos usuarios QA están confirmados, vinculados a perfiles activos y marcados claramente como pruebas. El perfil de alumna/o mantiene `student`; el perfil `tribeca_qa_docente` ya tiene `teacher` tras verificar exactamente el ID y correo de Auth. No tienen horarios, pagos ni matrículas.
+
+### Alta segura en Supabase Auth (ya realizada)
 
 En `https://supabase.com/dashboard/project/fuhkvjyfwkggjaqxfsgv/auth/users`:
 
@@ -47,8 +51,11 @@ establecido y que no existía previamente.
   correos privados, tokens ni contraseñas.
 - Asignar `teacher` solo al perfil QA autorizado después de verificar el ID.
 - Mantener el perfil QA de alumno como `student`.
-- Aislar los materiales y relaciones de la cuenta QA de alumno mediante un
-  aula o recursos de prueba autorizados, sin tocar matrículas de menores.
+- No crear un aula nueva en la base de datos productiva mientras no exista una
+  forma segura de ocultarla del panel docente. Una clase QA activa y visible
+  incrementaría el contador de clases reales. La batería de clase/materia se
+  activa solo con `TRIBECA_AUDIT_CLASS_FIXTURE=1` cuando exista un entorno
+  de pruebas aislado o una autorización específica de aula QA visible.
 - Comprobar inicio de sesión de ambas cuentas y que se muestran sus roles.
 - No utilizar las credenciales de la profesora real ni del alumnado.
 
@@ -95,7 +102,9 @@ en una rama de auditoría.
 - HTTP y estructura de portada; versión de interfaz.
 - Hojas de estilo; formulario de acceso.
 - Navegación por teclado y desbordamiento horizontal en escritorio y teléfono.
-- Alumno: acceso, clase, materia, desplegable de publicación; sin marcar como realizado.
+- Alumno: acceso, navegación y verificación de que **no tiene rol docente**.
+- Aula, materia y desplegable: prueba separada **desactivada por defecto** hasta
+  disponer de una clase QA aislada sin utilizar datos de alumnos reales.
 - Profesora: acceso, herramientas y clases; sin gestionar pagos ni perfiles.
 - Emulación de Chrome escritorio, Chrome móvil y WebKit iPad para perfiles.
 - Sin vídeo, capturas, trazas, HAR, informes HTML ni estados de autenticación.
@@ -121,8 +130,9 @@ fuera del repositorio y ejecuta `npm run test:audit:roles`.
   pruebas físicas de PWA, iPhone, iPad, Android ni accesibilidad con tecnología asistiva.
 - El `service worker` está desactivado únicamente para pruebas de diseño deterministas.
   Su instalación y modo sin conexión requieren una batería específica y aislada.
-- No hay cuenta de prueba configurada todavía: los tests de perfiles no pueden ejecutarse
-  de forma significativa hasta que existan los cuatro secretos.
+- Las cuentas QA de Supabase Auth **ya existen**, pero los tests autenticados
+  no podrán ejecutarse en GitHub Actions hasta que se creen los cuatro secretos
+  del repositorio y se apruebe la fusión del flujo a `main`.
 - La ejecución CI instala la dependencia directa Playwright con versión fijada;
   el archivo de bloqueo del árbol de dependencias está pendiente de generarse
   y validarse desde un entorno con acceso al registro de npm.
