@@ -55,7 +55,7 @@ test('El visor independiente comparte el puente de progreso con el aula', async 
     readFile(new URL('../tribeca-package-viewer.html', import.meta.url), 'utf8'),
     readFile(new URL('../service-worker.js', import.meta.url), 'utf8'),
   ]);
-  const expectedBridge = index.match(/resource-progress\\.js\\?v=\\d+/)?.[0];
+  const expectedBridge = index.match(/resource-progress\.js\?v=\d+/)?.[0];
   expect(expectedBridge, 'La portada debe fijar una versión del módulo de progreso').toBeTruthy();
   expect(viewer, 'El visor no debe reutilizar una versión incompatible').toContain(expectedBridge);
   expect(worker, 'La PWA debe almacenar el HTML del visor corregido').toContain("'./tribeca-package-viewer.html'");
