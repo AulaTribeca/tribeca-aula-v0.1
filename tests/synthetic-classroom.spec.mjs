@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import {
   QA_IDS, QA_CLASS_NAME, QA_SUBJECT_NAME, installAnonymousSyntheticStudent
 } from './fixtures/browser-classroom.mjs';
@@ -7,6 +8,13 @@ import {
 test('Aula ficticia: navegación de clase, materia, unidad y publicación', async ({ page }) => {
   // Una defensa adicional: las peticiones PostgREST no salen al exterior.
   await page.route(/\/rest\/v1\//, route => route.abort());
+  // Vista previa exclusiva de CI: sirve la versión propuesta del puente
+  // desde el checkout de la rama, nunca cambia GitHub Pages ni Supabase.
+  const fixedProgress = await readFile(new URL('../resource-progress.js', import.meta.url), 'utf8');
+  await page.route('**/resource-progress.js*', route => route.fulfill({
+    status: 200, contentType: 'application/javascript; charset=utf-8',
+    body: fixedProgress,
+  }));
   await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });
 
