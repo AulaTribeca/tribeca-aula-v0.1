@@ -81,3 +81,27 @@
   and stored data unless explicit permission is obtained.
 - Before shipping, list every changed URL, anchor, nav label, form field name and
   brand token. Treat any unapproved change as a release blocker.
+
+## Screenshot audit: teacher dashboard v255
+
+Source: authenticated teacher screenshots from 19 Oct 2026.
+
+- Teacher greeting appears at the top of the welcome panel, never vertically centered
+  beside a tall list of events.
+- Weekly events use compact, readable day groups; never hide a dated event.
+- Teacher actions form a four-column desktop / three-column compact desktop /
+  two-column tablet / one-column narrow phone grid with clear keyboard focus.
+- Distinguish classes by their stored `--class-primary` and `--class-soft` values.
+  For dashboard cards, use a pale tinted surface and a high-contrast dark heading
+  rather than dark text on a saturated, dark classroom gradient.
+- Preserve classroom colors in storage, and retain all class metadata and links.
+- Empty videoconference panels remain short and expose the existing action.
+- Base body content and footer descriptions remain legible at 100% zoom.
+- Teacher language consistency is a continuing translation task: do not override
+  a manually chosen language just to change the navigation text.
+- Student class counters and basic headings follow the saved UI locale;
+  educational titles, school names and uploaded resources are not auto-translated.
+- Visual modifications live in `tribeca-teacher-refinement-v255.css`; the teacher
+  rules do not apply to dark, seasonal or focus-mode themes.
+- End-to-end browser verification remains mandatory before a full sign-off,
+  including a classroom card click, its assigned subjects and resource loading.
