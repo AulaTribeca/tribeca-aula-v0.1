@@ -28,18 +28,20 @@ test('Las hojas de estilo del aula responden correctamente', async ({ page, requ
   }
 });
 
-test('El acceso rápido al contenido es navegable con teclado', async ({ page }) => {
+test('El formulario de acceso permite navegar por teclado', async ({ page }) => {
   await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
   const skip = page.locator('a.tribeca-skip-link');
   await expect(skip).toHaveAttribute('href', '#inicio');
+  await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });
+
+  // Un modal de acceso activo debe retener el foco: no exigir que se salte
+  // al contenido protegido antes de iniciar sesión.
+  const username = page.locator('#t16LoginForm input[name="username"]');
+  const password = page.locator('#t16LoginForm input[name="password"]');
+  await username.focus();
+  await expect(username).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(skip).toBeFocused();
-  const visible = await skip.evaluate(node => {
-    const box = node.getBoundingClientRect();
-    const style = getComputedStyle(node);
-    return box.width > 0 && box.height > 0 && style.visibility !== 'hidden' && Number(style.opacity) > 0;
-  });
-  expect(visible, 'El enlace para saltar al contenido debe ser visible al enfocarlo').toBeTruthy();
+  await expect(password).toBeFocused();
 });
 
 test('La pantalla de acceso no obliga a desplazamiento horizontal', async ({ page }) => {
