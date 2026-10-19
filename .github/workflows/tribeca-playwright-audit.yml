@@ -24,7 +24,7 @@ permissions:
 
 concurrency:
   group: tribeca-playwright-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   public-smoke:
