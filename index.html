@@ -21,12 +21,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <link rel="stylesheet" href="styles.css?v=234" />
   <link rel="stylesheet" href="profile-ui.css?v=229" />
+  <link rel="stylesheet" href="tribeca-ui-preserve-v253.css" />
 </head>
-<body class="font-default">
+<body class="font-default tribeca-preserve-v253">
+  <a class="tribeca-skip-link" href="#inicio">Saltar al contenido principal</a>
   <header class="app-header" id="appHeader">
     <div class="header-inner">
       <a class="brand" href="#inicio" aria-label="Tribeca Aula">
-        <img src="assets/logo-tribeca.png" alt="Logotipo de Tribeca Aula" class="brand-logo" />
+        <img src="assets/logo-tribeca.png" alt="Logotipo de Tribeca Aula" class="brand-logo" width="44" height="44" decoding="async" />
         <span class="brand-copy">
           <strong>Tribeca Aula</strong>
           <small data-i18n="schoolYear">Curso 2026-2027</small>
@@ -75,10 +77,10 @@
     </div>
   </header>
 
-  <main class="page-shell" id="inicio">
+  <main class="page-shell" id="inicio" tabindex="-1">
     <section class="hero-card panel app-loading-panel">
       <div class="hero-main"><p class="eyebrow">Tribeca Aula</p><h1>Cargando aula virtual…</h1><p class="muted">Si esta pantalla no cambia en unos segundos, recarga la página con Ctrl + F5.</p></div>
-      <div class="hero-quote-block"><blockquote>“La educación es el arma más poderosa que puedes usar para cambiar el mundo.”<cite>Nelson Mandela</cite></blockquote><img class="hero-watermark" src="assets/watermark-tribeca.png" alt="" aria-hidden="true" /></div>
+      <div class="hero-quote-block"><blockquote>“La educación es el arma más poderosa que puedes usar para cambiar el mundo.”<cite>Nelson Mandela</cite></blockquote><img class="hero-watermark" src="assets/watermark-tribeca.png" alt="" aria-hidden="true" decoding="async" /></div>
     </section>
   </main>
 
@@ -99,7 +101,8 @@
   <script src="seeded-auth-bootstrap.js?v=226"></script>
   <script src="app.js?v=216"></script>
   <script src="resource-progress.js?v=235"></script>
-  <script src="supabase-auth.js?v=252"></script>
+  <script src="supabase-auth.js?v=253"></script>
   <script src="profile-ui.js?v=229"></script>
+  <script src="tribeca-ui-accessibility-v253.js"></script>
 </body>
 </html>
