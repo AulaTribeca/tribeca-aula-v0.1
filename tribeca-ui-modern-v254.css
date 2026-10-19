@@ -1,0 +1,207 @@
+/* Tribeca Aula v254 · modernización visual reconocible sobre base v253.
+   Identidad, funcionalidad, tema oscuro, temas estacionales y foco se preservan.
+   No modifica disposición estructural, rutas ni estado de datos. */
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) {
+  --tribeca-modern-ink: #1d3128;
+  --tribeca-modern-line: rgba(16,63,36,.14);
+  --tribeca-modern-soft: #f5f6f1;
+  --tribeca-modern-paper: #fffdfa;
+  --tribeca-modern-shadow: 0 12px 32px rgba(27,49,35,.065);
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .teacher-welcome-panel, .hero-welcome-card, .teacher-quick-classes, .student-class-detail-head-v232
+) {
+  border: 1px solid var(--tribeca-modern-line) !important;
+  box-shadow: var(--tribeca-modern-shadow) !important;
+  background: linear-gradient(115deg, #fffefa 0%, #f6f8f2 74%, #f1f5ee 100%) !important;
+  border-radius: 18px !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .hero-welcome-card, .student-class-detail-head-v232
+) {
+  position: relative;
+  border-left: 5px solid #103f24 !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .hero-welcome-card {
+  padding: clamp(18px,2.9vw,32px) !important;
+  min-height: 0 !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .hero-welcome-card .hero-main, .teacher-welcome-copy
+) {
+  min-width: 0;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .hero-welcome-card h1, .teacher-welcome-copy h2, .student-class-detail-head-v232 h1
+) {
+  color: var(--tribeca-modern-ink) !important;
+  letter-spacing: -.025em !important;
+  line-height: 1.12 !important;
+  text-wrap: balance;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .hero-welcome-card h1 {
+  font-size: clamp(24px, 2.9vw, 35px) !important;
+  margin-bottom: .58em !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .hero-welcome-card .eyebrow, .teacher-welcome-copy .eyebrow
+) {
+  color: #5b684f !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: .075em !important;
+  text-transform: uppercase;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .hero-welcome-card .hero-main p:not(.eyebrow) {
+  color: #4d5d50;
+  line-height: 1.5;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .section-heading, .teacher-heading-premium, .teacher-local-heading
+) {
+  min-width: 0;
+  gap: 12px;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .section-heading h2, .teacher-heading-premium h2, .teacher-local-heading h2
+) {
+  font-size: clamp(19px,2.1vw,26px) !important;
+  color: var(--tribeca-modern-ink) !important;
+  line-height: 1.18 !important;
+  letter-spacing: -.018em !important;
+  text-wrap: balance;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-classroom-grid-v232 {
+  gap: clamp(12px,1.5vw,20px) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-classroom-card-v232 {
+  border: 1px solid var(--tribeca-modern-line) !important;
+  border-left: 4px solid #103f24 !important;
+  background: var(--tribeca-modern-paper) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 5px 18px rgba(20,51,29,.055) !important;
+  padding: clamp(16px,1.9vw,24px) !important;
+  min-height: 115px !important;
+  transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-classroom-card-v232:is(:hover,:focus-visible) {
+  border-color: rgba(16,63,36,.35) !important;
+  border-left-color: var(--gold) !important;
+  box-shadow: 0 10px 28px rgba(20,51,29,.11) !important;
+  transform: translateY(-1px) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-class-card-main-v232 h3 {
+  color: #183a28 !important;
+  font-size: clamp(17px,1.7vw,22px) !important;
+  font-weight: 850;
+  line-height: 1.26 !important;
+  letter-spacing: -.01em;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-class-card-main-v232 .eyebrow {
+  color: #7a6d4c !important;
+  font-size: 10px !important;
+  letter-spacing: .065em;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-class-card-meta-v232 span {
+  border: 1px solid rgba(16,63,36,.085) !important;
+  background: #f0f4ee !important;
+  color: #395540 !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  padding: 7px 10px !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-class-card-meta-v232 b {
+  color: #20523a !important;
+  font-size: 19px !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .class-subject-card, .teacher-dashboard .t16-tool-card
+) {
+  border: 1px solid var(--tribeca-modern-line) !important;
+  background: var(--tribeca-modern-paper) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 16px rgba(16,63,36,.048) !important;
+  transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+  .class-subject-card, .teacher-dashboard .t16-tool-card
+):is(:hover,:focus-visible) {
+  border-color: rgba(16,63,36,.3) !important;
+  box-shadow: 0 10px 26px rgba(16,63,36,.09) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .class-subject-card h3 {
+  color: var(--tribeca-modern-ink);
+  font-size: clamp(17px,1.55vw,22px) !important;
+  line-height: 1.22 !important;
+  letter-spacing: -.014em;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .teacher-dashboard .t16-teacher-tools {
+  gap: clamp(11px,1.3vw,17px) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .teacher-dashboard .t16-tool-card {
+  min-height: 96px !important;
+  padding: clamp(15px,1.5vw,20px) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .teacher-dashboard .t16-tool-card h3 {
+  color: var(--tribeca-modern-ink) !important;
+  font-size: clamp(15px,1.35vw,18px) !important;
+  letter-spacing: -.012em;
+  line-height: 1.2 !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .teacher-dashboard .t16-tool-card p {
+  color: #56665b !important;
+  font-size: 13px !important;
+  line-height: 1.48 !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .teacher-welcome-panel {
+  padding: clamp(16px,2vw,26px) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(.teacher-week-day,.teacher-tasks-summary) {
+  border-color: rgba(16,63,36,.12) !important;
+  border-radius: 12px !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .teacher-welcome-copy h2 {
+  font-size: clamp(23px,2.45vw,31px) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .material-collapse-card:not([open]) {
+  border: 1px solid rgba(16,63,36,.14) !important;
+  border-radius: 13px !important;
+  background: var(--tribeca-modern-paper) !important;
+  box-shadow: 0 3px 12px rgba(16,63,36,.04) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .material-collapse-card[open] {
+  border: 1px solid rgba(16,63,36,.2) !important;
+  border-radius: 13px !important;
+  background: var(--tribeca-modern-paper) !important;
+  box-shadow: 0 5px 18px rgba(16,63,36,.06) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .material-collapse-card > summary.material-collapse-summary {
+  border-radius: 13px !important;
+  padding: clamp(13px,1.5vw,20px) !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .material-collapse-card[open] > summary.material-collapse-summary {
+  background: #f2f6f0 !important;
+  border-bottom: 1px solid rgba(16,63,36,.1);
+  border-radius: 13px 13px 0 0 !important;
+}
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .material-summary-main .material-title-prominent {
+  line-height: 1.23 !important;
+  letter-spacing: -.012em;
+}
+@media (max-width: 680px) {
+  body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .student-classroom-card-v232 {
+    min-height: 0 !important;
+    padding: 17px !important;
+  }
+  body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) .teacher-dashboard .t16-tool-card {
+    min-height: 0 !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(
+    .student-classroom-card-v232,.class-subject-card,.teacher-dashboard .t16-tool-card
+  ) {
+    transition-duration: .01ms !important;
+    transform: none !important;
+  }
+}
