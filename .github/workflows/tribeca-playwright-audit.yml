@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'audit/playwright-readonly-*'
+      - 'design/tribeca-visual-system-*'
       - main
   workflow_dispatch:
     inputs:
@@ -23,7 +24,7 @@ permissions:
 
 concurrency:
   group: tribeca-playwright-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   public-smoke:
@@ -51,6 +52,11 @@ jobs:
         env:
           CI: 'true'
         run: npx playwright test tests/public-smoke.spec.mjs --project=desktop-chromium --project=mobile-chromium
+      - name: Diseño sintético responsive y accesible (solo rama visual)
+        if: startsWith(github.ref, 'refs/heads/design/tribeca-visual-system-')
+        env:
+          CI: 'true'
+        run: npx playwright test tests/visual-system.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
       - name: Esperar recurso publicado v256 (solo main)
         if: github.ref == 'refs/heads/main'
         run: |
