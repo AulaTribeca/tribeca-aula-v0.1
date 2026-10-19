@@ -51,11 +51,10 @@ establecido y que no existía previamente.
   correos privados, tokens ni contraseñas.
 - Asignar `teacher` solo al perfil QA autorizado después de verificar el ID.
 - Mantener el perfil QA de alumno como `student`.
-- No crear un aula nueva en la base de datos productiva mientras no exista una
-  forma segura de ocultarla del panel docente. Una clase QA activa y visible
-  incrementaría el contador de clases reales. La batería de clase/materia se
-  activa solo con `TRIBECA_AUDIT_CLASS_FIXTURE=1` cuando exista un entorno
-  de pruebas aislado o una autorización específica de aula QA visible.
+- La clase, materia, unidad y recursos QA se inyectan **solo en la memoria del
+  navegador** mediante `tests/fixtures/browser-classroom.mjs`. No existen en
+  Supabase ni aparecen en el panel docente real. Para las pruebas públicas se
+  simula el perfil del alumno sin iniciar sesión ni obtener ningún token.
 - Comprobar inicio de sesión de ambas cuentas y que se muestran sus roles.
 - No utilizar las credenciales de la profesora real ni del alumnado.
 
@@ -81,8 +80,11 @@ No compartas los valores de las contraseñas por esta conversación.
 
 ## Ejecución
 
-La rama de auditoría prueba automáticamente la carga pública con cada cambio en sus
-archivos, sin usar secretos. Requiere que las Actions estén habilitadas.
+Las ramas de auditoría ejecutan las pruebas públicas y las clases ficticias
+con cada cambio. En `main`, tras cada actualización, las pruebas públicas se
+repiten **sin secretos** y la prueba sintética espera que GitHub Pages haya
+propagado `resource-progress.js?v=256` antes de comprobar el visor. Requiere
+que GitHub Actions esté habilitado.
 
 El botón **Run workflow** de `workflow_dispatch` en GitHub normalmente solo estará
 disponible una vez que el flujo se haya incorporado explícitamente a `main`.
@@ -103,8 +105,9 @@ en una rama de auditoría.
 - Hojas de estilo; formulario de acceso.
 - Navegación por teclado y desbordamiento horizontal en escritorio y teléfono.
 - Alumno: acceso, navegación y verificación de que **no tiene rol docente**.
-- Aula, materia y desplegable: prueba separada **desactivada por defecto** hasta
-  disponer de una clase QA aislada sin utilizar datos de alumnos reales.
+- Aula, materia, unidad, publicaciones y un HTML embebido: comprobación en un
+  estado de navegador completamente ficticio. Las cuentas QA autenticadas se emplean **solo para comprobar acceso y rol**.
+  Nunca se inyectan recursos en sus sesiones ni se prueba el guardado de progreso.
 - Profesora: acceso, herramientas y clases; sin gestionar pagos ni perfiles.
 - Emulación de Chrome escritorio, Chrome móvil y WebKit iPad para perfiles.
 - Sin vídeo, capturas, trazas, HAR, informes HTML ni estados de autenticación.
@@ -126,6 +129,10 @@ fuera del repositorio y ejecuta `npm run test:audit:roles`.
 
 ## Limitaciones de esta versión
 
+- La vista previa del arreglo de `resource-progress.js` solo se activa con
+  `TRIBECA_AUDIT_PREVIEW_FIX=1` en la rama de pruebas. Una ejecución en `main`
+  usará el archivo real publicado, sin interceptarlo. Consulta
+  `AUDITORIA_AULA_AISLADA.md` para el origen y los resultados del defecto.
 - Playwright puede comprobar pantallas en motores de navegador simulados, no sustituye
   pruebas físicas de PWA, iPhone, iPad, Android ni accesibilidad con tecnología asistiva.
 - El `service worker` está desactivado únicamente para pruebas de diseño deterministas.

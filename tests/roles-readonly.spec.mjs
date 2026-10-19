@@ -43,22 +43,7 @@ test.describe('Cuenta QA alumno: acceso sin escrituras', () => {
     expect(await noHorizontalOverflow(page), 'Desbordamiento horizontal en alumno QA').toBeTruthy();
   });
 
-  test('Clases y publicación de QA, si existe una clase de ensayo aislada', async ({ page }) => {
-    test.skip(process.env.TRIBECA_AUDIT_CLASS_FIXTURE !== '1',
-      'Pendiente: el aula QA aislada no existe en producción. Nunca utilizar clases de menores para suplirla.');
-    await logIn(page, 'student');
-    const classes = page.locator('.student-classroom-card-v232[data-student-class-id]');
-    await expect(classes.first()).toBeVisible();
-    await classes.first().click();
-    const subjects = page.locator('.student-class-detail-v232 .class-subject-card');
-    await expect(subjects.first()).toBeVisible();
-    await subjects.first().click();
-    const publications = page.locator('details.material-collapse-card');
-    await expect(publications.first()).toBeVisible();
-    await publications.first().locator('summary').click();
-    await expect(publications.first()).toHaveAttribute('open', '');
-    // Nunca marcar materiales como completados ni enviar calificaciones.
-  });
+
 });
 
 test.describe('Cuenta QA profesora: acceso sin escrituras', () => {
