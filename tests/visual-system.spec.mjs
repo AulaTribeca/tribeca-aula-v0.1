@@ -53,6 +53,9 @@ async function initPreview(page, role) {
   await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });
   await page.evaluate(({ role, html }) => {
     document.body.classList.toggle('is-teacher', role === 'teacher');
+    // Anula solo el bloqueo visual local, sin crear sesión ni consultar la API.
+    document.querySelector('#tribecaAuthOverlay')?.remove();
+    document.body.classList.remove('auth-locked');
     // Contenido de demostración inyectado solo en el navegador de CI.
     document.querySelector('main#inicio').innerHTML = html;
   }, { role, html: role === 'teacher' ? teacherFixture : studentFixture });
