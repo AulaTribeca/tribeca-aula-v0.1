@@ -23,7 +23,7 @@ permissions:
 
 concurrency:
   group: tribeca-playwright-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   public-smoke:
@@ -50,7 +50,7 @@ jobs:
       - name: Pruebas públicas
         env:
           CI: 'true'
-        run: npx playwright test tests/public-smoke.spec.mjs --project=desktop-chromium --project=mobile-chromium
+        run: npx playwright test tests/public-smoke.spec.mjs tests/asset-integrity.spec.mjs --project=desktop-chromium --project=mobile-chromium
       - name: Esperar recurso publicado v256 (solo main)
         if: github.ref == 'refs/heads/main'
         run: |
@@ -77,7 +77,7 @@ jobs:
         env:
           CI: 'true'
           TRIBECA_AUDIT_PREVIEW_FIX: ${{ startsWith(github.ref, 'refs/heads/audit/playwright-readonly-') && '1' || '0' }}
-        run: npx playwright test tests/synthetic-classroom.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
+        run: npx playwright test tests/synthetic-classroom.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=mobile-webkit --project=tablet-webkit
 
   roles-readonly:
     name: Perfiles de prueba (sin operaciones de escritura)
@@ -109,4 +109,4 @@ jobs:
       - name: Motores de navegador
         run: npx playwright install --with-deps chromium webkit
       - name: Verificar perfiles de prueba
-        run: npx playwright test tests/roles-readonly.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
+        run: npx playwright test tests/roles-readonly.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=mobile-webkit --project=tablet-webkit
