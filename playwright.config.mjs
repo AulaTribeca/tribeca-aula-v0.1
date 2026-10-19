@@ -13,7 +13,7 @@ export default defineConfig({
   workers: 1,
   timeout: 90_000,
   expect: { timeout: 20_000 },
-  reporter: 'dot',
+  reporter: [['./tests/reporter-safe.mjs']],
   use: {
     baseURL,
     headless: true,
