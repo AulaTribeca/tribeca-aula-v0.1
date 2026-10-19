@@ -71,9 +71,38 @@ export async function installQaBrowserFixture(page) {
       // La sustitución ocurre únicamente en el estado JS del navegador QA.
       state.data[field] = [...original, ...rows];
     }
-    const home = document.querySelector('.main-nav [data-route="home"]');
-    if (!home) throw new Error('La interfaz no expone navegación a la portada.');
-    home.click();
+    if (typeof window.openTool !== 'function') {
+      throw new Error('La aplicación no dispone de navegación interactiva.');
+    }
+    // Vuelve a renderizar con el estado de ensayo, sin recargar ni guardar.
+    window.openTool('home');
     return { installed: true, fixtureRecords: 6, userRole: state.profile.role };
   }, { ids: QA_IDS, className: QA_CLASS_NAME, subjectName: QA_SUBJECT_NAME });
+}
+
+/** Inicio artificial del panel sin autenticación y sin consultar datos privados.
+ *  Únicamente se usa en CI público para probar la interfaz. Nunca persiste.
+ */
+export async function installAnonymousSyntheticStudent(page) {
+  const ready = await page.evaluate(() => {
+    const state = window.TribecaAuth;
+    if (!state || state.profile || state.user) {
+      throw new Error('El escenario anónimo requiere una sesión sin autenticar.');
+    }
+    const syntheticId = '95000000-0000-4000-8000-000000000007';
+    state.user = { id: syntheticId };
+    state.profile = {
+      id: syntheticId, username: 'tribeca_qa_alumno',
+      role: 'student', full_name: 'Alumno ficticio de pruebas',
+      preferred_name: 'QA', avatar_icon: 'Q', active: true, archived: false,
+      center: 'Centro ficticio QA', stage: 'ESO', course: '1.º ESO',
+      focus_mode_enabled: false, ui_preferences: {}
+    };
+    const overlay = document.querySelector('#tribecaAuthOverlay');
+    if (overlay) overlay.hidden = true;
+    document.body.classList.remove('auth-locked');
+    return true;
+  });
+  if (!ready) throw new Error('No se pudo iniciar el contexto anónimo de pruebas.');
+  return installQaBrowserFixture(page);
 }
