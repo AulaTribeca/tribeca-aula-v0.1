@@ -20,7 +20,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="resource-progress.js?v=235"></script>
+  <script src="resource-progress.js?v=256"></script>
 </head>
 <body>
   <main class="loader" id="loader"><span>Cargando recurso…</span></main>
@@ -39,7 +39,8 @@
   function validSource(u){
     var x=resolved(u); if(!x) return false;
     var own=x.origin===location.origin && /\.html?(?:[?#].*)?$/i.test(x.pathname+x.search);
-    var bucket=/\/storage\/v1\/object\/public\/tribeca-public-assets\//i.test(x.href) && /\.html?(?:[?#].*)?$/i.test(x.href);
+    var trustedStorage=resolved((window.TRIBECA_SUPABASE||{}).url||'');
+    var bucket=!!trustedStorage && x.origin===trustedStorage.origin && /\/storage\/v1\/object\/public\/tribeca-public-assets\//i.test(x.pathname) && /\.html?$/i.test(x.pathname);
     return own || bucket;
   }
   function dirOf(u){
