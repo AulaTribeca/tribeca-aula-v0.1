@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v255 · visual docente y copy consistente */
-const TRIBECA_CACHE = 'tribeca-aula-static-v256';
+/* Tribeca Aula · Service worker v257 · visor HTML alineado con puente v256 */
+const TRIBECA_CACHE = 'tribeca-aula-static-v257';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
