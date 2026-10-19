@@ -75,6 +75,11 @@ body.tribeca-preserve-v253 :is(
   outline: 3px solid var(--gold) !important;
   outline-offset: 3px !important;
 }
+/* Readable desktop inputs; mobile retains 16px to avoid iOS automatic zoom. */
+body.tribeca-preserve-v253 .form-row :is(input, select, textarea):not([type="hidden"]) {
+  font-size: max(14px, 1.48rem);
+  line-height: 1.45;
+}
 body.tribeca-preserve-v253 :is(.form-row, .control-field):focus-within {
   border-radius: var(--radius-sm);
 }
