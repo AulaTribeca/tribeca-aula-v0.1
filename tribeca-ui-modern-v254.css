@@ -205,3 +205,11 @@ body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.i
     transform: none !important;
   }
 }
+
+/* El estado de la publicación es texto real en DOM, nunca pseudo-texto duplicado. */
+body.tribeca-preserve-v253 details.material-collapse-card[open] .material-expand-hint {
+  font-size: .78rem !important;
+}
+body.tribeca-preserve-v253 details.material-collapse-card[open] .material-expand-hint::before {
+  content: none !important;
+}
