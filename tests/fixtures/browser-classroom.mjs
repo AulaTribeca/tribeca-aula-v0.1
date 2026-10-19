@@ -89,6 +89,9 @@ export async function installAnonymousSyntheticStudent(page) {
     if (!state || state.profile || state.user) {
       throw new Error('El escenario anónimo requiere una sesión sin autenticar.');
     }
+    // Impide por construcción operaciones autenticadas desde el estado sintético.
+    state.client = null;
+    state.session = null;
     const syntheticId = '95000000-0000-4000-8000-000000000007';
     state.user = { id: syntheticId };
     state.profile = {
