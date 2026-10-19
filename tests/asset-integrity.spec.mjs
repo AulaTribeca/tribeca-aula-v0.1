@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 
 // Exclusivamente recursos públicos; no se inicia sesión, no se guardan datos ni
@@ -46,4 +47,17 @@ test('La precaché y el documento publican el mismo puente de recursos', async (
   expect(bridgeResponse.ok()).toBeTruthy();
   const bridge = await bridgeResponse.text();
   expect(bridge).toContain("+'</script>'");
+});
+
+test('El visor independiente comparte el puente de progreso con el aula', async () => {
+  const [index, viewer, worker] = await Promise.all([
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../tribeca-package-viewer.html', import.meta.url), 'utf8'),
+    readFile(new URL('../service-worker.js', import.meta.url), 'utf8'),
+  ]);
+  const expectedBridge = index.match(/resource-progress\\.js\\?v=\\d+/)?.[0];
+  expect(expectedBridge, 'La portada debe fijar una versión del módulo de progreso').toBeTruthy();
+  expect(viewer, 'El visor no debe reutilizar una versión incompatible').toContain(expectedBridge);
+  expect(worker, 'La PWA debe almacenar el HTML del visor corregido').toContain("'./tribeca-package-viewer.html'");
+  expect(viewer, 'El visor solo debe aceptar el origen Supabase configurado').toContain('x.origin===trustedStorage.origin');
 });
