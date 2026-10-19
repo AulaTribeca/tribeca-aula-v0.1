@@ -1,5 +1,18 @@
 import { test, expect } from '@playwright/test';
 
+test('El acceso conserva texto legible y controles táctiles', async ({ page }) => {
+  await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });
+  const metrics = await page.locator('#t16LoginForm').evaluate(form => ({
+    text: [...form.querySelectorAll('p, label, button')].map(el => parseFloat(getComputedStyle(el).fontSize)),
+    inputs: [...form.querySelectorAll('input')].map(el => parseFloat(getComputedStyle(el).fontSize)),
+    targets: [...form.querySelectorAll('input, button')].map(el => el.getBoundingClientRect().height),
+  }));
+  expect(Math.min(...metrics.text)).toBeGreaterThanOrEqual(14);
+  expect(Math.min(...metrics.inputs)).toBeGreaterThanOrEqual(16);
+  expect(Math.min(...metrics.targets)).toBeGreaterThanOrEqual(44);
+});
+
 // No personal data is printed, saved, or downloaded by these tests.
 test('La portada se sirve y muestra el acceso a Tribeca Aula', async ({ page }) => {
   const response = await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
