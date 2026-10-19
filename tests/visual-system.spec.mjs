@@ -115,13 +115,18 @@ test('Las clases del alumno y las publicaciones son legibles y tienen objetivos 
   expect(metrics.rootScrollWidth).toBeLessThanOrEqual(metrics.rootWidth+3);
 });
 
-test('La propuesta visual no sustituye los temas alternativos ni los estados de foco', async ({page}) => {
+test('La capa visual se retira en los modos concentración y oscuro', async ({page}) => {
   await initPreview(page,'teacher');
-  const light = await page.locator('.t16-tool-card').first().evaluate(el => getComputedStyle(el).backgroundColor);
+  const token = () => page.evaluate(() =>
+    getComputedStyle(document.body).getPropertyValue('--t257-paper').trim());
+  await expect.poll(token).toBe('#fffdfa');
   await page.evaluate(() => document.body.classList.add('is-focus-mode'));
-  const focus = await page.locator('.t16-tool-card').first().evaluate(el => getComputedStyle(el).backgroundColor);
-  // La regla v257 de tema claro no debe pintar encima del modo de concentración.
-  expect(focus).not.toBe(light);
+  await expect.poll(token).toBe('');
+  await page.evaluate(() => {
+    document.body.classList.remove('is-focus-mode');
+    document.body.classList.add('is-dark');
+  });
+  await expect.poll(token).toBe('');
 });
 
 test('Enter y Espacio activan tarjetas no nativas una sola vez', async ({ page }) => {
