@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'audit/playwright-readonly-*'
+      - main
   workflow_dispatch:
     inputs:
       alcance:
@@ -50,6 +51,28 @@ jobs:
         env:
           CI: 'true'
         run: npx playwright test tests/public-smoke.spec.mjs --project=desktop-chromium --project=mobile-chromium
+      - name: Esperar recurso publicado v256 (solo main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          node --input-type=module <<'NODE'
+          const root = 'https://aulatribeca.github.io/tribeca-aula-v0.1/';
+          async function deployed() {
+            const nonce = String(Date.now());
+            const [index, bridge] = await Promise.all([
+              fetch(root + '?audit=' + nonce, { cache: 'no-store' }).then(r => { if (!r.ok) throw Error('index unavailable'); return r.text(); }),
+              fetch(root + 'resource-progress.js?v=256&ci=' + nonce, { cache: 'no-store' }).then(r => { if (!r.ok) throw Error('bridge unavailable'); return r.text(); })
+            ]);
+            return index.includes('resource-progress.js?v=256') &&
+              bridge.includes("+'</script>'");
+          }
+          let ready = false;
+          for (let attempt = 1; attempt <= 36; attempt++) {
+            try { ready = await deployed(); } catch (_) { ready = false; }
+            if (ready) { console.log('Versión v256 publicada y lista para pruebas de navegador.'); break; }
+            if (attempt < 36) await new Promise(resolve => setTimeout(resolve, 10000));
+          }
+          if (!ready) { console.log('No se ha propagado la versión v256 en GitHub Pages.'); process.exit(1); }
+          NODE
       - name: Aula sintética sin acceso a la base de datos
         env:
           CI: 'true'
