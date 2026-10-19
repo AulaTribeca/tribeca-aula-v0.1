@@ -253,7 +253,7 @@ body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.i
   background: #e9efe6 !important;
 }
 /* Focus visible, no animacion permanente ni dependencia del hover. */
-body.tribeca-preserve-v253 :is(.teacher-quick-class-card,.t16-tool-card,.class-subject-card,.student-classroom-card-v232,summary.material-collapse-summary):focus-visible {
+body.tribeca-preserve-v253:not(.is-dark):not(.dark-mode):not(.theme-dark):not(.is-summer-mode):not(.is-focus-mode) :is(.teacher-quick-class-card,.t16-tool-card,.class-subject-card,.student-classroom-card-v232,summary.material-collapse-summary):focus-visible {
   outline: 3px solid #a8872d !important;
   outline-offset: 3px !important;
 }
