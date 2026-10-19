@@ -1,17 +1,19 @@
-/* Tribeca Aula · Service worker v248 · PWA multiplataforma, caché de app shell, push y badge */
-const TRIBECA_CACHE = 'tribeca-aula-static-v248';
+/* Tribeca Aula · Service worker v253 · caché coherente y actualizaciones sin interrumpir sesiones */
+const TRIBECA_CACHE = 'tribeca-aula-static-v253';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
   './index.html',
   './styles.css?v=234',
   './profile-ui.css?v=229',
+  './tribeca-ui-preserve-v253.css',
   './app.js?v=216',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=235',
-  './supabase-auth.js?v=248',
+  './supabase-auth.js?v=253',
   './profile-ui.js?v=229',
+  './tribeca-ui-accessibility-v253.js',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
   './assets/tribeca-pwa-icon-512.png',
@@ -43,11 +45,9 @@ self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(keys.filter(key => key.startsWith('tribeca-aula-static-') && key !== TRIBECA_CACHE).map(key => caches.delete(key)));
+    // A pending exercise or unsaved teacher form must not be interrupted by an update.
+    // New assets load on the next ordinary navigation or reload.
     await self.clients.claim();
-    const clients = await self.clients.matchAll({type:'window', includeUncontrolled:true});
-    await Promise.allSettled(clients.map(client => {
-      try { return client.navigate(client.url); } catch (_e) { return null; }
-    }));
   })());
 });
 
