@@ -111,7 +111,35 @@
     }).join('')||'<tr><td colspan="4">Sin cobros registrados</td></tr>'}</tbody></table>`;
   }
 
-  window.TribecaSessionPaymentsV258 = {isTracked,sessions,summary,editor,history};
+  function receipt(userId,month) {
+    const stats=summary(userId,month);
+    if(!stats) return '';
+    const profile=(state().data?.students||[]).find(p=>String(p.id)===String(userId))||{};
+    const name=String(profile.full_name||profile.preferred_name||'Alumno/a');
+    const paid=stats.rows.filter(r=>!!r.payment);
+    const lines=paid.map(row => {
+      const a=row.attendance,p=row.payment;
+      return `<tr><td>${escapeHTML(labelDate(a.class_date))}</td>
+        <td>${escapeHTML(String(a.scheduled_start||'').slice(0,5))}–${escapeHTML(String(a.scheduled_end||'').slice(0,5))}</td>
+        <td>${escapeHTML(labelDate(p.paid_date))}</td>
+        <td>${escapeHTML(({cash:'Efectivo',bizum:'Bizum',bank_transfer:'Transferencia',other:'Otra'})[p.payment_method]||'Registrada')}</td>
+        <td>${money(p.paid_amount)}</td></tr>`;
+    }).join('');
+    return `<main class="receipt-slip">
+      <header class="receipt-head"><div class="receipt-brand"><img src="assets/tribeca-academia-logo.webp" alt="Tribeca Academia">
+      <div><strong>Tribeca Academia</strong><span>Recibí interno · no factura</span></div></div></header>
+      <section class="receipt-title"><h1>RECIBÍ DE CLASES ABONADAS</h1>
+      <p>${escapeHTML(month)} · Solo las sesiones efectivamente cobradas</p></section>
+      <p><strong>Alumno/a:</strong> ${escapeHTML(name)}</p>
+      <table class="premium-table compact"><thead><tr><th>Clase</th><th>Horario</th><th>Fecha del pago</th><th>Medio</th><th>Importe</th></tr></thead>
+      <tbody>${lines||'<tr><td colspan="5">No constan pagos de clases.</td></tr>'}</tbody></table>
+      <p><strong>Total recibido: ${money(stats.collected)}</strong></p>
+      ${stats.pendingClasses>0?`<p>Quedan ${stats.pendingClasses} clase(s) pendientes (${money(stats.pending)}). No se incluyen en el importe recibido.</p>`:''}
+      <footer class="receipt-sign"><div><small>Recibido por</small><strong>Tribeca Academia</strong></div></footer>
+    </main>`;
+  }
+
+  window.TribecaSessionPaymentsV258 = {isTracked,sessions,summary,editor,history,receipt};
 
   document.addEventListener('click', async event => {
     const btn=event.target.closest?.('[data-tribeca-mark-session-v258]');
