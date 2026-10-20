@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: node --test scripts/test-service-worker.cjs
+      - run: node --test scripts/test-service-worker.cjs scripts/test-teacher-week.cjs
       - run: node --check service-worker.js
       - run: npx playwright install --with-deps chromium webkit
       - name: Servir el código de la propuesta

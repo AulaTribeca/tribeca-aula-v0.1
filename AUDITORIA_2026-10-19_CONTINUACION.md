@@ -85,3 +85,25 @@ La ejecución E2E local está bloqueada: este entorno no contiene el ejecutable
 de Chromium de Playwright. No contabilizar esos intentos como pruebas pasadas.
 La validación de navegador queda a cargo del workflow de la propuesta.
 Los paneles reales siguen pendientes de sesión autenticada.
+
+## Revisión autenticada del 20/10/2026
+
+Sesión docente confirmada mediante el panel visible tras acceso manual.
+Se verificó apertura de una clase y despliegue de materia y unidad, sin editar
+datos. La apertura del recurso no se da por verificada: la inspección de pestañas
+fue restringida por el navegador después de pulsar Abrir.
+
+Hallazgo: el encabezado indicaba 19–25 de octubre, pero el resumen incluía
+26 y 27. La función filtraba desde hoy hasta hoy + 7 días. Se corrige para usar
+los límites de lunes a domingo que anuncia el encabezado, incluyendo los días
+ya transcurridos de la semana. Los eventos de otras semanas permanecen en el
+calendario; no se modifican registros ni permisos.
+
+Siete pruebas de lógica superadas: lunes, martes, domingo/cambio de hora, cambio
+de mes y año, exclusión de la semana siguiente sin perder eventos del mismo
+día, y semana vacía. Pruebas con datos ficticios y zona Europe/Madrid.
+No equivalen a una validación visual del código propuesto.
+
+Versión de interfaz 256.2; URL de script supabase-auth.js?v=256.2; caché
+tribeca-aula-static-v256-2. Sin cambios de anclas, etiquetas, campos o marca.
+Pendientes: comprobación visual del arreglo, recurso real y perfil de alumno.
