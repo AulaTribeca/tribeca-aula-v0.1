@@ -1,0 +1,26 @@
+/* Cobros por clase v258: legible y compatible con móviles. No toca otras formas de pago. */
+.tribeca-session-finance-v258{display:grid;gap:14px;min-width:0}
+.tribeca-session-finance-v258>header{padding:20px 22px;border-radius:16px}
+.tribeca-session-finance-v258>header h3{margin:4px 0 7px;font-size:clamp(19px,2vw,24px);letter-spacing:-.02em}
+.tribeca-session-finance-v258>header p:not(.eyebrow){margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.tribeca-session-totals-v258{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tribeca-session-totals-v258>div{border:1px solid var(--line);background:var(--panel-solid);border-radius:13px;padding:15px 17px;display:grid;gap:7px}
+.tribeca-session-totals-v258 small{font:600 13px/1.4 Inter,system-ui,sans-serif;color:var(--muted)}
+.tribeca-session-totals-v258 strong{font:800 clamp(19px,2.3vw,27px)/1.17 Inter,system-ui,sans-serif;color:var(--text)}
+.tribeca-session-list-v258{display:grid;gap:10px}
+.tribeca-session-row-v258{display:grid;grid-template-columns:minmax(150px,1fr) auto minmax(220px,1.2fr);align-items:center;gap:12px 18px;border:1px solid var(--line);border-left:4px solid #ad8439;background:var(--panel-solid);border-radius:13px;padding:16px 18px}
+.tribeca-session-row-v258.is-paid{border-left-color:#2f7850}
+.tribeca-session-name-v258{display:grid;gap:4px;min-width:0}
+.tribeca-session-name-v258 strong{font:800 16px/1.3 Inter,system-ui,sans-serif;color:var(--text)}
+.tribeca-session-name-v258 span{font:500 13px/1.45 Inter,system-ui,sans-serif;color:var(--muted)}
+.tribeca-session-amount-v258{font:800 19px/1.3 Inter,system-ui,sans-serif;white-space:nowrap;color:var(--text)}
+.tribeca-session-actions-v258{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:9px;min-width:0}
+.tribeca-session-actions-v258 label{display:grid;gap:5px;font:650 12px/1.3 Inter,system-ui,sans-serif;color:var(--muted)}
+.tribeca-session-actions-v258 :is(input,select){min-height:44px;min-width:0;font-size:16px;max-width:160px;background:var(--panel-solid);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px}
+.tribeca-session-actions-v258 .primary-btn{min-height:44px;white-space:normal;line-height:1.3;font-size:13px}
+.tribeca-session-paid-v258{font:700 13px/1.45 Inter,system-ui,sans-serif;color:var(--text);overflow-wrap:anywhere}
+.tribeca-session-note-v258{font:500 13px/1.55 Inter,system-ui,sans-serif;color:var(--muted);margin:0}
+.tribeca-session-row-v258 :is(button,input,select):focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+@media(max-width:1100px){.tribeca-session-row-v258{grid-template-columns:minmax(0,1fr) auto}.tribeca-session-actions-v258{grid-column:1/-1;justify-content:flex-start}}
+@media(max-width:650px){.tribeca-session-totals-v258{grid-template-columns:repeat(2,minmax(0,1fr))}.tribeca-session-totals-v258>div:last-child{grid-column:1/-1}.tribeca-session-row-v258{grid-template-columns:minmax(0,1fr);padding:15px}.tribeca-session-amount-v258{font-size:20px}.tribeca-session-actions-v258{grid-column:1}.tribeca-session-actions-v258 label{flex:1 1 130px}.tribeca-session-actions-v258 :is(input,select){width:100%;max-width:none}.tribeca-session-actions-v258 button{width:100%}}
+@media(prefers-reduced-motion:reduce){.tribeca-session-finance-v258 *{scroll-behavior:auto!important;transition:none!important}}
