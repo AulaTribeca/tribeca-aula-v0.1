@@ -21,6 +21,8 @@ test('Aula ficticia: navegación de clase, materia, unidad y publicación', asyn
   await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });
 
   await installAnonymousSyntheticStudent(page);
+  await expect(page.locator('#appHeader')).not.toHaveAttribute('inert', '');
+  await expect(page.locator('main#inicio')).not.toHaveAttribute('inert', '');
 
   const classroom = page.locator(`.student-classroom-card-v232[data-student-class-id="${QA_IDS.classId}"]`);
   await expect(classroom).toBeVisible();

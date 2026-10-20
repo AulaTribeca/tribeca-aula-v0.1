@@ -70,3 +70,18 @@ URL del script de accesibilidad actualizada: tribeca-ui-accessibility-v253.js?v=
 Pendiente: revisión especializada del panel docente y del alumno, comparación
 con la propuesta v257 y pruebas visuales en móvil y escritorio con estados
 vacíos, poblados y contenido extenso. La calidad visual global no está certificada.
+
+## Continuación 20/10/2026: teclado en el acceso
+
+El bloqueo visual del fondo no lo excluía del teclado. Se aplica `inert` a
+encabezado, contenido, pie y ventanas mientras está activo el acceso, conservando
+el estado previo y restaurándolo al salir. El botón de accesibilidad permanece
+disponible. No cambian rutas, anclas, etiquetas, campos ni tokens de marca.
+
+Se añaden regresiones para el fondo no enfocable, la disponibilidad del botón
+de accesibilidad y la restauración al entrar en el aula ficticia.
+Las 8 pruebas aisladas de desconexión vuelven a pasar; sintaxis y diff correctos.
+La ejecución E2E local está bloqueada: este entorno no contiene el ejecutable
+de Chromium de Playwright. No contabilizar esos intentos como pruebas pasadas.
+La validación de navegador queda a cargo del workflow de la propuesta.
+Los paneles reales siguen pendientes de sesión autenticada.

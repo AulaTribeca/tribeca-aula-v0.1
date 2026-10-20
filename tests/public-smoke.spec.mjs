@@ -81,3 +81,20 @@ test('La pantalla de acceso no obliga a desplazamiento horizontal', async ({ pag
   }));
   expect(metrics.contentWidth, 'Desbordamiento horizontal del documento').toBeLessThanOrEqual(metrics.viewportWidth + 2);
 });
+
+
+test('El fondo del acceso queda fuera del teclado y conserva accesibilidad', async ({ page }) => {
+  await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
+  const login = page.locator('#t16LoginForm');
+  await expect(login).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('#appHeader')).toHaveAttribute('inert', '');
+  await expect(page.locator('main#inicio')).toHaveAttribute('inert', '');
+  const accessibility = page.locator('.tribeca-a11y-button');
+  await expect(accessibility).toBeVisible();
+  expect(await accessibility.evaluate(el => !!el.closest('[inert]'))).toBe(false);
+  await login.locator('input[name="username"]').focus();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('#appHeader, main#inicio, footer, #windowLayer, #windowDock'))).toBe(false);
+  }
+});
