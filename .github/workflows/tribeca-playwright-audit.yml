@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'audit/playwright-readonly-*'
+      - 'fix/sofia-independent-class-payments-*'
       - main
   workflow_dispatch:
     inputs:
@@ -73,6 +74,15 @@ jobs:
           }
           if (!ready) { console.log('No se ha propagado la versión v256 en GitHub Pages.'); process.exit(1); }
           NODE
+      - name: Verificar cobros independientes de clases (alumnado ficticio)
+        if: startsWith(github.ref, 'refs/heads/fix/sofia-independent-class-payments-')
+        env:
+          CI: 'true'
+        run: |
+          node --check supabase-auth.js
+          node --check tribeca-session-payments-v258.js
+          node --check tests/session-payments.spec.mjs
+          npx playwright test tests/session-payments.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
       - name: Aula sintética sin acceso a la base de datos
         env:
           CI: 'true'
