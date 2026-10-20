@@ -37,14 +37,26 @@
       String(a.attendance.scheduled_start).localeCompare(String(b.attendance.scheduled_start)));
   }
 
+  function sessionAmount(attendance={}, hourlyRate=0) {
+    const time = raw => {
+      const parts=String(raw||'').slice(0,5).split(':').map(Number);
+      if(parts.length!==2 || parts.some(x=>!Number.isFinite(x))) return null;
+      return parts[0]*60+parts[1];
+    };
+    const start=time(attendance.scheduled_start),end=time(attendance.scheduled_end);
+    if(start===null||end===null||end<=start) return Number(hourlyRate)||0;
+    return Math.round(Number(hourlyRate||0)*(end-start)/60*100)/100;
+  }
+
   function summary(userId,month) {
     if(!isTracked(userId)) return null;
     const bill = (state().data?.billing || []).find(b => String(b.user_id) === String(userId));
     const rate = Number(bill?.class_rate || 0);
     const rows = sessions(userId,month);
     const collected = rows.reduce((sum,row) => sum + (row.payment ? Number(row.payment.paid_amount||0) : 0),0);
-    const pendingClasses = rows.filter(row => row.pending).length;
-    const pending = Math.round(pendingClasses * rate * 100)/100;
+    const pendingRows=rows.filter(row=>row.pending);
+    const pendingClasses = pendingRows.length;
+    const pending = Math.round(pendingRows.reduce((sum,row)=>sum+sessionAmount(row.attendance,rate),0)*100)/100;
     return {rows,collected,pending,expected:collected+pending,
       pendingClasses,paidClasses:rows.filter(row => !!row.payment).length,rate};
   }
@@ -64,7 +76,7 @@
       return `<article class="tribeca-session-row-v258 ${p?'is-paid':'is-pending'}">
         <div class="tribeca-session-name-v258"><strong>${escapeHTML(heading)}</strong>
           <span>${p?'Clase abonada':'Asistencia confirmada · pendiente de cobro'}</span></div>
-        <strong class="tribeca-session-amount-v258">${money(p?Number(p.paid_amount):stats.rate)}</strong>
+        <strong class="tribeca-session-amount-v258">${money(p?Number(p.paid_amount):sessionAmount(a,stats.rate))}</strong>
         <div class="tribeca-session-actions-v258">
         ${p
           ? `<span class="tribeca-session-paid-v258">Pagada el ${escapeHTML(labelDate(p.paid_date))} · ${escapeHTML(({cash:'Efectivo',bizum:'Bizum',bank_transfer:'Transferencia',other:'Otro'})[p.payment_method]||'Registrado')}</span>`
@@ -85,7 +97,7 @@
       </div>
       <div class="tribeca-session-list-v258">
         ${rows || '<p class="window-panel">No hay clases con asistencia confirmada en este mes. Los horarios previstos no generan deuda por sí solos.</p>'}
-      </div><p class="tribeca-session-note-v258">Tarifa actual por clase: ${money(stats.rate)}. Los importes ya abonados son históricos y no cambian si se modifica la tarifa posteriormente.</p>
+      </div><p class="tribeca-session-note-v258">Tarifa actual por hora: ${money(stats.rate)}. Los importes ya abonados son históricos y no cambian si se modifica la tarifa posteriormente.</p>
     </section>`;
   }
 
