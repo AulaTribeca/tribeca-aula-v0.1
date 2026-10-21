@@ -123,7 +123,9 @@
       remove();
       return;
     }
-    if(options.teacher || options.paused || profile.active===false) {
+    var role=String(profile.role||'').toLowerCase();
+    if(options.teacher || options.paused || profile.active===false ||
+       ['teacher','profesora','docente','admin'].includes(role)) {
       remove(); return;
     }
     var today=madridDate(new Date());
