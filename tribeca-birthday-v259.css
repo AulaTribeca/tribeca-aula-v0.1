@@ -1,0 +1,155 @@
+/* Tribeca Aula v259 — intervención festiva temporal, sin interferir con el aula.
+   Variables y tipografía ajustadas a DESIGN.md. No modificar el perfil docente. */
+.tribeca-birthday-v259 {
+  position:fixed;
+  inset:0;
+  z-index:5500;
+  overflow:hidden;
+  pointer-events:none;
+  contain:layout style;
+  isolation:isolate;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+.tribeca-birthday-effects-v259 {
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.tribeca-birthday-particle-v259 {
+  position:absolute;
+  top:-65px;
+  left:var(--x);
+  display:block;
+  width:var(--size);
+  height:var(--size);
+  font-size:var(--size);
+  line-height:1;
+  opacity:0;
+  will-change:transform,opacity;
+  animation:tribeca-birthday-fall-v259 var(--duration) linear var(--delay) 1 both;
+}
+.tribeca-birthday-particle-v259.is-confetti {
+  background:var(--chip);
+  border-radius:2px;
+  height:calc(var(--size) * 1.55);
+  box-shadow:0 0 0 1px rgba(0,0,0,.04);
+}
+@keyframes tribeca-birthday-fall-v259 {
+  0% {transform:translate3d(0,-70px,0) rotate(0deg);opacity:0}
+  7% {opacity:1}
+  87% {opacity:1}
+  100% {transform:translate3d(var(--drift),calc(100dvh + 130px),0) rotate(var(--turn));opacity:0}
+}
+.tribeca-birthday-card-v259 {
+  position:absolute;
+  top:clamp(92px,17vh,175px);
+  left:50%;
+  transform:translateX(-50%);
+  box-sizing:border-box;
+  width:min(470px,calc(100% - 32px));
+  padding:25px 32px 29px;
+  border-radius:22px;
+  border:1px solid rgba(28,67,45,.19);
+  border-top:5px solid #A8872D;
+  background:#FFFDF8;
+  color:#1F251F;
+  text-align:center;
+  box-shadow:0 19px 65px rgba(22,48,28,.20),0 5px 18px rgba(22,48,28,.08);
+  pointer-events:auto;
+  animation:tribeca-birthday-arrive-v259 .43s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes tribeca-birthday-arrive-v259 {
+  from {opacity:0;transform:translate(-50%,-18px) scale(.96)}
+  to {opacity:1;transform:translate(-50%,0) scale(1)}
+}
+.tribeca-birthday-card-v259::after {
+  content:"";
+  position:absolute;
+  inset:12px;
+  border:1px solid rgba(168,135,45,.17);
+  border-radius:13px;
+  pointer-events:none;
+}
+.tribeca-birthday-cake-v259 {
+  width:70px;
+  height:70px;
+  margin:0 auto 13px;
+  display:grid;
+  place-items:center;
+  border-radius:20px;
+  background:#F6F1E5;
+  font-size:42px;
+  line-height:1;
+}
+.tribeca-birthday-eyebrow-v259 {
+  margin:0 0 7px!important;
+  font-size:11px!important;
+  font-weight:850!important;
+  line-height:1.45!important;
+  letter-spacing:.15em!important;
+  text-transform:uppercase;
+  color:#795E25!important;
+}
+.tribeca-birthday-title-v259 {
+  margin:0!important;
+  font-family:Georgia,"Times New Roman",serif!important;
+  font-size:clamp(25px,3.1vw,35px)!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  letter-spacing:-.025em!important;
+  color:#103F24!important;
+  text-wrap:balance;
+  overflow-wrap:anywhere;
+}
+.tribeca-birthday-subtitle-v259 {
+  max-width:320px;
+  margin:10px auto 0!important;
+  font-size:14px!important;
+  font-weight:500!important;
+  line-height:1.55!important;
+  letter-spacing:0!important;
+  color:#465B4C!important;
+}
+.tribeca-birthday-close-v259 {
+  position:absolute;
+  top:12px;
+  right:12px;
+  z-index:1;
+  width:36px;
+  height:36px;
+  min-width:36px;
+  min-height:36px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#475F4A;
+  font:500 25px/1 system-ui,sans-serif!important;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.tribeca-birthday-close-v259:hover {background:rgba(16,63,36,.08)}
+.tribeca-birthday-close-v259:focus-visible {
+  outline:3px solid #A8872D!important;
+  outline-offset:3px!important;
+}
+@media (max-width:480px) {
+  .tribeca-birthday-card-v259 {
+    top:max(92px,calc(env(safe-area-inset-top) + 77px));
+    padding:23px 24px 26px;
+    width:calc(100% - 24px);
+    max-width:390px;
+  }
+  .tribeca-birthday-cake-v259 {width:62px;height:62px;font-size:38px}
+  .tribeca-birthday-title-v259 {font-size:clamp(23px,6vw,30px)!important}
+  .tribeca-birthday-subtitle-v259 {font-size:14px!important}
+}
+@media (prefers-reduced-motion:reduce) {
+  .tribeca-birthday-v259 *, .tribeca-birthday-v259 *::before,
+  .tribeca-birthday-v259 *::after {animation:none!important;transition:none!important}
+}
+body.is-focus-mode .tribeca-birthday-v259 *,body.is-focus-mode .tribeca-birthday-v259 *::before,
+body.is-focus-mode .tribeca-birthday-v259 *::after {animation:none!important}
+@media print { .tribeca-birthday-v259 {display:none!important} }

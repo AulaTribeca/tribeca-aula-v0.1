@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'audit/playwright-readonly-*'
+      - 'feature/student-birthday-celebration-*'
       - main
   workflow_dispatch:
     inputs:
@@ -23,7 +24,7 @@ permissions:
 
 concurrency:
   group: tribeca-playwright-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   public-smoke:
@@ -73,6 +74,16 @@ jobs:
           }
           if (!ready) { console.log('No se ha propagado la versión v256 en GitHub Pages.'); process.exit(1); }
           NODE
+      - name: Cumpleaños sintéticos — privacidad, animación, teclado y accesibilidad
+        if: startsWith(github.ref, 'refs/heads/feature/student-birthday-celebration-')
+        env:
+          CI: 'true'
+        run: |
+          node --check tribeca-birthday-v259.js
+          node --check supabase-auth.js
+          node --check tests/birthday-celebration.spec.mjs
+          npx playwright test tests/birthday-celebration.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=mobile-webkit --project=tablet-webkit
+
       - name: Aula sintética sin acceso a la base de datos
         env:
           CI: 'true'
