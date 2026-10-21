@@ -1791,7 +1791,7 @@
     bindTribecaThemeControls();
     syncTribecaStandaloneClass();
     applyTribecaSeasonMode();
-    if(!State.profile) { showLogin(); return; }
+    if(!State.profile) { window.TribecaBirthdayV259?.onProfile(null); showLogin(); return; }
     const p=State.profile;
     const main = $('#inicio');
     try {
@@ -1812,6 +1812,7 @@
         State.windows.forEach(w=>w?.remove?.());
         State.windows.clear();
         main.innerHTML = pauseLockContent(pause);
+        window.TribecaBirthdayV259?.onProfile(p,{teacher:false,paused:true});
         updateBadges();
         setActiveMainNav('home');
         applyTranslations();
@@ -1820,6 +1821,7 @@
       }
       if(roleTeacher()) main.innerHTML = teacherHome(); else main.innerHTML = studentHome();
       bindSubjectCards(); updateBadges(); scrubZeroBadges(); setActiveMainNav('home'); applyTranslations(); ensureAccessibilityWidget(); ensureMathCalculatorWidget(); syncFocusModeClass();
+      window.TribecaBirthdayV259?.onProfile(p,{teacher:roleTeacher(),paused:false});
     } catch(error) {
       console.error('[Tribeca Aula] Error al renderizar la aplicación:', error);
       if(main) main.innerHTML = `<section class="panel app-error-panel"><p class="eyebrow">Tribeca Aula</p><h1>No se pudo cargar correctamente el panel</h1><p>${safe(error?.message || 'Error de interfaz')}</p><button type="button" class="primary-btn" onclick="location.reload()">Recargar aula</button></section>`;
