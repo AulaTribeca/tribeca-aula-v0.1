@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
 
 const html=await readFile(new URL('../resources/xeografia-historia-2eso-fernando-blanco-europa-feudal.html',import.meta.url),'utf8');
@@ -20,7 +20,10 @@ test('Europa feudal · abrir, estudar, practicar, navegación e imaxes',async({p
   await expect(page.locator('#app h1')).toBeVisible({timeout:20000});
   await expect(page.locator('#startStudy')).toBeVisible();
   await expect(page.locator('#startQuiz')).toBeVisible();
+  await mkdir('tests/.feudal-preview',{recursive:true});
+  await page.screenshot({path:`tests/.feudal-preview/${test.info().project.name}-inicio.png`,fullPage:true});
   await page.locator('#startStudy').click();
+  await page.screenshot({path:`tests/.feudal-preview/${test.info().project.name}-estudo.png`,fullPage:true});
   await expect(page.locator('#app h1')).toBeVisible();
   const images=page.locator('#app img');
   if(await images.count()){
