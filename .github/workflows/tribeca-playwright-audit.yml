@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'audit/playwright-readonly-*'
+      - 'fix/feudal-2eso-fernando-blanco-viewer-*'
       - main
   workflow_dispatch:
     inputs:
@@ -23,7 +24,7 @@ permissions:
 
 concurrency:
   group: tribeca-playwright-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   public-smoke:
@@ -73,6 +74,23 @@ jobs:
           }
           if (!ready) { console.log('No se ha propagado la versión v256 en GitHub Pages.'); process.exit(1); }
           NODE
+      - name: Pruebas reales do recurso Europa feudal (sen credenciais)
+        if: startsWith(github.ref, 'refs/heads/fix/feudal-2eso-fernando-blanco-viewer-')
+        env:
+          CI: 'true'
+        run: |
+          node --check tests/feudal-resource.spec.mjs
+          npx playwright test tests/feudal-resource.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=mobile-webkit --project=tablet-webkit
+
+      - name: Previsualización de Europa feudal (solo material público sin sesiones)
+        if: always() && startsWith(github.ref, 'refs/heads/fix/feudal-2eso-fernando-blanco-viewer-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: europa-feudal-previsualizacion-${{ github.run_id }}
+          path: tests/feudal-preview/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Aula sintética sin acceso a la base de datos
         env:
           CI: 'true'

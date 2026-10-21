@@ -4599,6 +4599,14 @@ function studentAssignedClasses(studentId=State.profile?.id){
   }
 
   function materialEmbedSource(m={}){
+    // v260: el cuaderno de Europa feudal ocupa >1 MB de HTML e imágenes inline.
+    // No crear URL data:, srcdoc gigante ni duplicar la imagen codificada en
+    // atributos: abrir el HTML original como documento HTML del mismo sitio.
+    // Conservamos intacto el embed_code histórico y las actividades del registro.
+    if(String(m.id||'')==='fe6acacd-4cc9-49a9-bf0f-a441f09f19b5'){
+      const url=new URL('resources/xeografia-historia-2eso-fernando-blanco-europa-feudal.html',document.baseURI).href;
+      return {src:url,mode:'presentation',html:'',quiz:null,exam:null};
+    }
     const url=materialEmbedValue(m,'url');
     const code=materialEmbedValue(m,'code');
     const clean=stripEmbedCodeFence(code);
