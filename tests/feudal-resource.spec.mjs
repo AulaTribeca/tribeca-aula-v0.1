@@ -20,17 +20,17 @@ test('Europa feudal · abrir, estudar, practicar, navegación e imaxes',async({p
   await expect(page.locator('#app h1')).toBeVisible({timeout:20000});
   await expect(page.locator('#startStudy')).toBeVisible();
   await expect(page.locator('#startQuiz')).toBeVisible();
-  await mkdir('tests/.feudal-preview',{recursive:true});
-  await page.screenshot({path:`tests/.feudal-preview/${test.info().project.name}-inicio.png`,fullPage:true});
+  await mkdir('tests/feudal-preview',{recursive:true});
+  await page.screenshot({path:`tests/feudal-preview/${test.info().project.name}-inicio.png`,fullPage:true});
   await page.locator('#startStudy').click();
-  await page.screenshot({path:`tests/.feudal-preview/${test.info().project.name}-estudo.png`,fullPage:true});
+  await page.screenshot({path:`tests/feudal-preview/${test.info().project.name}-estudo.png`,fullPage:true});
   await expect(page.locator('#app h1')).toBeVisible();
   const images=page.locator('#app img');
   if(await images.count()){
     const visible=await images.evaluateAll(items=>items.filter(el=>el.complete&&el.naturalWidth>0).length);
     expect(visible,'As imaxes didácticas deben cargar correctamente').toBeGreaterThan(0);
   }
-  await page.locator('[data-go-home]').first().click();
+  await page.locator('#backHome').click();
   await expect(page.locator('#startQuiz')).toBeVisible();
   await page.locator('#startQuiz').click();
   await expect(page.locator('#app h1')).toBeVisible();
