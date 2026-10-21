@@ -82,7 +82,7 @@ jobs:
           node --check tribeca-birthday-v259.js
           node --check supabase-auth.js
           node --check tests/birthday-celebration.spec.mjs
-          npx playwright test tests/birthday-celebration.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=tablet-webkit
+          npx playwright test tests/birthday-celebration.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=mobile-webkit --project=tablet-webkit
 
       - name: Aula sintética sin acceso a la base de datos
         env:
