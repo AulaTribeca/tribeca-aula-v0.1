@@ -1433,6 +1433,7 @@
         ()=>maybe(table('student_schedules').select('*').order('weekday').order('start_time'), []).then(d=>State.data.schedules=d||[]),
         ()=>maybe(table('attendance_records').select('*').order('class_date',{ascending:false}), []).then(d=>State.data.attendance=d||[]),
         ()=>maybe(table('payment_months').select('*').order('month',{ascending:false}), []).then(d=>State.data.paymentMonths=d||[]),
+        ()=>maybe(table('individual_class_settlements_v258').select('*'), []).then(d=>State.data.individualClassSettlements=d||[]),
         ()=>maybe(table('teacher_material_repository').select('*').order('stage').order('course').order('subject').order('unit_title').order('created_at',{ascending:false}), []).then(d=>State.data.materialRepository=d||[])
       );
     } else {
@@ -1459,6 +1460,7 @@
         State.data.schedules=[];
         State.data.attendance=[];
         State.data.paymentMonths=[];
+        State.data.individualClassSettlements=[];
       }
     }
     const finishSecondaryV237=async()=>{
@@ -6607,12 +6609,16 @@ render();
     return Number.isFinite(n) ? n : null;
   }
   function paymentFinancialAmountV222(userId,month,calc=null){
+    const individual = window.TribecaSessionPaymentsV258?.summary(userId,month);
+    if(individual) return individual.expected;
     const pay=paymentMonthRecord(userId,month);
     const snap=finitePaymentValueV222(pay.amount_due_snapshot);
     if(pay.paid && snap!==null) return snap;
     return Number((calc||calculatePaymentAmount(userId,month)).amount||0);
   }
   function paymentCollectedAmountV222(userId,month){
+    const individual = window.TribecaSessionPaymentsV258?.summary(userId,month);
+    if(individual) return individual.collected;
     const pay=paymentMonthRecord(userId,month);
     if(!pay.paid) return 0;
     return finitePaymentValueV222(pay.amount_paid);
@@ -6684,6 +6690,16 @@ render();
   }
   function paymentSummaryStatus(pay={}, month='', paused=false, student=null){
     if(paused) return {key:'paused', label:'En pausa', detail:'Excluido de pagos esperados'};
+    const individual = student && window.TribecaSessionPaymentsV258?.summary(student.id,month);
+    if(individual){
+      if(individual.pendingClasses>0) return {
+        key:isPaymentOverdue(month,student)?'late':'pending',
+        label:individual.collected>0?'Pago parcial':'Pendiente',
+        detail:`${individual.pendingClasses} clase/s pendiente/s · ${money(individual.pending)}`
+      };
+      if(individual.paidClasses>0) return {key:'paid',label:'Pagado',detail:`${individual.paidClasses} clases abonadas · ${money(individual.collected)}`};
+      return {key:'pending',label:'Sin clases confirmadas',detail:'Sin importe pendiente'};
+    }
     if(pay.paid){
       const amountKnown=finitePaymentValueV222(pay.amount_paid)!==null;
       const dateText=pay.paid_date?fmtDate(pay.paid_date):'Sin fecha indicada';
@@ -6697,8 +6713,8 @@ render();
     return {key:'pending', label:'Pendiente', detail:student && paymentModeForStudent(student)==='arrears'?'Se abona a mes vencido':'Pendiente de registrar'};
   }
   function quarterMonthsFor(month){ const [y,m]=String(month||todayIso().slice(0,7)).split('-').map(Number); const start=Math.floor(((m||1)-1)/3)*3+1; return [0,1,2].map(i=>`${y}-${String(start+i).padStart(2,'0')}`); }
-  function paidMonthsForStudent(userId){ return [...new Set((State.data.paymentMonths||[]).filter(p=>String(p.user_id)===String(userId) && p.paid).map(p=>String(p.month).slice(0,7)).filter(Boolean))].sort().reverse(); }
-  function unpaidPaymentAlerts(){ const month=(State.billingMonth||defaultBillingMonth()); return (State.data.students||[]).map(s=>({student:s, bill:(State.data.billing||[]).find(b=>b.user_id===s.id)||{}, pay:paymentMonthRecord(s.id, month), paused:paymentPausedForMonth(s.id, month)})).filter(x=>!x.paused && isPaymentOverdue(month, x.student) && x.pay.paid!==true).map(x=>({name:displayName(x.student), month, amount:calculatePaymentAmount(x.student.id, month).amount})); }
+  function paidMonthsForStudent(userId){ return [...new Set((State.data.paymentMonths||[]).filter(p=>String(p.user_id)===String(userId) && p.paid && !(window.TribecaSessionPaymentsV258?.summary(userId,p.month)?.pendingClasses>0)).map(p=>String(p.month).slice(0,7)).filter(Boolean))].sort().reverse(); }
+  function unpaidPaymentAlerts(){ const month=(State.billingMonth||defaultBillingMonth()); return (State.data.students||[]).map(s=>({student:s,pay:paymentMonthRecord(s.id,month),paused:paymentPausedForMonth(s.id,month)})).filter(x=>!x.paused && paymentSummaryStatus(x.pay,month,x.paused,x.student).key==='late').map(x=>({name:displayName(x.student),month,amount:Math.max(0,paymentFinancialAmountV222(x.student.id,month)-Number(paymentCollectedAmountV222(x.student.id,month)||0))})); }
   function teacherStudentPicker(selected, context='payments'){
     const students=State.data.students||[];
     const title = context === 'attendance' ? 'Alumnado' : 'Alumnado';
@@ -6731,7 +6747,16 @@ render();
       if(m.paused) return;
       const amount=Number(m.financialAmount||0);
       total+=amount;
-      if(m.status.key==='paid'){
+      if(m.bill?.session_settlement_enabled===true){
+        const alreadyPaid=Number(m.collectedAmount||0);
+        const outstanding=Math.max(0,amount-alreadyPaid);
+        collected+=alreadyPaid;
+        remaining+=outstanding;
+        if(outstanding>0){
+          if(m.status.key==='late'){lateAmount+=outstanding;lateCount++;}
+          else pendingCount++;
+        } else if(alreadyPaid>0) paidCount++;
+      } else if(m.status.key==='paid'){
         paidCount++;
         if(m.collectedAmount===null) unknownCollectedCount++;
         else collected+=Number(m.collectedAmount||0);
@@ -6754,7 +6779,7 @@ render();
     const family=familyGroupForStudent(s);
     const familyLabel=family.length>1 ? `${family.length} hermanos/as` : 'Individual';
     const paidText=m.paused?'En pausa':m.status.label;
-    const amount=m.paused?0:m.calc.amount;
+    const amount=m.paused?0:m.financialAmount;
     return `<button type="button" class="finance-student-card-v146 status-${safe(m.status.key)} ${String(selected?.id)===String(s.id)?'is-selected':''}" data-t16-select-student="${safe(s.id)}" data-student-name="${safe((displayName(s)+' '+(s.username||'')+' '+academicLine(s)+' '+(s.family_name||'')).toLowerCase())}">
       ${studentAvatarMarkup(s,'finance-student-avatar-v146')}
       <span class="finance-student-main-v146"><strong>${safe(displayName(s))}</strong><small>${safe(academicLine(s))}</small><em>${safe(familyLabel)} · ${safe(paymentModeLabel(s))}</em></span>
@@ -6816,6 +6841,7 @@ render();
     </section>`;
   }
   function paymentEditor(s,month){
+    if(window.TribecaSessionPaymentsV258?.isTracked(s.id)) return window.TribecaSessionPaymentsV258.editor(s,month);
     const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(s.id))||{};
     const pay=paymentMonthRecord(s.id,month);
     const calc=calculatePaymentAmount(s.id,month);
@@ -6922,8 +6948,9 @@ render();
     }
     return {amount,detail,present:actualPresent,billableClasses,individualPresent,fixedGroupDays:activeDays.filter(d=>d.type!=='individual').length,absent,justified,paused,totalDays:eligibleDays.length,activeDays:activeDays.length,assumedPresent:String(bill.attendance_policy||'')!=='confirmed_only' && (tariff==='individual'||tariff==='mixed')};
   }
-  function studentPaymentAmount(userId,month){ const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); const amount=paymentFinancialAmountV222(userId,month,c); const detail=paymentSnapshotDetailV222(pay,c); return `<strong>Total: ${money(amount)}</strong><p>${safe(detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
+  function studentPaymentAmount(userId,month){ const individual=window.TribecaSessionPaymentsV258?.summary(userId,month); if(individual) return `<strong>Total: ${money(individual.expected)}</strong><p>${individual.paidClasses} clases abonadas · ${money(individual.collected)} cobrados · ${individual.pendingClasses} clases pendientes · ${money(individual.pending)} por cobrar</p>`; const c=calculatePaymentAmount(userId,month); const pay=paymentMonthRecord(userId,month); const amount=paymentFinancialAmountV222(userId,month,c); const detail=paymentSnapshotDetailV222(pay,c); return `<strong>Total: ${money(amount)}</strong><p>${safe(detail)} · Faltas: ${c.absent} · Justificadas: ${c.justified} · Pausadas: ${c.paused||0} · ${pay.paid?'Pagado '+(pay.paid_date?fmtDate(pay.paid_date):''):'Pendiente de pago'}</p>`; }
   function paymentStudentHistory(userId){
+    if(window.TribecaSessionPaymentsV258?.isTracked(userId)) return window.TribecaSessionPaymentsV258.history(userId);
     const pauseMonths=pauseRecords(userId).flatMap(p=>{ const start=String(p.start_date||todayIso()).slice(0,7); const end=String(p.end_date||start).slice(0,7); return [start,end]; });
     const months=[...new Set([...(State.data.paymentMonths||[]).filter(p=>p.user_id===userId).map(p=>String(p.month).slice(0,7)), ...pauseMonths, State.billingMonth||defaultBillingMonth()])].filter(Boolean).sort().reverse();
     return `<table class="premium-table compact"><thead><tr><th>Mes</th><th>Importe</th><th>Estado</th><th>Forma de pago</th><th>Día de pago</th><th>Pausas</th><th>Recibí</th></tr></thead><tbody>${months.map(m=>{ const c=calculatePaymentAmount(userId,m); const p=paymentMonthRecord(userId,m); const amount=paymentFinancialAmountV222(userId,m,c); const pausedBilling=paymentPausedForMonth(userId,m); const pauses=pauseMonthOverlap(userId,m).length; return `<tr class="${pausedBilling?'is-paused-row':''}"><td>${safe(monthLabel(m))}</td><td>${money(pausedBilling?0:amount)}</td><td>${pausedBilling?'En pausa, excluido':p.paid?'Pagado':'Pendiente'}</td><td>${safe(paymentMethodLabel(p.payment_method))}</td><td>${p.paid_date?fmtDate(p.paid_date):'–'}</td><td>${pauses?`${pauses} pausa/s`:c.paused?`${c.paused} clase/s`: '–'}</td><td><button type="button" class="secondary-btn compact-btn" onclick="window.TribecaPrintPaymentReceipt && window.TribecaPrintPaymentReceipt('${safe(userId)}','${safe(m)}')">Descargar</button></td></tr>`; }).join('')}</tbody></table>`;
@@ -9264,6 +9291,7 @@ function classroomCard(c,i=0){
   function receiptVerificationCode(userId, month, amount){ return `TRB-${String(month).replace('-','')}-${String(hashText(`${userId}-${month}-${amount}-${new Date().toISOString().slice(0,10)}`)).slice(0,8).toUpperCase()}`; }
   window.TribecaPrintPaymentsPdf = function(kind){ const title = kind==='student'?'Histórico de pagos del alumno':'Resumen mensual de pagos'; const source = kind==='student' ? document.querySelector('.payment-history-panel') : document.querySelector('.payments-summary'); const html = source ? source.innerHTML : document.querySelector('.payments-layout')?.innerHTML || ''; const w = window.open('', '_blank'); if(!w) return toast('No se pudo abrir la ventana de impresión.'); const logo = 'assets/tribeca-academia-logo.webp'; w.document.write(`<html><head><title>${title}</title><style>@page{margin:18mm}body{font-family:Georgia,serif;padding:0;color:#172018}.pdf-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #b99a3b;padding-bottom:12px;margin-bottom:22px}.pdf-head img{width:54px;height:54px;object-fit:contain}.pdf-head strong{font-size:22px}.pdf-head span{display:block;color:#686052;font-size:12px}h1{font-size:21px;margin:0 0 18px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:8px;text-align:left}.primary-btn,.secondary-btn,button{display:none!important}</style></head><body><header class="pdf-head"><img src="${logo}" alt="Tribeca Academia"><div><strong>Tribeca Academia</strong><span>Documento generado desde Tribeca Aula</span></div></header><h1>${title}</h1>${html}</body></html>`); w.document.close(); setTimeout(()=>w.print(),250); };
   function paymentReceiptMarkup(userId, month, opts={}){
+    if(window.TribecaSessionPaymentsV258?.isTracked(userId)) return window.TribecaSessionPaymentsV258.receipt(userId,month);
     const s=(State.data.students||[]).find(x=>String(x.id)===String(userId)); if(!s) return '';
     const c=calculatePaymentAmount(userId, month); const pay=paymentMonthRecord(userId, month); const bill=(State.data.billing||[]).find(b=>String(b.user_id)===String(userId))||{};
     const amount=paymentFinancialAmountV222(userId,month,c);
