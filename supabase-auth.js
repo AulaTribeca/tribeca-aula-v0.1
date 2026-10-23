@@ -4600,6 +4600,13 @@ function studentAssignedClasses(studentId=State.profile?.id){
 
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
+    // v261: recursos HTML publicados como archivos independientes no se vuelven
+    // a serializar en data:/srcdoc aunque su antiguo embed_code siga guardado.
+    // El original queda conservado como respaldo, sin alterar otros materiales.
+    if(String(m.id||'')==='db4a66ff-2114-489f-ab70-a647b75e6bd9' &&
+       /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/recursos\/lingua-galega-2eso-fernando-blanco-unidade-1-repaso-exame\.html(?:[?#].*)?$/i.test(url)){
+      return {src:url, mode:'presentation', html:'', quiz:null, exam:null};
+    }
     const code=materialEmbedValue(m,'code');
     const clean=stripEmbedCodeFence(code);
     const videoKind=normalizeMaterialKind(m.material_type || m.type)==='video';
@@ -4662,6 +4669,19 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(String(m.id||'')==='4067c2c7-d184-47c1-be73-950b3a1ddd5b' && /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/resources\/bioloxia-3eso-manuela-rial-unidade-1-repaso\.html(?:[?#].*)?$/i.test(String(source.src||''))){
       const href=safe(source.src);
       return `<section class="material-embed-block material-presentation-block"><div><strong>Repaso interactivo · Bioloxía</strong><small>Exercicios autocorrixibles e esquema da célula</small></div><iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups" src="${href}" style="min-height:${height}px" referrerpolicy="same-origin"></iframe><a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir actividade a pantalla completa</a></section>`;
+    }
+    // v261: visor aislado para HTML completo. Sin allow-same-origin:
+    // evita que HTML ejecutable publicado acceda al DOM y sesión del aula.
+    // El recurso contiene tolerancia a localStorage bloqueado por sandbox.
+    if(String(m.id||'')==='db4a66ff-2114-489f-ab70-a647b75e6bd9' &&
+       /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/recursos\/lingua-galega-2eso-fernando-blanco-unidade-1-repaso-exame\.html(?:[?#].*)?$/i.test(String(source.src||''))){
+      const href=safe(source.src);
+      return `<section class="material-embed-block material-presentation-block">
+        <div><strong>Lingua Galega · Unidade 1</strong><small>Estudo e exercicios autocorrixibles</small></div>
+        <iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups"
+           src="${href}" style="min-height:${Math.max(height,900)}px;width:100%" referrerpolicy="no-referrer"></iframe>
+        <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">
+          Abrir recurso a pantalla completa</a></section>`;
     }
     const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(source.html||'',m.id||'') : (source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
