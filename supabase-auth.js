@@ -5910,7 +5910,7 @@ render();
       uploadPending:form?.dataset?.tribecaResourceUploading==='1'
     });
     if(compatible && !compatible.ok) throw new Error(compatible.reason);
-    if(!editId && /<!doctype\\s+html|<html[\\s>]|<iframe[\\s>]/i.test(embedCodeV198))
+    if(!editId && /<!doctype\s+html|<html[\s>]|<iframe[\s>]/i.test(embedCodeV198))
       throw new Error('HTML no compatible: sube el archivo HTML o ZIP completo.');
     const kindNeedsViewerV201 = ['presentation','game','video','schema','test','exam'].includes(normalizeMaterialKind(kind));
     if(!isAnnouncement && kindNeedsViewerV201 && !embedUrlV198 && !embedCodeV198){
