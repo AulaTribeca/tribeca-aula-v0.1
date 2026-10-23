@@ -4600,6 +4600,8 @@ function studentAssignedClasses(studentId=State.profile?.id){
 
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
+    if(normalizeMaterialKind(m.material_type||m.type)==='presentation' && window.TribecaPublisherV262?.hostedHtml(url))
+      return {src:url,mode:'presentation',html:'',quiz:null,exam:null};
     // v261: recursos HTML publicados como archivos independientes no se vuelven
     // a serializar en data:/srcdoc aunque su antiguo embed_code siga guardado.
     // El original queda conservado como respaldo, sin alterar otros materiales.
@@ -4682,6 +4684,14 @@ function studentAssignedClasses(studentId=State.profile?.id){
            src="${href}" style="min-height:${Math.max(height,900)}px;width:100%" referrerpolicy="no-referrer"></iframe>
         <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">
           Abrir recurso a pantalla completa</a></section>`;
+    }
+    if(source.src && window.TribecaPublisherV262?.hostedHtml(source.src)){
+      const href=safe(source.src);
+      return `<section class="material-embed-block material-presentation-block t262-standalone-html">
+        <div><strong>Recurso interactivo</strong><small>HTML independente compatible</small></div>
+        <iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups allow-downloads"
+           referrerpolicy="no-referrer" src="${href}" style="min-height:${Math.max(height,880)}px;width:100%"></iframe>
+        <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir recurso a pantalla completa</a></section>`;
     }
     const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(source.html||'',m.id||'') : (source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
