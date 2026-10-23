@@ -5688,36 +5688,31 @@ render();
             <span class="attachment-preview-pill" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span>
           </label>
         </div>
-        <div class="interactive-embed-panel interactive-embed-panel-v99">
-          <h4>Recurso embebido: presentación, esquema, vídeo, test o juego</h4>
-          <p class="meta">Para presentaciones, pega un iframe de Canva/PowerPoint/Google Slides/Genially o una URL embebible. Para esquemas, sube un JSON de tipo tribeca-activity. Para vídeos, pega la URL de YouTube, Vimeo, Google Drive, Streamable o un iframe. Para tests, sube JSON o HTML.</p>
-          <label class="publication-upload-card interactive-file-card">
-            <strong>Subir recurso interactivo</strong>
-            <small>JSON, HTML, HTM o TXT. El JSON es la opción más limpia para esquemas, tests y simulacros.</small>
-            <input name="interactiveFile" type="file" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain">
-            <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún recurso interactivo seleccionado.</span>
-          </label>
+        <div class="interactive-embed-panel interactive-embed-panel-v99 tribeca-publisher-compatible-v262">
+          <h4>Archivos interactivos y enlaces</h4>
+          <p class="meta">Elige una sola fuente. Nunca pegues HTML: súbelo como archivo para que funcione en ordenador, móvil y tablet.</p>
           <div class="publication-full-resource-card-v197">
-            <div class="publication-full-resource-head-v197">
-              <strong>Recurso completo con carpeta de assets</strong>
-              <small>Para juegos, presentaciones HTML, recursos con audio, imágenes, CSS o JavaScript. Puedes subir un ZIP completo o una carpeta completa.</small>
-            </div>
+            <strong>1 · Subir recurso HTML o ZIP</strong>
+            <p class="meta">HTML independiente o ZIP con index.html y sus carpetas de imágenes, sonido y código.</p>
             <div class="publication-full-resource-grid-v197">
-              <label><span>ZIP del recurso completo</span><input name="resourceZipPackage" type="file" accept=".zip,application/zip,application/x-zip-compressed"></label>
-              <label><span>Carpeta completa del recurso</span><input name="resourceFolderPackage" type="file" webkitdirectory directory multiple></label>
-              <label><span>HTML principal suelto</span><input name="resourceIndexFile" type="file" accept=".html,.htm,text/html"></label>
-              <label><span>Carpeta de assets suelta</span><input name="resourceAssetFolder" type="file" webkitdirectory directory multiple></label>
+              <label>Archivo HTML<input name="resourceIndexFile" type="file" accept=".html,.htm,text/html"></label>
+              <label>ZIP completo<input name="resourceZipPackage" type="file" accept=".zip,application/zip,application/x-zip-compressed"></label>
             </div>
             <input type="hidden" name="resourcePackageJson" value="">
-            <div class="publication-full-resource-preview-v197" id="resourcePackagePreview">Ningún paquete de recurso completo seleccionado.</div>
-            <p class="meta">El sistema sube el HTML y todos sus assets a Supabase Storage, conserva las rutas relativas y coloca automáticamente la URL del HTML principal como recurso embebido. Es la opción correcta para juegos con audio, carpetas <code>assets</code>, CSS o JavaScript.</p>
+            <div class="publication-full-resource-preview-v197" id="resourcePackagePreview" role="status" aria-live="polite">Ningún recurso seleccionado.</div>
           </div>
           <div class="window-grid">
-            <label>URL embebible<input name="embedUrl" type="url" placeholder="https://www.canva.com/.../view?embed · https://docs.google.com/presentation/.../embed · https://..." value="${safe(embedUrl)}"></label>
-            <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
+            <label>2 · URL HTTPS<input name="embedUrl" type="url" inputmode="url" placeholder="https://..." value="${safe(embedUrl)}"></label>
+            <label>Alto del visor<input name="embedHeight" type="number" min="420" max="1600" value="${safe(Math.max(420,Number(item.embed_height||960)))}"></label>
           </div>
-          <label>Código HTML, JSON, iframe, presentación o vídeo<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo, iframe de Canva/PowerPoint/Slides/Genially, iframe de vídeo o etiqueta video.">${safe(embedCode)}</textarea></label>
-          <p class="meta">Si eliges Presentación, se verá como visor de diapositivas dentro de la materia. Si eliges Esquema, se mostrará como actividad autocorregible. Si eliges Vídeo, se mostrará embebido. Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo.</p>
+          <details class="t262-native-json-panel" ${['schema','test','exam'].includes(normalizeMaterialKind(kind))?'open':''}>
+            <summary>3 · Test, esquema o examen en JSON</summary>
+            <p class="meta">Solo para actividades nativas autocorregibles. Los archivos HTML van en la opción 1.</p>
+            <label>Archivo JSON<input name="interactiveFile" type="file" accept=".json,application/json"></label>
+            <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún JSON seleccionado.</span>
+          </details>
+          <textarea name="embedCode" hidden aria-hidden="true" tabindex="-1">${safe(embedCode)}</textarea>
+          ${embedCode?'<p class="meta">El código de los materiales antiguos se conserva como respaldo. Los nuevos recursos deben subirse como archivos.</p>':''}
         </div>
       </section>
       <section class="window-panel publication-schedule-panel-v173">
