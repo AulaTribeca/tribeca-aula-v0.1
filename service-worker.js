@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v255 · visual docente y copy consistente */
-const TRIBECA_CACHE = 'tribeca-aula-static-v256';
+/* Tribeca Aula · Service worker v256.1 · respuestas offline coherentes */
+const TRIBECA_CACHE = 'tribeca-aula-static-v256-2';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -9,13 +9,14 @@ const TRIBECA_INSTALL_ASSETS = [
   './tribeca-ui-preserve-v253.css',
   './tribeca-ui-modern-v254.css?v=254.1',
   './tribeca-teacher-refinement-v255.css?v=255',
+  './tribeca-auth-refinement-v256.css?v=256.1',
   './app.js?v=216',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=256',
-  './supabase-auth.js?v=255.1',
+  './supabase-auth.js?v=256.2',
   './profile-ui.js?v=229',
-  './tribeca-ui-accessibility-v253.js',
+  './tribeca-ui-accessibility-v253.js?v=256.1',
   './tribeca-material-toggle-v254.js?v=254.1',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
@@ -69,7 +70,7 @@ async function networkFirst(request, fallbackUrl, maxWait = 3500) {
   const cache = await caches.open(TRIBECA_CACHE);
   try {
     const fresh = await Promise.race([fetch(request), timeout(maxWait)]);
-    if (fresh && fresh.ok) cache.put(request, fresh.clone());
+    if (fresh && fresh.ok) await cache.put(request, fresh.clone()).catch(() => {});
     return fresh;
   } catch (_error) {
     const cached = await caches.match(request);
@@ -80,7 +81,7 @@ async function networkFirst(request, fallbackUrl, maxWait = 3500) {
     }
     try {
       const fresh = await fetch(request);
-      if (fresh && fresh.ok) cache.put(request, fresh.clone());
+      if (fresh && fresh.ok) await cache.put(request, fresh.clone()).catch(() => {});
       return fresh;
     } catch (_finalError) {
       return new Response('Tribeca Aula no está disponible sin conexión en este momento.', {
@@ -91,14 +92,19 @@ async function networkFirst(request, fallbackUrl, maxWait = 3500) {
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function staleWhileRevalidate(request, event) {
   const cache = await caches.open(TRIBECA_CACHE);
   const cached = await caches.match(request);
-  const freshPromise = fetch(request).then(response => {
-    if (response && response.ok) cache.put(request, response.clone());
+  const freshPromise = fetch(request).then(async response => {
+    if (response && response.ok) await cache.put(request, response.clone()).catch(() => {});
     return response;
   }).catch(() => null);
-  return cached || freshPromise || new Response('', { status: 504 });
+  // Keep the refresh alive even when returning a cached asset immediately.
+  event.waitUntil(freshPromise.then(() => {}));
+  return cached || await freshPromise || new Response('Recurso no disponible sin conexión.', {
+    status: 503,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
 }
 
 async function setTribecaBadge(count = 0) {
@@ -116,12 +122,13 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.mode === 'navigate') {
-    const isResourceDocument = url.pathname.includes('/resources/');
-    if (isResourceDocument) {
-      event.respondWith(networkFirst(request, null, 8000));
-    } else {
-      event.respondWith(networkFirst(request, './index.html', 3000));
-    }
+    // Only the application entry point can fall back to the app shell.
+    // Lessons also live in /recursos/ and /assets/, not just /resources/.
+    const appRoot = new URL('./', self.location.href);
+    const isAppEntry = url.pathname === appRoot.pathname ||
+      url.pathname === new URL('index.html', appRoot).pathname;
+    event.respondWith(networkFirst(request, isAppEntry ? './index.html' : null,
+      isAppEntry ? 3000 : 8000));
     return;
   }
   if (/\.(?:js|css)$/i.test(url.pathname)) {
@@ -129,7 +136,7 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (TRIBECA_STATIC_MATCH.test(url.pathname)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(staleWhileRevalidate(request, event));
   }
 });
 

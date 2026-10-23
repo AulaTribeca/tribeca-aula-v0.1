@@ -27,7 +27,37 @@
   }
   function init() {
     check(document.body);
+    // El fondo bloqueado visualmente tampoco debe recibir foco de teclado.
+    // Se conserva el estado inert previo de cada región y se restaura al entrar.
+    const backgroundState = new Map();
+    function syncAuthBackground() {
+      const overlay = document.getElementById('tribecaAuthOverlay');
+      const locked = document.body.classList.contains('auth-locked') && overlay && !overlay.hidden;
+      if (locked) {
+        document.querySelectorAll('#appHeader, main#inicio, body > footer, #windowLayer, #windowDock').forEach(region => {
+          if (!backgroundState.has(region)) backgroundState.set(region, region.inert);
+          region.inert = true;
+        });
+      } else {
+        backgroundState.forEach((wasInert, region) => { region.inert = wasInert; });
+        backgroundState.clear();
+      }
+    }
+    syncAuthBackground();
+    const authObserver = new MutationObserver(syncAuthBackground);
+    authObserver.observe(document.body, { attributes:true, attributeFilter:['class'], childList:true });
+    // Tras alternar acceso/recuperación, el teclado entra en el formulario activo.
+    document.addEventListener('click', event => {
+      const toggle = event.target.closest?.('#tribecaAuthOverlay [data-t16-forgot], #tribecaAuthOverlay [data-t16-login]');
+      if (!toggle) return;
+      const formId = toggle.hasAttribute('data-t16-forgot') ? 't16ResetForm' : 't16LoginForm';
+      queueMicrotask(() => {
+        const form = document.getElementById(formId);
+        if (form && !form.hidden) form.querySelector('input:not([disabled])')?.focus();
+      });
+    });
     const observer = new MutationObserver((mutations) => {
+      syncAuthBackground();
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) check(node);
       }

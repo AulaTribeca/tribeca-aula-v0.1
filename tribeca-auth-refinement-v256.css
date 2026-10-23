@@ -1,0 +1,45 @@
+/* Acceso v256.1: jerarquía legible incluso con la escala inicial del 60%.
+   Los mínimos no impiden ampliar el texto con las preferencias del aula. */
+body.tribeca-preserve-v253 #tribecaAuthOverlay {
+  padding: 20px;
+  overflow-y: auto;
+}
+body.tribeca-preserve-v253 #tribecaAuthOverlay .auth-card {
+  width: min(100%, 460px);
+  max-width: 460px;
+  padding: clamp(20px, 5vw, 32px);
+  margin-block: auto;
+  font-size: max(1rem, 16px);
+}
+#tribecaAuthOverlay .auth-brand { gap: 12px; margin-bottom: 24px; }
+#tribecaAuthOverlay .auth-brand img { width: 44px; height: 44px; }
+#tribecaAuthOverlay .auth-brand strong { font-size: max(1.15rem, 18px); }
+#tribecaAuthOverlay .auth-brand span { font-size: max(.875rem, 14px); font-weight: 500; }
+#tribecaAuthOverlay .auth-form { gap: 16px; }
+#tribecaAuthOverlay .auth-form[hidden] { display: none !important; }
+#tribecaAuthOverlay .auth-form :is(h1, h2) {
+  font-size: max(1.5rem, 24px);
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+#tribecaAuthOverlay .auth-form :is(p, label, .form-status) {
+  font-size: max(.875rem, 14px);
+  line-height: 1.5;
+}
+#tribecaAuthOverlay .auth-form label { gap: 6px; font-weight: 600; }
+#tribecaAuthOverlay .auth-form input {
+  font-size: max(1rem, 16px) !important;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+#tribecaAuthOverlay .auth-form button {
+  min-height: 44px;
+  font-size: max(.875rem, 14px);
+  line-height: 1.4;
+}
+#tribecaAuthOverlay .auth-form .link-button { text-align: start; font-weight: 600; }
+#tribecaAuthOverlay .auth-login-status:empty { display: none; }
+#tribecaAuthOverlay .auth-form :is(input, button):focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}

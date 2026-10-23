@@ -1,0 +1,26 @@
+name: Tribeca - validar propuesta local
+on:
+  push:
+    branches: ['audit/pwa-offline-*']
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test scripts/test-service-worker.cjs scripts/test-teacher-week.cjs
+      - run: node --check service-worker.js
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Servir el código de la propuesta
+        run: python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/tribeca-preview.log 2>&1 &
+      - name: Acceso y aula ficticia (sin secretos)
+        env:
+          CI: 'true'
+          TRIBECA_AUDIT_URL: http://127.0.0.1:4173/
+        run: npx playwright test tests/public-smoke.spec.mjs tests/synthetic-classroom.spec.mjs
