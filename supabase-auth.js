@@ -5640,7 +5640,22 @@ render();
       <section class="window-panel t18-publish-main">
         <h3>${editing?'Editar publicación':'1. Contenido'}</h3>
         ${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}
-        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('video','🎥','Vídeo','Vídeo embebido de YouTube, Vimeo, Drive o URL directa.')}${typeCard('presentation','🖥️','Presentación','PowerPoint, Canva, Genially, Google Slides o HTML de diapositivas.')}${typeCard('schema','🧩','Esquema','Completar un esquema escribiendo o arrastrando conceptos.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con resultado sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
+        <div class="t18-type-cards t262-publisher-types">
+          ${typeCard('material','📄','Documento','PDF, boletín o apuntes.')}
+          ${typeCard('task','✅','Tarea','Indicaciones de trabajo.')}
+          ${typeCard('presentation','🖥️','Interactivo','HTML, ZIP o presentación.')}
+          ${typeCard('video','🎥','Vídeo','Enlace HTTPS.')}
+          ${typeCard('game','🎮','Juego','HTML, ZIP o enlace.')}
+          ${typeCard('announcement','📣','Anuncio','Aviso a la clase.')}
+          <details class="tribeca-publisher-extra-v262" ${['schema','test','exam'].includes(normalizeMaterialKind(kind))?'open':''}>
+            <summary>Test, esquema o examen nativo (JSON)</summary>
+            <div class="t262-extra-types">
+              ${typeCard('schema','🧩','Esquema','Actividad en JSON.')}
+              ${typeCard('test','🧪','Test','Preguntas en JSON.')}
+              ${typeCard('exam','📝','Simulacro','Examen en JSON.')}
+            </div>
+          </details>
+        </div>
         ${publicationClassroomSelector(item)}
         <div class="window-grid">
           <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
