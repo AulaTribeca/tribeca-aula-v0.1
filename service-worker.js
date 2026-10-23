@@ -1,5 +1,5 @@
 /* Tribeca Aula · Service worker v255 · visual docente y copy consistente */
-const TRIBECA_CACHE = 'tribeca-aula-static-v261';
+const TRIBECA_CACHE = 'tribeca-aula-static-v262';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -9,11 +9,13 @@ const TRIBECA_INSTALL_ASSETS = [
   './tribeca-ui-preserve-v253.css',
   './tribeca-ui-modern-v254.css?v=254.1',
   './tribeca-teacher-refinement-v255.css?v=255',
+  './tribeca-publisher-v262.css?v=262',
   './app.js?v=216',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=256',
-  './supabase-auth.js?v=261',
+  './tribeca-publisher-v262.js?v=262',
+  './supabase-auth.js?v=262',
   './profile-ui.js?v=229',
   './tribeca-ui-accessibility-v253.js',
   './tribeca-material-toggle-v254.js?v=254.1',
@@ -29,6 +31,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './assets/ius/presentations/ius-02-de-facto-de-iure.html',
   './assets/ius/presentations/ius-03-fuentes-derecho.html',
   './tribeca-package-viewer.html',
+  './recursos/lingua-galega-2eso-fernando-blanco-unidade-1-repaso-exame.html',
 ];
 
 self.addEventListener('install', event => {
