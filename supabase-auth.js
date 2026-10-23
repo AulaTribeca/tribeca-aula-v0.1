@@ -5894,6 +5894,14 @@ render();
     const inferredOrder=displayOrder || inferredMaterialOrderLabel({title:rec.title});
     const embedUrlV198 = tribecaResolveViewerFromFormV201(form, fd, attachments, resourcePackage, originalEdit);
     const embedCodeV198 = String(fd.get('embedCode') || originalEdit.embed_code || originalEdit.interactive_embed || originalEdit.game_embed || '').trim();
+    const compatible=window.TribecaPublisherV262?.check({
+      kind,isAnnouncement,editId,originalInline:originalEdit.embed_code,
+      url:embedUrlV198,code:embedCodeV198,
+      uploadPending:form?.dataset?.tribecaResourceUploading==='1'
+    });
+    if(compatible && !compatible.ok) throw new Error(compatible.reason);
+    if(!editId && /<!doctype\\s+html|<html[\\s>]|<iframe[\\s>]/i.test(embedCodeV198))
+      throw new Error('HTML no compatible: sube el archivo HTML o ZIP completo.');
     const kindNeedsViewerV201 = ['presentation','game','video','schema','test','exam'].includes(normalizeMaterialKind(kind));
     if(!isAnnouncement && kindNeedsViewerV201 && !embedUrlV198 && !embedCodeV198){
       throw new Error('Esta publicación está marcada como recurso interactivo/presentación, pero no tiene visor. Sube el ZIP o la carpeta completa y espera a ver “Recurso completo subido correctamente”, o pega una URL/iframe antes de publicar.');
@@ -9107,6 +9115,13 @@ function classroomCard(c,i=0){
     const ext=(lowerName.match(/\.([a-z0-9]+)$/)||[])[1] || '';
     const setKind=(next)=>{ const normalized=normalizeMaterialKind(next); radios.forEach(r=>{ r.checked = normalizeMaterialKind(r.value)===normalized; }); };
     const setPreview=(text)=>{ if(preview) preview.textContent=text; };
+    if(['html','htm'].includes(ext)){
+      form.__tribecaResourceIndexFile=file;
+      setPreview(fileName+' · subiendo como HTML independiente');
+      setKind('presentation');
+      await tribecaTrySeparatePackageUploadV197(form);
+      return;
+    }
     const raw=await readFileAsText(file);
 
     // V184: si la profesora ya eligió "Presentación", respetamos su decisión.
