@@ -5682,8 +5682,8 @@ render();
           </label>
           <label class="publication-upload-card">
             <strong>Archivos adjuntos</strong>
-            <small>PDF, Word, imágenes, HTML o ZIP.</small>
-            <input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,.html,.htm,.zip,.js,.css,image/png,image/jpeg,image/webp" multiple>
+            <small>PDF, Word o imágenes. Los HTML y ZIP interactivos van en «Archivo HTML / ZIP».</small>
+            <input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple>
             <input type="hidden" name="attachmentsJson" value="${attachmentsJson}">
             <span class="attachment-preview-pill" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span>
           </label>
