@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'audit/playwright-readonly-*'
+      - 'feat/cookie-consent-privacy-*'
       - main
   workflow_dispatch:
     inputs:
@@ -47,6 +48,24 @@ jobs:
           node --check tests/synthetic-classroom.spec.mjs
           node --check tests/roles-readonly.spec.mjs
           npx playwright test --list tests/synthetic-classroom.spec.mjs tests/roles-readonly.spec.mjs
+      - name: Privacidad y cookies: rechazar, aceptar, revocar y menores (4 navegadores)
+        if: startsWith(github.ref, 'refs/heads/feat/cookie-consent-privacy-')
+        env:
+          CI: 'true'
+        run: |
+          node --check tribeca-cookie-consent-v264.js
+          node --check supabase-auth.js
+          node --check tests/cookie-consent-v264.spec.mjs
+          npx playwright test tests/cookie-consent-v264.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=mobile-webkit --project=tablet-webkit
+      - name: Capturas ficticias del aviso para aprobación
+        if: always() && startsWith(github.ref, 'refs/heads/feat/cookie-consent-privacy-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: vista-previa-cookies-${{ github.run_id }}
+          path: tests/cookie-preview/*.png
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Pruebas públicas
         env:
           CI: 'true'
