@@ -9,6 +9,14 @@ let server,origin;
 test.beforeAll(async()=>{
   server=createServer((req,res)=>{
     const url=String(req.url||'');
+    if(url.startsWith('/tribeca-cookie-consent-v264.js')){
+      res.writeHead(200,{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(code);
+    }
+    if(url.startsWith('/tribeca-cookie-consent-v264.css')){
+      res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(css);
+    }
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
     res.end(url.startsWith('/politica-cookies.html')?policy:
       '<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><main><h1>Tribeca Aula — escenario ficticio</h1><a href="politica-cookies.html">Política de cookies</a><button type="button" data-tribeca-cookies-manage>Configurar cookies</button></main></body></html>');
@@ -107,5 +115,7 @@ test('La política es pública incluso sin iniciar sesión',async({page})=>{
   await page.goto(origin+'politica-cookies.html',{waitUntil:'domcontentloaded'});
   await expect(page.locator('h1')).toContainText('Política de cookies');
   await expect(page.locator('button[data-tribeca-cookies-manage]')).toBeVisible();
+  await page.locator('button[data-tribeca-cookies-manage]').click();
+  await expect(page.locator('#tribeca-cookie-panel-v264')).toBeVisible();
   await expect(page.locator('a[href^="mailto:"]')).toBeVisible();
 });
