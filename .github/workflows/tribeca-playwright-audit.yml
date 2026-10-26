@@ -48,7 +48,7 @@ jobs:
           node --check tests/synthetic-classroom.spec.mjs
           node --check tests/roles-readonly.spec.mjs
           npx playwright test --list tests/synthetic-classroom.spec.mjs tests/roles-readonly.spec.mjs
-      - name: Privacidad y cookies: rechazar, aceptar, revocar y menores (4 navegadores)
+      - name: 'Privacidad y cookies: rechazar, aceptar, revocar y menores (4 navegadores)'
         if: startsWith(github.ref, 'refs/heads/feat/cookie-consent-privacy-')
         env:
           CI: 'true'
