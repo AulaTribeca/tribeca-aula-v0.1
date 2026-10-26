@@ -51,7 +51,7 @@
     document.querySelectorAll('iframe[data-tribeca-external-media-v264]').forEach(frame=>{
       const node=frame.closest('.tribeca-external-loaded-v264');
       const html=placeholder(frame.dataset.tribecaExternalMediaV264,frame.title,Number(frame.dataset.tribecaHeight||540));
-      if(node&&html){node.outerHTML=html;} else frame.remove();
+      if(html){ (node||frame).outerHTML=html; } else frame.remove();
     });
   }
   function choose(value){
