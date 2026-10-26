@@ -5,6 +5,12 @@ import { createServer } from 'node:http';
 const code=await readFile(new URL('../tribeca-cookie-consent-v264.js',import.meta.url),'utf8');
 const css=await readFile(new URL('../tribeca-cookie-consent-v264.css',import.meta.url),'utf8');
 const policy=await readFile(new URL('../politica-cookies.html',import.meta.url),'utf8');
+const authSource=await readFile(new URL('../supabase-auth.js',import.meta.url),'utf8');
+const fnFrom=authSource.indexOf('function tribecaGateLegacyExternalHtmlV264(');
+const fnTo=authSource.indexOf('function videoEmbedMarkup(',fnFrom);
+if(fnFrom<0||fnTo<=fnFrom)throw Error('Legacy HTML external-content gate not found');
+const legacyGateCode=authSource.slice(fnFrom,fnTo);
+
 let server,origin;
 test.beforeAll(async()=>{
   server=createServer((req,res)=>{
@@ -118,4 +124,26 @@ test('La política es pública incluso sin iniciar sesión',async({page})=>{
   await page.locator('button[data-tribeca-cookies-manage]').click();
   await expect(page.locator('#tribeca-cookie-panel-v264')).toBeVisible();
   await expect(page.locator('a[href^="mailto:"]')).toBeVisible();
+});
+
+test('Los HTML didácticos antiguos conservan el texto y bloquean iframe/video externos',async({page})=>{
+  await setup(page);
+  await page.locator('[data-tribeca-cookie-choice-v264="reject"]').click();
+  const values=await page.evaluate(helper=>{
+    const safe=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;')
+      .replaceAll('>','&gt;').replaceAll('"','&quot;');
+    const gate=new Function('window','safe',helper+'; return tribecaGateLegacyExternalHtmlV264;')(window,safe);
+    const raw='<h2>Teoría de fraccións</h2><p>Explicación conservada</p>'+
+      '<iframe title="Genially" src="https://view.genially.com/exemplo"></iframe>'+
+      '<video src="https://plus.edebe.com/resources/video/exemplo.mp4"></video>';
+    const blocked=gate(raw);
+    window.TribecaCookieConsentV264.onProfile({role:'student',birth_date:'2016-01-01'});
+    const minor=gate(raw);
+    return {blocked,minor};
+  },legacyGateCode);
+  expect(values.blocked).toContain('Teoría de fraccións');
+  expect(values.blocked).not.toContain('<iframe');
+  expect(values.blocked).not.toContain('<video');
+  expect(values.blocked).toContain('Abrir contenido externo');
+  expect(values.minor).not.toContain('Abrir contenido externo');
 });
