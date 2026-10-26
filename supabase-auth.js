@@ -4716,7 +4716,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
            referrerpolicy="no-referrer" src="${href}" style="min-height:${Math.max(height,880)}px;width:100%"></iframe>
         <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir recurso a pantalla completa</a></section>`;
     }
-    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(tribecaGateLegacyExternalHtmlV264(source.html||''),m.id||'') : (source.html||'');
+    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(tribecaGateLegacyExternalHtmlV264(source.html||''),m.id||'') : tribecaGateLegacyExternalHtmlV264(source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
     let srcAttr=' src="about:blank"';
     if(progressHtml) srcAttr=` src="data:text/html;charset=utf-8;base64,${encoded}"`;
@@ -4755,7 +4755,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     }
     if(!source.src && !source.html) return tribecaMissingEmbedNoticeV198(m);
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
-    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(tribecaGateLegacyExternalHtmlV264(source.html),m.id||'') : (source.html||'');
+    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(tribecaGateLegacyExternalHtmlV264(source.html),m.id||'') : tribecaGateLegacyExternalHtmlV264(source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
     let srcAttr=' src="about:blank"';
     if(progressHtml) srcAttr=` src="data:text/html;charset=utf-8;base64,${encoded}"`;
