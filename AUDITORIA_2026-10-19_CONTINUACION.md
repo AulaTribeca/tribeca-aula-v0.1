@@ -107,3 +107,33 @@ No equivalen a una validación visual del código propuesto.
 Versión de interfaz 256.2; URL de script supabase-auth.js?v=256.2; caché
 tribeca-aula-static-v256-2. Sin cambios de anclas, etiquetas, campos o marca.
 Pendientes: comprobación visual del arreglo, recurso real y perfil de alumno.
+
+## Integración del 26/10/2026 · propuesta v262.1
+
+Se integra main `6bcb9a5a5c45cf48c35fb227377dc474c05554a1` en la propuesta.
+Se resuelven los conflictos de index y service worker conservando publicador
+v262, recursos didácticos, enlaces LUMEN-V/ITINERA y precarga de Lingua Galega.
+Los archivos del publicador y los HTML didácticos no se modifican.
+
+Se recupera el ajuste pendiente del detalle docente: texto auxiliar mínimo
+14 px, nombres de materias/materiales 16 px, campos 16 px, controles de 44 px,
+etiqueta visible asociada a Nueva unidad y acciones de material en dos columnas
+móviles. Los tamaños siguen admitiendo ampliación. Sin cambios de registros.
+
+Validación local sobre la propuesta: 30 casos distintos de Chromium escritorio
+ y móvil superados tras corregir la expectativa del test del visor táctil (muestra
+el recurso como documento principal, no iframe). Incluye acceso/recuperación,
+restauración del teclado, navegación de alumno ficticio, clase docente ficticia,
+recurso interactivo y los HTML actuales de Lengua y Lingua Galega. 15 pruebas
+Node de fechas y desconexión superadas. Capturas sintéticas revisadas.
+Las pruebas de recursos usan la URL base de la propuesta para no confundir una
+página publicada con el código que se está comprobando.
+
+No se acredita sesión real actual, Safari/WebKit, PWA instalada ni una auditoría
+visual completa. Las capturas usan datos ficticios; no se suben registros privados.
+
+Contrato: nueva etiqueta visible Nombre de la unidad; el nombre de campo title
+se conserva. Sin cambios de rutas, anclas, navegación ni tokens de marca.
+Versiones: interfaz 262.1; cache tribeca-aula-static-v262-1; script de auth,
+accesibilidad y CSS docente con query 262.1. Publicador conserva query 262.
+La propuesta continúa en borrador y no se despliega.

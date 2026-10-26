@@ -4599,6 +4599,15 @@ function studentAssignedClasses(studentId=State.profile?.id){
 
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
+    if(normalizeMaterialKind(m.material_type||m.type)==='presentation' && window.TribecaPublisherV262?.hostedHtml(url))
+      return {src:url,mode:'presentation',html:'',quiz:null,exam:null};
+    // v261: recursos HTML publicados como archivos independientes no se vuelven
+    // a serializar en data:/srcdoc aunque su antiguo embed_code siga guardado.
+    // El original queda conservado como respaldo, sin alterar otros materiales.
+    if(String(m.id||'')==='db4a66ff-2114-489f-ab70-a647b75e6bd9' &&
+       /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/recursos\/lingua-galega-2eso-fernando-blanco-unidade-1-repaso-exame\.html(?:[?#].*)?$/i.test(url)){
+      return {src:url, mode:'presentation', html:'', quiz:null, exam:null};
+    }
     const code=materialEmbedValue(m,'code');
     const clean=stripEmbedCodeFence(code);
     const videoKind=normalizeMaterialKind(m.material_type || m.type)==='video';
@@ -4661,6 +4670,27 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(String(m.id||'')==='4067c2c7-d184-47c1-be73-950b3a1ddd5b' && /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/resources\/bioloxia-3eso-manuela-rial-unidade-1-repaso\.html(?:[?#].*)?$/i.test(String(source.src||''))){
       const href=safe(source.src);
       return `<section class="material-embed-block material-presentation-block"><div><strong>Repaso interactivo · Bioloxía</strong><small>Exercicios autocorrixibles e esquema da célula</small></div><iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups" src="${href}" style="min-height:${height}px" referrerpolicy="same-origin"></iframe><a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir actividade a pantalla completa</a></section>`;
+    }
+    // v261: visor aislado para HTML completo. Sin allow-same-origin:
+    // evita que HTML ejecutable publicado acceda al DOM y sesión del aula.
+    // El recurso contiene tolerancia a localStorage bloqueado por sandbox.
+    if(String(m.id||'')==='db4a66ff-2114-489f-ab70-a647b75e6bd9' &&
+       /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/recursos\/lingua-galega-2eso-fernando-blanco-unidade-1-repaso-exame\.html(?:[?#].*)?$/i.test(String(source.src||''))){
+      const href=safe(source.src);
+      return `<section class="material-embed-block material-presentation-block">
+        <div><strong>Lingua Galega · Unidade 1</strong><small>Estudo e exercicios autocorrixibles</small></div>
+        <iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups"
+           src="${href}" style="min-height:${Math.max(height,900)}px;width:100%" referrerpolicy="no-referrer"></iframe>
+        <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">
+          Abrir recurso a pantalla completa</a></section>`;
+    }
+    if(source.src && window.TribecaPublisherV262?.hostedHtml(source.src)){
+      const href=safe(source.src);
+      return `<section class="material-embed-block material-presentation-block t262-standalone-html">
+        <div><strong>Recurso interactivo</strong><small>HTML independente compatible</small></div>
+        <iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups allow-downloads"
+           referrerpolicy="no-referrer" src="${href}" style="min-height:${Math.max(height,880)}px;width:100%"></iframe>
+        <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir recurso a pantalla completa</a></section>`;
     }
     const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(source.html||'',m.id||'') : (source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
@@ -5609,7 +5639,22 @@ render();
       <section class="window-panel t18-publish-main">
         <h3>${editing?'Editar publicación':'1. Contenido'}</h3>
         ${editing?'<p class="meta">Estás modificando una publicación existente. Al guardar no se creará una copia duplicada.</p>':''}
-        <div class="t18-type-cards">${typeCard('material','📄','Material','Apuntes, boletín, documento o recurso.')}${typeCard('task','✅','Tarea o actividad','Actividad para trabajar en clase o en casa.')}${typeCard('video','🎥','Vídeo','Vídeo embebido de YouTube, Vimeo, Drive o URL directa.')}${typeCard('presentation','🖥️','Presentación','PowerPoint, Canva, Genially, Google Slides o HTML de diapositivas.')}${typeCard('schema','🧩','Esquema','Completar un esquema escribiendo o arrastrando conceptos.')}${typeCard('test','🧪','Test interactivo','Recurso evaluable o cuestionario embebido.')}${typeCard('exam','📝','Simulacro de examen','Examen autocorregible con resultado sobre 10.')}${typeCard('game','🎮','Juego','Actividad lúdica creada con IA o enlace externo.')}${typeCard('announcement','📣','Anuncio','Aviso general, fuera de una materia.')}</div>
+        <div class="t18-type-cards t262-publisher-types">
+          ${typeCard('material','📄','Documento','PDF, boletín o apuntes.')}
+          ${typeCard('task','✅','Tarea','Indicaciones de trabajo.')}
+          ${typeCard('presentation','🖥️','Interactivo','HTML, ZIP o presentación.')}
+          ${typeCard('video','🎥','Vídeo','Enlace HTTPS.')}
+          ${typeCard('game','🎮','Juego','HTML, ZIP o enlace.')}
+          ${typeCard('announcement','📣','Anuncio','Aviso a la clase.')}
+          <details class="tribeca-publisher-extra-v262" ${['schema','test','exam'].includes(normalizeMaterialKind(kind))?'open':''}>
+            <summary>Test, esquema o examen nativo (JSON)</summary>
+            <div class="t262-extra-types">
+              ${typeCard('schema','🧩','Esquema','Actividad en JSON.')}
+              ${typeCard('test','🧪','Test','Preguntas en JSON.')}
+              ${typeCard('exam','📝','Simulacro','Examen en JSON.')}
+            </div>
+          </details>
+        </div>
         ${publicationClassroomSelector(item)}
         <div class="window-grid">
           <label>Materia<select name="subject"><option value="">Sin materia</option>${allSubjects.map(s=>`<option value="${safe(s)}" ${selectedAttr(s,subjectValue)}>${safe(s)}</option>`).join('')}</select></label>
@@ -5636,42 +5681,37 @@ render();
           </label>
           <label class="publication-upload-card">
             <strong>Archivos adjuntos</strong>
-            <small>PDF, Word, imágenes, HTML o ZIP.</small>
-            <input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,.html,.htm,.zip,.js,.css,image/png,image/jpeg,image/webp" multiple>
+            <small>PDF, Word o imágenes. Los HTML y ZIP interactivos van en «Archivo HTML / ZIP».</small>
+            <input name="attachmentFiles" type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp" multiple>
             <input type="hidden" name="attachmentsJson" value="${attachmentsJson}">
             <span class="attachment-preview-pill" id="attachmentPreview">${attachments.length?attachments.map(a=>safe(a.name||a.filename||'Archivo adjunto')).join(', '):'Ningún archivo seleccionado.'}</span>
           </label>
         </div>
-        <div class="interactive-embed-panel interactive-embed-panel-v99">
-          <h4>Recurso embebido: presentación, esquema, vídeo, test o juego</h4>
-          <p class="meta">Para presentaciones, pega un iframe de Canva/PowerPoint/Google Slides/Genially o una URL embebible. Para esquemas, sube un JSON de tipo tribeca-activity. Para vídeos, pega la URL de YouTube, Vimeo, Google Drive, Streamable o un iframe. Para tests, sube JSON o HTML.</p>
-          <label class="publication-upload-card interactive-file-card">
-            <strong>Subir recurso interactivo</strong>
-            <small>JSON, HTML, HTM o TXT. El JSON es la opción más limpia para esquemas, tests y simulacros.</small>
-            <input name="interactiveFile" type="file" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain">
-            <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún recurso interactivo seleccionado.</span>
-          </label>
+        <div class="interactive-embed-panel interactive-embed-panel-v99 tribeca-publisher-compatible-v262">
+          <h4>Archivos interactivos y enlaces</h4>
+          <p class="meta">Elige una sola fuente. Nunca pegues HTML: súbelo como archivo para que funcione en ordenador, móvil y tablet.</p>
           <div class="publication-full-resource-card-v197">
-            <div class="publication-full-resource-head-v197">
-              <strong>Recurso completo con carpeta de assets</strong>
-              <small>Para juegos, presentaciones HTML, recursos con audio, imágenes, CSS o JavaScript. Puedes subir un ZIP completo o una carpeta completa.</small>
-            </div>
+            <strong>1 · Subir recurso HTML o ZIP</strong>
+            <p class="meta">HTML independiente o ZIP con index.html y sus carpetas de imágenes, sonido y código.</p>
             <div class="publication-full-resource-grid-v197">
-              <label><span>ZIP del recurso completo</span><input name="resourceZipPackage" type="file" accept=".zip,application/zip,application/x-zip-compressed"></label>
-              <label><span>Carpeta completa del recurso</span><input name="resourceFolderPackage" type="file" webkitdirectory directory multiple></label>
-              <label><span>HTML principal suelto</span><input name="resourceIndexFile" type="file" accept=".html,.htm,text/html"></label>
-              <label><span>Carpeta de assets suelta</span><input name="resourceAssetFolder" type="file" webkitdirectory directory multiple></label>
+              <label>Archivo HTML<input name="resourceIndexFile" type="file" accept=".html,.htm,text/html"></label>
+              <label>ZIP completo<input name="resourceZipPackage" type="file" accept=".zip,application/zip,application/x-zip-compressed"></label>
             </div>
             <input type="hidden" name="resourcePackageJson" value="">
-            <div class="publication-full-resource-preview-v197" id="resourcePackagePreview">Ningún paquete de recurso completo seleccionado.</div>
-            <p class="meta">El sistema sube el HTML y todos sus assets a Supabase Storage, conserva las rutas relativas y coloca automáticamente la URL del HTML principal como recurso embebido. Es la opción correcta para juegos con audio, carpetas <code>assets</code>, CSS o JavaScript.</p>
+            <div class="publication-full-resource-preview-v197" id="resourcePackagePreview" role="status" aria-live="polite">Ningún recurso seleccionado.</div>
           </div>
           <div class="window-grid">
-            <label>URL embebible<input name="embedUrl" type="url" placeholder="https://www.canva.com/.../view?embed · https://docs.google.com/presentation/.../embed · https://..." value="${safe(embedUrl)}"></label>
-            <label>Alto orientativo<input name="embedHeight" type="number" min="280" max="1600" value="${safe(item.embed_height||620)}"></label>
+            <label>2 · URL HTTPS<input name="embedUrl" type="url" inputmode="url" placeholder="https://..." value="${safe(embedUrl)}"></label>
+            <label>Alto del visor<input name="embedHeight" type="number" min="420" max="1600" value="${safe(Math.max(420,Number(item.embed_height||960)))}"></label>
           </div>
-          <label>Código HTML, JSON, iframe, presentación o vídeo<textarea name="embedCode" rows="7" maxlength="500000" placeholder="Pega JSON, HTML completo, iframe de Canva/PowerPoint/Slides/Genially, iframe de vídeo o etiqueta video.">${safe(embedCode)}</textarea></label>
-          <p class="meta">Si eliges Presentación, se verá como visor de diapositivas dentro de la materia. Si eliges Esquema, se mostrará como actividad autocorregible. Si eliges Vídeo, se mostrará embebido. Si subes o pegas JSON de preguntas, Tribeca Aula puede convertirlo en test o simulacro nativo.</p>
+          <details class="t262-native-json-panel" ${['schema','test','exam'].includes(normalizeMaterialKind(kind))?'open':''}>
+            <summary>3 · Test, esquema o examen en JSON</summary>
+            <p class="meta">Solo para actividades nativas autocorregibles. Los archivos HTML van en la opción 1.</p>
+            <label>Archivo JSON<input name="interactiveFile" type="file" accept=".json,application/json"></label>
+            <span class="attachment-preview-pill" id="interactiveFilePreview">Ningún JSON seleccionado.</span>
+          </details>
+          <textarea name="embedCode" hidden aria-hidden="true" tabindex="-1">${safe(embedCode)}</textarea>
+          ${embedCode?'<p class="meta">El código de los materiales antiguos se conserva como respaldo. Los nuevos recursos deben subirse como archivos.</p>':''}
         </div>
       </section>
       <section class="window-panel publication-schedule-panel-v173">
@@ -5863,6 +5903,14 @@ render();
     const inferredOrder=displayOrder || inferredMaterialOrderLabel({title:rec.title});
     const embedUrlV198 = tribecaResolveViewerFromFormV201(form, fd, attachments, resourcePackage, originalEdit);
     const embedCodeV198 = String(fd.get('embedCode') || originalEdit.embed_code || originalEdit.interactive_embed || originalEdit.game_embed || '').trim();
+    const compatible=window.TribecaPublisherV262?.check({
+      kind,isAnnouncement,editId,originalInline:originalEdit.embed_code,
+      url:embedUrlV198,code:embedCodeV198,
+      uploadPending:form?.dataset?.tribecaResourceUploading==='1'
+    });
+    if(compatible && !compatible.ok) throw new Error(compatible.reason);
+    if(!editId && /<!doctype\s+html|<html[\s>]|<iframe[\s>]/i.test(embedCodeV198))
+      throw new Error('HTML no compatible: sube el archivo HTML o ZIP completo.');
     const kindNeedsViewerV201 = ['presentation','game','video','schema','test','exam'].includes(normalizeMaterialKind(kind));
     if(!isAnnouncement && kindNeedsViewerV201 && !embedUrlV198 && !embedCodeV198){
       throw new Error('Esta publicación está marcada como recurso interactivo/presentación, pero no tiene visor. Sube el ZIP o la carpeta completa y espera a ver “Recurso completo subido correctamente”, o pega una URL/iframe antes de publicar.');
@@ -7866,7 +7914,7 @@ function classroomCard(c,i=0){
         </details>
         <form class="classroom-unit-form classroom-unit-form-v92" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
           <input type="hidden" name="classSubjectId" value="${safe(s.id)}">
-          <input name="title" placeholder="Nueva unidad, por ejemplo Module 5" required>
+          <label><span>Nombre de la unidad</span><input name="title" placeholder="Nueva unidad, por ejemplo Module 5" required></label>
           <button type="button" class="secondary-btn" onclick="return window.TribecaClassroomAddUnit(this.closest('form'),event)">Añadir unidad</button>
         </form>
         <div class="classroom-unit-list classroom-unit-list-v91">${units.length?units.map(u=>classroomUnitCard(u,s)).join(''):'<div class="empty-state">Sin unidades todavía.</div>'}</div>
@@ -9076,6 +9124,13 @@ function classroomCard(c,i=0){
     const ext=(lowerName.match(/\.([a-z0-9]+)$/)||[])[1] || '';
     const setKind=(next)=>{ const normalized=normalizeMaterialKind(next); radios.forEach(r=>{ r.checked = normalizeMaterialKind(r.value)===normalized; }); };
     const setPreview=(text)=>{ if(preview) preview.textContent=text; };
+    if(['html','htm'].includes(ext)){
+      form.__tribecaResourceIndexFile=file;
+      setPreview(fileName+' · subiendo como HTML independiente');
+      setKind('presentation');
+      await tribecaTrySeparatePackageUploadV197(form);
+      return;
+    }
     const raw=await readFileAsText(file);
 
     // V184: si la profesora ya eligió "Presentación", respetamos su decisión.
