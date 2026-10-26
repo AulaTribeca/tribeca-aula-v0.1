@@ -4649,6 +4649,20 @@ function studentAssignedClasses(studentId=State.profile?.id){
     }
     return {src:'', mode:'', html:'', quiz:null, exam:null};
   }
+  function tribecaGateLegacyExternalHtmlV264(html=''){
+ const consent=window.TribecaCookieConsentV264;
+ if(!consent||consent.allowed())return html;
+ return String(html||'').replace(/<(iframe|video)\b[^>]*\bsrc\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*>[\s\S]*?<\/\1>/gi,
+  (whole,tag,url)=>{
+    if(!consent.validExternal(url))return whole;
+    const label=tag.toLowerCase()==='video'?'Vídeo externo':'Presentación externa';
+    const action=consent.minorRestricted()
+      ?'Consulta con la academia antes de acceder a este servicio externo.'
+      :`<a href="${safe(url)}" target="_blank" rel="noopener noreferrer">Abrir contenido externo</a>`;
+    return `<div role="note" style="margin:12px 0;padding:14px;border:1px solid #d7dfd4;border-radius:11px;background:#f6f4ee;color:#103f24">
+      <strong>${label}</strong><p>Este contenido externo puede utilizar cookies; no se ha cargado automáticamente.</p>${action}</div>`;
+  });
+}
   function videoEmbedMarkup(source={}, m={}, standalone=false){
     const height=Math.max(300, Math.min(Number(m.embed_height||540), 1600));
     const title=safe(m.title||'Vídeo');
@@ -4702,7 +4716,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
            referrerpolicy="no-referrer" src="${href}" style="min-height:${Math.max(height,880)}px;width:100%"></iframe>
         <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir recurso a pantalla completa</a></section>`;
     }
-    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(source.html||'',m.id||'') : (source.html||'');
+    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(tribecaGateLegacyExternalHtmlV264(source.html||''),m.id||'') : (source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
     let srcAttr=' src="about:blank"';
     if(progressHtml) srcAttr=` src="data:text/html;charset=utf-8;base64,${encoded}"`;
@@ -4741,7 +4755,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     }
     if(!source.src && !source.html) return tribecaMissingEmbedNoticeV198(m);
     const height=Math.max(420, Math.min(Number(m.embed_height||620), 1600));
-    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(source.html,m.id||'') : (source.html||'');
+    const progressHtml=source.html && window.TribecaProgress ? window.TribecaProgress.injectBridgeIntoHtml(tribecaGateLegacyExternalHtmlV264(source.html),m.id||'') : (source.html||'');
     const encoded=progressHtml ? encodeBase64Utf8(progressHtml) : '';
     let srcAttr=' src="about:blank"';
     if(progressHtml) srcAttr=` src="data:text/html;charset=utf-8;base64,${encoded}"`;
