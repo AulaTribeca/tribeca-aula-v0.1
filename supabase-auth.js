@@ -1793,8 +1793,9 @@
     bindTribecaThemeControls();
     syncTribecaStandaloneClass();
     applyTribecaSeasonMode();
-    if(!State.profile) { showLogin(); return; }
+    if(!State.profile) { window.TribecaCookieConsentV264?.onProfile(null); showLogin(); return; }
     const p=State.profile;
+    window.TribecaCookieConsentV264?.onProfile(p);
     const main = $('#inicio');
     try {
       $$('[data-tool="chat"], #chatBadge').forEach(el=>el.closest?.('button')?.remove?.() || el.remove());
@@ -1858,7 +1859,7 @@
       : `<button type="button" data-t141-account-tool="guidance">Orientación académica</button><button type="button" data-t141-account-tool="grades">Calificaciones</button><button type="button" data-t141-account-tool="difficulties">Materias con dificultades</button><button type="button" data-t141-account-tool="myPayments">Mis mensualidades</button>`;
     const installTool = isTribecaInstalled() ? '' : `<button type="button" data-pwa-install>${safe(pwaText('install'))}</button>`;
     const themeLabel = document.body.classList.contains('is-dark') ? 'Modo claro' : 'Modo oscuro';
-    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button><button type="button" data-t73-account-panel="appearance">Apariencia</button><button type="button" data-t167-toggle-theme>${safe(themeLabel)}</button>${personalTools}${installTool}`;
+    return `<button type="button" data-t73-account-panel="profile">Mi perfil</button><button type="button" data-t73-account-panel="password">Ajustes de contraseña</button><button type="button" data-t73-account-panel="notifications">Ajustes de notificaciones</button><button type="button" data-t73-account-panel="appearance">Apariencia</button><button type="button" data-t167-toggle-theme>${safe(themeLabel)}</button><button type="button" data-tribeca-cookies-manage>Configurar cookies</button>${personalTools}${installTool}`;
   }
   function accountMenuElement(){ return document.getElementById('profileMenu'); }
   function ensureAccountMenuPortal(){
@@ -4651,6 +4652,10 @@ function studentAssignedClasses(studentId=State.profile?.id){
   function videoEmbedMarkup(source={}, m={}, standalone=false){
     const height=Math.max(300, Math.min(Number(m.embed_height||540), 1600));
     const title=safe(m.title||'Vídeo');
+    // The nonessential external media must not be requested before consent.
+    // Blocking happens while HTML is being generated, before iframe insertion.
+    const mediaGate=window.TribecaCookieConsentV264?.externalFrameMarkup(source.src,m.title||'Vídeo',height);
+    if(mediaGate) return `<section class="material-embed-block material-video-block">${mediaGate}</section>`;
     const header=`<div><strong>Vídeo</strong><small>${source.provider?`Vídeo embebido · ${safe(source.provider)}`:'Vídeo embebido en la publicación'}</small></div>`;
     if(source.mode==='videoHtml'){
       const encoded=encodeBase64Utf8(source.html||'');
@@ -4668,6 +4673,8 @@ function studentAssignedClasses(studentId=State.profile?.id){
   function presentationEmbedMarkup(source={}, m={}){
     const height=Math.max(420, Math.min(Number(m.embed_height||720), 1800));
     const title=safe(m.title||'Presentación');
+    const mediaGate=window.TribecaCookieConsentV264?.externalFrameMarkup(source.src,m.title||'Presentación',height);
+    if(mediaGate) return `<section class="material-embed-block material-presentation-block">${mediaGate}</section>`;
     // Bioloxía 3.º ESO (Manuela Rial): cargar el documento HTML real sin reescribirlo
     // mediante data: o srcdoc. Así conserva los eventos de sus ejercicios y diagramas.
     if(String(m.id||'')==='4067c2c7-d184-47c1-be73-950b3a1ddd5b' && /^https:\/\/aulatribeca\.github\.io\/tribeca-aula-v0\.1\/resources\/bioloxia-3eso-manuela-rial-unidade-1-repaso\.html(?:[?#].*)?$/i.test(String(source.src||''))){
@@ -4716,6 +4723,8 @@ function studentAssignedClasses(studentId=State.profile?.id){
 
   function materialEmbedMarkup(m={}){
     const source=materialEmbedSource(m);
+    const externalGate=window.TribecaCookieConsentV264?.externalFrameMarkup(source.src,m.title||'Recurso interactivo',m.embed_height||720);
+    if(externalGate) return `<section class="material-embed-block material-embed-block-v98">${externalGate}</section>`;
     if(source.mode==='exam') return nativeExamMarkup(source.exam, m);
     if(source.mode==='quiz') return nativeQuizMarkup(source.quiz, m);
     if(source.mode==='quizError') return `<section class="material-embed-block native-quiz-shell native-quiz-error"><div><strong>Recurso interactivo</strong><small>JSON no interpretado</small></div><p>No he podido transformar este JSON en test, simulacro o esquema interactivo. Comprueba que contiene <code>type: "tribeca-activity"</code>, <code>type: "tribeca-exam"</code> o <code>questions</code> con ejercicios compatibles.</p></section>`;
@@ -8854,7 +8863,7 @@ function classroomCard(c,i=0){
   function aboutTribecaContent(){
     return `<section class="footer-about about-tribeca-panel" aria-labelledby="aboutTribecaTitle"><figure class="footer-about-portrait"><img src="assets/patricia-trillo-perfil.webp" alt="Retrato profesional de Patricia Trillo, pedagoga y fundadora de Tribeca Academia"></figure><div class="footer-about-copy"><p class="footer-about-kicker">Detrás de Tribeca</p><h2 id="aboutTribecaTitle">Patricia Trillo, una mirada pedagógica, creativa e innovadora</h2><p>Tribeca Academia nace del impulso profesional de Patricia Trillo, pedagoga y fundadora del proyecto. Con quince años de experiencia en enseñanza, refuerzo educativo y acompañamiento académico, Patricia ha trabajado con alumnado de distintas edades, etapas y perfiles, siempre desde una premisa clara: cada persona aprende de una forma singular y necesita una respuesta educativa ajustada, humana y rigurosa.</p><p>El proyecto comenzó cuando, con veintiún años, fundó Tribeca Academia para ofrecer apoyo educativo a alumnado de Primaria y ESO. Desde entonces, la academia ha crecido hasta convertirse en un espacio de aprendizaje cercano, exigente y creativo, orientado a acompañar trayectorias académicas diversas y a transformar las dificultades en oportunidades reales de mejora.</p><p>Su forma de entender la educación combina experiencia, curiosidad e innovación pedagógica. Esa búsqueda constante de mejora sostiene la identidad del proyecto: enseñar con rigor, acompañar con sensibilidad y crear soluciones educativas que tengan sentido para el alumnado de hoy.</p></div></section>`;
   }
-  function legalContent(){ return `<section class="window-panel privacy-section"><h3>Aviso legal</h3><p>Tribeca Aula es una plataforma educativa vinculada a Tribeca Academia, situada en Calle Rafael Juan, 33, 15130, Corcubión, A Coruña. Esta web se destina a la comunicación educativa, la organización de materiales, el seguimiento académico y la atención pedagógica del alumnado.</p><h4>Política de privacidad</h4><p>Los datos personales se tratarán con la finalidad de gestionar el aula virtual, las comunicaciones, el seguimiento académico y las solicitudes realizadas por alumnado o familias. El acceso a datos sensibles de seguimiento, observaciones, NEE o NEAE queda restringido a la profesora.</p><h4>Política de cookies</h4><p>La plataforma puede utilizar almacenamiento local técnico para conservar preferencias de visualización, sesión, idioma, zoom o estado de lectura. Antes de incorporar analítica, publicidad o cookies no técnicas deberá habilitarse un sistema específico de consentimiento.</p><h4>Condiciones de uso</h4><p>El uso de Tribeca Aula debe ser respetuoso, veraz y exclusivamente educativo. No se permite compartir credenciales, suplantar identidades, difundir materiales sin autorización ni publicar contenido ofensivo.</p><h4>Protección de datos</h4><p>La versión operativa debe mantener autenticación, permisos y reglas de seguridad en Supabase. Las contraseñas no deben compartirse y cualquier solicitud de recuperación será gestionada manualmente por la profesora.</p></section>`; }
+  function legalContent(){ return `<section class="window-panel privacy-section"><h3>Aviso legal</h3><p>Tribeca Aula es una plataforma educativa vinculada a Tribeca Academia, situada en Calle Rafael Juan, 33, 15130, Corcubión, A Coruña. Esta web se destina a la comunicación educativa, la organización de materiales, el seguimiento académico y la atención pedagógica del alumnado.</p><h4>Política de privacidad</h4><p>Los datos personales se tratarán con la finalidad de gestionar el aula virtual, las comunicaciones, el seguimiento académico y las solicitudes realizadas por alumnado o familias. El acceso a datos sensibles de seguimiento, observaciones, NEE o NEAE queda restringido a la profesora.</p><h4>Política de cookies y almacenamiento local</h4><p>La autenticación, la navegación y las preferencias elegidas usan almacenamiento técnico. La carga automática de vídeos y presentaciones externos es opcional y se controla mediante una decisión expresa. Puedes consultar la <a href="politica-cookies.html" target="_blank" rel="noopener noreferrer">política de cookies actualizada</a> y <button type="button" class="secondary-btn" data-tribeca-cookies-manage>configurar las cookies</button> cuando quieras.</p><h4>Condiciones de uso</h4><p>El uso de Tribeca Aula debe ser respetuoso, veraz y exclusivamente educativo. No se permite compartir credenciales, suplantar identidades, difundir materiales sin autorización ni publicar contenido ofensivo.</p><h4>Protección de datos</h4><p>La versión operativa debe mantener autenticación, permisos y reglas de seguridad en Supabase. Las contraseñas no deben compartirse y cualquier solicitud de recuperación será gestionada manualmente por la profesora.</p></section>`; }
   function supportContent(){ return `<section class="window-panel"><h3>Soporte</h3><p>Para incidencias de acceso, materiales, mensajes o calendario, utiliza el formulario de contacto o escribe a la profesora.</p></section>`; }
   function contactContent(){ return `<section class="window-panel"><h3>Contacto</h3><form id="contactForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="form-grid"><label>Nombre y apellidos<input name="name" required></label><label>Teléfono<input name="phone" required></label><label>Email<input name="email" type="email" required></label><label>Consulta<select name="topic"><option>Información sobre precios</option><option>Horarios</option><option>Metodología</option><option>Problemas de acceso</option><option>Otra consulta</option></select></label><label>Mensaje<textarea name="message" maxlength="600" rows="5"></textarea></label><button class="primary-btn" type="submit">Preparar email</button></form></section>`; }
 
