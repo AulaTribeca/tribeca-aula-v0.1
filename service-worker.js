@@ -1,5 +1,5 @@
 /* Tribeca Aula · Service worker v255 · visual docente y copy consistente */
-const TRIBECA_CACHE = 'tribeca-aula-static-v263-student-private-payments';
+const TRIBECA_CACHE = 'tribeca-aula-static-v264-education-first';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -9,15 +9,15 @@ const TRIBECA_INSTALL_ASSETS = [
   './tribeca-ui-preserve-v253.css',
   './tribeca-ui-modern-v254.css?v=254.1',
   './tribeca-teacher-refinement-v255.css?v=255',
-  './tribeca-student-payments-v263.css?v=263',
+  './tribeca-student-payments-v263.css?v=264',
   './tribeca-publisher-v262.css?v=262',
   './app.js?v=216',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=256',
   './tribeca-publisher-v262.js?v=262',
-  './tribeca-student-payments-v263.js?v=263',
-  './supabase-auth.js?v=263',
+  './tribeca-student-payments-v263.js?v=264',
+  './supabase-auth.js?v=264',
   './profile-ui.js?v=229',
   './tribeca-ui-accessibility-v253.js',
   './tribeca-material-toggle-v254.js?v=254.1',
