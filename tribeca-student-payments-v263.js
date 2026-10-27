@@ -26,22 +26,21 @@
       year:'numeric',month:'2-digit'}).formatToParts(new Date());
     const m=today.find(p=>p.type==='month')?.value;
     const y=today.find(p=>p.type==='year')?.value;
-    const row=rows?.find(r=>r.month===y+'-'+m)||rows?.[0]||null;
-    const paid=row?.status==='paid';
-    return `<section class="student-monthly-summary-v263 panel" aria-label="Mi mensualidad">
-      <div class="student-monthly-head-v263">
-        <div><p class="eyebrow">Consulta privada</p><h2>Mi mensualidad</h2>
-          <p>${escape(row?monthText(row.month):'Importe del mes')}</p></div>
-        <button type="button" class="secondary-btn" data-t16-tool="myPayments">Ver meses</button>
-      </div>
-      <div class="student-monthly-stats-v263">
-        <div><small>Importe</small><strong>${rows===null||!row?'—':money(row.amount)}</strong></div>
-        <div><small>Estado</small><strong class="${paid?'is-paid':'is-pending'}">${rows===null?'Cargando…':row?(paid?'Pagado':'Pendiente'):'Sin datos'}</strong></div>
-        ${paid&&row.paid_date?`<div><small>Fecha de pago</small><strong>${escape(dateText(row.paid_date))}</strong></div>`:''}
-      </div>
-    </section>`;
+    const current=rows?.find(r=>r.month===y+'-'+m)||rows?.[0]||null;
+    const paid=current?.status==='paid';
+    const state=rows===null?'Cargando…':current?(paid?'Pagado':'Pendiente'):'Sin datos';
+    const date=paid && current.paid_date ? ' · '+dateText(current.paid_date) : '';
+    // La pedagogía va primero: una sola línea informativa al final de las materias.
+    // No se renderizan tarjetas financieras, avisos ni notas internas.
+    return '<aside class="student-monthly-summary-v263" aria-label="Consulta privada de mensualidad">'+
+      '<span class="student-monthly-label-v263">Mensualidad'+(current?' · '+escape(monthText(current.month)):'')+'</span>'+
+      '<span class="student-monthly-amount-v263">'+(rows===null||!current?'—':money(current.amount))+'</span>'+
+      '<span class="student-monthly-state-v263'+(paid?' is-paid':'')+'">'+
+        escape(state+date)+'</span>'+
+      '<button type="button" class="student-monthly-link-v263" data-t16-tool="myPayments" aria-label="Consultar mis mensualidades">Ver meses</button>'+
+    '</aside>';
   }
-  function detail(raw){
+    function detail(raw){
     const rows=filtered(raw);
     if(!rows)return '<section class="window-panel student-monthly-detail-v263"><h2>Mis mensualidades</h2><p role="status">Cargando…</p></section>';
     if(!rows.length)return '<section class="window-panel student-monthly-detail-v263"><h2>Mis mensualidades</h2><p>No hay mensualidades registradas.</p></section>';

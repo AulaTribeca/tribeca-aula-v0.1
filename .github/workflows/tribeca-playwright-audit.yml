@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'audit/playwright-readonly-*'
+      - 'design/student-monthly-secondary-*'
       - main
   workflow_dispatch:
     inputs:
@@ -28,7 +29,7 @@ concurrency:
 jobs:
   public-smoke:
     name: Carga pública y accesibilidad (Chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - name: Checkout (lectura)
@@ -111,6 +112,16 @@ jobs:
           }
           if (!ready) { console.log('No se ha propagado la versión v256 en GitHub Pages.'); process.exit(1); }
           NODE
+      - name: Verificar mensualidad secundaria, privada y accesible (4 dispositivos)
+        if: startsWith(github.ref, 'refs/heads/design/student-monthly-secondary-')
+        env:
+          CI: 'true'
+        run: |
+          node --check tribeca-student-payments-v263.js
+          node --check supabase-auth.js
+          node --check tests/student-monthly-secondary-v264.spec.mjs
+          npx playwright test tests/student-monthly-secondary-v264.spec.mjs --project=desktop-chromium --project=mobile-chromium --project=mobile-webkit --project=tablet-webkit
+
       - name: Aula sintética sin acceso a la base de datos
         env:
           CI: 'true'
@@ -120,7 +131,7 @@ jobs:
   roles-readonly:
     name: Perfiles de prueba (sin operaciones de escritura)
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.alcance == 'completo'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       CI: 'true'

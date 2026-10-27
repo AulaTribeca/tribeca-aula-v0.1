@@ -1,17 +1,56 @@
-/* v263 · Tribeca Aula / consulta privada de mensualidades.
-   Diseño pequeño, legible, sin gestión docente. */
-.student-monthly-summary-v263{display:grid;gap:14px;padding:18px 21px!important;border-radius:17px;max-width:100%;min-width:0}
-.student-monthly-head-v263{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.student-monthly-head-v263 .eyebrow{margin:0 0 3px;font-size:11px;letter-spacing:.09em}
-.student-monthly-head-v263 h2{font:700 clamp(19px,2.3vw,24px)/1.2 Georgia,serif!important;color:var(--text,#1f251f);margin:0 0 5px!important}
-.student-monthly-head-v263 p:not(.eyebrow){margin:0;color:var(--muted,#65716b);font-size:13px}
-.student-monthly-head-v263 button{min-height:42px;font-size:13px}
-.student-monthly-stats-v263{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-.student-monthly-stats-v263>div{min-width:0;padding:13px 14px;border:1px solid var(--line,#e0e5dc);background:var(--panel-solid,#fffdf8);border-radius:12px;display:grid;align-content:center;gap:5px}
-.student-monthly-stats-v263 small{font-size:12px;line-height:1.3;font-weight:600;color:var(--muted,#65716b)}
-.student-monthly-stats-v263 strong{font:750 clamp(16px,2vw,23px)/1.25 Inter,system-ui,sans-serif;word-break:break-word;color:var(--text,#1f251f);font-variant-numeric:tabular-nums}
-.student-monthly-stats-v263 strong.is-paid{color:#216443}
-.student-monthly-stats-v263 strong.is-pending{color:var(--text,#1f251f)}
+/* v264 · Mensualidad: una nota auxiliar al final del contenido educativo.
+   Sin panel, sombras, bloques KPI, iconos de dinero ni acentos de alarma. */
+.student-monthly-summary-v263{
+  display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;
+  gap:3px 13px;max-width:100%;min-width:0;margin-top:20px;
+  padding:9px 0 0!important;border:0!important;
+  border-top:1px solid var(--line,#e0e5dc)!important;
+  border-radius:0!important;background:transparent!important;
+  box-shadow:none!important;color:var(--muted,#686b64);
+  font-family:Inter,system-ui,sans-serif;
+  font-size:12px;line-height:1.55;
+}
+.student-monthly-summary-v263 .student-monthly-label-v263{
+  color:var(--muted,#686b64);font-size:12px;font-weight:500;
+  white-space:normal;
+}
+.student-monthly-summary-v263 .student-monthly-amount-v263{
+  font-size:12px;font-weight:700;
+  color:var(--text,#1f251f);font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.student-monthly-summary-v263 .student-monthly-state-v263{
+  font-size:12px;font-weight:500;
+  color:var(--muted,#686b64);white-space:normal;
+  font-variant-numeric:tabular-nums;
+}
+.student-monthly-summary-v263 .student-monthly-state-v263.is-paid{
+  color:var(--muted,#686b64);
+}
+.student-monthly-summary-v263 .student-monthly-link-v263{
+  min-height:42px;min-width:44px;margin-left:auto;
+  padding:7px 4px!important;border:0!important;
+  border-radius:8px!important;background:transparent!important;
+  box-shadow:none!important;font:600 12px/1.3 Inter,system-ui,sans-serif;
+  color:var(--green,#103f24)!important;text-decoration:underline;
+  text-underline-offset:3px;cursor:pointer;
+}
+.student-monthly-summary-v263 .student-monthly-link-v263:hover{
+  background:var(--panel-solid,#fffdf8)!important;
+}
+.student-monthly-summary-v263 .student-monthly-link-v263:focus-visible{
+  outline:3px solid var(--gold,#a8872d);outline-offset:2px;
+}
+@media(max-width:560px){
+  .student-monthly-summary-v263{
+    margin-top:14px;padding-top:8px!important;gap:2px 10px;
+  }
+  .student-monthly-summary-v263 .student-monthly-link-v263{
+    margin-left:0;
+  }
+}
+@media print{.student-monthly-summary-v263{display:none!important}}
+
 .student-monthly-detail-v263{max-width:100%;min-width:0;padding:20px!important}
 .student-monthly-detail-v263 h2{font:700 clamp(19px,2.3vw,25px)/1.3 Georgia,serif!important;margin:0 0 18px!important;color:var(--text,#1f251f)}
 .student-monthly-table-wrap-v263{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
@@ -24,13 +63,8 @@
 .student-monthly-status-v263.is-paid{color:#216443}
 .student-monthly-status-v263.is-pending{color:var(--text,#1f251f)}
 @media(max-width:560px){
-  .student-monthly-summary-v263{padding:15px!important}
-  .student-monthly-head-v263{align-items:flex-start}
-  .student-monthly-stats-v263{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .student-monthly-stats-v263>div:nth-child(3){grid-column:1/-1}
-  .student-monthly-stats-v263>div{padding:12px}
   .student-monthly-detail-v263{padding:14px!important}
   .student-monthly-table-v263{font-size:13px}
   .student-monthly-table-v263 th,.student-monthly-table-v263 td{padding:10px 8px}
 }
-@media(print){.student-monthly-summary-v263 button{display:none!important}}
+
