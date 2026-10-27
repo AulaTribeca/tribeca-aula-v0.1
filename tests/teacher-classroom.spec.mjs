@@ -29,6 +29,7 @@ test('Detalle docente ficticio: legibilidad, teclado y apertura de recurso', asy
   await title.focus(); await page.keyboard.press('Tab');
   await expect(subject.getByRole('button',{name:'Añadir unidad',exact:true})).toBeFocused();
   await page.evaluate(()=>window.scrollTo(0,0));
+  await expect.poll(()=>page.evaluate(()=>document.querySelector('.classroom-detail-hero-v92').getBoundingClientRect().top-document.querySelector('#appHeader').getBoundingClientRect().bottom), {message:'El encabezado no debe tapar el título de la clase'}).toBeGreaterThanOrEqual(-2);
   if(process.env.TRIBECA_QA_SCREENSHOTS==='1') await page.screenshot({path:testInfo.outputPath('teacher-classroom.png'),fullPage:true});
   const row=subject.locator('.classroom-material-row').filter({hasText:'Actividad interactiva de prueba QA'});
   // En táctil puede utilizar el visor interno en vez de una pestaña nueva.

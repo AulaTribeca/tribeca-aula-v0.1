@@ -28,7 +28,7 @@ concurrency:
 jobs:
   public-smoke:
     name: Carga pública y accesibilidad (Chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - name: Checkout (lectura)
@@ -120,7 +120,7 @@ jobs:
   roles-readonly:
     name: Perfiles de prueba (sin operaciones de escritura)
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.alcance == 'completo'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       CI: 'true'

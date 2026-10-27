@@ -1,5 +1,5 @@
-/* Tribeca Aula · Service worker v262.1 · respuestas offline coherentes */
-const TRIBECA_CACHE = 'tribeca-aula-static-v262-1';
+/* Tribeca Aula · v263.1 · accesibilidad y respuestas offline coherentes */
+const TRIBECA_CACHE = 'tribeca-aula-static-v263-1';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -8,17 +8,19 @@ const TRIBECA_INSTALL_ASSETS = [
   './profile-ui.css?v=229',
   './tribeca-ui-preserve-v253.css',
   './tribeca-ui-modern-v254.css?v=254.1',
-  './tribeca-teacher-refinement-v255.css?v=262.1',
+  './tribeca-student-payments-v263.css?v=263',
+  './tribeca-teacher-refinement-v255.css?v=263.1',
   './tribeca-auth-refinement-v256.css?v=256.1',
   './tribeca-publisher-v262.css?v=262',
-  './app.js?v=216',
+  './app.js?v=263.1',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
   './resource-progress.js?v=256',
   './tribeca-publisher-v262.js?v=262',
-  './supabase-auth.js?v=262.1',
+  './tribeca-student-payments-v263.js?v=263',
+  './supabase-auth.js?v=263.1',
   './profile-ui.js?v=229',
-  './tribeca-ui-accessibility-v253.js?v=262.1',
+  './tribeca-ui-accessibility-v253.js?v=263.1',
   './tribeca-material-toggle-v254.js?v=254.1',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
