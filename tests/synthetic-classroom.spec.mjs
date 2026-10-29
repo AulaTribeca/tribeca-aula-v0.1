@@ -5,7 +5,7 @@ import {
 } from './fixtures/browser-classroom.mjs';
 
 // Tests sin credenciales ni acceso a datos de menores. Todo es memoria local.
-test('Aula ficticia: navegación de clase, materia, unidad y publicación', async ({ page }) => {
+test('Aula ficticia: navegación de clase, materia, unidad y publicación', async ({ page, browserName, isMobile }) => {
   // Una defensa adicional: las peticiones PostgREST no salen al exterior.
   await page.route(/\/rest\/v1\//, route => route.abort());
   // Vista previa exclusiva de CI: sirve la versión propuesta del puente
@@ -23,6 +23,11 @@ test('Aula ficticia: navegación de clase, materia, unidad y publicación', asyn
   await installAnonymousSyntheticStudent(page);
   await expect(page.locator('#appHeader')).not.toHaveAttribute('inert', '');
   await expect(page.locator('main#inicio')).not.toHaveAttribute('inert', '');
+  if (browserName === 'webkit' && isMobile) {
+    const install = page.locator('#tribecaPwaInstallCta');
+    await expect(install).toBeVisible();
+    await expect(install).not.toHaveAttribute('inert', '');
+  }
 
   const classroom = page.locator(`.student-classroom-card-v232[data-student-class-id="${QA_IDS.classId}"]`);
   await expect(classroom).toBeVisible();

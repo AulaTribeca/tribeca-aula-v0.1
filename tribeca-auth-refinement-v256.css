@@ -43,3 +43,6 @@ body.tribeca-preserve-v253 #tribecaAuthOverlay .auth-card {
   outline: 3px solid var(--gold);
   outline-offset: 3px;
 }
+
+/* La instalación es secundaria: nunca debe tapar el acceso ni su recuperación. */
+body.auth-locked #tribecaPwaInstallCta { display: none !important; }

@@ -137,3 +137,22 @@ se conserva. Sin cambios de rutas, anclas, navegación ni tokens de marca.
 Versiones: interfaz 262.1; cache tribeca-aula-static-v262-1; script de auth,
 accesibilidad y CSS docente con query 262.1. Publicador conserva query 262.
 La propuesta continúa en borrador y no se despliega.
+
+## Continuación del 29/10/2026 · propuesta v263.1
+
+Integración de main d6fa7e5, conservando mensualidades privadas v263 y el
+recurso de radicales. ResizeObserver actualiza la altura de cabecera al cambiar
+su contenido. La nueva aserción de no solapamiento pasa en los cuatro proyectos.
+
+La ejecución 40541698960 superó 55 de 60 casos. Cuatro fallos eran expectativas
+obsoletas de versión, sustituidas por comprobaciones de coherencia entre el
+script único, su URL en caché y la versión de interfaz. El entorno fijo oficial
+Playwright v1.55.1-noble evita reinstalar dependencias de sistema en cada ronda.
+La ejecución 40899891537 superó 59 de 60 casos y permitió localizar el fallo
+restante: el aviso de instalación PWA interceptaba el botón de recuperación en
+WebKit móvil. Se oculta y se vuelve inerte durante auth-locked, restaurando su
+estado al salir. Se comprueban ambas fases, además de acceso/recuperación.
+
+La lista PLAN_CALIDAD_TRIBECA.md separa trabajo pendiente y evidencia. Las
+pruebas no certifican PWA física, sesiones reales actuales ni accesibilidad
+integral. El publicador de HTML/ZIP sigue pendiente como problema general.

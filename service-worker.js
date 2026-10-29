@@ -10,7 +10,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './tribeca-ui-modern-v254.css?v=254.1',
   './tribeca-student-payments-v263.css?v=263',
   './tribeca-teacher-refinement-v255.css?v=263.1',
-  './tribeca-auth-refinement-v256.css?v=256.1',
+  './tribeca-auth-refinement-v256.css?v=263.1',
   './tribeca-publisher-v262.css?v=262',
   './app.js?v=263.1',
   './supabase-config.js',

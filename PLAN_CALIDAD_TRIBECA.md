@@ -1,12 +1,13 @@
 # Plan de calidad · Tribeca Aula
 
-Actualizado: 27/10/2026. Lista de trabajo recuperada de la auditoría y de los fallos comunicados. No es una certificación de conformidad ni declara completadas las tareas pendientes.
+Actualizado: 29/10/2026. Lista de trabajo recuperada de la auditoría y de los fallos comunicados. No es una certificación de conformidad ni declara completadas las tareas pendientes.
 
 Estados: pendiente, en verificación, verificado, publicado. Cada cierre requiere evidencia de la versión correspondiente. Las pruebas usan datos ficticios; nunca se publican capturas ni registros de alumnado real.
 
 | ID | Área / tarea | Criterio de cierre | Estado |
 |---|---|---|---|
 | A01 | Acceso y recuperación | Formularios alternan; foco en campo activo; fondo inerte; controles legibles | En verificación v263.1 |
+| A08 | Aviso de instalación | No tapa acceso/recuperación en iOS; vuelve al entrar | En verificación v263.1 |
 | A02 | Cabecera móvil | No tapa título tras cambio de rol, tamaño o fuente | En verificación v263.1 |
 | A03 | Detalle docente | Texto auxiliar ≥14px, inputs ≥16px, controles ≥44px; etiqueta de unidad; sin desbordamiento | En verificación v263.1 |
 | A04 | Navegación por teclado | Orden lógico, foco visible, retorno tras cerrar modales y visores | Parcial; pendiente recorrido completo |

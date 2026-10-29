@@ -34,7 +34,7 @@
       const overlay = document.getElementById('tribecaAuthOverlay');
       const locked = document.body.classList.contains('auth-locked') && overlay && !overlay.hidden;
       if (locked) {
-        document.querySelectorAll('#appHeader, main#inicio, body > footer, #windowLayer, #windowDock').forEach(region => {
+        document.querySelectorAll('#appHeader, main#inicio, body > footer, #windowLayer, #windowDock, #tribecaPwaInstallCta').forEach(region => {
           if (!backgroundState.has(region)) backgroundState.set(region, region.inert);
           region.inert = true;
         });

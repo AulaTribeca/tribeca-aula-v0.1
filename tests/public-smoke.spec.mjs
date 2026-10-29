@@ -1,10 +1,16 @@
 import { test, expect } from '@playwright/test';
 
-test('Acceso y recuperación muestran un solo formulario y transfieren el foco', async ({ page }) => {
+test('Acceso y recuperación muestran un solo formulario y transfieren el foco', async ({ page, browserName, isMobile }) => {
   await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
   const login = page.locator('#t16LoginForm');
   const reset = page.locator('#t16ResetForm');
   await expect(login).toBeVisible({ timeout: 45_000 });
+  if (browserName === 'webkit' && isMobile) {
+    const install = page.locator('#tribecaPwaInstallCta');
+    await expect(install).toBeAttached();
+    await expect(install).toBeHidden();
+    await expect(install).toHaveAttribute('inert', '');
+  }
   await login.locator('[data-t16-forgot]').click();
   await expect(reset).toBeVisible();
   await expect(login).toBeHidden();
