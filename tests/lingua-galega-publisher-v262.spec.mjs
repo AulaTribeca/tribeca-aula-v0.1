@@ -69,7 +69,11 @@ test('La fuente histórica no se duplica en el nuevo publicador',async()=>{
   const index=await readFile(new URL('../index.html',import.meta.url),'utf8');
   const sw=await readFile(new URL('../service-worker.js',import.meta.url),'utf8');
   expect(index).toContain('tribeca-publisher-v262.js?v=262');
-  expect(index).toContain('supabase-auth.js?v=262');
-  expect(sw).toContain('tribeca-aula-static-v262');
+  const authScripts=[...index.matchAll(/<script\s+src="(supabase-auth\.js\?v=[^"]+)"/g)];
+  expect(authScripts).toHaveLength(1);
+  expect(sw.includes('./'+authScripts[0][1]), 'La caché debe incluir el script de acceso vigente').toBe(true);
+  const version=index.match(/data-ui-version="([^"]+)"/)?.[1];
+  expect(version).toBeTruthy();
+  expect(sw.includes('tribeca-aula-static-v'+version.replace(/\./g,'-')), 'La caché y la interfaz deben compartir versión').toBe(true);
   expect(sourceAuth).toContain('db4a66ff-2114-489f-ab70-a647b75e6bd9');
 });
