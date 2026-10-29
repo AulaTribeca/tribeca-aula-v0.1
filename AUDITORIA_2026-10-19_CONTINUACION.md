@@ -156,3 +156,12 @@ estado al salir. Se comprueban ambas fases, además de acceso/recuperación.
 La lista PLAN_CALIDAD_TRIBECA.md separa trabajo pendiente y evidencia. Las
 pruebas no certifican PWA física, sesiones reales actuales ni accesibilidad
 integral. El publicador de HTML/ZIP sigue pendiente como problema general.
+
+Inspección de las cuatro capturas sintéticas de la ejecución 40899891537:
+la cabecera ya no tapa el título; el aviso PWA aún cubría contenido al entrar y
+los botones secundarios de unidad conservaban estilos nativos diferentes por
+navegador. El aviso pasa al flujo normal al final de la página. Los botones
+secundarios comparten fondo, borde y tamaños; eliminar mantiene diferenciación
+textual/cromática y Crear material conserva la jerarquía principal. En móvil,
+las dos acciones secundarias se colocan en dos columnas. Verificación pendiente
+en el candidato actualizado; no se han pulsado acciones de modificación real.

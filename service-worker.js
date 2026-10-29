@@ -6,7 +6,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './index.html',
   './styles.css?v=234',
   './profile-ui.css?v=229',
-  './tribeca-ui-preserve-v253.css',
+  './tribeca-ui-preserve-v253.css?v=263.1',
   './tribeca-ui-modern-v254.css?v=254.1',
   './tribeca-student-payments-v263.css?v=263',
   './tribeca-teacher-refinement-v255.css?v=263.1',

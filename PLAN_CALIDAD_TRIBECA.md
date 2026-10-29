@@ -7,9 +7,9 @@ Estados: pendiente, en verificación, verificado, publicado. Cada cierre requier
 | ID | Área / tarea | Criterio de cierre | Estado |
 |---|---|---|---|
 | A01 | Acceso y recuperación | Formularios alternan; foco en campo activo; fondo inerte; controles legibles | En verificación v263.1 |
-| A08 | Aviso de instalación | No tapa acceso/recuperación en iOS; vuelve al entrar | En verificación v263.1 |
+| A08 | Aviso de instalación | No tapa acceso/recuperación en iOS; vuelve al entrar al final de la página | En verificación v263.1 |
 | A02 | Cabecera móvil | No tapa título tras cambio de rol, tamaño o fuente | En verificación v263.1 |
-| A03 | Detalle docente | Texto auxiliar ≥14px, inputs ≥16px, controles ≥44px; etiqueta de unidad; sin desbordamiento | En verificación v263.1 |
+| A03 | Detalle docente | Texto auxiliar ≥14px, inputs ≥16px, controles ≥44px; etiqueta de unidad; acciones uniformes; sin desbordamiento | En verificación v263.1 |
 | A04 | Navegación por teclado | Orden lógico, foco visible, retorno tras cerrar modales y visores | Parcial; pendiente recorrido completo |
 | A05 | Ampliación y reflujo | 200% y ancho 320px sin pérdida de controles o contenido | Pendiente |
 | A06 | Contraste | Medir texto, iconos, foco y estados en pantallas principales | Pendiente |

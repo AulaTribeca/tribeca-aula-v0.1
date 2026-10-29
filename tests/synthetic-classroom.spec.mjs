@@ -27,6 +27,7 @@ test('Aula ficticia: navegación de clase, materia, unidad y publicación', asyn
     const install = page.locator('#tribecaPwaInstallCta');
     await expect(install).toBeVisible();
     await expect(install).not.toHaveAttribute('inert', '');
+    expect(await install.evaluate(el=>getComputedStyle(el).position)).toBe('static');
   }
 
   const classroom = page.locator(`.student-classroom-card-v232[data-student-class-id="${QA_IDS.classId}"]`);

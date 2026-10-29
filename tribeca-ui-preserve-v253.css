@@ -168,3 +168,19 @@ body.tribeca-preserve-v253 :is(.window-panel, .teacher-dashboard, .student-class
 @media print {
   body.tribeca-preserve-v253 .tribeca-skip-link { display: none !important; }
 }
+
+/* v263.1: instalación opcional al final de la página, sin cubrir el trabajo. */
+body.tribeca-preserve-v253 #tribecaPwaInstallCta {
+  position: static;
+  width: min(680px, calc(100% - 32px));
+  margin: 24px auto;
+  box-shadow: none;
+  backdrop-filter: none;
+  border-radius: 12px;
+}
+body.tribeca-preserve-v253 #tribecaPwaInstallCta :is(strong,span,button) {
+  font-size: max(.875rem,14px);
+  line-height: 1.4;
+}
+body.tribeca-preserve-v253 #tribecaPwaInstallCta button { min-height:44px; }
+body.tribeca-preserve-v253 #tribecaPwaInstallCta .ghost-btn { min-width:44px; }

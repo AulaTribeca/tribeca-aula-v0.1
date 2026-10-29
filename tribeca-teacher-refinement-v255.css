@@ -291,3 +291,26 @@ body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 :is(.classroom-mater
     min-width:0;
   }
 }
+
+/* Acciones de unidad: mismo lenguaje visual que las acciones de material. */
+body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > button:not(.primary-btn) {
+  appearance:none;
+  background:var(--panel-solid);
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px 12px;
+  box-shadow:none;
+}
+body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > button[data-t82-delete-unit] {
+  color:var(--danger);
+  border-color:rgba(157,56,47,.3);
+}
+@media(max-width:590px) {
+  body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 .classroom-unit-actions-v92 {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > .primary-btn { grid-column:1 / -1; }
+  body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > button { width:100%; min-width:0; }
+}
