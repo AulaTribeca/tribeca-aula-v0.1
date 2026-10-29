@@ -204,10 +204,16 @@ function renderStaticUserTexts() {
   $('#todayLine').textContent = formatLongDate(new Date());
 }
 
+let headerHeightObserver;
 function setHeaderHeight() {
   const header = $('#appHeader');
   if (!header) return;
   document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`);
+  // Recalculate after role controls, fonts or wrapped navigation change height.
+  if (!headerHeightObserver && typeof ResizeObserver === 'function') {
+    headerHeightObserver = new ResizeObserver(setHeaderHeight);
+    headerHeightObserver.observe(header);
+  }
 }
 
 function showToast(message) {

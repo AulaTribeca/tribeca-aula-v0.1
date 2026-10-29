@@ -33,9 +33,9 @@ test('Lengua 2.º ESO: inicio, tema, corrección, navegación y accesibilidad',a
   expect(errors).toEqual([]);
 });
 
-test('Lengua 2.º ESO: visor en página nueva carga el HTML sin data URL',async({page})=>{
+test('Lengua 2.º ESO: visor en página nueva carga el HTML sin data URL',async({page,baseURL})=>{
   const url='./tribeca-package-viewer.html?'+new URLSearchParams({
-    url:new URL(resource,'https://aulatribeca.github.io/tribeca-aula-v0.1/').href,
+    url:new URL(resource,baseURL).href,
     title:'Tema 2 · Lengua castellana',
     material:materialId
   }).toString();

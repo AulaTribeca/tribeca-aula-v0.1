@@ -1,0 +1,35 @@
+name: Tribeca - validar propuesta local
+on:
+  push:
+    branches: ['audit/pwa-offline-*']
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    container: mcr.microsoft.com/playwright:v1.55.1-noble
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test scripts/test-service-worker.cjs scripts/test-teacher-week.cjs
+      - run: node --check service-worker.js
+      - name: Servir el código de la propuesta
+        run: python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/tribeca-preview.log 2>&1 &
+      - name: Acceso y aula ficticia (sin secretos)
+        env:
+          CI: 'true'
+          TRIBECA_QA_SCREENSHOTS: '1'
+          TRIBECA_AUDIT_URL: http://127.0.0.1:4173/
+        run: npx playwright test tests/public-smoke.spec.mjs tests/synthetic-classroom.spec.mjs tests/teacher-classroom.spec.mjs tests/lengua-2eso-tema2.spec.mjs tests/lingua-galega-publisher-v262.spec.mjs --reporter=line
+      # Solo capturas de la clase ficticia; no sesiones ni datos personales.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: classroom-synthetic-screenshots
+          path: test-results/**/teacher-classroom.png
+          if-no-files-found: ignore
+          retention-days: 7

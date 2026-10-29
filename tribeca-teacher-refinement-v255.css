@@ -262,3 +262,55 @@ body.tribeca-preserve-v253.is-teacher:not(.is-dark):not(.dark-mode):not(.theme-d
     transition:none !important;
   }
 }
+
+/* v262.1: mínimos legibles para el detalle de clase, sin limitar ampliaciones. */
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 { font-size:max(1rem,14px); line-height:1.5; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 :is(p,small,label,summary,button,em) { font-size:max(.875rem,14px) !important; line-height:1.4 !important; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 :is(summary strong,.classroom-material-row strong,.classroom-person-row strong) { font-size:max(1rem,16px) !important; line-height:1.35 !important; overflow-wrap:anywhere; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 h3 { font-size:max(1.125rem,18px) !important; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-hero-v92 h2 { font-size:max(1.5rem,24px) !important; line-height:1.2 !important; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-hero-v92 :is(span,small) { font-size:max(.875rem,14px) !important; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),select,textarea) { font-size:max(1rem,16px) !important; min-height:44px; min-width:0; max-width:100%; padding:10px 12px; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 button { min-height:44px; white-space:normal; overflow-wrap:anywhere; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 summary { min-height:44px; }
+body.tribeca-preserve-v253.is-teacher .classroom-unit-form-v92 > label { display:grid; gap:6px; min-width:0; flex:1 1 240px; }
+body.tribeca-preserve-v253.is-teacher .classroom-unit-form-v92 { align-items:end; flex-wrap:wrap; }
+body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 :is(.classroom-material-actions,.classroom-unit-actions-v92) { display:flex; flex-wrap:wrap; gap:8px; }
+@media(max-width:590px) {
+  body.tribeca-preserve-v253.is-teacher .classroom-unit-form-v92 > :is(label,button) { flex-basis:100%; width:100%; }
+}
+
+@media(max-width:590px) {
+  body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 .classroom-material-actions {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+  }
+  body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 .classroom-material-actions > button {
+    width:100%;
+    min-width:0;
+  }
+}
+
+/* Acciones de unidad: mismo lenguaje visual que las acciones de material. */
+body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > button:not(.primary-btn) {
+  appearance:none;
+  background:var(--panel-solid);
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px 12px;
+  box-shadow:none;
+}
+body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > button[data-t82-delete-unit] {
+  color:var(--danger);
+  border-color:rgba(157,56,47,.3);
+}
+@media(max-width:590px) {
+  body.tribeca-preserve-v253.is-teacher .classroom-detail-v92 .classroom-unit-actions-v92 {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > .primary-btn { grid-column:1 / -1; }
+  body.tribeca-preserve-v253.is-teacher .classroom-unit-actions-v92 > button { width:100%; min-width:0; }
+}

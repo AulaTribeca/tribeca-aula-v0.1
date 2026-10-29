@@ -1,5 +1,39 @@
 import { test, expect } from '@playwright/test';
 
+test('Acceso y recuperación muestran un solo formulario y transfieren el foco', async ({ page, browserName, isMobile }) => {
+  await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
+  const login = page.locator('#t16LoginForm');
+  const reset = page.locator('#t16ResetForm');
+  await expect(login).toBeVisible({ timeout: 45_000 });
+  if (browserName === 'webkit' && isMobile) {
+    const install = page.locator('#tribecaPwaInstallCta');
+    await expect(install).toBeAttached();
+    await expect(install).toBeHidden();
+    await expect(install).toHaveAttribute('inert', '');
+  }
+  await login.locator('[data-t16-forgot]').click();
+  await expect(reset).toBeVisible();
+  await expect(login).toBeHidden();
+  await expect(reset.locator('input[name="username"]')).toBeFocused();
+  await reset.locator('[data-t16-login]').click();
+  await expect(login).toBeVisible();
+  await expect(reset).toBeHidden();
+  await expect(login.locator('input[name="username"]')).toBeFocused();
+});
+
+test('El acceso conserva texto legible y controles táctiles', async ({ page }) => {
+  await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#t16LoginForm')).toBeVisible({ timeout: 45_000 });
+  const metrics = await page.locator('#t16LoginForm').evaluate(form => ({
+    text: [...form.querySelectorAll('p, label, button')].map(el => parseFloat(getComputedStyle(el).fontSize)),
+    inputs: [...form.querySelectorAll('input')].map(el => parseFloat(getComputedStyle(el).fontSize)),
+    targets: [...form.querySelectorAll('input, button')].map(el => el.getBoundingClientRect().height),
+  }));
+  expect(Math.min(...metrics.text)).toBeGreaterThanOrEqual(14);
+  expect(Math.min(...metrics.inputs)).toBeGreaterThanOrEqual(16);
+  expect(Math.min(...metrics.targets)).toBeGreaterThanOrEqual(44);
+});
+
 // No personal data is printed, saved, or downloaded by these tests.
 test('La portada se sirve y muestra el acceso a Tribeca Aula', async ({ page }) => {
   const response = await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
@@ -52,4 +86,21 @@ test('La pantalla de acceso no obliga a desplazamiento horizontal', async ({ pag
     viewportWidth: document.documentElement.clientWidth,
   }));
   expect(metrics.contentWidth, 'Desbordamiento horizontal del documento').toBeLessThanOrEqual(metrics.viewportWidth + 2);
+});
+
+
+test('El fondo del acceso queda fuera del teclado y conserva accesibilidad', async ({ page }) => {
+  await page.goto('./#inicio', { waitUntil: 'domcontentloaded' });
+  const login = page.locator('#t16LoginForm');
+  await expect(login).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('#appHeader')).toHaveAttribute('inert', '');
+  await expect(page.locator('main#inicio')).toHaveAttribute('inert', '');
+  const accessibility = page.locator('.tribeca-a11y-button');
+  await expect(accessibility).toBeVisible();
+  expect(await accessibility.evaluate(el => !!el.closest('[inert]'))).toBe(false);
+  await login.locator('input[name="username"]').focus();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('#appHeader, main#inicio, footer, #windowLayer, #windowDock'))).toBe(false);
+  }
 });

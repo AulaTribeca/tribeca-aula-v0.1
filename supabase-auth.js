@@ -2156,11 +2156,10 @@
     const end=addDays(start,6);
     return {start:toIso(start), end:toIso(end)};
   }
-  function weekEventsForTeacher(){
-    const today=todayIso();
-    const end=addDays(new Date(),7).toISOString().slice(0,10);
+  function weekEventsForTeacher(date=new Date()){
+    const {start,end}=teacherWeekBounds(date);
     return relevantEvents()
-      .filter(e=>String(e.date||'').slice(0,10)>=today && String(e.date||'').slice(0,10)<=end)
+      .filter(e=>String(e.date||'').slice(0,10)>=start && String(e.date||'').slice(0,10)<=end)
       .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')) || String(a.title||'').localeCompare(String(b.title||''),'es'));
   }
   function classColorPalette(){
@@ -2501,7 +2500,7 @@
     const today=new Date();
     const dateText=today.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     const {start,end}=teacherWeekBounds(today);
-    const events=weekEventsForTeacher();
+    const events=weekEventsForTeacher(today);
     const byDay=new Map();
     events.forEach(e=>{ if(!byDay.has(e.date)) byDay.set(e.date, []); byDay.get(e.date).push(e); });
     const summary=events.length?Array.from(byDay.entries()).map(([date,items])=>`<article class="teacher-week-day"><strong>${safe(fmtDate(date))}</strong>${items.slice(0,4).map(e=>`<span class="event-${safe(eventColorType(e))}"><i class="day-event-dot event-${safe(eventColorType(e))}"></i>${safe(e.title)}</span>`).join('')}${items.length>4?`<em>+${items.length-4} más</em>`:''}</article>`).join(''):'<div class="empty-state teacher-week-empty">No hay eventos previstos esta semana.</div>';
@@ -7917,7 +7916,7 @@ function classroomCard(c,i=0){
         </details>
         <form class="classroom-unit-form classroom-unit-form-v92" onsubmit="return window.TribecaClassroomAddUnit(this,event)">
           <input type="hidden" name="classSubjectId" value="${safe(s.id)}">
-          <input name="title" placeholder="Nueva unidad, por ejemplo Module 5" required>
+          <label><span>Nombre de la unidad</span><input name="title" placeholder="Nueva unidad, por ejemplo Module 5" required></label>
           <button type="button" class="secondary-btn" onclick="return window.TribecaClassroomAddUnit(this.closest('form'),event)">Añadir unidad</button>
         </form>
         <div class="classroom-unit-list classroom-unit-list-v91">${units.length?units.map(u=>classroomUnitCard(u,s)).join(''):'<div class="empty-state">Sin unidades todavía.</div>'}</div>

@@ -2,7 +2,6 @@ import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 
 const resource='recursos/lingua-galega-2eso-fernando-blanco-unidade-1-repaso-exame.html';
-const root='https://aulatribeca.github.io/tribeca-aula-v0.1/';
 const sourceJs=await readFile(new URL('../tribeca-publisher-v262.js',import.meta.url),'utf8');
 const sourceAuth=await readFile(new URL('../supabase-auth.js',import.meta.url),'utf8');
 
@@ -27,9 +26,9 @@ test('Lingua Galega: recurso HTML real carga y funciona con navegación y ejerci
   expect(failures).toEqual([]);
 });
 
-test('Lingua Galega: iframe aislado sigue ejecutando ejercicios sin permiso de DOM padre',async({page})=>{
+test('Lingua Galega: iframe aislado sigue ejecutando ejercicios sin permiso de DOM padre',async({page,baseURL})=>{
   await page.goto('about:blank');
-  const src=root+resource;
+  const src=new URL(resource,baseURL).href;
   await page.setContent('<!doctype html><html><body style="margin:0"><iframe id="lesson" title="Lingua Galega" sandbox="allow-scripts allow-forms allow-popups allow-downloads" style="width:100%;height:960px;border:0"></iframe></body></html>');
   await page.locator('iframe#lesson').evaluate((el,url)=>el.src=url,src);
   const frame=page.frameLocator('iframe#lesson');
@@ -70,7 +69,11 @@ test('La fuente histórica no se duplica en el nuevo publicador',async()=>{
   const index=await readFile(new URL('../index.html',import.meta.url),'utf8');
   const sw=await readFile(new URL('../service-worker.js',import.meta.url),'utf8');
   expect(index).toContain('tribeca-publisher-v262.js?v=262');
-  expect(index).toContain('supabase-auth.js?v=262');
-  expect(sw).toContain('tribeca-aula-static-v262');
+  const authScripts=[...index.matchAll(/<script\s+src="(supabase-auth\.js\?v=[^"]+)"/g)];
+  expect(authScripts).toHaveLength(1);
+  expect(sw.includes('./'+authScripts[0][1]), 'La caché debe incluir el script de acceso vigente').toBe(true);
+  const version=index.match(/data-ui-version="([^"]+)"/)?.[1];
+  expect(version).toBeTruthy();
+  expect(sw.includes('tribeca-aula-static-v'+version.replace(/\./g,'-')), 'La caché y la interfaz deben compartir versión').toBe(true);
   expect(sourceAuth).toContain('db4a66ff-2114-489f-ab70-a647b75e6bd9');
 });
