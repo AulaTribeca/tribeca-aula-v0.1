@@ -6700,6 +6700,8 @@ render();
     return 'Sin forma de pago indicada';
   }
   function paymentPausedForMonth(userId, month){
+    // Los cobros ya cerrados prevalecen sobre nuevas pausas retroactivas.
+    if(paymentMonthRecord(userId,month).paid) return false;
     const overlaps = pauseMonthOverlap(userId, month);
     if(!overlaps.length) return false;
     // Una pausa no prorratea ni anula una cuota mensual fija. Solo tratamos el mes
