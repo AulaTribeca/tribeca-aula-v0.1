@@ -192,7 +192,7 @@ BEGIN
     RETURN NEXT;
   END LOOP;
 END
-$function$
+$function$;
 
 REVOKE ALL ON FUNCTION public.tribeca_student_monthly_payment_summary_v263() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.tribeca_student_monthly_payment_summary_v263() TO authenticated;
