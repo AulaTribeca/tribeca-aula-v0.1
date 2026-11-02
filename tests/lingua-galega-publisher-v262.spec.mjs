@@ -81,11 +81,13 @@ test('La fuente histórica no se duplica en el nuevo publicador',async()=>{
 const storageHtml='https://fuhkvjyfwkggjaqxfsgv.supabase.co/storage/v1/object/public/tribeca-public-assets/qa/index.html';
 test('HTML de Storage servido como texto: ejecuta ejercicios y aísla DOM y sesión',async({page})=>{
   await page.route(storageHtml,route=>route.fulfill({status:200,contentType:'text/plain',headers:{'access-control-allow-origin':'*','content-security-policy':"default-src 'none'; sandbox"},body:`<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body><h1>Ejercicio de prueba</h1><button id="check">Corregir</button><p id="answer"></p><p id="isolation"></p><script>
-  let blocked=0;try{parent.document.body.dataset.compromised='yes'}catch(e){blocked++}try{localStorage.getItem('qa-session')}catch(e){blocked++}
+  let blocked=0;try{parent.document.body.dataset.compromised='yes'}catch(e){blocked++}if(localStorage.getItem('qa-session')===null)blocked++;localStorage.setItem('activity-answer','14');
   document.getElementById('isolation').textContent=String(blocked);
   document.getElementById('check').onclick=()=>document.getElementById('answer').textContent='Correcto';
   </script></body></html>`}));
   await page.route('**/qa/style.css',route=>route.fulfill({contentType:'text/css',body:'h1 { color: rgb(11, 75, 53); }'}));
+  await page.goto('./');
+  await page.evaluate(()=>localStorage.setItem('qa-session','private-test-sentinel'));
   await page.goto('./tribeca-package-viewer.html?'+new URLSearchParams({url:storageHtml}));
   const frame=page.frameLocator('#resourceFrame');
   await expect(frame.locator('h1')).toHaveText('Ejercicio de prueba');
@@ -95,6 +97,8 @@ test('HTML de Storage servido como texto: ejecuta ejercicios y aísla DOM y sesi
   await expect(frame.locator('#isolation')).toHaveText('2');
   await expect(page.locator('#resourceFrame')).not.toHaveAttribute('sandbox',/allow-same-origin/);
   expect(await page.locator('body').getAttribute('data-compromised')).toBeNull();
+  expect(await page.evaluate(()=>localStorage.getItem('activity-answer'))).toBeNull();
+  expect(await page.evaluate(()=>localStorage.getItem('qa-session'))).toBe('private-test-sentinel');
 });
 
 test('Visor rechaza hosts suplantados y protocolos ejecutables sin ofrecer enlaces peligrosos',async({page})=>{

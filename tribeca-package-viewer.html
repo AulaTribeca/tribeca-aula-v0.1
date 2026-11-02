@@ -59,8 +59,19 @@
   }
   function withBase(html,baseHref){
     html=maybeDecodeEntities(html);
-    var base='<base href="'+escAttr(baseHref)+'">';
-    if(/<base\b/i.test(html)) return html;
+    // Legacy activities may access Web Storage before they render. In the
+    // opaque resource origin, provide an in-memory store, never the aula store.
+    var storageShim=`<script>(function(){
+      ['localStorage','sessionStorage'].forEach(function(name){
+        try{window[name].getItem('__tribeca_probe');return;}catch(e){}
+        var values=Object.create(null);
+        var memory={getItem:function(k){return Object.prototype.hasOwnProperty.call(values,String(k))?values[String(k)]:null;},setItem:function(k,v){values[String(k)]=String(v);},removeItem:function(k){delete values[String(k)];},clear:function(){values=Object.create(null);},key:function(i){return Object.keys(values)[i]||null;}};
+        Object.defineProperty(memory,'length',{get:function(){return Object.keys(values).length;}});
+        Object.defineProperty(window,name,{configurable:true,value:memory});
+      });
+    })();<\/script>`;
+    var base='<base href="'+escAttr(baseHref)+'">'+storageShim;
+    html=html.replace(/<base\b[^>]*>/gi,'');
     if(/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i,function(m){return m+base;});
     if(/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i,function(m){return m+'<head>'+base+'</head>';});
     return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+base+'</head><body>'+html+'</body></html>';
