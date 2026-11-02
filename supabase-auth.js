@@ -7058,7 +7058,7 @@ render();
     const paidDateRaw=String(fd.get('paidDate')||'').trim();
     if(isPaid){
       // Nunca confirmar un cobro sin fecha o con un año escrito por error.
-      const d=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(paidDateRaw);
+      const d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(paidDateRaw);
       if(!d) throw new Error('Debes indicar la fecha real del pago antes de marcarlo como abonado.');
       const year=Number(d[1]), mo=Number(d[2]), day=Number(d[3]);
       const validDate=new Date(Date.UTC(year,mo-1,day));
