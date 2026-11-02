@@ -15,7 +15,8 @@
     try {
       const parsed = new URL(String(url||''),location.href);
       if(parsed.protocol !== 'https:' && !(location.hostname==='localhost' && parsed.origin===location.origin))return false;
-      const externalAsset = /\/storage\/v1\/object\/public\/tribeca-public-assets\/.+\.html?$/i.test(parsed.pathname);
+      const configuredOrigin = new URL(window.TRIBECA_SUPABASE?.url || 'https://fuhkvjyfwkggjaqxfsgv.supabase.co').origin;
+      const externalAsset = parsed.origin === configuredOrigin && !parsed.username && !parsed.password && /\/storage\/v1\/object\/public\/tribeca-public-assets\/.+\.html?$/i.test(parsed.pathname);
       const internal = ownHtml(url);
       return internal || externalAsset;
     } catch (_) {return false;}
