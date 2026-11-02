@@ -1460,7 +1460,7 @@
           if(State.profile?.id===p.id) State.data.studentPaymentSummaryV263=Array.isArray(data)?data:[];
         }).catch(error=>{
           console.warn('[Tribeca Aula] Error de lectura del resumen privado de mensualidades:',error?.message||error);
-          if(State.profile?.id===p.id) State.data.studentPaymentSummaryV263=[];
+          if(State.profile?.id===p.id) State.data.studentPaymentSummaryV263={error:'unavailable'};
         }));
     }
     const finishSecondaryV237=async()=>{
@@ -2846,7 +2846,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const classes=studentAssignedClasses(p?.id);
     const legacySubjects=subjectList(p);
     const classHtml=classes.length ? studentClassesMarkup() : `<section class="section-heading focus-heading"><h2>${safe(uiLabel('yourSubject'))}</h2><span>${safe(p?.course||'')}</span></section><section class="subjects-grid focus-subjects" id="subjectsGrid">${legacySubjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${window.TribecaStudentPaymentsV263?.home(State.data.studentPaymentSummaryV263)||''}${classHtml}`;
+    return `<section class="hero-card panel focus-hero-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('focusMode'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(uiLabel('focusIntro'))}</p><p class="muted">${safe(academicLine(p))}</p></div></section><section class="focus-next-step panel"><strong>${safe(uiLabel('now'))}:</strong><span>${safe(uiLabel('focusNext'))}</span></section>${videoClassesHomePanel()}${classHtml}${window.TribecaStudentPaymentsV263?.home(State.data.studentPaymentSummaryV263)||''}`;
   }
 
   function uiLocale(){
@@ -2906,7 +2906,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     const learningArea=classes.length
       ? studentClassesMarkup()
       : `<section class="section-heading"><h2>${safe(uiLabel('mySubjects'))}</h2><span>${safe(p.course||'')}</span></section><section class="subjects-grid" id="subjectsGrid">${subjects.map((s,i)=>subjectCard(s,i)).join('')}</section>`;
-    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}${window.TribecaStudentPaymentsV263?.home(State.data.studentPaymentSummaryV263)||''}${learningArea}`;
+    return `<section class="hero-card panel hero-welcome-card"><div class="hero-main"><p class="eyebrow">${safe(uiLabel('personalPanel'))}</p><h1 class="${studentBirthdayGreetingV216(p)?'is-birthday-greeting-v216':''}">${studentWelcomeHeadingV216(p)}</h1><p>${safe(dateLabel)}</p><p class="muted">${safe(academicLine(p))}</p></div></section>${videoClassesHomePanel()}${learningArea}${window.TribecaStudentPaymentsV263?.home(State.data.studentPaymentSummaryV263)||''}`;
   }
   function subjectCard(subject, i) { const vis=subjectVisual(subject); const mats=visibleMaterials(subject); const units=new Set(mats.map(m=>m.unit_title||m.unit||'Unidad 1')); const pr=subjectProgress(subject); const study=isStudySkillsSubject(subject); return `<article class="subject-card ${study?'study-skills-subject-card':''} subject-${i%6}" tabindex="0" role="button" data-subject="${safe(subject)}" style="--subject-color:${vis.color}">${study?studySkillsBannerMarkup():''}<div class="subject-top"><span>${safe(State.profile.course||'')}</span></div><div class="subject-mark">${safe(vis.glyph)}</div><h3>${safe(subject)}</h3><p>${mats.length} ${safe(uiPlural(mats.length,'publication','publications'))} · ${units.size||0} ${safe(uiPlural(units.size||0,'unit','units'))}</p><div class="progress-row"><span>${safe(uiLabel('progress'))}</span><strong>${pr.percent}%</strong></div><div class="progress"><span style="width:${pr.percent}%"></span></div><small>${pr.done}/${pr.total} ${safe(uiLabel('donePublications'))}.</small></article>`; }
   function bindSubjectCards(){ 
@@ -4689,8 +4689,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     if(source.src && window.TribecaPublisherV262?.hostedHtml(source.src)){
       const own=window.TribecaPublisherV262.ownHtml(source.src);
       const href=safe(own ? source.src : tribecaPackageViewerUrlV204(source.src,m.title||'Recurso interactivo',m.id||''));
-      // Only the trusted viewer wrapper shares the aula origin. Its resource
-      // frame is opaque (no allow-same-origin), even when Storage sends text/plain.
+      // Untrusted external packages are loaded through a sandboxed viewer.
       const sandbox=own ? 'allow-scripts allow-forms allow-popups allow-downloads' : 'allow-scripts allow-forms allow-same-origin allow-popups allow-downloads';
       return `<section class="material-embed-block material-presentation-block t262-standalone-html">
         <div><strong>Recurso interactivo</strong><small>Actividad y ejercicios</small></div>
@@ -6705,6 +6704,8 @@ render();
     return 'Sin forma de pago indicada';
   }
   function paymentPausedForMonth(userId, month){
+    // Los cobros ya cerrados prevalecen sobre nuevas pausas retroactivas.
+    if(paymentMonthRecord(userId,month).paid) return false;
     const overlaps = pauseMonthOverlap(userId, month);
     if(!overlaps.length) return false;
     // Una pausa no prorratea ni anula una cuota mensual fija. Solo tratamos el mes
@@ -6874,11 +6875,13 @@ render();
     const pay=paymentMonthRecord(s.id,month);
     const calc=calculatePaymentAmount(s.id,month);
     const pausedBilling=paymentPausedForMonth(s.id,month);
+    const displayAmount=paymentFinancialAmountV222(s.id,month,calc);
+    const displayDetail=pay.paid?paymentSnapshotDetailV222(pay,calc):calc.detail;
     const method=pay.payment_method || '';
     const status=paymentSummaryStatus(pay, month, pausedBilling, s);
     const tariffLabel=bill.tariff_type==='individual'?'Individual':bill.tariff_type==='mixed'?'Mixta':'Grupal';
     return `<section class="payment-editor-v146 payment-editor-v219">
-      <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe del mes</small><strong>${money(pausedBilling?0:calc.amount)}</strong><p>${safe(calc.detail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
+      <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe del mes</small><strong>${money(pausedBilling?0:displayAmount)}</strong><p>${safe(displayDetail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
       <form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="premium-form finance-payment-form-v146">
         <input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}">
         <section class="finance-form-section-v146 payment-month-state-v219"><div class="section-heading"><h4>Estado del mes</h4><span>${safe(monthLabel(month))}</span></div><div class="finance-form-grid-v146"><label class="check-line payment-paid-toggle-v219"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> <span>Marcar como pagado</span></label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div></section>
@@ -6943,6 +6946,13 @@ render();
     if(billingStart && monthEnd && monthEnd<billingStart){
       return {amount:0,detail:'Todavía no había comenzado la facturación de este curso',present:0,billableClasses:0,individualPresent:0,fixedGroupDays:0,absent:0,justified:0,paused:0,totalDays:0,activeDays:0,assumedPresent:false};
     }
+    // Mes íntegramente pausado: no generar cuota fija ni deuda automática.
+    // Los meses parcialmente pausados conservan la política de cuota completa.
+    const monthFirst=`${month}-01`;
+    const fullyPaused=pauseRecords(userId).some(p=>pauseCoversDate(p,monthFirst) && pauseCoversDate(p,monthEnd));
+    if(fullyPaused){
+      return {amount:0,detail:'Mes íntegramente en pausa',present:0,billableClasses:0,individualPresent:0,fixedGroupDays:0,absent:0,justified:0,paused:0,totalDays:0,activeDays:0,assumedPresent:false};
+    }
     const eligibleDays=allDays.filter(d=>!billingStart || String(d.date)>=billingStart);
     const activeDays=eligibleDays.filter(d=>!d.paused);
     const scheduledKey=new Set(activeDays.map(d=>`${String(d.date).slice(0,10)}|${String(d.start||'').slice(0,5)}`));
@@ -6955,7 +6965,7 @@ render();
     const fixed=Number(bill.monthly_fee||0);
     const rate=Number(bill.class_rate||0);
     const tariff=String(bill.tariff_type||'group');
-    const billableScheduled=activeDays.filter(d=>{ const st=effectiveAttendanceStatus(userId,d,bill); return st!=='absent' && st!=='justified' && st!=='paused'; });
+    const billableScheduled=activeDays.filter(d=>{ const st=effectiveAttendanceStatus(userId,d,bill); return st!=='absent' && st!=='justified' && st!=='cancelled' && st!=='paused'; });
     const billableIndividualScheduled=billableScheduled.filter(d=>String(d.type||'group')==='individual');
     const extraIndividualPresent=extraExplicitPresent.filter(a=>String(a.class_type||a.type||'individual')==='individual').length;
     const paused=eligibleDays.filter(d=>d.paused).length;
@@ -7048,16 +7058,32 @@ render();
       payment_notes:fd.get('paymentNotes')||'',
       updated_at:new Date().toISOString()
     };
-    if(rec.monthly_fee<0 || rec.class_rate<0) throw new Error('Las tarifas no pueden ser negativas.');
+    if(!Number.isFinite(rec.monthly_fee) || !Number.isFinite(rec.class_rate) || rec.monthly_fee<0 || rec.class_rate<0) throw new Error('Las tarifas deben ser importes válidos no negativos.');
     const month=String(fd.get('month')||State.billingMonth||defaultBillingMonth()).slice(0,7);
     const isPaid=!!fd.get('paid');
+    const paidDateRaw=String(fd.get('paidDate')||'').trim();
+    if(isPaid){
+      // Nunca confirmar un cobro sin fecha o con un año escrito por error.
+      const d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(paidDateRaw);
+      if(!d) throw new Error('Debes indicar la fecha real del pago antes de marcarlo como abonado.');
+      const year=Number(d[1]), mo=Number(d[2]), day=Number(d[3]);
+      const validDate=new Date(Date.UTC(year,mo-1,day));
+      if(validDate.getUTCFullYear()!==year || validDate.getUTCMonth()!==mo-1 || validDate.getUTCDate()!==day)
+        throw new Error('La fecha del pago no es válida. Revísala.');
+      if(Math.abs(year-Number(month.slice(0,4)))>1)
+        throw new Error('El año del pago no concuerda con la mensualidad. Comprueba que no sea un error de escritura.');
+      // Comparar con la fecha local del centro para evitar desfases de huso horario.
+      const nowParts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+      const nowIso=['year','month','day'].map(k=>nowParts.find(v=>v.type===k)?.value||'').join('-');
+      if(paidDateRaw>nowIso) throw new Error('La fecha de pago no puede ser futura.');
+    }
     const paymentMethod=isPaid ? (fd.get('paymentMethod')||null) : null;
     const existing=paymentMonthRecord(rec.user_id,month);
     const pay={
       user_id:rec.user_id,
       month,
       paid:isPaid,
-      paid_date:isPaid ? (fd.get('paidDate')||null) : null,
+      paid_date:isPaid ? paidDateRaw : null,
       updated_at:new Date().toISOString()
     };
     if(isPaid){
