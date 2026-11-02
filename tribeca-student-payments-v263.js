@@ -16,8 +16,8 @@
   const filtered=raw=>{
     if(!Array.isArray(raw))return null;
     return raw.filter(r=>r&&/^\d{4}-(0[1-9]|1[0-2])$/.test(String(r.month||''))&&
-      r.amount!==null&&r.amount!==undefined&&r.amount!==''&&
-      Number.isFinite(Number(r.amount))&&Number(r.amount)>=0&&
+      (r.amount===null||(r.amount!==undefined&&r.amount!==''&&
+        Number.isFinite(Number(r.amount))&&Number(r.amount)>=0))&&
       ['paid','pending'].includes(r.status)
     ).sort((a,b)=>String(b.month).localeCompare(String(a.month)));
   };
@@ -37,7 +37,7 @@
       <ul class="student-monthly-list-v263">${rows.map(r=>`<li class="student-monthly-item-v263">
         <div class="student-monthly-item-head-v263"><strong>${escape(monthText(r.month))}</strong>
         <span class="student-monthly-status-v263 ${r.status==='paid'?'is-paid':'is-pending'}">${r.status==='paid'?'Pagado':'Pendiente'}</span></div>
-        <div class="student-monthly-item-foot-v263"><span>Importe: <strong>${money(r.amount)}</strong></span>
+        <div class="student-monthly-item-foot-v263"><span>Importe: <strong>${r.amount===null?'Por verificar':money(r.amount)}</strong></span>
         ${r.status==='paid'?'<span>Fecha de pago: '+escape(dateText(r.paid_date))+'</span>':''}</div>
       </li>`).join('')}</ul></section>`;
   }
