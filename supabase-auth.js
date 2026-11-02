@@ -4601,7 +4601,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
 
   function materialEmbedSource(m={}){
     const url=materialEmbedValue(m,'url');
-    if(normalizeMaterialKind(m.material_type||m.type)==='presentation' && window.TribecaPublisherV262?.hostedHtml(url))
+    if(window.TribecaPublisherV262?.hostedHtml(url))
       return {src:url,mode:'presentation',html:'',quiz:null,exam:null};
     // v261: recursos HTML publicados como archivos independientes no se vuelven
     // a serializar en data:/srcdoc aunque su antiguo embed_code siga guardado.
@@ -4687,10 +4687,14 @@ function studentAssignedClasses(studentId=State.profile?.id){
           Abrir recurso a pantalla completa</a></section>`;
     }
     if(source.src && window.TribecaPublisherV262?.hostedHtml(source.src)){
-      const href=safe(source.src);
+      const own=window.TribecaPublisherV262.ownHtml(source.src);
+      const href=safe(own ? source.src : tribecaPackageViewerUrlV204(source.src,m.title||'Recurso interactivo',m.id||''));
+      // Only the trusted viewer wrapper shares the aula origin. Its resource
+      // frame is opaque (no allow-same-origin), even when Storage sends text/plain.
+      const sandbox=own ? 'allow-scripts allow-forms allow-popups allow-downloads' : 'allow-scripts allow-forms allow-same-origin allow-popups allow-downloads';
       return `<section class="material-embed-block material-presentation-block t262-standalone-html">
-        <div><strong>Recurso interactivo</strong><small>HTML independente compatible</small></div>
-        <iframe title="${title}" loading="eager" sandbox="allow-scripts allow-forms allow-popups allow-downloads"
+        <div><strong>Recurso interactivo</strong><small>Actividad y ejercicios</small></div>
+        <iframe title="${title}" loading="eager" sandbox="${sandbox}"
            referrerpolicy="no-referrer" src="${href}" style="min-height:${Math.max(height,880)}px;width:100%"></iframe>
         <a class="embed-open-link" href="${href}" target="_blank" rel="noopener noreferrer">Abrir recurso a pantalla completa</a></section>`;
     }
@@ -9090,7 +9094,7 @@ function classroomCard(c,i=0){
     if(form?.elements?.attachmentsJson) form.elements.attachmentsJson.value=JSON.stringify(attachments);
     const attachmentBox=$('#attachmentPreview', form); if(attachmentBox) attachmentBox.textContent=attachments.map(f=>f.name||'Archivo').join(', ');
     const box=$('#resourcePackagePreview', form);
-    if(box) box.innerHTML=`<strong>Recurso completo subido correctamente.</strong><span>${safe(indexEntry.path)} · ${normalized.length} archivo${normalized.length===1?'':'s'} · ${prettyBytes(totalBytes)}</span><a href="${safe(indexUrl)}" target="_blank" rel="noopener">Probar recurso</a>`;
+    if(box) box.innerHTML=`<strong>Recurso completo subido correctamente.</strong><span>${safe(indexEntry.path)} · ${normalized.length} archivo${normalized.length===1?'':'s'} · ${prettyBytes(totalBytes)}</span><a href="${safe(tribecaPackageViewerUrlV204(indexUrl,title))}" target="_blank" rel="noopener">Probar recurso</a>`;
     toast('Recurso completo subido. Pulsa Publicar o Guardar cambios para conservarlo en la materia.');
     if(form) form.dataset.tribecaResourceUploading='';
     return pack;

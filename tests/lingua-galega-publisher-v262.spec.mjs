@@ -68,7 +68,7 @@ test('Publicador compatible: rechaza HTML pegado y enlaces inseguros, acepta URL
 test('La fuente histórica no se duplica en el nuevo publicador',async()=>{
   const index=await readFile(new URL('../index.html',import.meta.url),'utf8');
   const sw=await readFile(new URL('../service-worker.js',import.meta.url),'utf8');
-  expect(index).toContain('tribeca-publisher-v262.js?v=262');
+  expect(index).toContain('tribeca-publisher-v262.js?v=263.2');
   const authScripts=[...index.matchAll(/<script\s+src="(supabase-auth\.js\?v=[^"]+)"/g)];
   expect(authScripts).toHaveLength(1);
   expect(sw.includes('./'+authScripts[0][1]), 'La caché debe incluir el script de acceso vigente').toBe(true);
@@ -76,4 +76,32 @@ test('La fuente histórica no se duplica en el nuevo publicador',async()=>{
   expect(version).toBeTruthy();
   expect(sw.includes('tribeca-aula-static-v'+version.replace(/\./g,'-')), 'La caché y la interfaz deben compartir versión').toBe(true);
   expect(sourceAuth).toContain('db4a66ff-2114-489f-ab70-a647b75e6bd9');
+});
+
+const storageHtml='https://fuhkvjyfwkggjaqxfsgv.supabase.co/storage/v1/object/public/tribeca-public-assets/qa/index.html';
+test('HTML de Storage servido como texto: ejecuta ejercicios y aísla DOM y sesión',async({page})=>{
+  await page.route(storageHtml,route=>route.fulfill({status:200,contentType:'text/plain',headers:{'access-control-allow-origin':'*','content-security-policy':"default-src 'none'; sandbox"},body:`<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body><h1>Ejercicio de prueba</h1><button id="check">Corregir</button><p id="answer"></p><p id="isolation"></p><script>
+  let blocked=0;try{parent.document.body.dataset.compromised='yes'}catch(e){blocked++}try{localStorage.getItem('qa-session')}catch(e){blocked++}
+  document.getElementById('isolation').textContent=String(blocked);
+  document.getElementById('check').onclick=()=>document.getElementById('answer').textContent='Correcto';
+  </script></body></html>`}));
+  await page.route('**/qa/style.css',route=>route.fulfill({contentType:'text/css',body:'h1 { color: rgb(11, 75, 53); }'}));
+  await page.goto('./tribeca-package-viewer.html?'+new URLSearchParams({url:storageHtml}));
+  const frame=page.frameLocator('#resourceFrame');
+  await expect(frame.locator('h1')).toHaveText('Ejercicio de prueba');
+  await expect(frame.locator('h1')).toHaveCSS('color','rgb(11, 75, 53)');
+  await frame.locator('#check').click();
+  await expect(frame.locator('#answer')).toHaveText('Correcto');
+  await expect(frame.locator('#isolation')).toHaveText('2');
+  await expect(page.locator('#resourceFrame')).not.toHaveAttribute('sandbox',/allow-same-origin/);
+  expect(await page.locator('body').getAttribute('data-compromised')).toBeNull();
+});
+
+test('Visor rechaza hosts suplantados y protocolos ejecutables sin ofrecer enlaces peligrosos',async({page})=>{
+  for(const source of [storageHtml.replace('fuhkvjyfwkggjaqxfsgv.supabase.co','evil.example'), 'javascript:alert(1)']){
+    await page.goto('./tribeca-package-viewer.html?'+new URLSearchParams({url:source}));
+    await expect(page.getByRole('heading',{name:'No se pudo abrir el recurso'})).toBeVisible();
+    await expect(page.locator('#resourceFrame')).toHaveCount(0);
+    await expect(page.getByRole('link',{name:'Abrir archivo original'})).toHaveCount(0);
+  }
 });

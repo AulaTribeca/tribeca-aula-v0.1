@@ -15,15 +15,16 @@
     .loader span{display:inline-flex;gap:10px;align-items:center;font-weight:900;color:var(--brand)}
     .loader span:before{content:"";width:18px;height:18px;border-radius:50%;border:3px solid #d7ccb5;border-top-color:var(--brand);animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    @media(prefers-reduced-motion:reduce){.loader span:before{animation:none}}
     a{color:var(--brand);font-weight:900}
     #resourceFrame{display:block;width:100%;height:100%;border:0;background:#fffdf7}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="resource-progress.js?v=235"></script>
+  <script src="resource-progress.js?v=256"></script>
 </head>
 <body>
-  <main class="loader" id="loader"><span>Cargando recurso…</span></main>
+  <main class="loader" id="loader" role="status"><span>Cargando recurso…</span></main>
   <script>
 (function(){
   'use strict';
@@ -38,8 +39,11 @@
   function resolved(u){try{return new URL(u,location.href);}catch(_e){return null;}}
   function validSource(u){
     var x=resolved(u); if(!x) return false;
-    var own=x.origin===location.origin && /\.html?(?:[?#].*)?$/i.test(x.pathname+x.search);
-    var bucket=/\/storage\/v1\/object\/public\/tribeca-public-assets\//i.test(x.href) && /\.html?(?:[?#].*)?$/i.test(x.href);
+    if(x.username || x.password) return false;
+    var base=new URL('./',location.href);
+    var own=x.origin===base.origin && (x.pathname.startsWith(base.pathname+'recursos/') || x.pathname.startsWith(base.pathname+'resources/')) && /\.html?$/i.test(x.pathname);
+    var configured=new URL(window.TRIBECA_SUPABASE.url).origin;
+    var bucket=x.protocol==='https:' && x.origin===configured && /^\/storage\/v1\/object\/public\/tribeca-public-assets\/.+\.html?$/i.test(x.pathname);
     return own || bucket;
   }
   function dirOf(u){
@@ -62,7 +66,7 @@
     return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+base+'</head><body>'+html+'</body></html>';
   }
   function showError(msg){
-    document.body.innerHTML='<main class="fallback"><div class="card"><h1>No se pudo abrir el recurso</h1><p>'+esc(msg||'Error de carga')+'</p>'+(source?'<p><a href="'+escAttr(source)+'" target="_blank" rel="noopener">Abrir archivo original</a></p>':'')+'<p><a href="./">Volver a Tribeca Aula</a></p></div></main>';
+    document.body.innerHTML='<main class="fallback"><div class="card"><h1>No se pudo abrir el recurso</h1><p>'+esc(msg||'Error de carga')+'</p>'+(validSource(source)?'<p><a href="'+escAttr(source)+'" target="_blank" rel="noopener">Abrir archivo original</a></p>':'')+'<p><a href="./">Volver a Tribeca Aula</a></p></div></main>';
   }
   async function prepareProgress(){
     try{
@@ -83,14 +87,14 @@
     if(!validSource(source)) return showError('La URL no pertenece a un recurso HTML propio de Tribeca Aula.');
     await prepareProgress();
     try{
-      var res=await fetch(source,{cache:'no-store',mode:'cors'});
+      var res=await fetch(source,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'error'});
       if(!res.ok) throw new Error('HTTP '+res.status);
       var html=withBase(await res.text(),dirOf(source));
       if(material&&window.TribecaProgress?.injectBridgeIntoHtml) html=window.TribecaProgress.injectBridgeIntoHtml(html,material);
       var frame=document.createElement('iframe');
       frame.id='resourceFrame';
       frame.title=title;
-      frame.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups allow-downloads allow-presentation');
+      frame.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-downloads allow-presentation');
       frame.setAttribute('allow','fullscreen; clipboard-write; autoplay; encrypted-media; web-share');
       frame.setAttribute('allowfullscreen','');
       if(material) frame.dataset.tribecaProgressMaterial=material;
