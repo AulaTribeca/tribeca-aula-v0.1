@@ -6869,11 +6869,13 @@ render();
     const pay=paymentMonthRecord(s.id,month);
     const calc=calculatePaymentAmount(s.id,month);
     const pausedBilling=paymentPausedForMonth(s.id,month);
+    const displayAmount=paymentFinancialAmountV222(s.id,month,calc);
+    const displayDetail=pay.paid?paymentSnapshotDetailV222(pay,calc):calc.detail;
     const method=pay.payment_method || '';
     const status=paymentSummaryStatus(pay, month, pausedBilling, s);
     const tariffLabel=bill.tariff_type==='individual'?'Individual':bill.tariff_type==='mixed'?'Mixta':'Grupal';
     return `<section class="payment-editor-v146 payment-editor-v219">
-      <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe del mes</small><strong>${money(pausedBilling?0:calc.amount)}</strong><p>${safe(calc.detail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
+      <div class="payment-total-card-v146 status-${safe(status.key)}"><div><small>Importe del mes</small><strong>${money(pausedBilling?0:displayAmount)}</strong><p>${safe(displayDetail)}${pausedBilling?' · mes excluido por pausa':''}</p></div><span class="payment-status-pill payment-status-${safe(status.key)}">${safe(status.label)}</span></div>
       <form id="t16BillingForm" method="post" action="javascript:void(0)" onsubmit="return window.TribecaSubmitForm ? window.TribecaSubmitForm(this,event) : false;" class="premium-form finance-payment-form-v146">
         <input type="hidden" name="userId" value="${safe(s.id)}"><input type="hidden" name="month" value="${safe(month)}">
         <section class="finance-form-section-v146 payment-month-state-v219"><div class="section-heading"><h4>Estado del mes</h4><span>${safe(monthLabel(month))}</span></div><div class="finance-form-grid-v146"><label class="check-line payment-paid-toggle-v219"><input type="checkbox" name="paid" ${pay.paid?'checked':''}> <span>Marcar como pagado</span></label><label>Día de pago<input name="paidDate" type="date" value="${safe(pay.paid_date||'')}"></label><label>Forma de pago<select name="paymentMethod"><option value="" ${!method?'selected':''}>Sin indicar</option><option value="cash" ${method==='cash'?'selected':''}>Efectivo</option><option value="bizum" ${method==='bizum'?'selected':''}>Bizum</option></select></label></div></section>
@@ -7050,16 +7052,32 @@ render();
       payment_notes:fd.get('paymentNotes')||'',
       updated_at:new Date().toISOString()
     };
-    if(rec.monthly_fee<0 || rec.class_rate<0) throw new Error('Las tarifas no pueden ser negativas.');
+    if(!Number.isFinite(rec.monthly_fee) || !Number.isFinite(rec.class_rate) || rec.monthly_fee<0 || rec.class_rate<0) throw new Error('Las tarifas deben ser importes válidos no negativos.');
     const month=String(fd.get('month')||State.billingMonth||defaultBillingMonth()).slice(0,7);
     const isPaid=!!fd.get('paid');
+    const paidDateRaw=String(fd.get('paidDate')||'').trim();
+    if(isPaid){
+      // Nunca confirmar un cobro sin fecha o con un año escrito por error.
+      const d=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(paidDateRaw);
+      if(!d) throw new Error('Debes indicar la fecha real del pago antes de marcarlo como abonado.');
+      const year=Number(d[1]), mo=Number(d[2]), day=Number(d[3]);
+      const validDate=new Date(Date.UTC(year,mo-1,day));
+      if(validDate.getUTCFullYear()!==year || validDate.getUTCMonth()!==mo-1 || validDate.getUTCDate()!==day)
+        throw new Error('La fecha del pago no es válida. Revísala.');
+      if(Math.abs(year-Number(month.slice(0,4)))>1)
+        throw new Error('El año del pago no concuerda con la mensualidad. Comprueba que no sea un error de escritura.');
+      // Comparar con la fecha local del centro para evitar desfases de huso horario.
+      const nowParts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+      const nowIso=['year','month','day'].map(k=>nowParts.find(v=>v.type===k)?.value||'').join('-');
+      if(paidDateRaw>nowIso) throw new Error('La fecha de pago no puede ser futura.');
+    }
     const paymentMethod=isPaid ? (fd.get('paymentMethod')||null) : null;
     const existing=paymentMonthRecord(rec.user_id,month);
     const pay={
       user_id:rec.user_id,
       month,
       paid:isPaid,
-      paid_date:isPaid ? (fd.get('paidDate')||null) : null,
+      paid_date:isPaid ? paidDateRaw : null,
       updated_at:new Date().toISOString()
     };
     if(isPaid){
