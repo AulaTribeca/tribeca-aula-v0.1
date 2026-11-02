@@ -66,3 +66,10 @@ test('Los pagos nuevos se validan y los pagos cerrados se muestran sin recalcula
  assert.ok(auth.includes('const displayAmount=paymentFinancialAmountV222(s.id,month,calc)'));
  assert.ok(auth.includes('const displayDetail=pay.paid?paymentSnapshotDetailV222(pay,calc):calc.detail'));
 });
+
+test('Mes histórico pagado sin snapshot: importe por verificar, nunca 0 inventado',()=>{
+ const viewHtml=view.detail([{month:'2026-07',amount:null,status:'paid',paid_date:'2026-07-31'}]);
+ assert.match(viewHtml,/Por verificar/);
+ assert.match(viewHtml,/Pagado/);
+ assert.doesNotMatch(viewHtml,/0,00/);
+});
