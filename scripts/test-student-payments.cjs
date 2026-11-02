@@ -59,3 +59,10 @@ test('RPC: temporadas excluyentes, pagos cerrados inmutables y autorización por
   assert.match(sql,/REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon/);
   assert.match(sql,/GRANT EXECUTE ON FUNCTION[\s\S]*TO authenticated/);
 });
+
+test('Los pagos nuevos se validan y los pagos cerrados se muestran sin recalcular',()=>{
+ assert.ok(auth.includes('if(paidDateRaw>nowIso) throw new Error'));
+ assert.ok(auth.includes('if(Math.abs(year-Number(month.slice(0,4)))>1)'));
+ assert.ok(auth.includes('const displayAmount=paymentFinancialAmountV222(s.id,month,calc)'));
+ assert.ok(auth.includes('const displayDetail=pay.paid?paymentSnapshotDetailV222(pay,calc):calc.detail'));
+});
