@@ -65,4 +65,7 @@ test('Abrir material HTML de Storage desde el aula usa el visor también en tác
   const popup=await pop;
   const resource=popup ? popup.frameLocator('iframe').frameLocator('#resourceFrame') : page.frameLocator('#resourceFrame');
   await expect(resource.locator('#storage-proof')).toHaveText('Actividad de Storage');
+  const wrapper=popup ? popup.frameLocator('iframe') : page;
+  await wrapper.getByRole('link',{name:'Volver al aula',exact:true}).click();
+  await expect((popup||page).locator('#t16LoginForm')).toBeVisible();
 });
