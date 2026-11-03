@@ -1,0 +1,26 @@
+/* Controles de accesibilidad legibles, con reflujo y foco visible. */
+#tribecaAccessibilityWidget { font-size:16px; }
+#tribecaAccessibilityWidget .tribeca-a11y-button { width:48px; height:48px; font-size:24px; }
+#tribecaAccessibilityWidget .tribeca-a11y-panel {
+  width:min(720px,calc(100vw - 24px)); right:12px; left:auto; bottom:72px;
+  max-height:calc(100dvh - 96px); border:1px solid #52685e; border-radius:16px;
+  background:#f8f7f2; color:#172e25; display:flex; flex-direction:column;
+}
+#tribecaAccessibilityWidget .tribeca-a11y-panel > header { flex:none; min-height:56px; padding:8px 16px; background:#154d3b; color:#fff; }
+#tribecaAccessibilityWidget .tribeca-a11y-panel > header strong { font-size:18px; line-height:1.4; }
+#tribecaAccessibilityWidget .tribeca-a11y-panel > header button { width:44px; height:44px; font-size:26px; color:#fff; background:#154d3b; }
+#tribecaAccessibilityWidget .tribeca-a11y-grid { min-height:0; max-height:none; overflow:auto; padding:16px; gap:12px; background:#f8f7f2; overscroll-behavior:contain; }
+#tribecaAccessibilityWidget .tribeca-a11y-grid article { min-height:0; min-width:0; padding:16px; gap:12px; border:1px solid #c1ccc6; border-radius:10px; box-shadow:none; background:#fff; color:#172e25; }
+#tribecaAccessibilityWidget .tribeca-a11y-grid h3 { font-size:16px; line-height:1.5; color:#172e25; letter-spacing:normal; }
+#tribecaAccessibilityWidget .tribeca-a11y-grid button,
+#tribecaAccessibilityWidget .tribeca-a11y-grid select { min-height:44px; font-size:16px; line-height:1.4; border:1px solid #61786d; background:#fff; color:#172e25; padding:8px 10px; border-radius:8px; max-width:100%; }
+#tribecaAccessibilityWidget .tribeca-a11y-grid button.is-active { background:#154d3b; color:#fff; border-color:#154d3b; outline:none; }
+#tribecaAccessibilityWidget .a11y-button-stack { max-width:none; gap:8px; }
+#tribecaAccessibilityWidget .a11y-control-row { flex-wrap:wrap; gap:8px; }
+#tribecaAccessibilityWidget .a11y-control-row input { width:56px; height:44px; }
+#tribecaAccessibilityWidget .a11y-slider-row { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; gap:8px; }
+#tribecaAccessibilityWidget .a11y-slider-row input { min-width:0; width:100%; height:44px; }
+#tribecaAccessibilityWidget .a11y-slider-row output { grid-row:2; grid-column:1 / -1; font-size:16px; color:#172e25; }
+#tribecaAccessibilityWidget :is(button,input,select):focus-visible { outline:3px solid #005fcc !important; outline-offset:3px; box-shadow:0 0 0 6px #fff !important; }
+@media(max-width:600px) { #tribecaAccessibilityWidget .tribeca-a11y-grid { grid-template-columns:minmax(0,1fr); padding:12px; } }
+@media(prefers-reduced-motion:reduce) { #tribecaAccessibilityWidget * { scroll-behavior:auto; transition:none; animation:none; } }
