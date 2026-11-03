@@ -4,6 +4,7 @@
   if (window.TribecaProgress) return;
 
   const timers = new Map();
+  const pageSnapshots = new Map();
   const boundRoots = new Map();
 
   const state = () => window.TribecaAuth || null;
@@ -182,7 +183,13 @@ try{
   proto.setItem=function(k,v){if(this===ls){tracked.add(String(k));nativeSet.call(this,prefix+String(k),String(v));schedule();return;}return nativeSet.call(this,k,v);};
   proto.removeItem=function(k){if(this===ls){tracked.add(String(k));nativeRemove.call(this,prefix+String(k));schedule();return;}return nativeRemove.call(this,k);};
   proto.clear=function(){if(this===ls){var keys=[];for(var i=0;i<this.length;i++){var k=nativeKey.call(this,i);if(k&&k.indexOf(prefix)===0)keys.push(k);}keys.forEach(function(k){nativeRemove.call(ls,k);});tracked.clear();schedule();return;}return nativeClear.call(this);};
-}catch(e){}
+}catch(e){
+  // Opaque iframe: keep activity storage separate from the aula session.
+  var memory=Object.assign(Object.create(null),INITIAL.storage||{});
+  var isolated={getItem:function(k){tracked.add(String(k));return Object.prototype.hasOwnProperty.call(memory,String(k))?memory[String(k)]:null;},setItem:function(k,v){tracked.add(String(k));memory[String(k)]=String(v);schedule();},removeItem:function(k){delete memory[String(k)];schedule();},clear:function(){memory=Object.create(null);tracked.clear();schedule();},key:function(i){return Object.keys(memory)[i]||null;}};
+  Object.defineProperty(isolated,'length',{get:function(){return Object.keys(memory).length;}});
+  Object.defineProperty(window,'localStorage',{configurable:true,value:isolated});
+}
 function controls(){
  return Array.prototype.map.call(document.querySelectorAll('input,textarea,select,[contenteditable="true"]'),function(el,i){
   var type=String(el.type||el.tagName||'').toLowerCase();
@@ -208,11 +215,13 @@ document.addEventListener('DOMContentLoaded',function(){restore();setTimeout(res
 try{new MutationObserver(schedule).observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['class','hidden','open','aria-pressed','aria-selected','aria-expanded']});}catch(e){}
 })();`;
   }
-  function injectBridgeIntoHtml(html,materialId){
+  function injectBridgeIntoHtml(html,materialId,pageKey=''){
     const p=profile();
     if(!p?.id || p.role==='teacher' || !materialId) return String(html||'');
     const raw=String(html||'');
-    const script='<script>'+childBridgeSource(materialId,getState(materialId),p.id).replace(/<\/script/gi,'<\\/script')+'</script>';
+    const saved=pageSnapshots.get(p.id+':'+String(materialId)) || getState(materialId);
+    const initial=pageKey ? {bridge:saved.pages?.[pageKey] || {}} : saved;
+    const script='<script>'+childBridgeSource(materialId,initial,p.id).replace(/<\/script/gi,'<\\/script')+'</script>';
     if(/<head[^>]*>/i.test(raw)) return raw.replace(/<head[^>]*>/i,m=>m+script);
     if(/<html[^>]*>/i.test(raw)) return raw.replace(/<html[^>]*>/i,m=>m+'<head>'+script+'</head>');
     return '<!doctype html><html><head><meta charset="utf-8">'+script+'</head><body>'+raw+'</body></html>';
@@ -221,10 +230,17 @@ try{new MutationObserver(schedule).observe(document.documentElement,{subtree:tru
     const d=ev.data||{};
     if(d.type!=='TRIBECA_RESOURCE_PROGRESS_SAVE' || !d.materialId || profile()?.role==='teacher') return;
     const frames=[...document.querySelectorAll('iframe[data-tribeca-progress-material]')];
-    const valid=frames.some(f=>String(f.dataset.tribecaProgressMaterial||'')===String(d.materialId) && f.contentWindow===ev.source);
-    if(!valid) return;
+    const matched=frames.find(f=>String(f.dataset.tribecaProgressMaterial||'')===String(d.materialId) && f.contentWindow===ev.source);
+    if(!matched) return;
     const pct=(()=>{const cs=d.state?.dom?.controls||[];if(!cs.length)return 0;const done=cs.filter(x=>x.checked===true || (x.type!=='checkbox'&&x.type!=='radio'&&String(x.value||'').trim())).length;return Math.round((done/cs.length)*100);})();
-    queueSave(d.materialId,{kind:'embedded',bridge:d.state},{progressPercent:pct});
+    if(matched.hasAttribute('data-tribeca-progress-page')){
+      const key=String(d.materialId), page=matched.dataset.tribecaProgressPage;
+      const snapshotKey=profile().id+':'+key;
+      const previous=pageSnapshots.get(snapshotKey) || getState(key);
+      const payload=page ? {...previous,kind:'embedded',pages:{...previous.pages,[page]:d.state}} : {...previous,kind:'embedded',bridge:d.state};
+      pageSnapshots.set(snapshotKey,payload);
+      queueSave(key,payload,{progressPercent:pct});
+    }else queueSave(d.materialId,{kind:'embedded',bridge:d.state},{progressPercent:pct});
   });
 
   window.TribecaProgress={rowFor,getState,save,queueSave,bindRoot,markCompleted,injectBridgeIntoHtml};

@@ -109,3 +109,29 @@ test('Visor rechaza hosts suplantados y protocolos ejecutables sin ofrecer enlac
     await expect(page.getByRole('link',{name:'Abrir archivo original'})).toHaveCount(0);
   }
 });
+
+test('Paquete de varias páginas: enlaces HTML, regreso y respuestas conservadas',async({page},testInfo)=>{
+  const root='https://fuhkvjyfwkggjaqxfsgv.supabase.co/storage/v1/object/public/tribeca-public-assets/qa/';
+  await page.route(root+'**',route=>{
+    const second=route.request().url().endsWith('page2.html');
+    return route.fulfill({contentType:'text/plain',headers:{'access-control-allow-origin':'*'},body:`<!doctype html><html><body><h1>${second?'Segunda página':'Primera página'}</h1><label>Respuesta<input id="answer"></label><a href="${second?'index.html':'page2.html'}">Siguiente</a></body></html>`});
+  });
+  await page.goto('./tribeca-package-viewer.html?'+new URLSearchParams({url:root+'index.html',title:'Paquete de prueba'}));
+  const first=page.frameLocator('#resourceFrame');
+  await expect(first.locator('h1')).toHaveText('Primera página');
+  await first.getByLabel('Respuesta').fill('Respuesta de la primera página');
+  await first.getByRole('link',{name:'Siguiente'}).click();
+  await expect(page.frameLocator('#resourceFrame').locator('h1')).toHaveText('Segunda página');
+  await expect(page.frameLocator('#resourceFrame').getByLabel('Respuesta')).toHaveValue('');
+  await page.getByRole('button',{name:'Anterior',exact:true}).click();
+  await expect(page.frameLocator('#resourceFrame').getByLabel('Respuesta')).toHaveValue('Respuesta de la primera página');
+  await expect(page.getByRole('button',{name:'Anterior',exact:true})).toBeDisabled();
+  await expect(page.getByRole('link',{name:'Volver al aula'})).toHaveAttribute('href','./');
+  const nav=page.getByRole('navigation',{name:'Navegación del recurso'});
+  expect(await nav.locator('a,button').evaluateAll(els=>Math.min(...els.map(el=>el.getBoundingClientRect().height)))).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+  // A message from the wrapper itself must not be accepted as a resource click.
+  await page.evaluate(url=>window.postMessage({type:'TRIBECA_RESOURCE_NAVIGATE',url},'*'),root+'page2.html');
+  await expect(page.frameLocator('#resourceFrame').locator('h1')).toHaveText('Primera página');
+  if(process.env.TRIBECA_QA_SCREENSHOTS==='1') await page.screenshot({path:testInfo.outputPath('teacher-classroom.png')});
+});

@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: node --test scripts/test-service-worker.cjs scripts/test-teacher-week.cjs scripts/test-student-payments.cjs
+      - run: node --test scripts/test-service-worker.cjs scripts/test-teacher-week.cjs scripts/test-student-payments.cjs scripts/test-resource-pages.cjs
       - run: node --check service-worker.js
       - name: Servir el código de la propuesta
         run: python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/tribeca-preview.log 2>&1 &
