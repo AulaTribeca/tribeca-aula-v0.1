@@ -43,3 +43,7 @@ Estados: pendiente, en verificación, verificado, publicado. Cada cierre requier
 ## Continuación 02/11
 
 La v263.1 se publicó mediante PR #7 (77d284b), con despliegue Pages correcto. La v263.2 corrige la ruta general de HTML de Storage y la prueba del publicador, restringe el origen del recurso y aísla su DOM de la sesión. Pruebas nuevas: respuesta text/plain con CSP, asset CSS relativo, ejercicio funcional, acceso al DOM/almacenamiento bloqueado y rechazo de origen suplantado/protocolo ejecutable. No se consideran cerrados todos los tipos de paquete ni la auditoría con sesiones reales.
+
+## Continuación 03/11 · visor y paquetes
+
+Se conserva v264 de mensualidades. En verificación v264.1: cabecera de visor con regreso al aula, botón Anterior, controles de 44px, foco visible, errores recuperables y enlaces HTML internos cargados mediante el visor aislado. Las páginas visitadas se conservan abiertas en memoria; el progreso se separa por página y alumno. Se prueban mensajes de navegación y progreso no autorizados. Pendientes: ZIP con navegación programática, subida real completa, persistencia con cuentas reales y el resto de A04–A07/D01–D05. No se considera cerrado F03.

@@ -9,21 +9,30 @@
     :root{--ink:#172018;--muted:#64746c;--brand:#0b4b35;--paper:#fffdf7;--line:#d9ceb9}
     *{box-sizing:border-box}
     html,body{margin:0;width:100%;height:100%;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
-    body{overflow:hidden}
-    .loader,.fallback{min-height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+    body{overflow:hidden;display:flex;flex-direction:column}
+    [hidden]{display:none!important}
+    .viewer-nav{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--paper)}
+    .viewer-nav a,.viewer-nav button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--brand);font:600 14px/1.3 system-ui;text-decoration:none}
+    .viewer-nav button:disabled{opacity:.5}
+    :focus-visible{outline:3px solid #957014;outline-offset:2px}
+    .viewer-nav strong{flex:1;min-width:120px;font-size:14px;overflow-wrap:anywhere}
+    #viewerStatus{padding:12px;margin:0;overflow:auto}
+    .loader,.fallback{flex:1;min-height:0;overflow:auto;display:grid;place-items:center;text-align:center;padding:24px}
     .card{max-width:720px;border:1px solid var(--line);border-radius:24px;background:#fff;box-shadow:0 18px 48px rgba(18,42,29,.12);padding:28px}
     .loader span{display:inline-flex;gap:10px;align-items:center;font-weight:900;color:var(--brand)}
     .loader span:before{content:"";width:18px;height:18px;border-radius:50%;border:3px solid #d7ccb5;border-top-color:var(--brand);animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     @media(prefers-reduced-motion:reduce){.loader span:before{animation:none}}
     a{color:var(--brand);font-weight:900}
-    #resourceFrame{display:block;width:100%;height:100%;border:0;background:#fffdf7}
+    .resource-frame{display:block;flex:1;min-height:0;width:100%;height:0;border:0;background:#fffdf7}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="resource-progress.js?v=256"></script>
+  <script src="resource-progress.js?v=264.1"></script>
 </head>
 <body>
+  <nav class="viewer-nav" aria-label="Navegación del recurso"><a href="./" target="_top">Volver al aula</a><strong id="viewerTitle">Recurso interactivo</strong><button id="previousPage" type="button" disabled>Anterior</button></nav>
+  <div id="viewerStatus" role="status" hidden></div>
   <main class="loader" id="loader" role="status"><span>Cargando recurso…</span></main>
   <script>
 (function(){
@@ -33,6 +42,19 @@
   var title=params.get('title') || 'Recurso interactivo';
   var material=params.get('material') || '';
   if(title) document.title=title+' · Tribeca Aula';
+  document.getElementById('viewerTitle').textContent=title;
+  var initialSource=resolved(source||'./')?.href || location.href;
+  var packageRoot=dirOf(initialSource);
+  var pages=new Map(), trail=[], current=null, loading=false;
+  var previous=document.getElementById('previousPage');
+  var status=document.getElementById('viewerStatus');
+  previous.addEventListener('click',function(){if(trail.length && !loading) openPage(trail.pop(),false);});
+  window.addEventListener('message',function(event){
+    if(!current || event.source!==current.contentWindow || event.data?.type!=='TRIBECA_RESOURCE_NAVIGATE') return;
+    var url=resolved(event.data.url);
+    if(!url || !validSource(url.href) || !url.href.startsWith(packageRoot)){status.textContent='El enlace está fuera de este paquete.';status.hidden=false;return;}
+    openPage(url.href,true);
+  });
 
   function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function escAttr(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -70,14 +92,31 @@
         Object.defineProperty(window,name,{configurable:true,value:memory});
       });
     })();<\/script>`;
-    var base='<base href="'+escAttr(baseHref)+'">'+storageShim;
+    var navigation=`<script>document.addEventListener('click',function(event){
+      var link=event.target.closest && event.target.closest('a[href]');
+      if(!link || link.hasAttribute('download') || event.defaultPrevented || event.button!==0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      var raw=link.getAttribute('href'); if(!raw) return;
+      if(raw.charAt(0)==='#'){var target=document.getElementById(decodeURIComponent(raw.slice(1)));if(target){event.preventDefault();target.scrollIntoView();}return;}
+      var url=new URL(raw,document.baseURI);
+      if(/\\.html?$/i.test(url.pathname)) {event.preventDefault();parent.postMessage({type:'TRIBECA_RESOURCE_NAVIGATE',url:url.href},'*');}
+    });<\/script>`;
+    var base='<base href="'+escAttr(baseHref)+'">'+storageShim+navigation;
     html=html.replace(/<base\b[^>]*>/gi,'');
     if(/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i,function(m){return m+base;});
     if(/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i,function(m){return m+'<head>'+base+'</head>';});
     return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+base+'</head><body>'+html+'</body></html>';
   }
-  function showError(msg){
-    document.body.innerHTML='<main class="fallback"><div class="card"><h1>No se pudo abrir el recurso</h1><p>'+esc(msg||'Error de carga')+'</p>'+(validSource(source)?'<p><a href="'+escAttr(source)+'" target="_blank" rel="noopener">Abrir archivo original</a></p>':'')+'<p><a href="./">Volver a Tribeca Aula</a></p></div></main>';
+  function showError(msg,retryUrl){
+    document.getElementById('loader').hidden=true;
+    status.hidden=false;
+    var heading=document.createElement('h1');heading.textContent='No se pudo abrir el recurso';
+    var detail=document.createElement('p');detail.textContent=String(msg||'Error de carga');
+    status.replaceChildren(heading,detail);
+    if(!document.getElementById('retryPage')){
+      var retry=document.createElement('button');retry.id='retryPage';retry.textContent='Reintentar';
+      retry.onclick=function(){retry.remove();openPage(retryUrl||initialSource,true);};
+      document.querySelector('.viewer-nav').appendChild(retry);
+    }
   }
   async function prepareProgress(){
     try{
@@ -93,29 +132,44 @@
       console.warn('[Tribeca Aula] Progreso no disponible en visor independiente:',error);
     }
   }
-  async function start(){
-    if(!source) return showError('Falta la URL del recurso.');
-    if(!validSource(source)) return showError('La URL no pertenece a un recurso HTML propio de Tribeca Aula.');
-    await prepareProgress();
+  function activate(frame,url,record){
+    if(current && record) trail.push(current.dataset.source);
+    if(current){current.hidden=true;current.removeAttribute('id');}
+    current=frame;frame.id='resourceFrame';frame.hidden=false;
+    source=url;previous.disabled=!trail.length;
+    document.getElementById('loader').hidden=true;
+    status.hidden=true;
+    document.getElementById('retryPage')?.remove();
+    frame.focus();
+  }
+  async function openPage(url,record){
+    if(loading) return;
+    if(!validSource(url)) return showError('La URL no pertenece a un recurso HTML propio de Tribeca Aula.');
+    if(pages.has(url)) return activate(pages.get(url),url,record);
+    loading=true;previous.disabled=true;
+    status.textContent='Cargando página…';status.hidden=false;
     try{
-      var res=await fetch(source,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'error'});
+      var res=await fetch(url,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'error'});
       if(!res.ok) throw new Error('HTTP '+res.status);
-      var html=withBase(await res.text(),dirOf(source));
-      if(material&&window.TribecaProgress?.injectBridgeIntoHtml) html=window.TribecaProgress.injectBridgeIntoHtml(html,material);
+      var html=withBase(await res.text(),dirOf(url));
+      var pageKey=url===initialSource ? '' : new URL(url).pathname+new URL(url).search;
+      if(material&&window.TribecaProgress?.injectBridgeIntoHtml) html=window.TribecaProgress.injectBridgeIntoHtml(html,material,pageKey);
       var frame=document.createElement('iframe');
-      frame.id='resourceFrame';
-      frame.title=title;
+      frame.className='resource-frame';frame.dataset.source=url;
+      frame.title=title;frame.tabIndex=0;
       frame.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-downloads allow-presentation');
       frame.setAttribute('allow','fullscreen; clipboard-write; autoplay; encrypted-media; web-share');
       frame.setAttribute('allowfullscreen','');
-      if(material) frame.dataset.tribecaProgressMaterial=material;
-      frame.srcdoc=html;
-      document.body.innerHTML='';
-      document.body.appendChild(frame);
-    }catch(error){
-      console.error('[Tribeca Aula] No se pudo cargar el recurso en página nueva:',error);
-      showError(error&&error.message?error.message:'El archivo no respondió correctamente.');
-    }
+      if(material){frame.dataset.tribecaProgressMaterial=material;frame.dataset.tribecaProgressPage=pageKey;}
+      frame.srcdoc=html;frame.hidden=true;
+      document.body.appendChild(frame);pages.set(url,frame);activate(frame,url,record);
+    }catch(error){showError(error&&error.message?error.message:'El archivo no respondió correctamente.',url);}
+    finally{loading=false;previous.disabled=!trail.length;}
+  }
+  async function start(){
+    if(!source) return showError('Falta la URL del recurso.');
+    if(!validSource(source)) return showError('La URL no pertenece a un recurso HTML propio de Tribeca Aula.');
+    await prepareProgress();await openPage(initialSource,false);
   }
   start();
 })();

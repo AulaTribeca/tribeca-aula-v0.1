@@ -4690,7 +4690,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
       const own=window.TribecaPublisherV262.ownHtml(source.src);
       const href=safe(own ? source.src : tribecaPackageViewerUrlV204(source.src,m.title||'Recurso interactivo',m.id||''));
       // Untrusted external packages are loaded through a sandboxed viewer.
-      const sandbox=own ? 'allow-scripts allow-forms allow-popups allow-downloads' : 'allow-scripts allow-forms allow-same-origin allow-popups allow-downloads';
+      const sandbox=own ? 'allow-scripts allow-forms allow-popups allow-downloads' : 'allow-scripts allow-forms allow-same-origin allow-popups allow-downloads allow-top-navigation-by-user-activation';
       return `<section class="material-embed-block material-presentation-block t262-standalone-html">
         <div><strong>Recurso interactivo</strong><small>Actividad y ejercicios</small></div>
         <iframe title="${title}" loading="eager" sandbox="${sandbox}"
