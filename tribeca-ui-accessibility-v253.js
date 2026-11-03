@@ -27,6 +27,52 @@
   }
   function init() {
     check(document.body);
+    // El panel se vuelve a renderizar al cambiar opciones: conservar el foco.
+    let panelWasOpen = false, lastControl = null;
+    const attrs = ['data-a11y-font','data-a11y-reset','data-a11y-toggle-setting','data-a11y-step','data-a11y-range','data-a11y-field','data-a11y-language','data-a11y-reading-mode','data-a11y-close'];
+    document.addEventListener('focusin', event => {
+      if (!event.target.closest?.('[data-a11y-panel]')) return;
+      lastControl = { node:event.target, values:attrs.filter(a=>event.target.hasAttribute(a)).map(a=>[a,event.target.getAttribute(a)]), step:event.target.getAttribute('data-step') };
+    });
+    function syncAccessibilityPanel() {
+      const root = document.getElementById('tribecaAccessibilityWidget');
+      const panel = root?.querySelector('[data-a11y-panel]');
+      if (!panel) { panelWasOpen=false; return; }
+      const toggle = root.querySelector('[data-a11y-toggle]');
+      panel.id='tribecaAccessibilityPanel';
+      panel.setAttribute('role','dialog');
+      toggle.setAttribute('aria-controls',panel.id);
+      toggle.setAttribute('aria-expanded',String(!panel.hidden));
+      panel.querySelectorAll('article').forEach((article,index)=>{
+        const heading=article.querySelector('h3');
+        if(!heading) return;
+        heading.id='tribeca-a11y-option-'+index;
+        article.querySelectorAll('input,select').forEach(field=>field.setAttribute('aria-labelledby',heading.id));
+        article.querySelectorAll('[data-a11y-step], [data-a11y-reset]').forEach(button=>button.setAttribute('aria-label',button.textContent.trim()+' · '+heading.textContent.trim()));
+        article.querySelectorAll('[data-a11y-font]').forEach(button=>button.setAttribute('aria-pressed',String(button.classList.contains('is-active'))));
+      });
+      if(!panel.hidden && !panelWasOpen) panel.querySelector('[data-a11y-close]')?.focus();
+      else if(!panel.hidden && lastControl && !lastControl.node.isConnected && lastControl.values.length) {
+        const replacement=[...panel.querySelectorAll('button,input,select')].find(el=>lastControl.values.every(([a,v])=>el.getAttribute(a)===v) && el.getAttribute('data-step')===lastControl.step);
+        replacement?.focus({preventScroll:true});
+      }
+      if(panel.hidden && panelWasOpen) toggle.focus();
+      panelWasOpen=!panel.hidden;
+    }
+    new MutationObserver(syncAccessibilityPanel).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden']});
+    syncAccessibilityPanel();
+    document.addEventListener('keydown', event=>{
+      const panel=document.querySelector('[data-a11y-panel]:not([hidden])');
+      if(!panel) return;
+      if(event.key==='Escape') { event.preventDefault(); event.stopImmediatePropagation(); panel.hidden=true; syncAccessibilityPanel(); }
+      if(event.key==='Tab' && panel.contains(document.activeElement)) {
+        const controls=[...panel.querySelectorAll('button,input,select')].filter(el=>!el.disabled && el.getClientRects().length);
+        const first=controls[0], last=controls.at(-1);
+        if(event.shiftKey && document.activeElement===first) { event.preventDefault(); last.focus(); }
+        else if(!event.shiftKey && document.activeElement===last) { event.preventDefault(); first.focus(); }
+      }
+    },true);
+
     // El fondo bloqueado visualmente tampoco debe recibir foco de teclado.
     // Se conserva el estado inert previo de cada región y se restaura al entrar.
     const backgroundState = new Map();
