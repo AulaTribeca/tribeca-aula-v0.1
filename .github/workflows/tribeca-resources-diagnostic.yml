@@ -1,0 +1,19 @@
+name: Tribeca recursos 6P diagnostico
+on:
+  push:
+    branches: ['audit/payments-v264-resources-*']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    container: mcr.microsoft.com/playwright:v1.55.1-noble
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/tribeca-preview.log 2>&1 &
+      - run: node scripts/diagnose-resources-20261112.cjs
