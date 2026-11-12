@@ -5191,7 +5191,7 @@ render();
       }
       if(source?.src && !['exam','quiz','schemaActivity'].includes(source.mode)){
         // Para recursos alojados como documento real, Los navegadores de tablet los manejan mejor en navegación superior.
-        window.location.href=window.TribecaPublisherV262?.hostedHtml(source.src) && !window.TribecaPublisherV262.ownHtml(source.src)
+        window.location.href=window.TribecaPublisherV262?.hostedHtml(source.src)
           ? tribecaPackageViewerUrlV204(source.src,m.title||'Recurso interactivo',m.id||'') : String(source.src);
         return;
       }
