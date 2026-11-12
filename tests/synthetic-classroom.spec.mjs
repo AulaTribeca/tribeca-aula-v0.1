@@ -63,3 +63,39 @@ test('Aula ficticia: navegación de clase, materia, unidad y publicación', asyn
     document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(width, 'La navegación de QA no debe provocar scroll horizontal').toBeLessThanOrEqual(2);
 });
+
+
+test('Los HTML adjuntos de Storage se abren como actividades, nunca como código fuente', async ({ page, context }) => {
+  const url='https://fuhkvjyfwkggjaqxfsgv.supabase.co/storage/v1/object/public/tribeca-public-assets/qa/open.html';
+  await context.route(url, route=>route.fulfill({
+    status:200, contentType:'text/plain',
+    headers:{'access-control-allow-origin':'*','content-security-policy':"default-src 'none'; sandbox"},
+    body:'<!doctype html><html lang="es"><body><h1 id="storage-qa-proof">Actividad interactiva funcional</h1><button id="qa-action">Responder</button><output id="qa-result"></output><script>document.getElementById("qa-action").onclick=()=>document.getElementById("qa-result").textContent="Correcto";</script></body></html>'
+  }));
+  await page.route(/\/rest\/v1\//,route=>route.abort());
+  await page.goto('./#inicio',{waitUntil:'domcontentloaded'});
+  await expect(page.locator('#t16LoginForm')).toBeVisible({timeout:45000});
+  await installAnonymousSyntheticStudent(page);
+  await page.evaluate(({id,url})=>{
+    const m=window.TribecaAuth.data.materials.find(m=>m.id===id);
+    m.material_type='presentacion';
+    m.embed_code='';
+    m.embed_url=url;
+    m.attachments=[{name:'Recurso completo · actividad.html',type:'text/html',kind:'tribeca-resource-package-v197',url}];
+    window.openTool('home');
+  },{id:QA_IDS.interactiveId,url});
+  await page.locator('[data-student-class-id="'+QA_IDS.classId+'"]').click();
+  await page.locator('[data-class-subject="'+QA_IDS.subjectId+'"]').click();
+  const material=page.locator('[data-t180-material-card="'+QA_IDS.interactiveId+'"]');
+  await material.locator('summary').click();
+  const link=material.locator('.attachment-pill');
+  const href=await link.getAttribute('href');
+  expect(href).toContain('tribeca-package-viewer.html?url=');
+  expect(href).toContain(encodeURIComponent(url));
+  expect(href).not.toBe(url);
+  await page.goto(new URL(href,page.url()).href,{waitUntil:'domcontentloaded'});
+  const resource=page.frameLocator('#resourceFrame');
+  await expect(resource.locator('#storage-qa-proof')).toHaveText('Actividad interactiva funcional',{timeout:20000});
+  await resource.locator('#qa-action').click();
+  await expect(resource.locator('#qa-result')).toHaveText('Correcto');
+});
