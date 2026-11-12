@@ -5241,7 +5241,7 @@ render();
     const meta=materialTypeMeta(materialVisualKind(m));
     const attachments=normalizeAttachments(m);
     const body=m.body||m.description||m.content||m.text||'';
-    const attachmentHtml=attachments.length?`<section class="files"><h2>Archivos adjuntos</h2>${attachments.map((att,i)=>{ const url=att.url||att.href||att.path||att.publicUrl||att.public_url||''; const name=att.name||att.filename||att.file_name||`Archivo ${i+1}`; const type=String(att.type||att.mime_type||'').toLowerCase(); return url?`<a class="attachment" href="${safe(url)}" target="_blank" rel="noopener">${/^image\//.test(type)?`<img src="${safe(url)}" alt="">`:''}<span>📎 ${safe(name)}</span></a>`:`<p>📎 ${safe(name)}</p>`; }).join('')}</section>`:'';
+    const attachmentHtml=attachments.length?`<section class="files"><h2>Archivos adjuntos</h2>${attachments.map((att,i)=>{ const url=att.url||att.href||att.path||att.publicUrl||att.public_url||''; const name=att.name||att.filename||att.file_name||`Archivo ${i+1}`; const type=String(att.type||att.mime_type||'').toLowerCase(); const href=url?tribecaPackageViewerUrlV204(url,m.title||name,m.id||''):''; return url?`<a class="attachment" href="${safe(href)}" target="_blank" rel="noopener">${/^image\//.test(type)?`<img src="${safe(url)}" alt="">`:''}<span>📎 ${safe(name)}</span></a>`:`<p>📎 ${safe(name)}</p>`; }).join('')}</section>`:'';
     const openEmbedSource=materialEmbedSource(m);
     const isSchemaOpen=openEmbedSource?.mode==='schemaActivity' || materialVisualKind(m)==='schema';
     if(isSchemaOpen && openEmbedSource?.activity){
@@ -7221,7 +7221,10 @@ render();
       const name = att.name || att.filename || att.file_name || `Archivo ${index + 1}`;
       const type = String(att.type || att.mime_type || '').toLowerCase();
       const thumb = url && /^image\//.test(type) ? `<img src="${safe(url)}" alt="">` : '';
-      return url ? `<a class="attachment-pill" href="${safe(url)}" target="_blank" rel="noopener">${thumb}<span>📎 ${safe(name)}</span></a>` : `<span class="attachment-pill">📎 ${safe(name)}</span>`;
+      // Storage serves HTML as text/plain with CSP sandbox: raw links reveal code.
+      // Route only trusted hosted HTML through the isolated Tribeca viewer.
+      const href = url ? tribecaPackageViewerUrlV204(url, item.title || name, item.id || '') : '';
+      return url ? `<a class="attachment-pill" href="${safe(href)}" target="_blank" rel="noopener">${thumb}<span>📎 ${safe(name)}</span></a>` : `<span class="attachment-pill">📎 ${safe(name)}</span>`;
     }).join('')}</div>`;
   }
   function announcementScopeLabel(a={}) {
