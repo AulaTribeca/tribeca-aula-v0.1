@@ -19,7 +19,7 @@ jobs:
       - run: node --check service-worker.js
       - name: Servir el código de la propuesta
         run: python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/tribeca-preview.log 2>&1 &
-      - name: Acceso y aula ficticia (sin secretos)
+      - name: Diagnóstico de los dos recursos HTML de sexto (solo lectura)\n        run: node scripts/diagnose-resources-20261112.cjs\n      - name: Acceso y aula ficticia (sin secretos)
         env:
           CI: 'true'
           TRIBECA_QA_SCREENSHOTS: '1'
