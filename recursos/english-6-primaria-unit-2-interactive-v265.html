@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unit 2 - In the countryside | Tribeca Aula</title>
+<style>
+:root{
+  --green:#5f8f43;--green2:#eaf4e4;--orange:#e78b38;--orange2:#fff1e3;
+  --ink:#20231f;--muted:#687067;--line:#d8ddd4;--paper:#fff;--soft:#f6f7f4;
+  --good:#2f7d49;--bad:#b7483e;--shadow:0 8px 24px rgba(33,43,28,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#f3f4f1;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+button,input{font:inherit}
+button{cursor:pointer}
+.app{max-width:900px;margin:0 auto;padding:12px}
+.top{
+  background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px 16px;
+  display:flex;gap:14px;align-items:center;justify-content:space-between;box-shadow:var(--shadow);
+}
+.brand{min-width:0}
+.brand h1{font-size:20px;margin:0 0 2px}.brand p{margin:0;color:var(--muted);font-size:13px}
+.progressWrap{min-width:150px;flex:0 0 32%}
+.progressMeta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px}
+.progress{height:8px;background:#e9ece6;border-radius:999px;overflow:hidden}
+.progress>span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--orange));transition:width .35s ease}
+main{margin-top:12px}
+.screen{display:none;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.screen.active{display:block;animation:in .25s ease}
+@keyframes in{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:none}}
+.hero{padding:24px}
+.hero h2{font-size:28px;margin:0 0 8px}.hero p{color:var(--muted);margin:0 0 18px;max-width:650px}
+.startGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+.tile{padding:14px;border-radius:14px;background:var(--soft);border:1px solid var(--line)}
+.tile b{display:block;margin-bottom:4px}.tile span{font-size:13px;color:var(--muted)}
+.btn{min-height:44px;border:0;border-radius:12px;padding:10px 15px;font-weight:700;background:var(--green);color:#fff}
+.btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.orange{background:var(--orange)}
+.lessonHead{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.lessonHead h2{font-size:19px;margin:0}.lessonHead .tag{font-size:12px;color:var(--muted)}
+.lessonBody{padding:18px}
+.explain{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.rule{border:1px solid var(--line);border-radius:14px;padding:13px;background:var(--soft)}
+.rule.green{background:var(--green2);border-color:#ccdec1}.rule.orange{background:var(--orange2);border-color:#f2d6ba}
+.rule h3{margin:0 0 7px;font-size:15px}.rule p{margin:4px 0;font-size:14px;line-height:1.35}
+.formula{font-weight:800;font-size:16px}
+.visualCompare{display:flex;align-items:flex-end;gap:14px;height:94px;padding:12px;margin:10px 0 2px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.bar{width:34%;border-radius:10px 10px 4px 4px;display:flex;align-items:flex-end;justify-content:center;padding:5px;font-size:12px;font-weight:700;transition:height .5s ease}
+.bar.a{height:42%;background:#dfead9}.bar.b{height:72%;background:#c2d9b6}.bar.c{height:92%;background:#f2c18f}
+.practiceTitle{font-size:15px;font-weight:800;margin:16px 0 9px}
+.q{border-top:1px solid #ecefea;padding:14px 0}.q:first-of-type{border-top:0}
+.qtext{font-weight:700;line-height:1.35;margin-bottom:9px}
+.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.opt{min-height:44px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:11px;padding:10px 12px}
+.opt.selected{border-color:var(--green);background:var(--green2)}
+.opt.correct{border-color:var(--good);background:#e9f6ed}.opt.wrong{border-color:var(--bad);background:#fbeceb}
+.textrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.textrow input{flex:1;min-width:180px;min-height:44px;border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-size:16px}
+.feedback{min-height:24px;margin-top:8px;font-weight:750;font-size:14px}
+.feedback.good{color:var(--good)}.feedback.bad{color:var(--bad)}
+.actions{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:12px}
+.scorePop{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:7px 11px;background:#fff;border:1px solid var(--line);font-size:13px}
+.vocabGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.vocabCard{border:1px solid var(--line);border-radius:13px;padding:12px;background:#fff;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.vocabCard b{font-size:15px}.vocabCard small{display:block;color:var(--muted);margin-top:2px}
+.speak{border:0;background:var(--soft);width:40px;height:40px;border-radius:10px}
+.orderZone{display:flex;flex-wrap:wrap;gap:7px;padding:10px;border:1px dashed #bfc7b9;border-radius:12px;min-height:54px;background:var(--soft)}
+.chip{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 11px;min-height:42px}
+.dataTable{width:100%;border-collapse:collapse;font-size:14px}
+.dataTable th,.dataTable td{border:1px solid var(--line);padding:8px;text-align:center}.dataTable th:first-child,.dataTable td:first-child{text-align:left}
+.end{text-align:center;padding:28px 18px}.end .big{font-size:52px;font-weight:900;color:var(--green)}.end h2{margin:5px 0}.end p{color:var(--muted)}
+.spark{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--orange));transform-origin:left;animation:spark .55s ease}
+@keyframes spark{from{transform:scaleX(.1);opacity:.4}to{transform:scaleX(1);opacity:1}}
+@media(max-width:620px){
+  .top{align-items:flex-start;flex-direction:column}.progressWrap{width:100%;flex:auto}
+  .startGrid,.explain,.vocabGrid{grid-template-columns:1fr}
+  .options{grid-template-columns:1fr}
+  .hero{padding:18px}.hero h2{font-size:24px}.lessonBody{padding:14px}
+  .dataTable{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app" id="u2app">
+  <header class="top">
+    <div class="brand">
+      <h1>Unit 2 · In the countryside</h1>
+      <p>Vocabulary · Comparatives · Superlatives</p>
+    </div>
+    <div class="progressWrap">
+      <div class="progressMeta"><span id="progressLabel">Start</span><span id="scoreLabel">0 pts</span></div>
+      <div class="progress"><span id="progressBar"></span></div>
+    </div>
+  </header>
+  <main id="screens"></main>
+</div>
+<script>
+(()=>{
+const app=document.getElementById('u2app');
+if(app.dataset.ready)return; app.dataset.ready='1';
+const screens=document.getElementById('screens');
+const STORAGE='tribeca-u2-intermediate-v1';
+
+const vocab=[
+ ['castle','castillo'],['café','cafetería'],['cinema','cine'],['restaurant','restaurante'],
+ ['park','parque'],['cave','cueva'],['bike shop','tienda de bicicletas'],['countryside','campo'],
+ ['flower garden','jardín de flores'],['city','ciudad'],
+ ['expensive','caro'],['crowded','abarrotado'],['historical','histórico'],['modern','moderno'],
+ ['frightening','aterrador'],['famous','famoso'],['boring','aburrido'],['relaxing','relajante'],
+ ['beautiful','bonito / precioso'],['dangerous','peligroso'],
+ ['nervous','nervioso'],['shy','tímido'],['confident','seguro de sí mismo'],['kind','amable'],
+ ['embarrassed','avergonzado'],['selfish','egoísta']
+];
+
+const stages=[
+ {id:'vocab',title:'1 · Vocabulary',tag:'Places & adjectives',type:'vocab'},
+ {id:'compare',title:'2 · Comparatives',tag:'-er / more / less / irregular',type:'compare'},
+ {id:'comparePractice',title:'3 · Compare places',tag:'Use the correct form',type:'quiz',
+  questions:[
+   q('The city is ___ than the countryside.','more crowded',['more crowded','the most crowded','crowdeder','crowdedest']),
+   q('The castle is ___ than the café.','older',['older','more old','the oldest','oldest than']),
+   q('The park is ___ than the city centre.','more relaxing',['more relaxing','relaxinger','the most relaxing','more relaxed']),
+   q('This restaurant is ___ than the café.','better',['better','gooder','the best','more good']),
+   q('The cave is ___ than the flower garden.','more frightening',['more frightening','frighteninger','the most frightening','more frightened']),
+   q('The countryside is ___ than the city.','less crowded',['less crowded','the least crowded','crowdeder','less crowd'])
+  ]},
+ {id:'super',title:'4 · Superlatives',tag:'-est / most / least / irregular',type:'super'},
+ {id:'superPractice',title:'5 · The best place',tag:'Choose the right form',type:'quiz',
+  questions:[
+   q('This is ___ park in the region.','the most beautiful',['the most beautiful','more beautiful','beautifullest','most beautiful']),
+   q('That is ___ café in town.','the best',['the best','better','the goodest','best']),
+   q('The city centre is ___ place at the weekend.','the most crowded',['the most crowded','more crowded','crowdeder','the crowdedest']),
+   q('That cave is ___ place on the map.','the most frightening',['the most frightening','more frightening','frighteningest','the frightening']),
+   q('This is ___ restaurant in town.','the worst',['the worst','worse','the baddest','worst']),
+   q('Green Park is ___ place in the area.','the least crowded',['the least crowded','less crowded','the less crowded','least crowded'])
+  ]},
+ {id:'detective',title:'6 · Error detective',tag:'Fix the grammar',type:'text',
+  questions:[
+   t('The park is more relaxinger than the city.','The park is more relaxing than the city.'),
+   t('The castle is more old than the cinema.','The castle is older than the cinema.'),
+   t('This café is gooder than that restaurant.','This café is better than that restaurant.'),
+   t('This is most beautiful park in the town.','This is the most beautiful park in the town.'),
+   t('That cave is the more frightening place here.','That cave is the most frightening place here.'),
+   t('The countryside is less crowded that the city.','The countryside is less crowded than the city.')
+  ]},
+ {id:'data',title:'7 · Read the stars',tag:'Use comparative & superlative forms',type:'data'},
+ {id:'personality',title:'8 · Story vocabulary',tag:'Personality adjectives',type:'quiz',
+  questions:[
+   q('Polly helps Ben learn to ski. She is ___.','kind',['kind','selfish','embarrassed','boring']),
+   q('Ben is not sure before skiing. He feels ___.','nervous',['nervous','confident','famous','modern']),
+   q('A person who thinks only about themselves is ___.','selfish',['selfish','kind','shy','relaxing']),
+   q('A person who does not like speaking to new people can be ___.','shy',['shy','dangerous','historical','crowded']),
+   q('After Ben practises, he feels more ___.','confident',['confident','frightening','embarrassed','expensive']),
+   q('After making a mistake in front of everyone, you may feel ___.','embarrassed',['embarrassed','famous','modern','kind'])
+  ]},
+ {id:'final',title:'9 · Final challenge',tag:'Everything together',type:'final'}
+];
+
+function q(text,answer,options){return {text,answer,options}}
+function t(text,answer){return {text,answer}}
+
+let state={stage:0,score:0,done:{},answers:{}};
+try{const s=JSON.parse(localStorage.getItem(STORAGE)||'null'); if(s && typeof s==='object'){state={...state,...s};if(!Number.isInteger(state.stage)||state.stage<0||state.stage>stages.length)state.stage=0;if(!Number.isFinite(state.score)||state.score<0)state.score=0;if(!state.answers||typeof state.answers!=='object')state.answers={};if(!state.done||typeof state.done!=='object')state.done={}}}catch(e){}
+// In isolated iframes Web Storage may be unavailable (opaque sandbox origin).
+// Saving progress must never prevent the lesson from opening.
+function save(){try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch(_e){}}
+function norm(s){return (s||'').toLowerCase().replace(/[’']/g,"'").replace(/[.,!?]/g,'').replace(/\s+/g,' ').trim()}
+function speak(word){
+ if(!('speechSynthesis'in window))return;
+ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(word); u.lang='en-GB'; u.rate=.85; speechSynthesis.speak(u);
+}
+function encouragement(){
+ const a=['Great!','Nice work!','Perfect!','You’ve got it!','Excellent!','Keep going!'];
+ return a[Math.floor(Math.random()*a.length)];
+}
+function addScore(n){state.score+=n;save();updateTop()}
+function award(key,n){
+ if(state.answers[key])return;
+ state.answers[key]=true;
+ addScore(n);
+}
+function updateTop(){
+ const pct=Math.round((Math.min(state.stage,stages.length)/stages.length)*100);
+ document.getElementById('progressBar').style.width=pct+'%';
+ document.getElementById('progressLabel').textContent=state.stage>=stages.length?'Complete':`Stage ${Math.min(state.stage+1,stages.length)} / ${stages.length}`;
+ document.getElementById('scoreLabel').textContent=state.score+' pts';
+}
+function btn(label,cls='btn'){return `<button type="button" class="${cls}">${label}</button>`}
+function shell(i,body){
+ const st=stages[i];
+ return `<section class="screen active" data-screen="${i}">
+  <div class="lessonHead"><div><h2>${st.title}</h2><div class="tag">${st.tag}</div></div><span class="scorePop">${state.score} pts</span></div>
+  <div class="lessonBody">${body}</div></section>`;
+}
+function renderStart(){
+ screens.innerHTML=`<section class="screen active"><div class="hero">
+   <h2>Ready for Unit 2?</h2>
+   <p>Work through the levels. Examples appear before each new grammar idea. Your progress is saved automatically.</p>
+   <div class="startGrid">
+    <div class="tile"><b>Vocabulary</b><span>places · adjectives · personality</span></div>
+    <div class="tile"><b>Comparatives</b><span>older · more modern · less crowded · better</span></div>
+    <div class="tile"><b>Superlatives</b><span>the oldest · the most beautiful · the least crowded · the best</span></div>
+   </div>
+   <button class="btn" id="startBtn">Start</button>
+   <button class="btn secondary" id="resetBtn" style="margin-left:6px">Reset progress</button>
+  </div></section>`;
+ document.getElementById('startBtn').onclick=()=>{renderStage(state.stage||0)};
+ document.getElementById('resetBtn').onclick=()=>{try{localStorage.removeItem(STORAGE)}catch(_e){};state={stage:0,score:0,done:{},answers:{}};updateTop();renderStart()};
+ updateTop();
+}
+function nav(i,canNext=true){
+ return `<div class="actions">${i>0?btn('← Back','btn secondary'):'<span></span>'}${canNext?btn(i===stages.length-1?'Finish':'Next →','btn orange'):''}</div>`;
+}
+function bindNav(i,checkFn){
+ const sec=screens.querySelector(`[data-screen="${i}"]`);
+ const bs=[...sec.querySelectorAll('.actions .btn')];
+ bs.forEach(b=>{
+  if(b.textContent.includes('Back'))b.onclick=()=>{state.stage=Math.max(0,i-1);save();renderStage(state.stage)};
+  else b.onclick=()=>{
+    if(checkFn && !checkFn())return;
+    state.done[stages[i].id]=true;
+    state.stage=i+1; save();
+    if(i===stages.length-1)renderEnd(); else renderStage(i+1);
+  };
+ });
+}
+function renderStage(i){
+ if(i>=stages.length){renderEnd();return}
+ const st=stages[i]; state.stage=i; save(); updateTop();
+ if(st.type==='vocab')return renderVocab(i);
+ if(st.type==='compare')return renderCompare(i);
+ if(st.type==='quiz')return renderQuiz(i,st);
+ if(st.type==='super')return renderSuper(i);
+ if(st.type==='text')return renderText(i,st);
+ if(st.type==='data')return renderData(i);
+ if(st.type==='final')return renderFinal(i);
+}
+function renderVocab(i){
+ const cards=vocab.map((v,k)=>`<div class="vocabCard"><div><b>${v[0]}</b><small>${v[1]}</small></div><button type="button" class="speak" data-word="${v[0]}" aria-label="Listen to ${v[0]}">🔊</button></div>`).join('');
+ const practice=[
+  q('A place with lots of people is…','crowded',['crowded','relaxing','historical','shy']),
+  q('A place connected with the past is…','historical',['historical','modern','dangerous','famous']),
+  q('A natural place inside rock is…','cave',['cave','castle','café','park']),
+  q('A calm place that helps you rest is…','relaxing',['relaxing','frightening','expensive','crowded'])
+ ];
+ screens.innerHTML=shell(i,`<div class="vocabGrid">${cards}</div><div class="practiceTitle">Quick check</div><div id="vquiz"></div>${nav(i,false)}`);
+ screens.querySelectorAll('.speak').forEach(b=>b.onclick=()=>speak(b.dataset.word));
+ const zone=document.getElementById('vquiz'); renderQuestions(zone,practice,'vocabQuick',()=>{
+   const act=screens.querySelector('.actions'); act.innerHTML=(i>0?btn('← Back','btn secondary'):'<span></span>')+btn('Next →','btn orange'); bindNav(i);
+ });
+ bindNav(i);
+}
+function renderCompare(i){
+ screens.innerHTML=shell(i,`
+  <div class="explain">
+   <div class="rule green"><h3>Short adjectives</h3><p class="formula">adjective + -er + than</p><p>old → <b>older than</b></p><p>fast → <b>faster than</b></p><p>tidy → <b>tidier than</b></p></div>
+   <div class="rule orange"><h3>Long adjectives</h3><p class="formula">more / less + adjective + than</p><p><b>more modern than</b></p><p><b>less crowded than</b></p><p>good → <b>better than</b> · bad → <b>worse than</b></p></div>
+  </div>
+  <div class="visualCompare"><div class="bar a">park</div><div class="bar b">castle</div><div class="bar c">city</div></div>
+  <div class="practiceTitle">Build the comparison</div>
+  <div id="formQuiz"></div>${nav(i,false)}`);
+ const practice=[
+  q('old →','older',['older','more old','oldest','more older']),
+  q('modern →','more modern',['more modern','moderner','the most modern','modernest']),
+  q('good →','better',['better','gooder','the best','more good']),
+  q('crowded →','more crowded',['more crowded','crowdeder','the crowdedest','more crowd'])
+ ];
+ renderQuestions(document.getElementById('formQuiz'),practice,'compareForm',()=>{
+  const act=screens.querySelector('.actions');act.innerHTML=btn('← Back','btn secondary')+btn('Next →','btn orange');bindNav(i);
+ });
+ bindNav(i);
+}
+function renderSuper(i){
+ screens.innerHTML=shell(i,`
+  <div class="explain">
+   <div class="rule green"><h3>Short adjectives</h3><p class="formula">the + adjective + -est</p><p>fast → <b>the fastest</b></p><p>tidy → <b>the tidiest</b></p></div>
+   <div class="rule orange"><h3>Long adjectives</h3><p class="formula">the most / the least + adjective</p><p><b>the most beautiful</b></p><p><b>the least crowded</b></p><p>good → <b>the best</b> · bad → <b>the worst</b></p></div>
+  </div>
+  <div class="visualCompare"><div class="bar a">1 ★</div><div class="bar b">2 ★</div><div class="bar c">3 ★ · the most</div></div>
+  <div class="practiceTitle">Choose the form</div><div id="sform"></div>${nav(i,false)}`);
+ const practice=[
+  q('fast →','the fastest',['the fastest','faster','the most fast','fastest than']),
+  q('beautiful →','the most beautiful',['the most beautiful','more beautiful','beautifulest','most beautiful']),
+  q('good →','the best',['the best','better','the goodest','best than']),
+  q('crowded →','the least crowded',['the least crowded','less crowded','the less crowded','least crowd'])
+ ];
+ renderQuestions(document.getElementById('sform'),practice,'superForm',()=>{
+  const act=screens.querySelector('.actions');act.innerHTML=btn('← Back','btn secondary')+btn('Next →','btn orange');bindNav(i);
+ });
+ bindNav(i);
+}
+function renderQuestions(zone,questions,key,onComplete){
+ let correct=0;
+ zone.innerHTML=questions.map((x,idx)=>`<div class="q" data-q="${idx}"><div class="qtext">${x.text}</div><div class="options">${x.options.map(o=>`<button type="button" class="opt" data-value="${o}">${o}</button>`).join('')}</div><div class="feedback" aria-live="polite"></div></div>`).join('');
+ zone.querySelectorAll('.q').forEach((row,idx)=>{
+  row.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+   if(row.dataset.done)return;
+   const good=b.dataset.value===questions[idx].answer;
+   if(good){
+    row.dataset.done='1';b.classList.add('correct');row.querySelector('.feedback').className='feedback good';row.querySelector('.feedback').textContent=encouragement();
+    row.querySelectorAll('.opt').forEach(x=>x.disabled=true);correct++;award(key+':'+idx,1);
+    if(correct===questions.length){row.insertAdjacentHTML('beforeend','<div class="spark"></div>');setTimeout(onComplete,250)}
+   }else{
+    b.classList.add('wrong');row.querySelector('.feedback').className='feedback bad';row.querySelector('.feedback').textContent='Try again.';
+    setTimeout(()=>b.classList.remove('wrong'),450);
+   }
+  });
+ });
+}
+function renderQuiz(i,st){
+ screens.innerHTML=shell(i,`<div id="quiz"></div>${nav(i,false)}`);
+ renderQuestions(document.getElementById('quiz'),st.questions,st.id,()=>{
+  const act=screens.querySelector('.actions');act.innerHTML=btn('← Back','btn secondary')+btn('Next →','btn orange');bindNav(i);
+ });
+ bindNav(i);
+}
+function renderText(i,st){
+ let done=0;
+ screens.innerHTML=shell(i,st.questions.map((x,idx)=>`<div class="q" data-q="${idx}"><div class="qtext">${x.text}</div><div class="textrow"><input aria-label="Correct sentence" autocomplete="off"><button class="btn">Check</button></div><div class="feedback" aria-live="polite"></div></div>`).join('')+nav(i,false));
+ screens.querySelectorAll('.q').forEach((row,idx)=>{
+  const input=row.querySelector('input'), b=row.querySelector('.btn'), f=row.querySelector('.feedback');
+  b.onclick=()=>{
+   if(row.dataset.done)return;
+   if(norm(input.value)===norm(st.questions[idx].answer)){
+    row.dataset.done='1';input.disabled=true;b.disabled=true;f.className='feedback good';f.textContent=encouragement();done++;award(st.id+':'+idx,2);
+    if(done===st.questions.length){const act=screens.querySelector('.actions');act.innerHTML=btn('← Back','btn secondary')+btn('Next →','btn orange');bindNav(i)}
+   }else{f.className='feedback bad';f.textContent='Check the comparative/superlative form and than/the.'}
+  };
+ });
+ bindNav(i);
+}
+function renderData(i){
+ const qs=[
+  q('City Square is ___ than Green Park.','more crowded',['more crowded','the most crowded','less crowded','crowdeder']),
+  q('Green Park is ___ place.','the most relaxing',['the most relaxing','more relaxing','the relaxingest','less relaxing']),
+  q('Old Castle is ___ than City Square.','less modern',['less modern','the least modern','more modern','modernest']),
+  q('Old Castle is ___ place.','the most expensive',['the most expensive','more expensive','less expensive','expensiver'])
+ ];
+ screens.innerHTML=shell(i,`<table class="dataTable"><tr><th>Place</th><th>Crowded</th><th>Modern</th><th>Relaxing</th><th>Expensive</th></tr>
+ <tr><td>Green Park</td><td>★</td><td>★★</td><td>★★★</td><td>★</td></tr>
+ <tr><td>City Square</td><td>★★★</td><td>★★★</td><td>★</td><td>★★</td></tr>
+ <tr><td>Old Castle</td><td>★★</td><td>★</td><td>★★</td><td>★★★</td></tr></table>
+ <div class="practiceTitle">Read the table</div><div id="dquiz"></div>${nav(i,false)}`);
+ renderQuestions(document.getElementById('dquiz'),qs,'data',()=>{
+  const act=screens.querySelector('.actions');act.innerHTML=btn('← Back','btn secondary')+btn('Next →','btn orange');bindNav(i);
+ });bindNav(i);
+}
+function renderFinal(i){
+ const qs=[
+  q('The castle is ___ than the café.','older',['older','the oldest','more old','oldest']),
+  q('This is ___ park in the region.','the most beautiful',['the most beautiful','more beautiful','beautifulest','most beautiful']),
+  q('The countryside is ___ than the city.','less crowded',['less crowded','the least crowded','less crowd','crowdeder']),
+  q('This restaurant is ___ than the café.','better',['better','the best','gooder','more good']),
+  q('That is ___ cave on the map.','the most frightening',['the most frightening','more frightening','frighteninger','the frightening']),
+  q('A person who helps other people is…','kind',['kind','selfish','shy','crowded']),
+  q('A place with lots of people is…','crowded',['crowded','relaxing','historical','modern']),
+  q('A natural place inside rock is…','cave',['cave','castle','park','café'])
+ ];
+ screens.innerHTML=shell(i,`<div class="rule green"><h3>Final check</h3><p>Comparative: <b>than</b>. Superlative: <b>the</b>. Long adjectives use <b>more/less</b> or <b>the most/the least</b>.</p></div><div id="fquiz"></div>${nav(i,false)}`);
+ renderQuestions(document.getElementById('fquiz'),qs,'final',()=>{
+  const act=screens.querySelector('.actions');act.innerHTML=btn('← Back','btn secondary')+btn('Finish','btn orange');bindNav(i);
+ });bindNav(i);
+}
+function renderEnd(){
+ state.stage=stages.length;save();updateTop();
+ screens.innerHTML=`<section class="screen active"><div class="end"><div class="big">${state.score}</div><h2>Unit 2 complete</h2><p>You finished vocabulary, comparatives and superlatives.</p><div class="spark"></div><div style="margin-top:18px"><button class="btn secondary" id="again">Practice again</button></div></div></section>`;
+ document.getElementById('again').onclick=()=>{state={stage:0,score:0,done:{},answers:{}};save();renderStart()}
+}
+renderStart();
+})();
+</script>
+</body>
+</html>
