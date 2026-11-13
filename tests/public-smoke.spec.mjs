@@ -104,3 +104,43 @@ test('El fondo del acceso queda fuera del teclado y conserva accesibilidad', asy
     expect(await page.evaluate(() => !!document.activeElement?.closest('#appHeader, main#inicio, footer, #windowLayer, #windowDock'))).toBe(false);
   }
 });
+
+test('Accesibilidad: foco, nombres, contraste y reflujo a 320px y 200%', async ({ page }, testInfo) => {
+  await page.goto('./#inicio');
+  const toggle=page.locator('[data-a11y-toggle]');
+  await toggle.click();
+  const panel=page.locator('[data-a11y-panel]');
+  const close=panel.locator('[data-a11y-close]');
+  await expect(close).toBeFocused();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await page.keyboard.press('Shift+Tab');
+  await expect(panel.locator('button').last()).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await panel.locator('[data-a11y-font="serif"]').click();
+  await expect(panel.locator('[data-a11y-font="serif"]')).toBeFocused();
+  await expect(panel.locator('[data-a11y-font="serif"]')).toHaveAttribute('aria-pressed','true');
+  await panel.locator('[data-a11y-font="reset"]').click();
+  for(const control of await panel.locator('input,select').all()) await expect(control).toHaveAttribute('aria-labelledby',/tribeca-a11y-option/);
+  const contrast=await panel.locator('h3').first().evaluate(el=>{
+    const luminance=color=>{const c=color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});return c[0]*.2126+c[1]*.7152+c[2]*.0722;};
+    const a=luminance(getComputedStyle(el).color),b=luminance(getComputedStyle(el.closest('article')).backgroundColor);
+    return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  });
+  expect(contrast).toBeGreaterThanOrEqual(4.5);
+  for(const width of [320,640]) {
+    await page.setViewportSize({width,height:900});
+    // CSS zoom checks scaled controls; browser-native zoom remains a manual gate.
+    await panel.evaluate((el,zoom)=>el.style.zoom=zoom,width===640?'2':'1');
+    const metrics=await panel.evaluate(el=>({width:el.scrollWidth,client:el.clientWidth,grid:el.querySelector('.tribeca-a11y-grid').scrollWidth,gridClient:el.querySelector('.tribeca-a11y-grid').clientWidth,targets:[...el.querySelectorAll('button,input,select')].map(n=>n.getBoundingClientRect().height)}));
+    expect(metrics.width).toBeLessThanOrEqual(metrics.client+2);
+    expect(metrics.grid).toBeLessThanOrEqual(metrics.gridClient+2);
+    expect(Math.min(...metrics.targets)).toBeGreaterThanOrEqual(44);
+  }
+  await panel.evaluate(el=>el.style.zoom='1');
+  await page.setViewportSize({width:390,height:844});
+  if(process.env.TRIBECA_QA_SCREENSHOTS==='1') await page.screenshot({path:testInfo.outputPath('teacher-classroom.png')});
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(toggle).toBeFocused();
+});

@@ -47,3 +47,6 @@ La v263.1 se publicó mediante PR #7 (77d284b), con despliegue Pages correcto. L
 ## Continuación 03/11 · visor y paquetes
 
 Se conserva v264 de mensualidades. En verificación v264.1: cabecera de visor con regreso al aula, botón Anterior, controles de 44px, foco visible, errores recuperables y enlaces HTML internos cargados mediante el visor aislado. Las páginas visitadas se conservan abiertas en memoria; el progreso se separa por página y alumno. Se prueban mensajes de navegación y progreso no autorizados. Pendientes: ZIP con navegación programática, subida real completa, persistencia con cuentas reales y el resto de A04–A07/D01–D05. No se considera cerrado F03.
+
+## Continuación v265 · 03/11/2026
+Panel de accesibilidad: diseño compacto con tarjetas sin sombras superpuestas, texto de 16px, controles de 44px, colores explícitos de alto contraste, nombres para selectores/deslizadores y colores. Apertura con foco dentro del panel, ciclo de Tab/Mayús+Tab, Escape y retorno al botón; foco conservado al cambiar ajustes. Pruebas a 320px y ampliación CSS 200% (no equivale a certificar zoom nativo). A04/A05/A06 avanzan en este panel, siguen pendientes las pantallas autenticadas y una revisión integral.

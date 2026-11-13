@@ -1,7 +1,7 @@
 name: Tribeca - validar propuesta local
 on:
   push:
-    branches: ['audit/pwa-offline-*', 'audit/payments-v*']
+    branches: ['audit/pwa-offline-*', 'audit/payments-v*', 'audit/design-accessibility-*']
 permissions:
   contents: read
 jobs:

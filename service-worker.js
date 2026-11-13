@@ -1,5 +1,5 @@
 /* Tribeca Aula · v264 · accesibilidad y respuestas offline coherentes */
-const TRIBECA_CACHE = 'tribeca-aula-static-v264-1';
+const TRIBECA_CACHE = 'tribeca-aula-static-v265';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -15,12 +15,13 @@ const TRIBECA_INSTALL_ASSETS = [
   './app.js?v=263.2',
   './supabase-config.js',
   './seeded-auth-bootstrap.js?v=226',
+  './tribeca-accessibility-v265.css?v=265',
   './resource-progress.js?v=264.1',
   './tribeca-publisher-v262.js?v=263.2',
   './tribeca-student-payments-v263.js?v=264',
   './supabase-auth.js?v=264.1',
   './profile-ui.js?v=229',
-  './tribeca-ui-accessibility-v253.js?v=263.2',
+  './tribeca-ui-accessibility-v253.js?v=265',
   './tribeca-material-toggle-v254.js?v=254.1',
   './manifest.webmanifest',
   './assets/tribeca-pwa-icon-192.png',
