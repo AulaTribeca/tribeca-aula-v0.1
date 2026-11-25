@@ -467,13 +467,20 @@
       else if(kind==='record'){[784,988,1175,1568].forEach((f,i)=>bell(f,i*.09,.085))}
       else if(kind==='crash'){tone(125,.23,0,.14,'triangle',44);noise(.26,0,.23,800);bell(392,.10,.12);bell(587,.18,.09);bell(294,.29,.07);noise(.17,.24,.08,2100)}
       else if(kind==='letter'){noise(.08,0,.07,1800);bell(784,.04,.035)}
+      else if(kind==='turbo'){tone(85,.55,0,.11,'sawtooth',220);tone(110,.38,.48,.09,'triangle',300);bell(988,.68,.07);bell(1319,.78,.06)}
+      else if(kind==='turboCrash'){noise(.35,0,.13,950);tone(185,.27,0,.1,'triangle',52);bell(330,.15,.08);bell(247,.32,.07)}
     }
     soundButton.addEventListener('click',()=>{soundOn=!soundOn;putLocal(soundKey,soundOn?'1':'0');showSound();if(soundOn){unlockAudio();if(master)master.gain.value=.32;bell(880,0,.07)}else if(master)master.gain.value=0});
     const trainLeft=16,trainRight=94;
+    const turboAt=20;let turbo=false,turboSince=0,distance=0,worldSpeed=92;
+    const carLeft=16,carRight=79;
     const floor=130;
     const messages=["Genial, te has cargado la Navidad.","Gracias a ti Marco no recibirá su PS5 estas navidades.","Acabas de provocar un retraso logístico en el Polo Norte.","Los elfos están revisando tu contrato.","Papá Noel no había sufrido un siniestro así desde 1847.","Rodolfo pide la baja.","Enhorabuena: ahora los regalos llegarán en febrero.","Acabas de convertir la Nochebuena en una reclamación de seguros.","Los renos han solicitado una reunión urgente.","Buen trabajo: hay un Scalextric en Cuenca que ya no llegará a tiempo.","Te acabas de llevar por delante media ilusión infantil.","Urgente: suspensión temporal del reparto navideño por causas tuyas.","Papá Noel quiere saber si esto cubre la póliza.","Uno de los renos acaba de perder totalmente la fe en ti.","Acabas de crear el primer atasco aéreo navideño.","Esto explica por qué algunos regalos llegan rotos.","Parece que hoy no habrá milagro navideño.","Has estampado la magia contra un montón de regalos.","El taller de juguetes acaba de entrar en crisis.","No era fácil, pero has conseguido descarrilar un trineo.","La Navidad estaba yendo bien hasta que llegaste tú.","Se confirma: no todo el mundo debería conducir un trineo.","El Polo Norte te retira 6 puntos del carné.","Ahora mismo un elfo está llorando en silencio.","Excelente. Has convertido la Navidad en slapstick.","Muy bien. Esta será la navidad más triste desde la pandemia","Te iba a llegar el GTA VI pero te has cargado a Papá Noel","No hacía falta accidentar a nadie. Este año ya te tocaba carbón","El seguro del trineo acaba de subir un 400 %.","Correos acaba de recibir 8.000 millones de paquetes.","Por suerte, los Reyes Magos no dependen de ti.","Los renos se han declarado en huelga indefinida.","Última hora: el Polo Norte activa el protocolo de desastre.","El manual del trineo tenía dibujos. Ni con esas.","Tu próximo regalo será un curso de conducción.","La aerolínea Polo Norte lamenta las molestias ocasionadas.","Los regalos están bien. La dignidad de Papá Noel, no.","El GPS decía gira. No vuelca.","Este año el carbón viene con parte amistoso.","Los elfos han cambiado tu contraseña del trineo."];
+    const turboMessages=["Los renos tenían razón. Un Ferrari no sustituye a un trineo.","El Polo Norte acaba de perder el permiso de circulación.","Era un Ferrari, no un coche de choque.","Papá Noel ha descubierto el significado de «siniestro total».","El taller de Maranello no acepta pagos en caramelos.","Los renos se están riendo desde el aparcamiento."];
     let messageBag=[];
     function nextMessage(){if(!messageBag.length){messageBag=messages.slice();for(let i=messageBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[messageBag[i],messageBag[j]]=[messageBag[j],messageBag[i]]}const previous=getLocal('tribeca-rodolfo-2026-msg:'+id);if(messageBag[messageBag.length-1]===previous){[messageBag[0],messageBag[messageBag.length-1]]=[messageBag[messageBag.length-1],messageBag[0]]}}const msg=messageBag.pop();putLocal('tribeca-rodolfo-2026-msg:'+id,msg);return msg}
+    let turboBag=[];
+    function nextTurboMessage(){if(!turboBag.length){turboBag=turboMessages.slice();for(let i=turboBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[turboBag[i],turboBag[j]]=[turboBag[j],turboBag[i]]}const prev=getLocal('tribeca-rodolfo-2026-msg:'+id);if(turboBag[turboBag.length-1]===prev)[turboBag[0],turboBag[turboBag.length-1]]=[turboBag[turboBag.length-1],turboBag[0]]}const msg=turboBag.pop();putLocal('tribeca-rodolfo-2026-msg:'+id,msg);return msg}
     const palettes=[['#b6384c','#e65d65','#7b273d','#f9d475'],['#23745f','#439a77','#194d46','#f9dfaa'],['#326b9e','#68a8cb','#23476f','#eef4eb'],['#ae7936','#e3a95f','#80562f','#fff1c8'],['#80578d','#ae7fb6','#523c68','#f0c3a1'],['#c5bda1','#f1e8cf','#8f8a79','#ad3b48']];
     function hud(){pointEl.textContent=pad(points);bestEl.textContent=pad(best)}
     let saving=Promise.resolve();
@@ -636,6 +643,54 @@
       shape('M8 13 L10 13.2 L10.5 15.3 L8.5 15.2Z','#e8bc70',edge,.3);
       ctx.restore();
     }
+
+    function sportsCar(x,base,withSanta=true,wreck=false){
+      ctx.save();ctx.translate(x,base);
+      const edge='#49263a',red='#c32840',hi='#f25b58',dark='#791f35',glass='#476b87';
+      // Classic red mid-engine Italian sports car, side view, with Santa in an open cockpit.
+      shape('M1 -9 Q2 -12 7 -13 L15 -14 L21 -21 Q25 -24 37 -23 L44 -17 L57 -15 Q62 -13 63 -9 L62 -5 Q56 -2 49 -3 L10 -3 Q4 -2 1 -6Z',dark,edge,1);
+      shape('M7 -13 L17 -15 L22 -20 Q28 -22 36 -21 L43 -16 L51 -15 L58 -13 L62 -10 L60 -8 L4 -8Z',red,edge,.55);
+      shape('M19 -15 L24 -20 Q31 -22 36 -20 L41 -16Z',glass,edge,.55);
+      shape('M22 -16 L26 -19 L31 -19 L28 -16Z','#a0b9cc');
+      shape('M34 -19 L39 -16 L36 -16Z','#7297b2');
+      if(withSanta){ctx.save();ctx.translate(26,-21);ctx.scale(.55,.55);santaAt(-9,-12);ctx.restore()}
+      shape('M2 -10 Q7 -12 16 -12 L21 -14 L42 -14 Q47 -12 58 -12 L62 -9 L60 -6 Q53 -4 49 -5 L13 -5 Q7 -3 2 -6Z',red,edge,.65);
+      shape('M5 -10 L18 -11 L22 -13 L42 -13 L47 -11 L58 -11 L60 -9 L48 -9 L39 -10 L17 -9 L5 -8Z',hi);
+      shape('M23 -11 L41 -11 L39 -7 L23 -7Z','#a5233d',edge,.35);
+      shape('M24 -10.7 L24 -7.5 M38.8 -10.7 L38.8 -7.5',null,'#ed7169',.4);
+      shape('M2 -6 Q7 -5 13 -5 L49 -5 Q56 -4 61 -7 L60 -4 L53 -2 L9 -2 L2 -4Z','#472b3a',edge,.4);
+      shape('M1 -12 L7 -12 L7 -10 L2 -10Z','#fa7066',edge,.3);
+      shape('M55 -12 L61 -10 L60 -8 L55 -9Z','#fff0bd',edge,.3);
+      shape('M59 -8 L63 -8 L63 -6 L58 -6Z','#d5b796');
+      // Rear spoiler, intakes and small yellow racing badge.
+      shape('M3 -15 L12 -15 L12 -13 L4 -13 L3 -10 L1 -10Z',red,edge,.45);
+      shape('M12 -12 L19 -12 L17 -10 L12 -10Z','#392e3a');
+      shape('M33 -12 L35 -12 L35 -9.5 L34 -8.8 L33 -9.5Z','#f6d367',edge,.25);
+      for(const cx of [13,50]){
+        oval(cx,-4.5,5.8,5.8,'#302b37',edge);
+        oval(cx,-4.5,3.5,3.5,'#8895a3','#d1d5d8');
+        const spin=running?distance*.24:0;
+        for(let i=0;i<5;i++){let a=spin+i*Math.PI*2/5;lineArt([[cx,-4.5],[cx+Math.cos(a)*2.7,-4.5+Math.sin(a)*2.7]],'#e8e6df',.65)}
+        oval(cx,-4.5,1,1,'#494554');
+      }
+      if(wreck){shape('M42 -14 L46 -12 L42 -10 L46 -8',null,'#50263b',1.1);shape('M56 -10 L59 -7 L57 -6',null,'#50263b',.8)}
+      ctx.restore();
+    }
+    function driveTurbo(){
+      const base=Math.round(floor-y);
+      ctx.globalAlpha=.35;oval(47,floor+2,32,2.3,'#7795a7');ctx.globalAlpha=1;
+      if(!reduced.matches&&running&&y===0){for(let i=0;i<5;i++){const age=(elapsed*7+i*.21)%1;ctx.globalAlpha=(1-age)*.52;oval(16-age*18,base-6-age*7,1.3+age*3,.9+age*1.6,'#d6e3de')}ctx.globalAlpha=1}
+      sportsCar(16,base-1,true);
+    }
+    function turboCrashScene(){
+      const t=reduced.matches?1:Math.min(1,crashTime/.82),a=1-(1-t)*(1-t),bounce=Math.sin(t*Math.PI);
+      ctx.save();ctx.translate(49+23*a,floor-12-bounce*19);ctx.rotate(-1.05*a);sportsCar(-31,7,false,true);ctx.restore();
+      ctx.save();ctx.translate(91+32*a,floor-12-bounce*28);ctx.rotate(1.7*a);santaAt(-10,-12);ctx.restore();
+      for(const p of crashPieces){const x=p.x+p.dx*a,base=floor-Math.sin(t*Math.PI)*p.lift;ctx.save();ctx.translate(x,base-p.h/2);ctx.rotate(p.spin*a);ctx.translate(-p.w/2,p.h/2-floor);present({x:0,w:p.w,h:p.h,color:p.color,kind:p.kind});ctx.restore()}
+      if(crashGift)present(crashGift);
+      for(let i=0;i<4;i++){star(100+i*9,floor-32-(i%2)*6);if(!reduced.matches)oval(48+i*4,floor-21-i*5,2+i,1.5+i*.5,'#a8bbc3')}
+      if(t<1&&!reduced.matches)for(let i=0;i<18;i++)block(75+(i*17%90-45)*t,floor-3-bounce*(9+i%6*4),2,1.5,'#fff9e7');
+    }
     function train(){
       const base=Math.round(floor-y),phase=running&&y<.1?Math.floor(elapsed*14)%4:2;
       ctx.globalAlpha=.45;oval(55,floor+2,39,2.5,'#7795a7');ctx.globalAlpha=1;
@@ -714,11 +769,12 @@
     function layer(img,offset,top=0,h=160){if(!img)return;const w=img.width/2,x=((offset%w)+w)%w;ctx.drawImage(img,-x,top,w,h);if(w-x<320)ctx.drawImage(img,w-x,top,w,h)}
     function draw(){
       if(skyLayer)ctx.drawImage(skyLayer,0,0,320,160);else px(0,0,320,160,'#1e354c');
-      layer(mountainLayer,elapsed*4);layer(townLayer,elapsed*10);layer(pineLayer,elapsed*23);
-      layer(groundLayer,elapsed*90,floor,30);
+      layer(mountainLayer,distance*.045);layer(townLayer,distance*.11);layer(pineLayer,distance*.25);
+      layer(groundLayer,distance,floor,30);
       if(!reduced.matches)for(let i=0;i<31;i++){const x=((i*73+elapsed*(5+i%4))%320+320)%320,sy=(i*37+elapsed*(7+i%5))%128;block(x,sy,i%7===0?1.2:.5,.6,i%3===0?'#d4e3e5':'#eef4e7')}
       for(const o of obstacles)present(o);
-      if(crashed)crashScene();else train();
+      if(crashed){if(turbo)turboCrashScene();else crashScene()}else if(turbo)driveTurbo();else train();
+      if(turbo&&!crashed&&elapsed-turboSince<3.5){px(53,27,214,23,'#192d41');px(54,28,212,21,'#a62e40');ctx.fillStyle='#fff1c8';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('MODO TURBO DESBLOQUEADO',160,36);ctx.font='6.5px monospace';ctx.fillText('Los renos han pedido vacaciones.',160,45)}
       if(newRecord&&!crashed){px(96,9,128,14,'#f5d175');ctx.fillStyle='#3e3642';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('¡NUEVO RÉCORD!',160,19)}
       if(!reduced.matches)for(const p of dust)block(p.x,p.y,1.5,1.5,'#fbf4dc');
     }
@@ -727,7 +783,7 @@
     function fail(o){
       stop();crashed=true;lastFailure=Date.now();crashTime=0;crashGift={...o,x:Math.max(96,o.x)};obstacles=[];
       crashPieces=Array.from({length:8},(_,i)=>({x:45+i*9,dx:(i-3)*10,lift:12+i%3*10,w:9+i%3*3,h:9+i%4*3,color:i%palettes.length,kind:i%4,spin:(i%2?1:-1)*(.3+i*.12)}));
-      if(newRecord)sync(best);sound('crash');const msg=nextMessage();overlay.hidden=true;draw();
+      if(newRecord)sync(best);sound(turbo?'turboCrash':'crash');const msg=turbo&&Math.random()<.65?nextTurboMessage():nextMessage();overlay.hidden=true;draw();
       const began=performance.now();
       function animate(t){if(!d.open||!crashed)return;crashTime=reduced.matches?1:(t-began)/1000;draw();if(crashTime<.85)frame=requestAnimationFrame(animate)}
       if(!reduced.matches)frame=requestAnimationFrame(animate);
@@ -740,21 +796,25 @@
       const before=y;vel-=320*dt;y+=vel*dt;
       if(y<=0){if(before>0&&!reduced.matches)for(let i=0;i<8;i++)dust.push({x:42+Math.random()*16,y:floor-2,vx:-20-Math.random()*35,vy:-12-Math.random()*18,life:.32});y=0;vel=0}
       for(const p of dust){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=80*dt;p.life-=dt}dust=dust.filter(p=>p.life>0);
-      const speed=Math.min(155,92+elapsed*1.05);
+      const desired=turbo?Math.min(210,175+Math.max(0,points-turboAt)*1.1):Math.min(155,92+elapsed*1.05);
+      worldSpeed+=(desired-worldSpeed)*Math.min(1,dt*2.5);const speed=worldSpeed;distance+=speed*dt;
       if(elapsed>=next){
         const kinds=[[15,15],[23,13],[13,26],[21,21],[29,17],[18,24]];
         const [w,h]=kinds[Math.floor(Math.random()*kinds.length)];
         obstacles.push({x:330,w,h,color:Math.floor(Math.random()*palettes.length),kind:Math.floor(Math.random()*4),passed:false});
-        next=elapsed+1.75+Math.random()*.55+(w+32)/speed;
+        next=elapsed+(turbo?1.32:1.75)+Math.random()*.55+(w+32)/speed;
       }
       for(const o of obstacles){
         o.x-=speed*dt;
-        if(o.x+o.w-2>trainLeft+3&&o.x+2<trainRight-2&&y+3<o.h+1){fail(o);return}
-        if(!o.passed&&o.x+o.w<trainLeft){o.passed=true;points++;if(points>best){const first=!newRecord;best=points;newRecord=true;putLocal(rk,best);sync(best);sound(first?'record':'point')}else sound('point');hud()}
+        const left=turbo?carLeft:trainLeft,right=turbo?carRight:trainRight;
+        if(o.x+o.w-2>left+3&&o.x+2<right-2&&y+3<o.h+1){fail(o);return}
+        if(!o.passed&&o.x+o.w<left){o.passed=true;points++;if(points>best){const first=!newRecord;best=points;newRecord=true;putLocal(rk,best);sync(best);sound(first?'record':'point')}else sound('point');hud()}
       }
-      obstacles=obstacles.filter(o=>o.x+o.w>-5);draw();frame=requestAnimationFrame(step);
+      obstacles=obstacles.filter(o=>o.x+o.w>-5);
+      if(!turbo&&points>=turboAt&&y===0&&obstacles.every(o=>o.passed||o.x>trainRight+50)){turbo=true;turboSince=elapsed;sound('turbo');score.textContent='Modo turbo desbloqueado. Papá Noel cambia de vehículo.'}
+      draw();frame=requestAnimationFrame(step);
     }
-    function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
+    function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;turbo=false;turboSince=0;distance=0;worldSpeed=92;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
     function leap(){if(running&&y===0){unlockAudio();vel=245;sound('jump')}}
     start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else if(!crashed)begin()});
     d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start,.te26-sound')&&!ev.repeat){ev.preventDefault();if(running)leap();else begin()}});
