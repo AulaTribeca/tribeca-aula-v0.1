@@ -107,7 +107,13 @@
     .teacher-week-day .event-local-cee { background:transparent !important; }
   </style>
 <style id="tribeca-festive-eggs-2026-style">
-#inicio .te26-greeting{display:inline-flex;align-items:center;justify-content:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0 4px;min-width:44px;min-height:44px;vertical-align:middle;font-size:1.15em;line-height:1;cursor:pointer;animation:none!important;transform:none!important;color:inherit}
+#inicio .te26-greeting{display:inline-block!important;max-width:100%;box-sizing:border-box;vertical-align:baseline;background:transparent!important;border:0!important;border-radius:6px!important;box-shadow:none!important;padding:0 3px!important;margin:0!important;min-width:44px;min-height:44px;height:auto!important;font:inherit!important;line-height:inherit!important;letter-spacing:inherit!important;text-transform:none!important;text-align:inherit!important;white-space:normal!important;overflow-wrap:anywhere;color:inherit!important;cursor:pointer!important;animation:none!important;transform:none!important}
+#inicio .te26-greeting *{cursor:pointer!important}
+#inicio .te26-greeting .hero-wave,#inicio .te26-greeting .te26-daily-icon{display:inline-block;animation:none!important;transform:none!important;vertical-align:baseline}
+#inicio .te26-greeting #studentHeroName{text-decoration-line:underline;text-decoration-style:dotted;text-decoration-color:#b89442;text-decoration-thickness:1.5px;text-underline-offset:.18em}
+#inicio .te26-greeting::after{content:"✦";display:inline-block;color:#b89442;font-size:.48em;vertical-align:super;margin-inline-start:.3em;line-height:1}
+@media(hover:hover) and (pointer:fine){#inicio .te26-greeting:hover{background:rgba(184,148,66,.11)!important;text-decoration:underline;text-decoration-style:dotted;text-decoration-color:#b89442;text-underline-offset:.18em}}
+#inicio .te26-greeting:active{background:rgba(184,148,66,.16)!important}
 #inicio .te26-greeting:focus-visible,.te26-game button:focus-visible{outline:3px solid #b28a42;outline-offset:3px}
 .te26-flake{position:fixed;pointer-events:none;z-index:10000;color:#b99a52;text-shadow:0 0 2px #fff;animation:te26-spark .7s ease-out forwards;font-size:18px;line-height:1}
 @keyframes te26-spark{to{transform:translate(var(--dx),var(--dy)) rotate(75deg) scale(.2);opacity:0}}
@@ -337,34 +343,49 @@
     return icons[(Math.floor(Date.UTC(y,m-1,d)/86400000)%icons.length+icons.length)%icons.length];
   }
   function home(){return Date.now()<expiry&&!document.hidden&&!document.body.classList.contains('auth-locked')&&!document.body.classList.contains('is-paused-student')&&!!main.querySelector(':scope > .teacher-dashboard, :scope > .hero-welcome-card, :scope > .focus-hero-card')}
-  let game=null,visitor=null,lastActivity=Date.now(),lastVisit=0,visits=0,visitorTimeout=0,clicks=0,lastClick=0,lastSpark=0;
+  let game=null,visitor=null,lastActivity=Date.now(),lastVisit=0,visits=0,visitorTimeout=0,lastSpark=0;
   function quiet(){return home()&&!muted&&!reduced.matches&&!main.querySelector(':scope > .focus-hero-card')&&!game?.open&&!document.querySelector('#windowLayer .tool-window:not([hidden]), dialog[open], [aria-modal="true"]:not([hidden])')&&!document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')}
   function burst(x,y,n=5){
     if(!quiet()||document.querySelectorAll('.te26-flake').length>12)return;
     for(let i=0;i<n;i++){const e=document.createElement('span');e.className='te26-flake';e.setAttribute('aria-hidden','true');e.textContent=i%2?'✦':'❄';e.style.left=x+'px';e.style.top=y+'px';e.style.setProperty('--dx',Math.round((Math.random()-.5)*90)+'px');e.style.setProperty('--dy',Math.round(-20-Math.random()*60)+'px');document.body.append(e);setTimeout(()=>e.remove(),760)}
   }
-  function restoreGreeting(){main.querySelectorAll('.te26-greeting').forEach(b=>{if(b.dataset.original==='wave'){const sp=document.createElement('span');sp.className='hero-wave';sp.setAttribute('aria-hidden','true');sp.textContent='👋';b.replaceWith(sp)}else b.remove()})}
+  function restoreGreeting(){
+    main.querySelectorAll('.te26-greeting').forEach(button=>{
+      const wave=button.querySelector('.hero-wave[data-te26-original]');
+      if(wave){wave.textContent=wave.dataset.te26Original;delete wave.dataset.te26Original}
+      button.querySelectorAll('[data-te26-added]').forEach(el=>el.remove());
+      button.replaceWith(...Array.from(button.childNodes));
+    });
+  }
   function greet(){
     if(Date.now()>=expiry){restoreGreeting();return}
     if(!home())return;
-    const student=main.querySelector('.hero-welcome-card h1:not(.is-birthday-greeting-v216),.focus-hero-card h1:not(.is-birthday-greeting-v216)');
+    const student=main.querySelector('.hero-welcome-card h1,.focus-hero-card h1');
     const teacher=main.querySelector('.teacher-welcome-copy h2');
     for(const heading of [student,teacher]){
       if(!heading)continue;
-      let b=heading.querySelector('.te26-greeting');
+      let b=heading.querySelector(':scope > .te26-greeting');
       if(!b){
+        // Preserve heading and existing name span for translations and profile rendering.
+        if(heading.querySelector('button,a,input,select,textarea,[role="button"]'))continue;
         const original=heading.querySelector('.hero-wave');
-        b=document.createElement('button');b.type='button';b.className='te26-greeting';b.dataset.original=original?'wave':'teacher';
-        b.setAttribute('aria-label','Sorpresa navideña del saludo');
-        if(original)original.replaceWith(b);else heading.append(b);
+        b=document.createElement('button');b.type='button';b.className='te26-greeting';
+        b.title='Hay una sorpresa navideña escondida aquí';
+        const nodes=Array.from(heading.childNodes);
+        b.append(...nodes);
+        if(original){original.dataset.te26Original=original.textContent;original.setAttribute('aria-hidden','true')}
+        else if(!heading.classList.contains('is-birthday-greeting-v216')){
+          const icon=document.createElement('span');icon.className='te26-daily-icon';icon.dataset.te26Added='1';icon.setAttribute('aria-hidden','true');b.append(' ',icon)
+        }
+        heading.append(b);
         b.addEventListener('click',ev=>{
-          if(!home())return;
-          const t=Date.now();clicks=t-lastClick<1800?clicks+1:1;lastClick=t;
+          if(!home()||game?.open)return;
           const rect=b.getBoundingClientRect();burst(rect.left+rect.width/2,rect.top+rect.height/2,6);
-          if(clicks>=3){clicks=0;openGame(b)}
+          openGame(b);
         });
       }
-      const icon=dailyIcon();if(b.textContent!==icon)b.textContent=icon;
+      const icon=b.querySelector('.hero-wave,.te26-daily-icon');
+      if(icon){const value=dailyIcon();if(icon.textContent!==value)icon.textContent=value}
     }
   }
   const santa='<svg viewBox="0 0 110 126" xmlns="http://www.w3.org/2000/svg"><path d="M18 120q0-35 37-35t37 35" fill="#b22e40" stroke="#7c2232" stroke-width="2"/><path d="M76 104q10-11 14-25l8 4q3 23-13 31" fill="#b22e40" stroke="#7c2232" stroke-width="2"/><path d="M89 82q-6-10 2-15 4-2 5 5 7-6 10 0 3 7-8 14" fill="#f4d4aa"/><circle cx="55" cy="59" r="31" fill="#f3c99b"/><path d="M22 48Q18 8 62 10q28 2 27 39" fill="#b22e40"/><circle cx="64" cy="9" r="9" fill="#fffaea"/><rect x="20" y="40" width="71" height="15" rx="7" fill="#fff9e7"/><path d="M25 65q-6 34 30 38 34-4 31-38-7 13-16 5-15-14-30 0-9 8-15-5" fill="#fff9e7"/><circle cx="43" cy="60" r="2.8" fill="#263b2d"/><circle cx="67" cy="60" r="2.8" fill="#263b2d"/><circle cx="55" cy="68" r="6" fill="#e19c83"/><path d="M48 82q7 6 14 0" fill="none" stroke="#995451" stroke-width="2" stroke-linecap="round"/><path d="M18 119h74" stroke="#fff9e7" stroke-width="7"/></svg>';
