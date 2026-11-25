@@ -361,13 +361,14 @@
     if(!home()||muted||!id||main.querySelector(':scope > .focus-hero-card')||getLocal(elfPrefix+id)===stamp){hideElf();return}
     if(elf?.isConnected&&elfStamp===stamp+id)return;
     hideElf();
-    const selectors=['#tribecaChristmas2026 .tc26-heading','.hero-welcome-card .hero-main .eyebrow,.teacher-welcome-copy .eyebrow','.footer-brand-academia > div','.footer-description','.hero-welcome-card .hero-main > p.muted,.teacher-welcome-copy > p:not(.eyebrow)'];
+    const selectors=['#tribecaChristmas2026 .tc26-heading','.hero-welcome-card .hero-main .eyebrow,.teacher-welcome-copy .eyebrow','.footer-brand-academia > div','.footer-description','.hero-welcome-card .hero-main > p.muted,.teacher-welcome-copy > p:not(.eyebrow)'].filter(sel=>{const el=document.querySelector(sel);return el&&el.getClientRects().length});
+    if(!selectors.length)return;
     const {y,m,d}=today(),slot=Math.floor(Date.UTC(y,m-1,d)/86400000)%selectors.length;
     let host=null;for(let i=0;i<selectors.length;i++){const candidate=document.querySelector(selectors[(slot+i)%selectors.length]);if(candidate&&candidate.getClientRects().length){host=candidate;break}}
     if(!host)return;
     elf=document.createElement('button');elf.type='button';elf.className='te26-elf';elf.setAttribute('aria-label','Elfo travieso escondido');elf.innerHTML=elfSvg;
     elfStamp=stamp+id;host.append(elf);
-    elf.addEventListener('click',()=>{if(!home()||profileId()!==id)return;const b=elf.getBoundingClientRect();burst(b.left+b.width/2,b.top+b.height/2,8);putLocal(elfPrefix+id,stamp);hideElf();elfNote?.remove();elfNote=document.createElement('div');elfNote.className='te26-elf-note';elfNote.setAttribute('role','status');const lines=['Me has pillado. Mañana buscaré otro escondite.','No estaba copiando. Estaba supervisando.','¡Encontrado! El taller de juguetes niega toda responsabilidad.','Buen ojo. Hoy no me escondo más.','Mañana tendré que elegir un sitio mejor.'];elfNote.textContent=lines[slot];document.body.append(elfNote);const note=elfNote;setTimeout(()=>note.remove(),4200)});
+    elf.addEventListener('click',()=>{if(!home()||profileId()!==id)return;const b=elf.getBoundingClientRect();burst(b.left+b.width/2,b.top+b.height/2,8);putLocal(elfPrefix+id,stamp);hideElf();elfNote?.remove();elfNote=document.createElement('div');elfNote.className='te26-elf-note';elfNote.setAttribute('role','status');const lines=['Me has pillado. Mañana buscaré otro escondite.','No estaba copiando. Estaba supervisando.','¡Encontrado! El taller de juguetes niega toda responsabilidad.','Buen ojo. Hoy no me escondo más.','Mañana tendré que elegir un sitio mejor.'];elfNote.textContent=lines[slot%lines.length];document.body.append(elfNote);const note=elfNote;setTimeout(()=>note.remove(),4200)});
   }
   function openGame(trigger){
     const id=profileId(),client=window.TribecaAuth?.client;
