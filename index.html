@@ -29,23 +29,74 @@
   <link rel="stylesheet" href="tribeca-auth-refinement-v256.css?v=263.2" />
 
   <style id="tribeca-christmas-2026-style">
-    #tribecaChristmas2026{box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;max-width:100%;min-width:0;grid-column:1/-1;margin:0 0 14px;padding:9px 12px;background:#fffbef;color:#174733;border:1px solid #d8bd79;border-top:3px solid #b7954c;border-radius:12px;box-shadow:0 2px 8px #533d1510;font-size:max(13px,1em);line-height:1.5;overflow:hidden}
+    /* Aviso navideño: conserva el texto real, la pausa y la retirada automática. */
+    #tribecaChristmas2026{
+      --tc26-gold:#f1d08b;--tc26-cream:#fff8e8;--tc26-green:#103e2e;--tc26-red:#9c2938;
+      box-sizing:border-box;isolation:isolate;position:relative;display:flex;align-items:center;
+      gap:clamp(10px,1.5vw,20px);width:100%;max-width:100%;min-width:0;grid-column:1/-1;
+      margin:0 0 16px;padding:12px 14px;color:var(--tc26-cream);
+      background:radial-gradient(ellipse at 12% 0%,#37684b 0%,transparent 56%),linear-gradient(105deg,#194c36 0%,#103e2e 52%,#12382c 100%);
+      border:1px solid #d8b36b;border-radius:14px;
+      box-shadow:0 5px 15px rgba(15,55,40,.18),inset 0 0 0 3px rgba(245,213,145,.13);
+      font-size:max(15px,1em);line-height:1.55;overflow:hidden
+    }
     body.auth-locked #tribecaChristmas2026,#tribecaChristmas2026[hidden]{display:none!important}
-    #tribecaChristmas2026 .tc26-heading{display:flex;align-items:center;gap:7px;flex:none;color:#8b2430;font-weight:800;letter-spacing:.025em;white-space:nowrap}
-    #tribecaChristmas2026 .tc26-holly{width:28px;height:26px;flex:none}
-    #tribecaChristmas2026 .tc26-window{flex:1;min-width:0;overflow:hidden}
-    #tribecaChristmas2026 .tc26-track{display:flex;width:max-content;max-width:none;animation:tc26-slide 44s linear infinite}
-    #tribecaChristmas2026 .tc26-copy{display:flex;align-items:center;gap:15px;flex:none;white-space:nowrap;padding-inline-end:24px}
-    #tribecaChristmas2026 .tc26-copy strong{color:#8b2430;font-weight:800}
-    #tribecaChristmas2026 .tc26-star{color:#987024;font-size:1.1em}
-    #tribecaChristmas2026 .tc26-control{flex:none;min-width:44px;min-height:44px;padding:6px 9px;background:#fffdf6;border:1px solid #cdbb8e;border-radius:8px;color:#174733;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
-    #tribecaChristmas2026 .tc26-control:focus-visible{outline:3px solid #174733;outline-offset:2px}
+    #tribecaChristmas2026::before,#tribecaChristmas2026::after{
+      content:"";position:absolute;z-index:-1;pointer-events:none;inset-inline:8px;height:3px;border-radius:2px;
+      background:linear-gradient(90deg,transparent,#d3ab61 20%,#ffe9b6 48%,#d3ab61 80%,transparent)
+    }
+    #tribecaChristmas2026::before{top:3px}
+    #tribecaChristmas2026::after{bottom:3px}
+    #tribecaChristmas2026 .tc26-heading{
+      display:flex;align-items:center;gap:9px;flex:none;white-space:nowrap;min-width:0;
+      padding:9px 15px 9px 10px;color:#fff8e8;background:linear-gradient(120deg,#b53544,#8c2332);
+      border:1px solid #f1d08b;border-radius:9px;box-shadow:0 3px 7px #092b2160,inset 0 0 0 2px #f1d08b22;
+      font-size:1.08em;font-weight:800;letter-spacing:.015em;line-height:1.2
+    }
+    #tribecaChristmas2026 .tc26-holly{width:35px;height:31px;flex:none;filter:drop-shadow(0 1px 1px #35151a55)}
+    #tribecaChristmas2026 .tc26-window{
+      flex:1;min-width:0;overflow:hidden;padding-block:4px;
+      -webkit-mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 12px),transparent);
+      mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 12px),transparent)
+    }
+    #tribecaChristmas2026 .tc26-track{display:flex;width:max-content;max-width:none;animation:tc26-slide 48s linear infinite}
+    #tribecaChristmas2026 .tc26-copy{display:flex;align-items:center;gap:22px;flex:none;white-space:nowrap;padding-inline-end:24px;font-weight:600}
+    #tribecaChristmas2026 .tc26-copy strong{
+      color:#ffe2a2;font-weight:850;text-decoration:underline;text-decoration-color:#d9b56d80;text-underline-offset:4px
+    }
+    #tribecaChristmas2026 .tc26-copy .tc26-date{
+      display:inline-block;padding:4px 12px;border:1px solid #f1d08b70;border-radius:7px;background:#ffffff12;color:#fff8e8
+    }
+    #tribecaChristmas2026 .tc26-copy .tc26-date:first-of-type{background:#8c2332}
+    #tribecaChristmas2026 .tc26-date.is-closed{background:#8c2332;border-color:#d9a47e}
+    #tribecaChristmas2026 .tc26-star{color:#f1d08b;font-size:1.25em;text-shadow:0 0 9px #ffdf9b66;flex:none}
+    #tribecaChristmas2026 .tc26-control{
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;min-width:44px;min-height:44px;
+      padding:6px 12px;background:#ffffff0d;border:1px solid #f1d08b91;border-radius:8px;
+      color:#fff8e8;font:inherit;font-size:.88em;font-weight:700;cursor:pointer;white-space:nowrap
+    }
+    #tribecaChristmas2026 .tc26-control[hidden]{display:none!important}
+    #tribecaChristmas2026 .tc26-control::before{content:"";width:9px;height:13px;border-inline:3px solid currentColor;box-sizing:border-box;flex:none}
+    #tribecaChristmas2026.is-static .tc26-control::before{width:0;height:0;border:0;border-block:6px solid transparent;border-left:9px solid currentColor}
+    #tribecaChristmas2026 .tc26-control:focus-visible{outline:3px solid #fff0bc;outline-offset:3px}
+    #tribecaChristmas2026.is-static .tc26-window{-webkit-mask-image:none;mask-image:none}
     #tribecaChristmas2026.is-static .tc26-track{animation:none;display:block;width:auto}
-    #tribecaChristmas2026.is-static .tc26-copy{display:flex;flex-wrap:wrap;white-space:normal;gap:5px 12px;padding:0}
+    #tribecaChristmas2026.is-static .tc26-copy{display:flex;flex-wrap:wrap;white-space:normal;gap:8px 12px;padding:0;overflow-wrap:anywhere}
     #tribecaChristmas2026.is-static .tc26-copy[aria-hidden="true"]{display:none}
     @keyframes tc26-slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-    @media(max-width:640px){#tribecaChristmas2026{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:8px 10px;margin-bottom:10px}#tribecaChristmas2026 .tc26-heading{grid-column:1;grid-row:1;white-space:normal}#tribecaChristmas2026 .tc26-control{grid-column:2;grid-row:1}#tribecaChristmas2026 .tc26-window{grid-column:1/-1;grid-row:2;min-height:1.5em}}
-    @media(prefers-reduced-motion:reduce){#tribecaChristmas2026 .tc26-track{animation:none;display:block;width:auto}#tribecaChristmas2026 .tc26-copy{flex-wrap:wrap;white-space:normal;gap:5px 12px;padding:0}#tribecaChristmas2026 .tc26-copy[aria-hidden="true"]{display:none}}
+    @media(max-width:720px){
+      #tribecaChristmas2026{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;padding:10px 12px;margin-bottom:12px}
+      #tribecaChristmas2026 .tc26-heading{grid-column:1;grid-row:1;white-space:normal;justify-self:start;padding:7px 10px}
+      #tribecaChristmas2026 .tc26-holly{width:29px;height:26px}
+      #tribecaChristmas2026 .tc26-control{grid-column:2;grid-row:1}
+      #tribecaChristmas2026 .tc26-window{grid-column:1/-1;grid-row:2;min-height:1.5em}
+    }
+    @media(prefers-reduced-motion:reduce){
+      #tribecaChristmas2026 .tc26-window{-webkit-mask-image:none;mask-image:none}
+      #tribecaChristmas2026 .tc26-track{animation:none;display:block;width:auto}
+      #tribecaChristmas2026 .tc26-copy{flex-wrap:wrap;white-space:normal;gap:8px 12px;padding:0;overflow-wrap:anywhere}
+      #tribecaChristmas2026 .tc26-copy[aria-hidden="true"]{display:none}
+    }
   </style>
   <style id="tribeca-calendar-cee-v2642">
     .event-legend i.event-local-cee, .day-event-dot.event-local-cee,
@@ -150,7 +201,7 @@
     const expiry = Date.parse('2027-01-06T23:00:00Z');
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let paused = motion.matches;
-    const content = '<span>Durante las vacaciones de Navidad, las clases continuarán con normalidad y en el horario habitual.</span><span class="tc26-star" aria-hidden="true">✦</span><span>Los grupos que prefieran asistir por la mañana podrán hacerlo si todas las personas del grupo están de acuerdo.</span><span class="tc26-star" aria-hidden="true">✦</span><span><strong>Sin clases:</strong> 8 y 25 de diciembre de 2026; 1 y 6 de enero de 2027.</span><span class="tc26-star" aria-hidden="true">✦</span><span><strong>24 y 31 de diciembre:</strong> clases únicamente por la mañana.</span><span class="tc26-star" aria-hidden="true">✦</span>';
+    const content = '<span>Durante las vacaciones de Navidad, las clases continuarán con normalidad y en el horario habitual.</span><span class="tc26-star" aria-hidden="true">✦</span><span>Los grupos que prefieran asistir por la mañana podrán hacerlo si todas las personas del grupo están de acuerdo.</span><span class="tc26-star" aria-hidden="true">✦</span><span class="tc26-date is-closed"><strong>Sin clases:</strong> 8 y 25 de diciembre de 2026; 1 y 6 de enero de 2027.</span><span class="tc26-star" aria-hidden="true">✦</span><span class="tc26-date"><strong>24 y 31 de diciembre:</strong> clases únicamente por la mañana.</span><span class="tc26-star" aria-hidden="true">✦</span>';
     function refreshControl(banner) {
       const isStatic = paused || motion.matches;
       banner.classList.toggle('is-static', isStatic);
@@ -169,7 +220,7 @@
       banner.id = 'tribecaChristmas2026';
       banner.lang = 'es';
       banner.setAttribute('aria-labelledby','tc26-title');
-      banner.innerHTML = '<div class="tc26-heading"><svg class="tc26-holly" viewBox="0 0 36 32" aria-hidden="true" focusable="false"><path fill="#245b42" d="M17 18C4 21 2 13 1 7c5 3 7 1 9-4 3 6 5 7 10 6zM19 17C17 7 24 3 33 2c-2 5-1 8 2 11-7-1-9 2-11 8z"/><path d="M5 9l15 10M30 6L19 20" stroke="#9aad85" stroke-width="1.2"/><circle cx="17" cy="23" r="4" fill="#a33339"/><circle cx="24" cy="23" r="4" fill="#8b2430"/><circle cx="21" cy="28" r="3.5" fill="#b44245"/></svg><span id="tc26-title">Aviso de Navidad</span></div><div class="tc26-window"><div class="tc26-track"><div class="tc26-copy">'+content+'</div><div class="tc26-copy" aria-hidden="true">'+content+'</div></div></div><button class="tc26-control" type="button"></button>';
+      banner.innerHTML = '<div class="tc26-heading"><svg class="tc26-holly" viewBox="0 0 36 32" aria-hidden="true" focusable="false"><path fill="#2f7650" stroke="#f1d08b" stroke-width=".65" d="M18 20C12 20 7 18 4 15l3-2-5-5 6-1L9 2l5 4 4-2 2 7-2 9ZM20 19l1-9 4-6 4 2 5-4-1 7 2 4-5 2-1 4-9 1Z"/><path d="M6 8l14 13M31 6L20 21" stroke="#c3d39b" stroke-width="1.15" stroke-linecap="round"/><circle cx="16.5" cy="22" r="4.2" fill="#e9625d" stroke="#f5d392" stroke-width=".5"/><circle cx="24" cy="22" r="4.2" fill="#e9625d" stroke="#f5d392" stroke-width=".5"/><circle cx="20.3" cy="28" r="3.8" fill="#c63b42" stroke="#f5d392" stroke-width=".5"/><circle cx="15.5" cy="20.5" r="1" fill="#ffd3ab"/><circle cx="23" cy="20.5" r="1" fill="#ffd3ab"/></svg><span id="tc26-title">Aviso de Navidad</span></div><div class="tc26-window"><div class="tc26-track"><div class="tc26-copy">'+content+'</div><div class="tc26-copy" aria-hidden="true">'+content+'</div></div></div><button class="tc26-control" type="button"></button>';
       banner.querySelector('.tc26-control').addEventListener('click', () => { paused = !paused; refreshControl(banner); });
       refreshControl(banner);
       main.prepend(banner);
