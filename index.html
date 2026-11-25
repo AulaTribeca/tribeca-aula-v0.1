@@ -278,6 +278,7 @@
   }
   function dailyIcon(){
     const {y,m,d}=today();
+    if(m===12&&d===14)return '🧸';if(m===12&&d===23)return '🍬';
     if(m===12&&d===24)return '🎅';if(m===12&&d===25)return '🎄';if(m===12&&d===31)return '✨';
     if(m===1&&d===1)return '🌟';if(m===1&&d===5)return '👑';if(m===1&&d===6)return '🎁';
     return icons[(Math.floor(Date.UTC(y,m-1,d)/86400000)%icons.length+icons.length)%icons.length];
