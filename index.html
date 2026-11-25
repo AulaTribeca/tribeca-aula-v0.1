@@ -160,6 +160,24 @@
 .te26-game .te26-overlay .te26-toggle input{width:16px;height:16px}
 .te26-game .te26-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:540px){.te26-game{padding:4px}.te26-game .te26-overlay{top:2%;gap:2px}.te26-game .te26-overlay button{min-height:36px}.te26-game .te26-overlay .te26-toggle{font-size:.65rem}}
+
+/* Christmas arcade: central dispatch card and high resolution crash artwork. */
+.te26-game .te26-stage canvas{image-rendering:auto}
+.te26-game .te26-hud .te26-sound{min-width:44px;min-height:44px;padding:4px 8px;background:transparent;border:1px solid #7893a2;color:#fff1d6;font-size:.78rem;border-radius:5px}
+.te26-game .te26-hud .te26-sound[aria-pressed="false"]{color:#b5c3c9}
+.te26-game .te26-overlay.te26-letter{inset:0;display:grid;place-items:center;pointer-events:auto;background:rgba(14,29,42,.28);padding:10px;box-sizing:border-box}
+.te26-game .te26-letter .te26-letter-inner{width:min(560px,85%);max-height:100%;overflow:auto;box-sizing:border-box;position:relative;padding:clamp(16px,3vw,30px);background:#fff5df;border:1px solid #ac813e;outline:1px solid #e9ce99;outline-offset:-6px;border-radius:7px;box-shadow:0 12px 36px #101d2f66;color:#193f35;display:grid;gap:12px;justify-items:center;text-align:center;animation:te26-letter-in .24s ease-out both}
+.te26-game .te26-letter .te26-letter-inner::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:repeating-linear-gradient(135deg,#a73a43 0 8px,#fff5df 8px 16px,#265d49 16px 24px,#fff5df 24px 32px);border-radius:7px 7px 0 0}
+.te26-game .te26-letter .te26-letter-inner h2{font-family:Georgia,serif;font-size:clamp(.85rem,2.2vw,1.25rem);letter-spacing:.08em;color:#8e2b3b;background:none;border:0;padding:0;text-transform:uppercase}
+.te26-game .te26-letter .te26-letter-inner .te26-score{font-family:Georgia,serif;font-weight:700;color:#193f35;font-size:clamp(1.2rem,3.1vw,2.25rem);line-height:1.16;letter-spacing:-.025em;background:none;border:0;padding:0;overflow-wrap:anywhere}
+.te26-game .te26-letter .te26-letter-meta{display:block;color:#876537;font:700 .7rem system-ui;letter-spacing:.14em;text-transform:uppercase}
+.te26-game .te26-letter .te26-letter-mark{display:block;color:#a73a43;font-size:1.4rem;line-height:1}
+.te26-game .te26-letter .te26-letter-inner .te26-start{background:#204f3e;border:1px solid #ae8749;color:#fff5df;font-weight:700;min-height:44px;padding:8px 18px}
+.te26-game .te26-letter .te26-toggle{display:none!important}
+.te26-game .te26-letter-meta[hidden],.te26-game .te26-letter-mark[hidden]{display:none!important}
+@keyframes te26-letter-in{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+@media(max-width:540px){.te26-game.is-crashed .te26-stage{min-height:250px;display:flex;align-items:flex-end;background:#17293f}.te26-game .te26-letter .te26-letter-inner{width:94%;gap:7px;padding:15px}.te26-game .te26-letter .te26-letter-inner .te26-score{font-size:clamp(1.12rem,5vw,1.55rem)}.te26-game .te26-hud .te26-sound{padding:3px 5px;font-size:.7rem}}
+@media(prefers-reduced-motion:reduce){.te26-game .te26-letter .te26-letter-inner{animation:none}}
 </style>
 </head>
 <body class="font-default tribeca-preserve-v253" data-ui-version="264.1">
@@ -393,15 +411,44 @@
     if(!home()||!id||game?.open||typeof HTMLDialogElement==='undefined')return;
     dismiss();
     const d=document.createElement('dialog');game=d;d.className='te26-game';d.setAttribute('aria-labelledby','te26-game-title');d.lang='es';
-    d.innerHTML='<div class="te26-hud"><span>PUNTOS <strong class="te26-points">0000</strong></span><span>RÉCORD <strong class="te26-best">0000</strong></span><button type="button" class="te26-close" aria-label="Cerrar juego">×</button></div><div class="te26-stage"><canvas width="320" height="160" tabindex="0" role="button" aria-label="Saltar con el trineo. Pulsa espacio, flecha arriba o toca el tablero."></canvas><div class="te26-overlay"><h2 id="te26-game-title">NAVIDAD A LA CARRERA</h2><p class="te26-score" aria-live="polite">Pulsa espacio o toca para saltar.</p><button type="button" class="te26-start">Empezar</button><label class="te26-toggle"><input type="checkbox">Desactivar efectos decorativos del aula</label></div></div><p class="te26-record-status te26-sr" role="status"></p>';
+    d.innerHTML='<div class="te26-hud"><span>PUNTOS <strong class="te26-points">0000</strong></span><span>RÉCORD <strong class="te26-best">0000</strong></span><button type="button" class="te26-sound" aria-label="Activar o desactivar los sonidos del juego" aria-pressed="true">Sonido</button><button type="button" class="te26-close" aria-label="Cerrar juego">×</button></div><div class="te26-stage"><canvas width="960" height="480" tabindex="0" role="button" aria-label="Saltar con el trineo. Pulsa espacio, flecha arriba o toca el tablero."></canvas><div class="te26-overlay"><div class="te26-letter-inner"><span class="te26-letter-meta" hidden>Comunicado oficial · Polo Norte</span><span class="te26-letter-mark" aria-hidden="true" hidden>✦</span><h2 id="te26-game-title">NAVIDAD A LA CARRERA</h2><p class="te26-score" aria-live="polite">Pulsa espacio o toca para saltar.</p><button type="button" class="te26-start">Empezar</button><label class="te26-toggle"><input type="checkbox">Desactivar efectos decorativos del aula</label></div></div></div><p class="te26-record-status te26-sr" role="status"></p>';
     document.body.append(d);
     const canvas=d.querySelector('canvas'),ctx=canvas.getContext('2d'),score=d.querySelector('.te26-score'),start=d.querySelector('.te26-start'),overlay=d.querySelector('.te26-overlay'),title=d.querySelector('#te26-game-title'),toggle=d.querySelector('input'),pointEl=d.querySelector('.te26-points'),bestEl=d.querySelector('.te26-best'),syncEl=d.querySelector('.te26-record-status');
     if(!ctx){d.remove();game=null;return}
-    ctx.imageSmoothingEnabled=false;
+    ctx.setTransform(3,0,0,3,0,0);ctx.imageSmoothingEnabled=false;
+    const soundButton=d.querySelector('.te26-sound'),letterMeta=d.querySelector('.te26-letter-meta'),letterMark=d.querySelector('.te26-letter-mark');
     toggle.checked=muted;toggle.addEventListener('change',()=>{muted=toggle.checked;putLocal(key,muted?'1':'0');dismiss();mountElf()});
     const rk=recordPrefix+id;let best=Math.max(0,Math.min(100000,Number(getLocal(rk))||0));
     const pad=n=>String(n).padStart(4,'0');
     let frame=0,running=false,prev=0,elapsed=0,points=0,y=0,vel=0,obstacles=[],next=1.2,newRecord=false,dust=[],closed=false,crashed=false,crashGift=null,crashTime=0,crashPieces=[],lastFailure=0;
+
+    const soundKey='tribeca-rodolfo-2026-audio:'+id;
+    let soundOn=getLocal(soundKey)!=='0',audio=null,master=null,audioReady=false;
+    function showSound(){soundButton.textContent=soundOn?'Sonido sí':'Sonido no';soundButton.setAttribute('aria-pressed',String(soundOn))}
+    showSound();
+    function unlockAudio(){
+      if(!soundOn||closed)return;
+      try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!audio){audio=new AC();master=audio.createGain();master.gain.value=.32;master.connect(audio.destination)}audioReady=true;if(audio.state==='suspended')audio.resume().catch(()=>{})}catch(_){}
+    }
+    function tone(f,duration,offset=0,volume=.065,type='sine',end=f){
+      if(!soundOn||!audioReady||!audio||!master||closed)return;
+      try{const t=audio.currentTime+offset,osc=audio.createOscillator(),g=audio.createGain();osc.type=type;osc.frequency.setValueAtTime(f,t);osc.frequency.exponentialRampToValueAtTime(Math.max(35,end),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);osc.connect(g);g.connect(master);osc.start(t);osc.stop(t+duration+.02)}catch(_){}
+    }
+    function bell(f,offset=0,vol=.10){tone(f,.28,offset,vol);tone(f*2.01,.16,offset,vol*.21);tone(f*3.02,.10,offset,vol*.08)}
+    function noise(duration,offset=0,vol=.10,frequency=1400){
+      if(!soundOn||!audioReady||!audio||!master||closed)return;
+      try{const buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*duration),audio.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,2);const src=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();src.buffer=buffer;filter.type='lowpass';filter.frequency.value=frequency;gain.gain.value=vol;src.connect(filter);filter.connect(gain);gain.connect(master);src.start(audio.currentTime+offset)}catch(_){}
+    }
+    function sound(kind){
+      if(!soundOn)return;
+      if(kind==='start'){bell(659);bell(880,.10);bell(1047,.20)}
+      else if(kind==='jump'){tone(330,.12,0,.05,'triangle',740);bell(1047,.055,.035)}
+      else if(kind==='point'){bell(1175,0,.055);bell(1568,.055,.028)}
+      else if(kind==='record'){[784,988,1175,1568].forEach((f,i)=>bell(f,i*.09,.085))}
+      else if(kind==='crash'){tone(125,.23,0,.14,'triangle',44);noise(.26,0,.23,800);bell(392,.10,.12);bell(587,.18,.09);bell(294,.29,.07);noise(.17,.24,.08,2100)}
+      else if(kind==='letter'){noise(.08,0,.07,1800);bell(784,.04,.035)}
+    }
+    soundButton.addEventListener('click',()=>{soundOn=!soundOn;putLocal(soundKey,soundOn?'1':'0');showSound();if(soundOn){unlockAudio();if(master)master.gain.value=.32;bell(880,0,.07)}else if(master)master.gain.value=0});
     const trainLeft=16,trainRight=94;
     const floor=130;
     const messages=["Genial, te has cargado la Navidad.","Gracias a ti Marco no recibirá su PS5 estas navidades.","Acabas de provocar un retraso logístico en el Polo Norte.","Los elfos están revisando tu contrato.","Papá Noel no había sufrido un siniestro así desde 1847.","Rodolfo pide la baja.","Enhorabuena: ahora los regalos llegarán en febrero.","Acabas de convertir la Nochebuena en una reclamación de seguros.","Los renos han solicitado una reunión urgente.","Buen trabajo: hay un Scalextric en Cuenca que ya no llegará a tiempo.","Te acabas de llevar por delante media ilusión infantil.","Urgente: suspensión temporal del reparto navideño por causas tuyas.","Papá Noel quiere saber si esto cubre la póliza.","Uno de los renos acaba de perder totalmente la fe en ti.","Acabas de crear el primer atasco aéreo navideño.","Esto explica por qué algunos regalos llegan rotos.","Parece que hoy no habrá milagro navideño.","Has estampado la magia contra un montón de regalos.","El taller de juguetes acaba de entrar en crisis.","No era fácil, pero has conseguido descarrilar un trineo.","La Navidad estaba yendo bien hasta que llegaste tú.","Se confirma: no todo el mundo debería conducir un trineo.","El Polo Norte te retira 6 puntos del carné.","Ahora mismo un elfo está llorando en silencio.","Excelente. Has convertido la Navidad en slapstick.","Muy bien. Esta será la navidad más triste desde la pandemia","Te iba a llegar el GTA VI pero te has cargado a Papá Noel","No hacía falta accidentar a nadie. Este año ya te tocaba carbón","El seguro del trineo acaba de subir un 400 %.","Correos acaba de recibir 8.000 millones de paquetes.","Por suerte, los Reyes Magos no dependen de ti.","Los renos se han declarado en huelga indefinida.","Última hora: el Polo Norte activa el protocolo de desastre.","El manual del trineo tenía dibujos. Ni con esas.","Tu próximo regalo será un curso de conducción.","La aerolínea Polo Norte lamenta las molestias ocasionadas.","Los regalos están bien. La dignidad de Papá Noel, no.","El GPS decía gira. No vuelca.","Este año el carbón viene con parte amistoso.","Los elfos han cambiado tu contraseña del trineo."];
@@ -432,14 +479,28 @@
       px(x-2,base-9,4,10,'#574b53');
       for(let j=0;j<h;j+=3){const half=Math.max(2,Math.round(j*w/h));px(x-half,base-h+j,half*2+1,3,shade);if(j%12===9)px(x-half,base-h+j,Math.max(3,half),2,snow)}
     }
+    function pathFill(points,fill,stroke=null,line=.55){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.lineJoin='round';ctx.stroke()}}
+    function lineArt(points,c,width=1){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.strokeStyle=c;ctx.lineWidth=width;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke()}
+    function oval(x,y,rx,ry,c,stroke=null){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=.55;ctx.stroke()}}
+    function softRect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h)}
     function present(o){
-      const x=Math.round(o.x),w=o.w,h=o.h,top=floor-h,[base,light,dark,ribbon]=palettes[o.color],mid=x+Math.floor(w/2),lid=o.kind===2?4:3;
-      px(x,top,w,h,dark);px(x+1,top+1,w-3,h-2,base);px(x+2,top+2,2,h-4,light);
-      if(o.kind===3){for(let j=top+5;j<floor-2;j+=6){for(let i=x+4;i<x+w-3;i+=7)px(i,j,2,2,light)}}
-      if(o.kind===1){px(x+3,top+6,w-6,2,light);px(x+3,top+h-5,w-6,1,light)}
-      px(x-1,top,w+2,lid,light);px(x-1,top+lid,w+2,1,dark);
-      px(mid-1,top,3,h,ribbon);px(x+1,top+Math.floor(h*.48),w-2,3,ribbon);
-      px(mid-6,top-4,4,3,ribbon);px(mid+3,top-4,4,3,ribbon);px(mid-2,top-2,5,2,ribbon);
+      const x=o.x,w=o.w,h=o.h,top=floor-h,[base,light,dark,ribbon]=palettes[o.color],depth=Math.min(4,w*.17),mid=x+w*.45;
+      // Hand-drawn beveled gift box; integer silhouettes retain the arcade look.
+      pathFill([[x,top+depth],[x+w-depth,top+depth],[x+w,top],[x+w,floor-depth],[x+w-depth,floor],[x,floor]],dark,'#273646');
+      pathFill([[x,top+depth],[x+w-depth,top+depth],[x+w-depth,floor],[x,floor]],base);
+      pathFill([[x,top+depth],[x+depth,top],[x+w,top],[x+w-depth,top+depth]],light);
+      lineArt([[x+.6,floor-.8],[x+.6,top+depth+.6],[x+w-depth-.4,top+depth+.6]],light,.8);
+      if(o.kind===3){for(let j=top+depth+3;j<floor-2;j+=5)for(let i=x+2;i<x+w-depth-1;i+=5)oval(i,j,.7,.7,light)}
+      if(o.kind===1){for(let j=top+depth+3;j<floor-1;j+=5)lineArt([[x+1,j],[x+w-depth-1,j]],light,.65)}
+      if(o.kind===2){for(let j=top+depth+5;j<floor-2;j+=7)for(let i=x+3;i<x+w-depth-2;i+=7){lineArt([[i-1,j],[i+1,j]],light,.6);lineArt([[i,j-1],[i,j+1]],light,.6)}}
+      const rw=Math.max(2,w*.13);
+      softRect(mid-rw/2,top+depth,rw,h-depth,ribbon);
+      pathFill([[mid-rw/2,top+depth],[mid-rw/2+depth,top],[mid+rw/2+depth,top],[mid+rw/2,top+depth]],ribbon);
+      softRect(x,top+h*.57,w-depth,Math.max(1.5,h*.13),ribbon);
+      pathFill([[x+w-depth,top+h*.57],[x+w,top+h*.57-depth],[x+w,top+h*.57-depth+2],[x+w-depth,top+h*.57+2]],ribbon);
+      ctx.beginPath();ctx.moveTo(mid,top+1);ctx.bezierCurveTo(mid-9,top-8,mid-10,top+2,mid,top+1);ctx.bezierCurveTo(mid+8,top-9,mid+11,top+2,mid,top+1);ctx.fillStyle=ribbon;ctx.fill();ctx.strokeStyle=dark;ctx.lineWidth=.55;ctx.stroke();
+      oval(mid,top+.6,1.8,1.25,ribbon,dark);
+      lineArt([[mid,top+1],[mid-4,top+5]],ribbon,1.5);lineArt([[mid,top+1],[mid+4,top+4]],ribbon,1.5);
     }
 
     const santaPixels=[
@@ -473,21 +534,68 @@
       deerAt(47,base,phase,false);deerAt(73,base,phase+2,true);
     }
     function star(x,y){px(x-2,y,5,1,'#f9d77d');px(x,y-2,1,5,'#fff4c6')}
-    function crashScene(){
-      const t=reduced.matches?1:Math.min(1,crashTime/.7),a=1-(1-t)*(1-t);
-      const shift=Math.round(12*a),bounce=Math.round(Math.sin(t*Math.PI)*12);
-      ctx.save();ctx.translate(38+shift,floor-10-bounce);ctx.rotate(-.48*a);sleigh(-16,4,false);ctx.restore();
-      ctx.save();ctx.translate(83+shift,floor-9-bounce);ctx.rotate(1.15*a);deerAt(-12,10,2,false);ctx.restore();
-      ctx.save();ctx.translate(118+shift,floor-8);ctx.rotate(-1.18*a);deerAt(-12,10,3,true);ctx.restore();
-      ctx.save();ctx.translate(57+shift,floor-13-bounce);ctx.rotate(1.43*a);santaAt(-10,-12);ctx.restore();
-      for(const p of crashPieces){
-        const x=p.x+p.dx*a,base=floor-Math.sin(t*Math.PI)*p.lift;
-        ctx.save();ctx.translate(Math.round(x),Math.round(base-p.h/2));ctx.rotate(p.spin*a);
-        ctx.translate(-p.w/2,p.h/2-floor);present({x:0,w:p.w,h:p.h,color:p.color,kind:p.kind});ctx.restore();
+
+    // High-detail, non-overlapping cartoon crash actors, drawn on the 3x backing canvas.
+    function fallenSanta(x,y,angle){
+      ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+      const outline='#4b2e39',red='#ba3949',shadow='#7d2b40',fur='#fff2d7',skin='#edb28c';
+      oval(0,1,13,9,red,outline);oval(-3,-2,9,5,'#d75257');
+      lineArt([[-9,0],[10,4]],'#392d37',3);softRect(-1,0,4,4,'#e7bd65');softRect(0,1,2,2,'#392d37');
+      pathFill([[-9,6],[-13,11],[-19,12],[-20,8],[-12,4]],shadow,outline);oval(-19,11,4,2.8,'#392d37');
+      pathFill([[6,6],[10,13],[16,14],[17,10],[12,3]],red,outline);oval(17,13,4,2.6,'#392d37');
+      lineArt([[-10,-3],[-17,-8],[-19,-4]],red,5);oval(-19,-4,2.9,2.8,fur,outline);
+      lineArt([[9,-3],[16,-8],[20,-6]],red,5);oval(20,-6,3,2.7,fur,outline);
+      oval(0,-12,8,8,skin,outline);oval(-7,-11,2,2.3,skin);
+      pathFill([[-9,-15],[-6,-22],[0,-25],[9,-21],[12,-15],[7,-14]],red,outline);lineArt([[-8,-15],[8,-15]],fur,3.2);oval(11,-20,3,3,fur,outline);
+      oval(-3,-11,1,1.2,'#302b35');oval(3,-11,1,1.2,'#302b35');oval(0,-8,2.3,1.8,'#dd896f');
+      pathFill([[-7,-9],[-4,-6],[0,-7],[4,-6],[7,-9],[7,-4],[3,0],[0,2],[-4,-1],[-7,-4]],fur,outline);
+      oval(0,-4,1.7,1.4,'#633b3c');ctx.restore();
+    }
+    function fallenDeer(x,y,angle,red){
+      ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+      const dark='#553847',brown=red?'#ad744c':'#8f6248',light='#e4b17b';
+      oval(-7,0,15,8,brown,dark);oval(-7,3,10,4,light);
+      pathFill([[-20,-2],[-26,-6],[-25,0],[-20,3]],brown,dark);
+      for(const [ax,ay,bx,by,cx,cy] of [[-13,4,-20,10,-24,8],[-5,5,-4,12,1,13],[3,4,10,10,14,8],[-15,-2,-18,-8,-13,-11]]){
+        lineArt([[ax,ay],[bx,by],[cx,cy]],dark,3.7);lineArt([[ax,ay],[bx,by],[cx,cy]],brown,2.6);lineArt([[cx-1,cy],[cx+1,cy]],'#342c38',3.6)
       }
-      if(crashGift)present(crashGift);
-      for(let i=0;i<4;i++){star(73+i*9,floor-32-(i%2)*6);star(118+i*7,floor-31+(i%2)*3)}
-      if(t<1&&!reduced.matches)for(let i=0;i<14;i++){const x=65+(i*17%73-36)*t,y=floor-3-Math.sin(t*Math.PI)*(9+i%6*4);px(x,y,3,2,'#fff9e7')}
+      pathFill([[3,-4],[8,-13],[15,-14],[13,1],[7,5]],brown,dark);
+      oval(15,-13,8,7,brown,dark);oval(20,-10,5.8,4.3,light,dark);
+      oval(25,-11,3.1,2.8,red?'#e34c57':'#68453d',dark);if(red)oval(24,-12,1,1,'#ffc5a2');
+      pathFill([[8,-17],[2,-21],[4,-15],[9,-13]],brown,dark);
+      lineArt([[12,-19],[8,-26],[8,-30]],dark,1.65);lineArt([[8,-26],[3,-28]],dark,1.45);
+      lineArt([[18,-19],[20,-26],[25,-29]],dark,1.65);lineArt([[20,-26],[18,-30]],dark,1.45);
+      lineArt([[13,-15],[15,-13],[17,-15]],'#322e38',.85);lineArt([[18,-8],[21,-7]],'#684039',.8);
+      lineArt([[6,-3],[12,0]],'#286851',3);oval(10,1,2.1,2.3,'#f0cb70',dark);
+      ctx.restore();
+    }
+    function brokenSleigh(x,y,angle){
+      ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+      const dark='#552e3c',gold='#e3bb65';
+      pathFill([[-24,-4],[-24,-18],[-18,-21],[-13,-10],[14,-10],[21,-15],[26,-17],[25,-5],[18,4],[-17,4]],'#b43c49',dark,1);
+      pathFill([[-21,-14],[-17,-16],[-12,-7],[15,-7],[22,-13],[20,-3],[-15,0]],'#d85b57');
+      lineArt([[-24,-18],[-18,-21],[-13,-10],[14,-10],[25,-17]],gold,1.7);
+      lineArt([[-21,5],[-21,9],[-26,11],[-17,12],[15,12],[23,10],[28,4],[28,0]],'#654b38',3.1);
+      lineArt([[-26,11],[-17,12],[15,12],[23,10],[28,4],[28,0]],gold,1.8);
+      lineArt([[-16,3],[-16,10]],gold,2);lineArt([[16,2],[16,10]],gold,2);
+      lineArt([[4,-10],[0,-6],[5,-3],[2,2]],'#73313b',1.4);
+      ctx.restore();
+    }
+    function crashScene(){
+      const t=reduced.matches?1:Math.min(1,crashTime/.85),a=1-(1-t)*(1-t),bounce=Math.sin(t*Math.PI)*10;
+      // Spread the wreck across the foreground instead of piling every character together.
+      for(const [x,w] of [[32,26],[87,30],[153,33],[218,29],[275,21]])oval(x,floor+2,w,2.8,'#abc1c1');
+      brokenSleigh(33+8*a,floor-12-bounce,-.52*a);
+      for(const p of crashPieces){
+        const x=p.x+p.dx*a,base=floor+3-Math.sin(t*Math.PI)*p.lift;
+        ctx.save();ctx.translate(x,base-p.h/2);ctx.rotate(p.spin*a);ctx.translate(-p.w/2,p.h/2-floor);present({x:0,w:p.w,h:p.h,color:p.color,kind:p.kind});ctx.restore();
+      }
+      fallenSanta(81+10*a,floor-8-bounce,1.33*a);
+      fallenDeer(146+6*a,floor-8-bounce,-.37*a,false);
+      fallenDeer(215+8*a,floor-7-bounce,2.65*a,true);
+      if(crashGift)present({...crashGift,x:265});
+      for(let i=0;i<3;i++){star(85+i*7,floor-35-(i%2)*4);star(146+i*7,floor-39+(i%2)*5);star(224+i*7,floor-35-(i%2)*5)}
+      if(t<1&&!reduced.matches)for(let i=0;i<18;i++){const x=120+(i*31%210-105)*t,y=floor-3-Math.sin(t*Math.PI)*(9+i%6*4);px(x,y,2,2,'#fff9e7')}
     }
     function draw(){
       const sky=['#17293f','#1e354c','#29465c','#39586a','#567481'];
@@ -507,7 +615,17 @@
       if(!reduced.matches)for(const p of dust)px(p.x,p.y,2,2,'#fbf4dc');
     }
     function stop(){running=false;cancelAnimationFrame(frame);start.disabled=false}
-    function fail(o){stop();crashed=true;lastFailure=Date.now();crashTime=0;crashGift={...o,x:Math.max(96,o.x)};obstacles=obstacles.filter(g=>g!==o);crashPieces=Array.from({length:8},(_,i)=>({x:45+i*9,dx:(i-3)*10,lift:12+i%3*10,w:9+i%3*3,h:9+i%4*3,color:i%palettes.length,kind:i%4,spin:(i%2?1:-1)*(.3+i*.12)}));if(newRecord)sync(best);const msg=nextMessage();title.textContent='FIN DE LA PARTIDA';score.textContent=msg;start.textContent='Volver a jugar';toggle.parentElement.hidden=true;overlay.hidden=false;draw();const began=performance.now();function animate(t){if(!d.open||!crashed)return;crashTime=reduced.matches?1:(t-began)/1000;draw();if(crashTime<.7)frame=requestAnimationFrame(animate)}if(!reduced.matches)frame=requestAnimationFrame(animate);canvas.focus({preventScroll:true})}
+    let letterTimer=0;
+    function fail(o){
+      stop();crashed=true;lastFailure=Date.now();crashTime=0;crashGift={...o,x:265};obstacles=[];
+      crashPieces=Array.from({length:7},(_,i)=>({x:38+i*35,dx:(i-3)*4,lift:12+i%3*10,w:12+i%3*4,h:10+i%4*4,color:i%palettes.length,kind:i%4,spin:(i%2?1:-1)*(.3+i*.12)}));
+      if(newRecord)sync(best);sound('crash');const msg=nextMessage();overlay.hidden=true;draw();
+      const began=performance.now();
+      function animate(t){if(!d.open||!crashed)return;crashTime=reduced.matches?1:(t-began)/1000;draw();if(crashTime<.85)frame=requestAnimationFrame(animate)}
+      if(!reduced.matches)frame=requestAnimationFrame(animate);
+      function reveal(){if(!d.open||!crashed)return;crashTime=1;draw();title.textContent='Parte de accidente';score.textContent=msg;start.textContent='Volver a jugar';toggle.parentElement.hidden=true;letterMeta.hidden=false;letterMark.hidden=false;overlay.classList.add('te26-letter');d.classList.add('is-crashed');overlay.hidden=false;sound('letter');start.focus({preventScroll:true})}
+      if(reduced.matches)reveal();else letterTimer=setTimeout(reveal,900);
+    }
     function step(t){
       if(!running)return;if(!home()||!d.open||profileId()!==id){stop();return}
       const dt=prev?Math.min((t-prev)/1000,.033):0;prev=t;elapsed+=dt;
@@ -524,19 +642,19 @@
       for(const o of obstacles){
         o.x-=speed*dt;
         if(o.x+o.w-2>trainLeft+3&&o.x+2<trainRight-2&&y+3<o.h+1){fail(o);return}
-        if(!o.passed&&o.x+o.w<trainLeft){o.passed=true;points++;if(points>best){best=points;newRecord=true;putLocal(rk,best);sync(best)}hud()}
+        if(!o.passed&&o.x+o.w<trainLeft){o.passed=true;points++;if(points>best){const first=!newRecord;best=points;newRecord=true;putLocal(rk,best);sync(best);sound(first?'record':'point')}else sound('point');hud()}
       }
       obstacles=obstacles.filter(o=>o.x+o.w>-5);draw();frame=requestAnimationFrame(step);
     }
-    function begin(){if(Date.now()-lastFailure<650)return;stop();running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
-    function leap(){if(running&&y===0)vel=245}
-    start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else begin()});
-    d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start')&&!ev.repeat){ev.preventDefault();if(running)leap();else begin()}});
+    function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
+    function leap(){if(running&&y===0){unlockAudio();vel=245;sound('jump')}}
+    start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else if(!crashed)begin()});
+    d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start,.te26-sound')&&!ev.repeat){ev.preventDefault();if(running)leap();else begin()}});
     d.querySelector('.te26-close').addEventListener('click',()=>d.close());
-    d.addEventListener('close',()=>{stop();closed=true;d.remove();game=null;lastActivity=Date.now();if(trigger?.isConnected)trigger.focus()},{once:true});
+    d.addEventListener('close',()=>{stop();clearTimeout(letterTimer);closed=true;if(audio)audio.close().catch(()=>{});d.remove();game=null;lastActivity=Date.now();if(trigger?.isConnected)trigger.focus()},{once:true});
     draw();d.showModal();start.focus();
   }
-  function tick(){if(Date.now()>=expiry){restoreGreeting();dismiss();clearElf();if(game?.open)game.close();try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&(k.startsWith(recordPrefix)||k.startsWith(elfPrefix)||k.startsWith('tribeca-rodolfo-2026-msg:')))localStorage.removeItem(k)}}catch(_){}observer.disconnect();clearInterval(timer);return}greet();mountElf();if(!home()){dismiss();if(game?.open)game.close();return}if(Date.now()-lastActivity>=90000)visit()}
+  function tick(){if(Date.now()>=expiry){restoreGreeting();dismiss();clearElf();if(game?.open)game.close();try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&(k.startsWith(recordPrefix)||k.startsWith(elfPrefix)||k.startsWith('tribeca-rodolfo-2026-msg:')||k.startsWith('tribeca-rodolfo-2026-audio:')))localStorage.removeItem(k)}}catch(_){}observer.disconnect();clearInterval(timer);return}greet();mountElf();if(!home()){dismiss();if(game?.open)game.close();return}if(Date.now()-lastActivity>=90000)visit()}
   const observer=new MutationObserver(()=>{greet();mountElf();if(!home()){dismiss();if(game?.open)game.close()}});
   observer.observe(main,{childList:true});observer.observe(document.body,{attributes:true,attributeFilter:['class']});
   document.addEventListener('visibilitychange',()=>{activity();if(document.hidden&&game?.open)game.close();else greet()});
