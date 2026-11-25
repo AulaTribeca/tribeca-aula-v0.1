@@ -954,7 +954,7 @@
     ];
     function enemyAt(o,still=false){
       const e=viceEnemies[o.enemy],edge='#393048';if(!e)return;
-      ctx.save();ctx.translate(o.x+o.w*.60,floor-o.h);ctx.scale(.85,o.h/39);
+      ctx.save();ctx.translate(o.x+23,floor-o.h);ctx.scale(.85,o.h/39);
       // Legs, torso, bent arms and distinctive faces/clothes, looking toward Santa.
       shape('M-5 23 L1 23 L0 34 L-3 37 L-8 37 L-7 34Z',e.pants,edge,.65);
       shape('M1 23 L6 23 L7 35 L10 37 L3 37 L1 33Z',e.pants,edge,.65);
@@ -1048,7 +1048,7 @@
         const [w,h]=kinds[Math.floor(Math.random()*kinds.length)];
         if(vice){
           const n=viceObstacleCount++,isEnemy=n%3!==0&&Math.random()<.72,enemy=n%viceEnemies.length;
-          const ob=isEnemy?{x:330,w:enemy===2?28:22,h:31+(enemy===2?3:0),enemy,passed:false}:{x:330,w,h,color:Math.floor(Math.random()*palettes.length),kind:Math.floor(Math.random()*4),passed:false};
+          const ob=isEnemy?{x:330,w:33,h:31+(enemy===2?3:0),enemy,passed:false}:{x:330,w,h,color:Math.floor(Math.random()*palettes.length),kind:Math.floor(Math.random()*4),passed:false};
           obstacles.push(ob);next=elapsed+Math.max(1.70,2.02-(elapsed-viceSince)*.0014)+Math.random()*.35;
         }else{obstacles.push({x:330,w,h,color:Math.floor(Math.random()*palettes.length),kind:Math.floor(Math.random()*4),passed:false});next=elapsed+(turbo?1.32:1.75)+Math.random()*.55+(w+32)/speed;}
       }
@@ -1065,7 +1065,7 @@
       draw();frame=requestAnimationFrame(step);
     }
     function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();prepareViceTrack();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;turbo=false;turboSince=0;vice=false;portal=false;portalTime=0;viceSince=0;firstTrackEnded=false;viceSurvived=false;viceVictoryAt=0;viceObstacleCount=0;vicePlayed=false;stopViceTrack();distance=0;worldSpeed=92;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
-    function leap(){if(running&&!portal&&y===0){unlockAudio();if(vice&&viceTrack.paused&&!viceTrack.error&&!firstTrackEnded)playViceTrack();vel=245;sound('jump')}}
+    function leap(){if(running&&!portal&&y===0){unlockAudio();if(vice&&viceTrack.paused&&!viceTrack.error&&(!firstTrackEnded||viceSurvived))playViceTrack();vel=245;sound('jump')}}
     start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else if(!crashed)begin()});
     d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start,.te26-sound')&&!ev.repeat){ev.preventDefault();if(running)leap();else begin()}});
     d.querySelector('.te26-close').addEventListener('click',()=>d.close());
