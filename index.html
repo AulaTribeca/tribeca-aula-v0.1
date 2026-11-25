@@ -477,8 +477,8 @@
       })();return viceTrackLoading;
     }
     async function playViceTrack(){
-      if(closed||(!vice&&!portal))return;
-      if(!await prepareViceTrack()||closed||crashed||(!vice&&!portal))return;
+      if(closed||viceSurvived||(!vice&&!portal))return;
+      if(!await prepareViceTrack()||closed||crashed||viceSurvived||(!vice&&!portal))return;
       viceTrack.muted=!soundOn;
       if(!viceTrack.paused)return;
       viceTrack.play().catch(()=>{if(!closed)syncEl.textContent='Toca el tablero para activar la música.'})
@@ -507,13 +507,17 @@
       else if(kind==='crash'){tone(125,.23,0,.14,'triangle',44);noise(.26,0,.23,800);bell(392,.10,.12);bell(587,.18,.09);bell(294,.29,.07);noise(.17,.24,.08,2100)}
       else if(kind==='letter'){noise(.08,0,.07,1800);bell(784,.04,.035)}
       else if(kind==='turbo'){tone(85,.55,0,.11,'sawtooth',220);tone(110,.38,.48,.09,'triangle',300);bell(988,.68,.07);bell(1319,.78,.06)}
+      else if(kind==='engine'){tone(78+Math.max(0,worldSpeed-160)*.65,.36,0,.035,'sawtooth',112+Math.max(0,worldSpeed-160)*.7);tone(45,.32,0,.022,'triangle',58);noise(.16,.13,.015,300)}
+      else if(kind==='enemyShot'){noise(.075,0,.065,2200);tone(160,.07,0,.045,'square',65)}
+      else if(kind==='grenade'){tone(530,.12,0,.035,'triangle',220)}
+      else if(kind==='blast'){noise(.26,0,.11,850);tone(115,.22,0,.065,'triangle',42)}
       else if(kind==='viceWin'){[523,659,784,1047,1319].forEach((f,i)=>bell(f,i*.13,.10));tone(131,.8,0,.06,'triangle',262)}
       else if(kind==='portal'){tone(165,.7,0,.08,'triangle',660);tone(330,.65,.18,.06,'sine',1320);bell(1047,.55,.08);bell(1568,.7,.06)}
       else if(kind==='turboCrash'){noise(.35,0,.13,950);tone(185,.27,0,.1,'triangle',52);bell(330,.15,.08);bell(247,.32,.07)}
     }
     soundButton.addEventListener('click',()=>{soundOn=!soundOn;putLocal(soundKey,soundOn?'1':'0');showSound();if(soundOn){unlockAudio();if(master)master.gain.value=.32;bell(880,0,.07)}else if(master)master.gain.value=0;viceTrack.muted=!soundOn;if(soundOn&&(vice||portal))playViceTrack()});
     const trainLeft=16,trainRight=94;
-    const turboAt=20,viceAt=45,trackDuration=224.914286;let turbo=false,turboSince=0,distance=0,worldSpeed=92,vice=false,portal=false,portalTime=0,viceSince=0,firstTrackEnded=false,viceSurvived=false,viceVictoryAt=0,viceObstacleCount=0,vicePlayed=false;
+    const turboAt=20,viceAt=45,trackDuration=224.914286;let turbo=false,turboSince=0,distance=0,worldSpeed=92,vice=false,portal=false,portalTime=0,viceSince=0,firstTrackEnded=false,viceSurvived=false,viceVictoryAt=0,viceObstacleCount=0,vicePlayed=false,shots=[],grenades=[],blasts=[],engineAt=0;
     const carLeft=16,carRight=79;
     const floor=130;
     const messages=["Genial, te has cargado la Navidad.","Gracias a ti Marco no recibirá su PS5 estas navidades.","Acabas de provocar un retraso logístico en el Polo Norte.","Los elfos están revisando tu contrato.","Papá Noel no había sufrido un siniestro así desde 1847.","Rodolfo pide la baja.","Enhorabuena: ahora los regalos llegarán en febrero.","Acabas de convertir la Nochebuena en una reclamación de seguros.","Los renos han solicitado una reunión urgente.","Buen trabajo: hay un Scalextric en Cuenca que ya no llegará a tiempo.","Te acabas de llevar por delante media ilusión infantil.","Urgente: suspensión temporal del reparto navideño por causas tuyas.","Papá Noel quiere saber si esto cubre la póliza.","Uno de los renos acaba de perder totalmente la fe en ti.","Acabas de crear el primer atasco aéreo navideño.","Esto explica por qué algunos regalos llegan rotos.","Parece que hoy no habrá milagro navideño.","Has estampado la magia contra un montón de regalos.","El taller de juguetes acaba de entrar en crisis.","No era fácil, pero has conseguido descarrilar un trineo.","La Navidad estaba yendo bien hasta que llegaste tú.","Se confirma: no todo el mundo debería conducir un trineo.","El Polo Norte te retira 6 puntos del carné.","Ahora mismo un elfo está llorando en silencio.","Excelente. Has convertido la Navidad en slapstick.","Muy bien. Esta será la navidad más triste desde la pandemia","Te iba a llegar el GTA VI pero te has cargado a Papá Noel","No hacía falta accidentar a nadie. Este año ya te tocaba carbón","El seguro del trineo acaba de subir un 400 %.","Correos acaba de recibir 8.000 millones de paquetes.","Por suerte, los Reyes Magos no dependen de ti.","Los renos se han declarado en huelga indefinida.","Última hora: el Polo Norte activa el protocolo de desastre.","El manual del trineo tenía dibujos. Ni con esas.","Tu próximo regalo será un curso de conducción.","La aerolínea Polo Norte lamenta las molestias ocasionadas.","Los regalos están bien. La dignidad de Papá Noel, no.","El GPS decía gira. No vuelca.","Este año el carbón viene con parte amistoso.","Los elfos han cambiado tu contraseña del trineo."];
@@ -705,8 +709,17 @@
       shape('M1 -12 L7 -12 L7 -10 L2 -10Z','#fa7066',edge,.3);
       shape('M55 -12 L61 -10 L60 -8 L55 -9Z','#fff0bd',edge,.3);
       shape('M59 -8 L63 -8 L63 -6 L58 -6Z','#d5b796');
-      // Rear spoiler, intakes and small yellow racing badge.
-      shape('M3 -15 L12 -15 L12 -13 L4 -13 L3 -10 L1 -10Z',red,edge,.45);
+      // Oversize GT wing, twin struts, carbon splitter and sculpted fenders.
+      shape('M2 -16 L4 -24 L6 -24 L6 -15 M11 -16 L12 -23 L14 -23 L13 -15','#542a3d',edge,.55);
+      shape('M-2 -24 L15 -25 L17 -23 L16 -22 L-2 -22Z','#a5223e',edge,.7);
+      shape('M-1 -24 L15 -24',null,'#ff8875',.65);
+      shape('M1 -5 L10 -4 L18 -4 L45 -4 L59 -5 L65 -7 L65 -4 L59 -2 L4 -2Z','#292b38',edge,.55);
+      shape('M0 -7 L5 -7 L5 -5 L0 -5Z','#c0a6a0',edge,.4);
+      shape('M0 -5 L5 -5',null,'#ede2ca',.55);
+      shape('M4 -10 Q13 -16 20 -10 M43 -10 Q50 -16 58 -10',null,'#f77b69',.7);
+      shape('M20 -13 L25 -13 L22 -11 L18 -11Z','#432d3c',edge,.25);
+      shape('M40 -12 L46 -11 L44 -9 L40 -9Z','#612c3e',edge,.35);
+      shape('M31 -9 L36 -9',null,'#ffd3a9',.45);
       shape('M12 -12 L19 -12 L17 -10 L12 -10Z','#392e3a');
       shape('M33 -12 L35 -12 L35 -9.5 L34 -8.8 L33 -9.5Z','#f6d367',edge,.25);
       for(const cx of [13,50]){
@@ -722,7 +735,7 @@
     function driveTurbo(){
       const base=Math.round(floor-y);
       ctx.globalAlpha=.35;oval(47,floor+2,32,2.3,'#7795a7');ctx.globalAlpha=1;
-      if(!reduced.matches&&running&&y===0){for(let i=0;i<5;i++){const age=(elapsed*7+i*.21)%1;ctx.globalAlpha=(1-age)*.52;oval(16-age*18,base-6-age*7,1.3+age*3,.9+age*1.6,'#d6e3de')}ctx.globalAlpha=1}
+      if(!reduced.matches&&running){for(let i=0;i<9;i++){const age=(elapsed*3.8+i/9)%1;ctx.globalAlpha=(1-age)*.63;oval(16-age*28,base-5-age*8+Math.sin(i)*age*3,1.5+age*4,1+age*2.5,i%2?'#afc1c9':'#e0e4db')}ctx.globalAlpha=1;if(Math.floor(elapsed*9)%4===0){shape('M0 0',null,'#fff',0);oval(14,base-5,2.2,1,'#f6ae62')}}
       sportsCar(16,base-1,true);
       if(!reduced.matches&&points>=40&&running){for(let i=0;i<3;i++){const a=(elapsed*3+i/3)%1;ctx.globalAlpha=(1-a)*.65;oval(34+i*2,base-26-a*9,1+a*2,1+a,'#e9d7d0')}ctx.globalAlpha=1}
     }
@@ -968,7 +981,7 @@
       shape('M-5 11 Q-8 11 -9 14 L-14 16 L-14 19 L-7 18 L-3 15Z',e.shirt,edge,.5);
       shape('M-14 16 Q-16 15 -17 17 L-16 19 L-13 19Z',e.skin,edge,.4);
       shape('M3 12 Q5 13 4 17 L-6 19 L-8 16 L0 14Z',e.shirt,edge,.5);
-      // Oversized arcade silhouettes: no real ballistic simulation.
+      // Exaggerated arcade weapons, drawn as fictional game props.
       if(e.weapon==='bazooka'){
         shape('M-23 9 L5 9 L7 13 L-22 13 L-25 12 L-25 9Z','#52646b',edge,.6);shape('M-25 8 L-21 8 L-21 14 L-25 14Z','#bc745d',edge,.4);shape('M-5 13 L-2 13 L-1 16 L-5 16Z','#3b414d',edge,.35);
       }else if(e.weapon==='uzi'){
@@ -976,13 +989,59 @@
       }else{
         shape('M-20 14 L-9 14 L-9 17 L-13 17 L-13 21 L-16 21 L-17 17 L-20 17Z','#4d4c60',edge,.55);
       }
-      if(!still&&!reduced.matches&&running&&Math.floor(elapsed*5+o.enemy)%7===0){
+      if(!still&&!reduced.matches&&running&&o.flashUntil>elapsed){
         const xx=e.weapon==='pistol'?-21:-27,yy=e.weapon==='bazooka'?11:14;
         shape('M'+xx+' '+yy+' l-4 -3 l1 3 l-4 1 l4 1 l-1 3Z','#ffdf86');
       }
+      // Clothing seams, face highlights and shoes make each sprite less blocky.
+      shape('M-4 26 L-3 32 M3 26 L5 33',null,'#84909a',.48);
+      shape('M-9 37 L-3 37 M4 37 L10 37',null,'#dfd0b8',.65);
+      shape('M-4 5 L-2.8 5.4',null,'#ffe0bc',.45);
+      shape('M-4 10 Q0 12 4 10',null,'#342e42',.45);
+      if(o.enemy===0){shape('M-4 11 L-1 14 L2 11 M-1 14 L-1 24',null,'#d0dfb8',.55)}
+      if(o.enemy===1){shape('M-5 13 L-5 22 M5 13 L5 22',null,'#d1beb0',.6);shape('M-4 25 L4 25',null,'#233d5b',1)}
+      if(o.enemy===2){shape('M-4 12 L1 12 L3 15 L-3 15Z','#9b9387');shape('M-3 0 L0 -1 L2 0',null,'#a37a5e',.6)}
+      if(o.enemy===3){shape('M-5 12 L-3 18 L-5 23 M4 12 L2 18 L5 23',null,'#d5a77b',.7)}
       ctx.restore();
     }
-    function drawObstacle(o,still=false){if(vice&&Number.isInteger(o.enemy))enemyAt(o,still);else present(o)}
+    function drawObstacle(o,still=false){if(vice&&Number.isInteger(o.enemy)){if(!o.defeated)enemyAt(o,still)}else present(o)}
+    function viceEffects(dt,speed){
+      for(const o of obstacles){
+        if(!Number.isInteger(o.enemy)||o.defeated||o.passed)continue;
+        // One readable, jumpable arcade volley per encounter.
+        if(!o.fired&&o.x<196&&o.x>100){
+          o.fired=true;o.flashUntil=elapsed+.11;const type=viceEnemies[o.enemy].weapon;
+          shots.push({x:o.x+1,y:floor-19,type,life:1.25});sound('enemyShot');
+        }
+        if(!o.grenaded&&o.x<57&&o.x+o.w>18&&y>o.h-3){
+          o.grenaded=true;grenades.push({x:49,y:floor-y-15,age:0,o});sound('grenade');
+        }
+      }
+      for(const p of shots){p.x-=(speed+52)*dt;p.life-=dt;
+        if(p.life>0&&p.x>19&&p.x<80&&p.y>floor-y-24&&p.y<floor-y-3){fail({x:p.x,w:12,h:19,color:0,kind:0});return false}
+      }
+      shots=shots.filter(p=>p.life>0&&p.x>-12);
+      for(const g of grenades){g.age+=dt;g.x=g.o.x+g.o.w*.5;g.y=floor-12-30*Math.sin(Math.PI*Math.min(1,g.age/.18));if(g.age>=.18){g.o.defeated=true;blasts.push({x:g.x,y:floor-15,age:0});sound('blast')}}
+      grenades=grenades.filter(g=>g.age<.18);
+      for(const b of blasts){b.age+=dt;b.x-=speed*.7*dt}
+      blasts=blasts.filter(b=>b.age<.65);return true;
+    }
+    function drawViceEffects(){
+      for(const p of shots){if(p.type==='bazooka'){oval(p.x,p.y,4,1.8,'#df9c64','#57374a');lineArt([[p.x+5,p.y],[p.x+12,p.y]],'#f9c37b',1.3)}else{lineArt([[p.x,p.y],[p.x+7,p.y]],'#ffdd89',1.25);oval(p.x,p.y,.8,.8,'#fff1ce')}}
+      for(const g of grenades){oval(g.x,g.y,2,2.5,'#667e67','#322f42');block(g.x-.5,g.y-3,1,1.5,'#e3bd70')}
+      for(const b of blasts){
+        const p=b.age/.65,rad=3+Math.sin(Math.PI*Math.min(1,p*1.45))*12;
+        ctx.save();ctx.globalAlpha=1-p*.9;
+        for(let i=0;i<8;i++){const a=i*Math.PI/4;oval(b.x+Math.cos(a)*rad*.65,b.y+Math.sin(a)*rad*.65,rad*.65,rad*.55,p<.38?'#ed8b54':'#a9a0ad')}
+        if(p<.35)oval(b.x,b.y,rad*.68,rad*.65,'#ffe2a0');ctx.restore();
+      }
+    }
+    function finishVice(){
+      if(viceSurvived||crashed)return;
+      viceSurvived=true;viceVictoryAt=elapsed;stop();stopViceTrack();obstacles=[];shots=[];grenades=[];blasts=[];y=0;vel=0;draw();sound('viceWin');
+      title.textContent='¿En serio has llegado hasta aquí?';score.textContent='North Vice City superado. Papá Noel necesita vacaciones. Continuará…';start.textContent='Volver a jugar';
+      toggle.parentElement.hidden=true;letterMeta.hidden=false;letterMeta.textContent='Comunicado extraordinario · Polo Norte';letterMark.hidden=false;overlay.classList.add('te26-letter');overlay.hidden=false;syncEl.textContent='Has sobrevivido a la primera canción completa.';if(newRecord)sync(best);start.focus({preventScroll:true});
+    }
     function northViceLogo(cx,cy,scale=1){
       ctx.save();ctx.translate(cx,cy);ctx.scale(scale,scale);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
       // Original tropical arcade wordmark, pink chrome lettering with teal shadow.
@@ -1014,6 +1073,7 @@
       }
       if(portal){portalScene();return}
       for(const o of obstacles)drawObstacle(o);
+      if(vice)drawViceEffects();
       if(crashed){if(vice)viceCrashScene();else if(turbo)turboCrashScene();else crashScene()}else if(vice)drawViceDrive();else if(turbo)driveTurbo();else train();
       if(turbo&&!vice&&!crashed&&points>=30&&points<viceAt&&points%5===0){ctx.fillStyle='#ffe0a2';ctx.font='bold 7px monospace';ctx.textAlign='center';ctx.fillText(points>=40?'PAPÁ NOEL ESTÁ HARTO.':'SE ESTÁ ACABANDO LA PACIENCIA.',160,23)}
       if(vice&&!crashed){const intro=elapsed-viceSince<3.2;northViceLogo(intro?160:270,intro?40:17,intro?1.05:.48);if(intro){ctx.fillStyle='#ffe4c7';ctx.font='6px monospace';ctx.textAlign='center';ctx.fillText('El Polo Norte no se hace responsable.',160,61)}}
@@ -1025,7 +1085,7 @@
     function stop(){running=false;cancelAnimationFrame(frame);start.disabled=false}
     let letterTimer=0;
     function fail(o){
-      stop();stopViceTrack();crashed=true;lastFailure=Date.now();crashTime=0;crashGift={...o,x:Math.max(96,o.x)};obstacles=[];
+      stop();stopViceTrack();shots=[];grenades=[];blasts=[];crashed=true;lastFailure=Date.now();crashTime=0;crashGift={...o,x:Math.max(96,o.x)};obstacles=[];
       crashPieces=Array.from({length:8},(_,i)=>({x:45+i*9,dx:(i-3)*10,lift:12+i%3*10,w:9+i%3*3,h:9+i%4*3,color:i%palettes.length,kind:i%4,spin:(i%2?1:-1)*(.3+i*.12)}));
       if(newRecord)sync(best);sound(turbo?'turboCrash':'crash');const msg=vice?nextViceMessage():turbo&&Math.random()<.65?nextTurboMessage():nextMessage();overlay.hidden=true;draw();
       const began=performance.now();
@@ -1041,6 +1101,7 @@
       const before=y;vel-=320*dt;y+=vel*dt;
       if(y<=0){if(before>0&&!reduced.matches)for(let i=0;i<8;i++)dust.push({x:42+Math.random()*16,y:floor-2,vx:-20-Math.random()*35,vy:-12-Math.random()*18,life:.32});y=0;vel=0}
       for(const p of dust){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=80*dt;p.life-=dt}dust=dust.filter(p=>p.life>0);
+      if(turbo&&!vice&&!portal&&elapsed>=engineAt){engineAt=elapsed+.38;sound('engine')}
       const desired=vice?Math.min(318,210+Math.min(1,Math.max(0,elapsed-viceSince)/trackDuration)*90+Math.max(0,points-viceAt)*.14):turbo?Math.min(210,175+Math.max(0,points-turboAt)*1.1):Math.min(155,92+elapsed*1.05);
       worldSpeed+=(desired-worldSpeed)*Math.min(1,dt*2.5);const speed=worldSpeed;distance+=speed*dt;
       if(elapsed>=next){
@@ -1055,19 +1116,20 @@
       for(const o of obstacles){
         o.x-=speed*dt;
         const left=turbo?carLeft:trainLeft,right=vice?82:turbo?carRight:trainRight;
-        if(o.x+o.w-2>left+3&&o.x+2<right-2&&y+3<o.h+1){fail(o);return}
+        if(!o.defeated&&o.x+o.w-2>left+3&&o.x+2<right-2&&y+3<o.h+1){fail(o);return}
         if(!o.passed&&o.x+o.w<left){o.passed=true;points++;if(points>best){const first=!newRecord;best=points;newRecord=true;putLocal(rk,best);sync(best);sound(first?'record':'point')}else sound('point');hud()}
       }
+      if(vice&&!viceEffects(dt,speed))return;
       obstacles=obstacles.filter(o=>o.x+o.w>-5);
-      if(vice&&!viceSurvived&&(firstTrackEnded||(!vicePlayed&&elapsed-viceSince>=trackDuration))){viceSurvived=true;viceVictoryAt=elapsed;viceTrack.loop=true;sound('viceWin');if(viceTrack.paused)playViceTrack();syncEl.textContent='Has sobrevivido a la primera canción completa. Sorpresa desbloqueada.'}
+      if(vice&&!viceSurvived&&(firstTrackEnded||(!vicePlayed&&elapsed-viceSince>=trackDuration))){finishVice();return}
       if(!turbo&&points>=turboAt&&y===0&&obstacles.every(o=>o.passed||o.x>trainRight+50)){turbo=true;turboSince=elapsed;sound('turbo');score.textContent='Modo turbo desbloqueado. Papá Noel cambia de vehículo.'}
       if(turbo&&!vice&&!portal&&points>=viceAt&&y===0&&obstacles.every(o=>o.passed||o.x>trainRight+65)){portal=true;portalTime=0;obstacles=[];sound('portal');playViceTrack()}
       draw();frame=requestAnimationFrame(step);
     }
-    function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();prepareViceTrack();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;turbo=false;turboSince=0;vice=false;portal=false;portalTime=0;viceSince=0;firstTrackEnded=false;viceSurvived=false;viceVictoryAt=0;viceObstacleCount=0;vicePlayed=false;stopViceTrack();distance=0;worldSpeed=92;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
+    function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();prepareViceTrack();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;turbo=false;turboSince=0;vice=false;portal=false;portalTime=0;viceSince=0;firstTrackEnded=false;viceSurvived=false;viceVictoryAt=0;viceObstacleCount=0;vicePlayed=false;shots=[];grenades=[];blasts=[];engineAt=0;letterMeta.textContent='Comunicado oficial · Polo Norte';stopViceTrack();distance=0;worldSpeed=92;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
     function leap(){if(running&&!portal&&y===0){unlockAudio();if(vice&&viceTrack.paused&&!viceTrack.error&&(!firstTrackEnded||viceSurvived))playViceTrack();vel=245;sound('jump')}}
-    start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else if(!crashed)begin()});
-    d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start,.te26-sound')&&!ev.repeat){ev.preventDefault();if(running)leap();else begin()}});
+    start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else if(!crashed&&!viceSurvived)begin()});
+    d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start,.te26-sound')&&!ev.repeat){ev.preventDefault();if(running)leap();else if(!viceSurvived)begin()}});
     d.querySelector('.te26-close').addEventListener('click',()=>d.close());
     d.addEventListener('close',()=>{stop();clearTimeout(letterTimer);closed=true;stopViceTrack();if(trackController)trackController.abort();viceTrack.removeAttribute('src');viceTrack.load();if(viceTrackURL)URL.revokeObjectURL(viceTrackURL);if(audio)audio.close().catch(()=>{});d.remove();game=null;lastActivity=Date.now();if(trigger?.isConnected)trigger.focus()},{once:true});
     draw();d.showModal();start.focus();
