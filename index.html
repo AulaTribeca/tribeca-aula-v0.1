@@ -173,8 +173,12 @@
     if (motion.addEventListener) motion.addEventListener('change', motionChanged);
     else if (motion.addListener) motion.addListener(motionChanged);
     document.addEventListener('visibilitychange', mount);
-    const remaining = expiry - Date.now();
-    if (remaining > 0) setTimeout(mount, Math.min(remaining + 100, 2147483647));
+    function scheduleExpiry() {
+      const remaining = expiry - Date.now();
+      if (remaining <= 0) { mount(); return; }
+      setTimeout(scheduleExpiry, Math.min(remaining + 100, 86400000));
+    }
+    scheduleExpiry();
     mount();
   })();
   </script>
