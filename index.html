@@ -142,6 +142,24 @@
 .te26-elf:focus-visible{outline:3px solid #b78a44;outline-offset:2px}
 .te26-elf-note{position:fixed;z-index:10010;max-width:calc(100vw - 32px);right:16px;bottom:18px;padding:10px 15px;background:#174733;color:#fff9e7;border:1px solid #d7b36e;border-radius:9px;box-shadow:0 5px 20px #0002;pointer-events:none;font-size:14px}
 @media(max-width:540px){.te26-game{padding:10px}.te26-game .te26-game-buttons button{min-height:48px}.te26-game canvas{border-width:2px}}
+
+.te26-game{width:min(1024px,calc(100% - 16px));max-height:calc(100% - 16px);padding:8px;border-radius:8px;border:2px solid #d3ac68;overflow:auto;background:#142c3b}
+.te26-game .te26-hud{align-items:center;justify-content:space-between;gap:6px;padding:0 0 5px;flex-wrap:nowrap}
+.te26-game .te26-hud span{white-space:nowrap;font-size:clamp(.72rem,2.8vw,1.05rem)}
+.te26-game .te26-close{padding:0;min-width:44px;min-height:44px;font-size:1.5rem;line-height:1;border:0;background:transparent}
+.te26-game .te26-stage{position:relative;overflow:hidden;border:2px solid #7893a2;border-radius:3px}
+.te26-game .te26-stage canvas{width:100%;max-height:min(70dvh,560px);height:auto;aspect-ratio:2/1;object-fit:contain;border:0;border-radius:0;outline-offset:-4px}
+.te26-game .te26-overlay{position:absolute;top:5%;left:4%;right:4%;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
+.te26-game .te26-overlay[hidden]{display:none!important}
+.te26-game .te26-overlay h2,.te26-game .te26-overlay p{background:#142c3bf2;color:#fff3d4;padding:4px 9px;margin:0;border:1px solid #d3ac68;border-radius:3px;max-width:100%;box-sizing:border-box}
+.te26-game .te26-overlay h2{font-size:clamp(.85rem,3.2vw,1.45rem);line-height:1.25}
+.te26-game .te26-overlay p{font-size:clamp(.72rem,2.7vw,1.1rem);line-height:1.25;font-weight:700}
+.te26-game .te26-overlay button{pointer-events:auto;min-height:44px;padding:5px 10px;font-size:clamp(.8rem,2.6vw,1rem)}
+.te26-game .te26-overlay .te26-toggle{pointer-events:auto;background:#142c3bed;border-radius:4px;margin:0;padding:2px 5px;font-size:.72rem;color:#fff3d4}
+.te26-game .te26-overlay .te26-toggle[hidden]{display:none!important}
+.te26-game .te26-overlay .te26-toggle input{width:16px;height:16px}
+.te26-game .te26-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:540px){.te26-game{padding:4px}.te26-game .te26-overlay{top:2%;gap:2px}.te26-game .te26-overlay button{min-height:36px}.te26-game .te26-overlay .te26-toggle{font-size:.65rem}}
 </style>
 </head>
 <body class="font-default tribeca-preserve-v253" data-ui-version="264.1">
@@ -375,16 +393,20 @@
     if(!home()||!id||game?.open||typeof HTMLDialogElement==='undefined')return;
     dismiss();
     const d=document.createElement('dialog');game=d;d.className='te26-game';d.setAttribute('aria-labelledby','te26-game-title');d.lang='es';
-    d.innerHTML='<div class="te26-game-head"><h2 id="te26-game-title">RODOLFO A LA CARRERA</h2><button type="button" class="te26-close">Cerrar</button></div><div class="te26-hud"><span>PUNTOS <strong class="te26-points">0000</strong></span><span>RÉCORD <strong class="te26-best">0000</strong></span></div><canvas width="320" height="160" aria-label="Rodolfo corre por un paisaje nevado y salta regalos"></canvas><p class="te26-score" aria-live="polite">Salta los regalos. Usa espacio, flecha arriba o toca el tablero.</p><div class="te26-game-buttons"><button type="button" class="te26-start">Empezar</button><button type="button" class="te26-jump" disabled>Saltar</button></div><p class="te26-record-status"></p><label class="te26-toggle"><input type="checkbox">Desactivar los efectos decorativos</label>';
+    d.innerHTML='<div class="te26-hud"><span>PUNTOS <strong class="te26-points">0000</strong></span><span>RÉCORD <strong class="te26-best">0000</strong></span><button type="button" class="te26-close" aria-label="Cerrar juego">×</button></div><div class="te26-stage"><canvas width="320" height="160" tabindex="0" role="button" aria-label="Saltar con el trineo. Pulsa espacio, flecha arriba o toca el tablero."></canvas><div class="te26-overlay"><h2 id="te26-game-title">NAVIDAD A LA CARRERA</h2><p class="te26-score" aria-live="polite">Pulsa espacio o toca para saltar.</p><button type="button" class="te26-start">Empezar</button><label class="te26-toggle"><input type="checkbox">Desactivar efectos decorativos del aula</label></div></div><p class="te26-record-status te26-sr" role="status"></p>';
     document.body.append(d);
-    const canvas=d.querySelector('canvas'),ctx=canvas.getContext('2d'),score=d.querySelector('.te26-score'),start=d.querySelector('.te26-start'),jump=d.querySelector('.te26-jump'),toggle=d.querySelector('input'),pointEl=d.querySelector('.te26-points'),bestEl=d.querySelector('.te26-best'),syncEl=d.querySelector('.te26-record-status');
+    const canvas=d.querySelector('canvas'),ctx=canvas.getContext('2d'),score=d.querySelector('.te26-score'),start=d.querySelector('.te26-start'),overlay=d.querySelector('.te26-overlay'),title=d.querySelector('#te26-game-title'),toggle=d.querySelector('input'),pointEl=d.querySelector('.te26-points'),bestEl=d.querySelector('.te26-best'),syncEl=d.querySelector('.te26-record-status');
     if(!ctx){d.remove();game=null;return}
     ctx.imageSmoothingEnabled=false;
     toggle.checked=muted;toggle.addEventListener('change',()=>{muted=toggle.checked;putLocal(key,muted?'1':'0');dismiss();mountElf()});
     const rk=recordPrefix+id;let best=Math.max(0,Math.min(100000,Number(getLocal(rk))||0));
     const pad=n=>String(n).padStart(4,'0');
-    let frame=0,running=false,prev=0,elapsed=0,points=0,y=0,vel=0,obstacles=[],next=1.2,newRecord=false,dust=[],closed=false;
+    let frame=0,running=false,prev=0,elapsed=0,points=0,y=0,vel=0,obstacles=[],next=1.2,newRecord=false,dust=[],closed=false,crashed=false,crashGift=null,crashTime=0,crashPieces=[],lastFailure=0;
+    const trainLeft=16,trainRight=94;
     const floor=130;
+    const messages=["Genial, te has cargado la Navidad.","Gracias a ti Marco no recibirá su PS5 estas navidades.","Acabas de provocar un retraso logístico en el Polo Norte.","Los elfos están revisando tu contrato.","Papá Noel no había sufrido un siniestro así desde 1847.","Rodolfo pide la baja.","Enhorabuena: ahora los regalos llegarán en febrero.","Acabas de convertir la Nochebuena en una reclamación de seguros.","Los renos han solicitado una reunión urgente.","Buen trabajo: hay un Scalextric en Cuenca que ya no llegará a tiempo.","Te acabas de llevar por delante media ilusión infantil.","Urgente: suspensión temporal del reparto navideño por causas tuyas.","Papá Noel quiere saber si esto cubre la póliza.","Uno de los renos acaba de perder totalmente la fe en ti.","Acabas de crear el primer atasco aéreo navideño.","Esto explica por qué algunos regalos llegan rotos.","Parece que hoy no habrá milagro navideño.","Has estampado la magia contra un montón de regalos.","El taller de juguetes acaba de entrar en crisis.","No era fácil, pero has conseguido descarrilar un trineo.","La Navidad estaba yendo bien hasta que llegaste tú.","Se confirma: no todo el mundo debería conducir un trineo.","El Polo Norte te retira 6 puntos del carné.","Ahora mismo un elfo está llorando en silencio.","Excelente. Has convertido la Navidad en slapstick.","Muy bien. Esta será la navidad más triste desde la pandemia","Te iba a llegar el GTA VI pero te has cargado a Papá Noel","No hacía falta accidentar a nadie. Este año ya te tocaba carbón","El seguro del trineo acaba de subir un 400 %.","Correos acaba de recibir 8.000 millones de paquetes.","Por suerte, los Reyes Magos no dependen de ti.","Los renos se han declarado en huelga indefinida.","Última hora: el Polo Norte activa el protocolo de desastre.","El manual del trineo tenía dibujos. Ni con esas.","Tu próximo regalo será un curso de conducción.","La aerolínea Polo Norte lamenta las molestias ocasionadas.","Los regalos están bien. La dignidad de Papá Noel, no.","El GPS decía gira. No vuelca.","Este año el carbón viene con parte amistoso.","Los elfos han cambiado tu contraseña del trineo."];
+    let messageBag=[];
+    function nextMessage(){if(!messageBag.length){messageBag=messages.slice();for(let i=messageBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[messageBag[i],messageBag[j]]=[messageBag[j],messageBag[i]]}const previous=getLocal('tribeca-rodolfo-2026-msg:'+id);if(messageBag[messageBag.length-1]===previous){[messageBag[0],messageBag[messageBag.length-1]]=[messageBag[messageBag.length-1],messageBag[0]]}}const msg=messageBag.pop();putLocal('tribeca-rodolfo-2026-msg:'+id,msg);return msg}
     const palettes=[['#b6384c','#e65d65','#7b273d','#f9d475'],['#23745f','#439a77','#194d46','#f9dfaa'],['#326b9e','#68a8cb','#23476f','#eef4eb'],['#ae7936','#e3a95f','#80562f','#fff1c8'],['#80578d','#ae7fb6','#523c68','#f0c3a1'],['#c5bda1','#f1e8cf','#8f8a79','#ad3b48']];
     function hud(){pointEl.textContent=pad(points);bestEl.textContent=pad(best)}
     let saving=Promise.resolve();
@@ -419,6 +441,54 @@
       px(mid-1,top,3,h,ribbon);px(x+1,top+Math.floor(h*.48),w-2,3,ribbon);
       px(mid-6,top-4,4,3,ribbon);px(mid+3,top-4,4,3,ribbon);px(mid-2,top-2,5,2,ribbon);
     }
+
+    const santaPixels=[
+      '........www.........','.......wrrrw........','......wrrrrrw.......','.....wrrrrrrrw......','.....wwwwwwwww......','......sssssww.......','......sksskw........','......swwsww........','......wwwwww........','.......www..........','......rrrrrr........','.....rrrrrrrrr......','....rrrrrrrrrrr.....','....rrwwrrrrrrrw....','....rrrrrrrrrrrr....','.....kkkkkkkkkk.....','.....rrrkkrrrr......','.....rrrrrrrrr......','.....kk....kk.......'
+    ];
+    const santaColors={w:'#fff5df',r:'#c43d49',s:'#efb98b',k:'#342d37'};
+    function santaAt(x,y){sprite(x,y,santaPixels,santaColors,1);px(x+8,y+15,3,2,'#f1c66c');px(x+8,y+6,1,1,'#fff3df')}
+    function sleigh(x,base){
+      px(x,base-22,10,19,'#7b4434');px(x+2,base-24,10,19,'#b97a45');px(x+5,base-25,10,20,'#c89055');
+      px(x+4,base-25,8,2,'#efcd85');px(x+3,base-13,10,3,'#d7ad63');
+      santaAt(x+8,base-35);
+      px(x+1,base-14,31,3,'#f6cd71');px(x+2,base-11,30,9,'#a62f42');
+      px(x+5,base-10,25,2,'#db5a57');px(x+7,base-6,21,3,'#7b2638');
+      px(x+30,base-18,3,15,'#d8a255');px(x+33,base-21,3,5,'#f6cd71');
+      px(x+5,base-2,2,3,'#e1b464');px(x+25,base-2,2,3,'#e1b464');
+      px(x+1,base+1,32,2,'#d9ad5d');px(x+32,base-1,3,3,'#e8c075');px(x+35,base-4,2,3,'#f9dc88');
+    }
+    function deerAt(x,base,phase,red){
+      const yy=base-25;
+      const colors=red?deerColors:{...deerColors,r:'#624336'};
+      sprite(x,yy,deer,colors);
+      const leg=phase%4,legs=[[[-2,1],[2,-1]],[[1,-1],[-2,2]],[[2,-2],[1,-1]],[[-1,2],[2,-2]]][leg];
+      for(let i=0;i<2;i++){const lx=x+6+i*10,ly=yy+16;px(lx,ly,2,6,'#754c42');px(lx+legs[i][0],ly+6,3,3,'#754c42');px(lx+legs[i][0]-1,ly+8,4,2,'#503544')}
+      px(x+13,yy+8,3,5,'#277a62');px(x+12,yy+12,3,4,'#3b9a73');px(x+14,yy+11,1,2,'#f6d175');px(x+20,yy+7,1,1,'#fff4d8');
+    }
+    function train(){
+      const base=Math.round(floor-y),phase=running&&y<.1?Math.floor(elapsed*14)%4:2;
+      px(trainLeft,floor+1,76,2,'#9eb8b8');
+      for(let i=0;i<22;i++){px(43+i*2,base-15-Math.floor(Math.sin(i/22*Math.PI)*3),2,1,'#e9c47c')}
+      sleigh(15,base);
+      deerAt(47,base,phase,false);deerAt(73,base,phase+2,true);
+    }
+    function star(x,y){px(x-2,y,5,1,'#f9d77d');px(x,y-2,1,5,'#fff4c6')}
+    function crashScene(){
+      const t=reduced.matches?1:Math.min(1,crashTime/.7),a=1-(1-t)*(1-t);
+      const shift=Math.round(12*a),bounce=Math.round(Math.sin(t*Math.PI)*12);
+      ctx.save();ctx.translate(38+shift,floor-10-bounce);ctx.rotate(-.48*a);sleigh(-16,4);ctx.restore();
+      ctx.save();ctx.translate(83+shift,floor-9-bounce);ctx.rotate(1.15*a);deerAt(-12,10,2,false);ctx.restore();
+      ctx.save();ctx.translate(118+shift,floor-8);ctx.rotate(-1.18*a);deerAt(-12,10,3,true);ctx.restore();
+      ctx.save();ctx.translate(57+shift,floor-13-bounce);ctx.rotate(1.43*a);santaAt(-10,-12);ctx.restore();
+      for(const p of crashPieces){
+        const x=p.x+p.dx*a,base=floor-Math.sin(t*Math.PI)*p.lift;
+        ctx.save();ctx.translate(Math.round(x),Math.round(base-p.h/2));ctx.rotate(p.spin*a);
+        ctx.translate(-p.w/2,p.h/2-floor);present({x:0,w:p.w,h:p.h,color:p.color,kind:p.kind});ctx.restore();
+      }
+      if(crashGift)present(crashGift);
+      for(let i=0;i<4;i++){star(73+i*9,floor-32-(i%2)*6);star(118+i*7,floor-31+(i%2)*3)}
+      if(t<1&&!reduced.matches)for(let i=0;i<14;i++){const x=65+(i*17%73-36)*t,y=floor-3-Math.sin(t*Math.PI)*(9+i%6*4);px(x,y,3,2,'#fff9e7')}
+    }
     function draw(){
       const sky=['#17293f','#1e354c','#29465c','#39586a','#567481'];
       for(let i=0;i<sky.length;i++)px(0,i*24,320,24,sky[i]);
@@ -432,22 +502,16 @@
       for(let i=0;i<21;i++){let x=((i*27-elapsed*90)%351+351)%351-27;px(x,142+i%3*5,7+i%4*2,1,'#9ab7bc')}
       if(!reduced.matches)for(let i=0;i<24;i++){const x=((i*73+elapsed*(5+i%4))%320+320)%320;const sy=(i*37+elapsed*(7+i%5))%128;px(x,sy,1+(i%5===0?1:0),1,'#eef4e7')}
       for(const o of obstacles)present(o);
-      const yy=Math.round(floor-y-32),xx=37;
-      px(37,floor+1,25,2,'#9eb8b8');
-      sprite(xx,yy,deer,deerColors,1);
-      const leg=running&&y<.1?Math.floor(elapsed*14)%4:2;
-      const legs=[[[-2,1],[2,-1]],[[1,-1],[-2,2]],[[2,-2],[1,-1]],[[-1,2],[2,-2]]][leg];
-      for(let i=0;i<2;i++){const lx=xx+6+i*10,ly=yy+16;px(lx,ly,2,7,'#754c42');px(lx+legs[i][0],ly+6,3,5,'#754c42');px(lx+legs[i][0]-1,ly+10,4,2,'#503544')}
-      px(xx+13,yy+8,3,5,'#277a62');px(xx+12,yy+12,3,4,'#3b9a73');px(xx+14,yy+11,1,2,'#f6d175');
-      px(xx+20,yy+7,1,1,'#fff4d8');
+      if(crashed)crashScene();else train();
       if(newRecord){px(96,9,128,14,'#f5d175');ctx.fillStyle='#3e3642';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('¡NUEVO RÉCORD!',160,19)}
       if(!reduced.matches)for(const p of dust)px(p.x,p.y,2,2,'#fbf4dc');
     }
-    function stop(){running=false;cancelAnimationFrame(frame);jump.disabled=true;start.disabled=false}
+    function stop(){running=false;cancelAnimationFrame(frame);start.disabled=false}
+    function fail(o){stop();crashed=true;lastFailure=Date.now();crashTime=0;crashGift={...o,x:Math.max(96,o.x)};crashPieces=Array.from({length:8},(_,i)=>({x:45+i*9,dx:(i-3)*10,lift:12+i%3*10,w:9+i%3*3,h:9+i%4*3,color:i%palettes.length,kind:i%4,spin:(i%2?1:-1)*(.3+i*.12)}));if(newRecord)sync(best);const msg=nextMessage();title.textContent='FIN DE LA PARTIDA';score.textContent=msg;start.textContent='Volver a jugar';toggle.parentElement.hidden=true;overlay.hidden=false;draw();const began=performance.now();function animate(t){if(!d.open||!crashed)return;crashTime=reduced.matches?1:(t-began)/1000;draw();if(crashTime<.7)frame=requestAnimationFrame(animate)}if(!reduced.matches)frame=requestAnimationFrame(animate);canvas.focus({preventScroll:true})}
     function step(t){
       if(!running)return;if(!home()||!d.open||profileId()!==id){stop();return}
       const dt=prev?Math.min((t-prev)/1000,.033):0;prev=t;elapsed+=dt;
-      const before=y;vel-=510*dt;y+=vel*dt;
+      const before=y;vel-=320*dt;y+=vel*dt;
       if(y<=0){if(before>0&&!reduced.matches)for(let i=0;i<8;i++)dust.push({x:42+Math.random()*16,y:floor-2,vx:-20-Math.random()*35,vy:-12-Math.random()*18,life:.32});y=0;vel=0}
       for(const p of dust){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=80*dt;p.life-=dt}dust=dust.filter(p=>p.life>0);
       const speed=Math.min(155,92+elapsed*1.05);
@@ -455,24 +519,24 @@
         const kinds=[[15,15],[23,13],[13,26],[21,21],[29,17],[18,24]];
         const [w,h]=kinds[Math.floor(Math.random()*kinds.length)];
         obstacles.push({x:330,w,h,color:Math.floor(Math.random()*palettes.length),kind:Math.floor(Math.random()*4),passed:false});
-        next=elapsed+1.05+Math.random()*.55+(w+25)/speed;
+        next=elapsed+1.75+Math.random()*.55+(w+32)/speed;
       }
       for(const o of obstacles){
         o.x-=speed*dt;
-        if(o.x+o.w-2>40&&o.x+2<57&&y+3<o.h+1){stop();score.textContent=(newRecord?'¡Nuevo récord! ':'Fin de la partida. ')+points+' regalos superados.';start.textContent='Volver a jugar';if(newRecord)sync(best);draw();return}
-        if(!o.passed&&o.x+o.w<37){o.passed=true;points++;if(points>best){best=points;newRecord=true;putLocal(rk,best);sync(best)}hud()}
+        if(o.x+o.w-2>trainLeft+3&&o.x+2<trainRight-2&&y+3<o.h+1){fail(o);return}
+        if(!o.passed&&o.x+o.w<trainLeft){o.passed=true;points++;if(points>best){best=points;newRecord=true;putLocal(rk,best);sync(best)}hud()}
       }
       obstacles=obstacles.filter(o=>o.x+o.w>-5);draw();frame=requestAnimationFrame(step);
     }
-    function begin(){stop();running=true;prev=0;elapsed=0;points=0;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;score.textContent='¡En marcha!';start.disabled=true;jump.disabled=false;hud();draw();jump.focus();frame=requestAnimationFrame(step)}
-    function leap(){if(running&&y===0)vel=222}
-    start.addEventListener('click',begin);jump.addEventListener('click',leap);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else begin()});
-    d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&running&&!ev.target.matches('input,.te26-close')){ev.preventDefault();leap()}});
+    function begin(){if(Date.now()-lastFailure<650)return;stop();running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
+    function leap(){if(running&&y===0)vel=245}
+    start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else begin()});
+    d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start')&&!ev.repeat){ev.preventDefault();if(running)leap();else begin()}});
     d.querySelector('.te26-close').addEventListener('click',()=>d.close());
     d.addEventListener('close',()=>{stop();closed=true;d.remove();game=null;lastActivity=Date.now();if(trigger?.isConnected)trigger.focus()},{once:true});
     draw();d.showModal();start.focus();
   }
-  function tick(){if(Date.now()>=expiry){restoreGreeting();dismiss();clearElf();if(game?.open)game.close();try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&(k.startsWith(recordPrefix)||k.startsWith(elfPrefix)))localStorage.removeItem(k)}}catch(_){}observer.disconnect();clearInterval(timer);return}greet();mountElf();if(!home()){dismiss();if(game?.open)game.close();return}if(Date.now()-lastActivity>=90000)visit()}
+  function tick(){if(Date.now()>=expiry){restoreGreeting();dismiss();clearElf();if(game?.open)game.close();try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&(k.startsWith(recordPrefix)||k.startsWith(elfPrefix)||k.startsWith('tribeca-rodolfo-2026-msg:')))localStorage.removeItem(k)}}catch(_){}observer.disconnect();clearInterval(timer);return}greet();mountElf();if(!home()){dismiss();if(game?.open)game.close();return}if(Date.now()-lastActivity>=90000)visit()}
   const observer=new MutationObserver(()=>{greet();mountElf();if(!home()){dismiss();if(game?.open)game.close()}});
   observer.observe(main,{childList:true});observer.observe(document.body,{attributes:true,attributeFilter:['class']});
   document.addEventListener('visibilitychange',()=>{activity();if(document.hidden&&game?.open)game.close();else greet()});
