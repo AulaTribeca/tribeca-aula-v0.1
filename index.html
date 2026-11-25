@@ -106,6 +106,26 @@
     .tool-window.calendar-window .list-item.event-local-cee { background:rgba(22,125,127,.08) !important; border-left-color:#167d7f !important; }
     .teacher-week-day .event-local-cee { background:transparent !important; }
   </style>
+<style id="tribeca-festive-eggs-2026-style">
+#inicio .te26-greeting{display:inline-flex;align-items:center;justify-content:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0 4px;min-width:44px;min-height:44px;vertical-align:middle;font-size:1.15em;line-height:1;cursor:pointer;animation:none!important;transform:none!important;color:inherit}
+#inicio .te26-greeting:focus-visible,.te26-game button:focus-visible{outline:3px solid #b28a42;outline-offset:3px}
+.te26-flake{position:fixed;pointer-events:none;z-index:10000;color:#b99a52;text-shadow:0 0 2px #fff;animation:te26-spark .7s ease-out forwards;font-size:18px;line-height:1}
+@keyframes te26-spark{to{transform:translate(var(--dx),var(--dy)) rotate(75deg) scale(.2);opacity:0}}
+.te26-visitor{position:fixed;right:12px;bottom:max(18px,env(safe-area-inset-bottom));width:min(118px,28vw);z-index:9000;pointer-events:none;animation:te26-visit 6s ease-in-out both;filter:drop-shadow(0 4px 6px #172f3233)}
+.te26-visitor svg{width:100%;height:auto;display:block}
+@keyframes te26-visit{0%,100%{transform:translateY(135%);opacity:0}15%,80%{transform:translateY(0);opacity:1}}
+.te26-game{width:min(540px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;border:1px solid #b99759;border-radius:18px;padding:18px;background:#fff9eb;color:#174733;box-shadow:0 16px 60px #102e2f55;font:inherit}
+.te26-game::backdrop{background:#102d27a6}
+.te26-game h2{margin:0;font-size:1.4rem;color:#174733}
+.te26-game p{margin:8px 0;font-size:.95rem}
+.te26-game .te26-game-head,.te26-game .te26-game-buttons{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.te26-game canvas{width:100%;height:auto;display:block;background:#eaf1ea;border-radius:10px;border:1px solid #a8bdb0;touch-action:none;box-sizing:border-box}
+.te26-game button{min-height:44px;min-width:44px;border:1px solid #a58346;border-radius:9px;background:#174733;color:#fff9eb;padding:7px 13px;font:inherit;cursor:pointer}
+.te26-game .te26-close{background:#fff9eb;color:#174733}
+.te26-game .te26-toggle{font-size:.85rem;display:flex;gap:8px;align-items:center;margin-top:12px}
+.te26-game .te26-toggle input{width:20px;height:20px}
+@media(prefers-reduced-motion:reduce){.te26-visitor,.te26-flake{display:none!important}}
+</style>
 </head>
 <body class="font-default tribeca-preserve-v253" data-ui-version="264.1">
   <a class="tribeca-skip-link" href="#inicio">Saltar al contenido principal</a>
@@ -241,5 +261,115 @@
     mount();
   })();
   </script>
+<script id="tribeca-festive-eggs-2026">
+(() => {
+  'use strict';
+  const main=document.getElementById('inicio');
+  if(!main)return;
+  const expiry=Date.parse('2027-01-06T23:00:00Z');
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  const key='tribeca-festive-eggs-2026-muted';
+  let muted=false;try{muted=localStorage.getItem(key)==='1'}catch(_){}
+  const icons=['🎄','🦌','⛄','🎁','❄️','🔔','🛷','🕯️','🌟','🎅','🧣','🍪','🧤','🧦','✨','🤶','🍬','🏔️','🦌','🎄','🎁','❄️','⛄','🔔','🎅','🌟','🛷','🧣','🍪','🕯️','🎄'];
+  function today(){
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    const get=t=>Number(parts.find(p=>p.type===t)?.value);
+    return {y:get('year'),m:get('month'),d:get('day')};
+  }
+  function dailyIcon(){
+    const {y,m,d}=today();
+    if(m===12&&d===24)return '🎅';if(m===12&&d===25)return '🎄';if(m===12&&d===31)return '✨';
+    if(m===1&&d===1)return '🌟';if(m===1&&d===5)return '👑';if(m===1&&d===6)return '🎁';
+    return icons[(Math.floor(Date.UTC(y,m-1,d)/86400000)%icons.length+icons.length)%icons.length];
+  }
+  function home(){return Date.now()<expiry&&!document.hidden&&!document.body.classList.contains('auth-locked')&&!document.body.classList.contains('is-paused-student')&&!!main.querySelector(':scope > .teacher-dashboard, :scope > .hero-welcome-card, :scope > .focus-hero-card')}
+  let game=null,visitor=null,lastActivity=Date.now(),lastVisit=0,visits=0,visitorTimeout=0,clicks=0,lastClick=0,lastSpark=0;
+  function quiet(){return home()&&!muted&&!reduced.matches&&!main.querySelector(':scope > .focus-hero-card')&&!game?.open&&!document.querySelector('#windowLayer .tool-window:not([hidden]), dialog[open], [aria-modal="true"]:not([hidden])')&&!document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')}
+  function burst(x,y,n=5){
+    if(!quiet()||document.querySelectorAll('.te26-flake').length>12)return;
+    for(let i=0;i<n;i++){const e=document.createElement('span');e.className='te26-flake';e.setAttribute('aria-hidden','true');e.textContent=i%2?'✦':'❄';e.style.left=x+'px';e.style.top=y+'px';e.style.setProperty('--dx',Math.round((Math.random()-.5)*90)+'px');e.style.setProperty('--dy',Math.round(-20-Math.random()*60)+'px');document.body.append(e);setTimeout(()=>e.remove(),760)}
+  }
+  function restoreGreeting(){main.querySelectorAll('.te26-greeting').forEach(b=>{if(b.dataset.original==='wave'){const sp=document.createElement('span');sp.className='hero-wave';sp.setAttribute('aria-hidden','true');sp.textContent='👋';b.replaceWith(sp)}else b.remove()})}
+  function greet(){
+    if(Date.now()>=expiry){restoreGreeting();return}
+    if(!home())return;
+    const student=main.querySelector('.hero-welcome-card h1:not(.is-birthday-greeting-v216),.focus-hero-card h1:not(.is-birthday-greeting-v216)');
+    const teacher=main.querySelector('.teacher-welcome-copy h2');
+    for(const heading of [student,teacher]){
+      if(!heading)continue;
+      let b=heading.querySelector('.te26-greeting');
+      if(!b){
+        const original=heading.querySelector('.hero-wave');
+        b=document.createElement('button');b.type='button';b.className='te26-greeting';b.dataset.original=original?'wave':'teacher';
+        b.setAttribute('aria-label','Sorpresa navideña del saludo');
+        if(original)original.replaceWith(b);else heading.append(b);
+        b.addEventListener('click',ev=>{
+          if(!home())return;
+          const t=Date.now();clicks=t-lastClick<1800?clicks+1:1;lastClick=t;
+          const rect=b.getBoundingClientRect();burst(rect.left+rect.width/2,rect.top+rect.height/2,6);
+          if(clicks>=3){clicks=0;openGame(b)}
+        });
+      }
+      const icon=dailyIcon();if(b.textContent!==icon)b.textContent=icon;
+    }
+  }
+  const santa='<svg viewBox="0 0 110 126" xmlns="http://www.w3.org/2000/svg"><path d="M18 120q0-35 37-35t37 35" fill="#b22e40" stroke="#7c2232" stroke-width="2"/><path d="M76 104q10-11 14-25l8 4q3 23-13 31" fill="#b22e40" stroke="#7c2232" stroke-width="2"/><path d="M89 82q-6-10 2-15 4-2 5 5 7-6 10 0 3 7-8 14" fill="#f4d4aa"/><circle cx="55" cy="59" r="31" fill="#f3c99b"/><path d="M22 48Q18 8 62 10q28 2 27 39" fill="#b22e40"/><circle cx="64" cy="9" r="9" fill="#fffaea"/><rect x="20" y="40" width="71" height="15" rx="7" fill="#fff9e7"/><path d="M25 65q-6 34 30 38 34-4 31-38-7 13-16 5-15-14-30 0-9 8-15-5" fill="#fff9e7"/><circle cx="43" cy="60" r="2.8" fill="#263b2d"/><circle cx="67" cy="60" r="2.8" fill="#263b2d"/><circle cx="55" cy="68" r="6" fill="#e19c83"/><path d="M48 82q7 6 14 0" fill="none" stroke="#995451" stroke-width="2" stroke-linecap="round"/><path d="M18 119h74" stroke="#fff9e7" stroke-width="7"/></svg>';
+  const reindeer='<svg viewBox="0 0 110 126" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#785235" stroke-width="6" stroke-linecap="round"><path d="M35 44 22 21 23 6M24 25 9 19M74 44 88 21 87 6M87 25 101 19"/></g><path d="M31 54Q8 33 3 51q3 16 27 16M79 54q23-21 28-3-3 16-27 16" fill="#a8764c" stroke="#785235" stroke-width="2"/><path d="M33 125q-4-31 22-36 27 5 22 36" fill="#a8764c"/><ellipse cx="55" cy="72" rx="32" ry="39" fill="#b98455"/><ellipse cx="55" cy="88" rx="23" ry="18" fill="#f2d5a5"/><circle cx="42" cy="66" r="3.5" fill="#263b2d"/><circle cx="68" cy="66" r="3.5" fill="#263b2d"/><ellipse cx="55" cy="82" rx="11" ry="8" fill="#bd3241"/><ellipse cx="52" cy="79" rx="3.5" ry="2" fill="#f7c9b6"/><path d="M49 95q6 4 12 0" stroke="#785235" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M36 110h38" stroke="#286149" stroke-width="9"/><circle cx="55" cy="114" r="6" fill="#e9c577"/></svg>';
+  function dismiss(){if(visitor){visitor.remove();visitor=null}clearTimeout(visitorTimeout)}
+  function visit(){
+    if(!quiet()||visits>=2||Date.now()-lastVisit<300000)return;
+    dismiss();visitor=document.createElement('div');visitor.className='te26-visitor';visitor.setAttribute('aria-hidden','true');visitor.innerHTML=visits%2?reindeer:santa;
+    document.body.append(visitor);lastVisit=Date.now();visits++;visitorTimeout=setTimeout(dismiss,6200);
+  }
+  function activity(){lastActivity=Date.now();dismiss()}
+  for(const event of ['pointerdown','keydown','scroll','touchstart'])document.addEventListener(event,activity,{passive:true,capture:true});
+  document.addEventListener('pointermove',ev=>{
+    lastActivity=Date.now();if(visitor)dismiss();
+    if(ev.pointerType!=='mouse'||!quiet()||!ev.target.closest?.('#tribecaChristmas2026,.te26-greeting'))return;
+    if(Date.now()-lastSpark>1400){lastSpark=Date.now();burst(ev.clientX,ev.clientY,2)}
+  },{passive:true});
+  let gameStop=()=>{};
+  function openGame(trigger){
+    if(!home()||game?.open||typeof HTMLDialogElement==='undefined')return;
+    dismiss();
+    const d=document.createElement('dialog');game=d;d.className='te26-game';d.setAttribute('aria-labelledby','te26-game-title');d.lang='es';
+    d.innerHTML='<div class="te26-game-head"><h2 id="te26-game-title">Rodolfo a la carrera</h2><button type="button" class="te26-close" aria-label="Cerrar minijuego">Cerrar</button></div><p>Salta los regalos y los montones de nieve. Pulsa espacio, flecha arriba, el tablero o el botón de salto.</p><canvas width="480" height="200" aria-label="Pista nevada de Rodolfo"></canvas><p class="te26-score" aria-live="polite">Preparado para salir.</p><div class="te26-game-buttons"><button type="button" class="te26-start">Empezar</button><button type="button" class="te26-jump" disabled>Saltar</button></div><label class="te26-toggle"><input type="checkbox">Desactivar las sorpresas y efectos decorativos</label>';
+    document.body.append(d);const canvas=d.querySelector('canvas'),ctx=canvas.getContext('2d'),score=d.querySelector('.te26-score'),start=d.querySelector('.te26-start'),jump=d.querySelector('.te26-jump'),toggle=d.querySelector('input');
+    if(!ctx){d.remove();game=null;return}
+    toggle.checked=muted;toggle.addEventListener('change',()=>{muted=toggle.checked;try{localStorage.setItem(key,muted?'1':'0')}catch(_){}dismiss()});
+    let frame=0,running=false,prev=0,elapsed=0,points=0,y=0,vel=0,obstacles=[],next=1.5;
+    const floor=160;
+    function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h)}
+    function draw(){
+      rect(0,0,480,200,'#e4eee8');ctx.fillStyle='#fffaf0';ctx.beginPath();ctx.arc(411,35,21,0,Math.PI*2);ctx.fill();
+      for(let i=0;i<7;i++){let x=(i*89-elapsed*12)%560;if(x< -40)x+=560;ctx.fillStyle=i%2?'#8eb19c':'#a4c3af';ctx.beginPath();ctx.moveTo(x,145);ctx.lineTo(x+35,72+i%3*9);ctx.lineTo(x+69,145);ctx.fill()}
+      rect(0,floor,480,40,'#fffaf0');rect(0,floor,480,2,'#a0b7a9');
+      for(const o of obstacles){if(o.kind===0){rect(o.x,floor-24,24,24,'#a92e40');rect(o.x+10,floor-24,4,24,'#efc96d');rect(o.x,floor-16,24,4,'#efc96d')}else{ctx.fillStyle='#f7fbff';ctx.strokeStyle='#a3bcb8';ctx.beginPath();ctx.ellipse(o.x+14,floor-2,15,16,0,Math.PI,0);ctx.closePath();ctx.fill();ctx.stroke()}}
+      ctx.save();ctx.translate(56,floor-y);ctx.fillStyle='#a8764c';ctx.beginPath();ctx.ellipse(0,-16,19,11,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(17,-31,10,12,-.25,0,Math.PI*2);ctx.fill();rect(21,-29,7,7,'#bd3241');rect(19,-35,3,3,'#263b2d');ctx.strokeStyle='#785235';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(12,-40);ctx.lineTo(9,-49);ctx.lineTo(3,-53);ctx.moveTo(9,-49);ctx.lineTo(11,-55);ctx.moveTo(19,-40);ctx.lineTo(24,-50);ctx.lineTo(29,-53);ctx.stroke();ctx.beginPath();const step=running&&y===0?Math.sin(elapsed*20)*5:0;ctx.moveTo(-10,-11);ctx.lineTo(-10+step,-1);ctx.moveTo(10,-11);ctx.lineTo(10-step,-1);ctx.stroke();rect(10,-24,5,9,'#286149');ctx.restore();
+      ctx.fillStyle='#174733';ctx.font='bold 16px system-ui';ctx.textAlign='left';ctx.fillText(String(points)+' regalos',12,24);
+    }
+    function stop(){running=false;cancelAnimationFrame(frame);jump.disabled=true;start.disabled=false}
+    gameStop=stop;
+    function step(t){
+      if(!running)return;if(!home()||!d.open){stop();return}const dt=prev?Math.min((t-prev)/1000,.035):0;prev=t;elapsed+=dt;
+      vel-=720*dt;y+=vel*dt;if(y<=0){y=0;vel=0}
+      const speed=Math.min(275,145+elapsed*2.5);
+      if(elapsed>=next){obstacles.push({x:500,kind:Math.random()<.5?0:1,passed:false});next=elapsed+1.55+Math.random()*.8}
+      for(const o of obstacles){o.x-=speed*dt;if(!o.passed&&o.x+25<36){o.passed=true;points++}if(o.x<75&&o.x+24>39&&y<(o.kind===0?25:16)){stop();score.textContent='Fin de la partida. Has esquivado '+points+' obstáculos.';start.textContent='Volver a jugar';draw();return}}
+      obstacles=obstacles.filter(o=>o.x> -35);draw();frame=requestAnimationFrame(step);
+    }
+    function begin(){stop();running=true;prev=0;elapsed=0;points=0;y=0;vel=0;obstacles=[];next=1.4;score.textContent='¡En marcha!';start.disabled=true;jump.disabled=false;draw();jump.focus();frame=requestAnimationFrame(step)}
+    function leap(){if(running&&y===0)vel=340}
+    start.addEventListener('click',begin);jump.addEventListener('click',leap);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else begin()});d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&running&&!ev.target.matches('input')){ev.preventDefault();leap()}});
+    d.querySelector('.te26-close').addEventListener('click',()=>d.close());d.addEventListener('close',()=>{stop();d.remove();game=null;lastActivity=Date.now();if(trigger?.isConnected)trigger.focus()},{once:true});
+    draw();d.showModal();start.focus();
+  }
+  function tick(){if(Date.now()>=expiry){restoreGreeting();dismiss();if(game?.open)game.close();observer.disconnect();clearInterval(timer);return}greet();if(!home()){dismiss();if(game?.open)game.close();return}if(Date.now()-lastActivity>=90000)visit()}
+  const observer=new MutationObserver(()=>{greet();if(!home()){dismiss();if(game?.open)game.close()}});
+  observer.observe(main,{childList:true});observer.observe(document.body,{attributes:true,attributeFilter:['class']});
+  document.addEventListener('visibilitychange',()=>{activity();if(document.hidden&&game?.open)game.close();else greet()});
+  const timer=setInterval(tick,5000);tick();
+})();
+</script>
 </body>
 </html>
