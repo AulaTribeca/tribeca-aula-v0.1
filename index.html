@@ -445,9 +445,41 @@
     const soundKey='tribeca-rodolfo-2026-audio:'+id;
     let soundOn=getLocal(soundKey)!=='0',audio=null,master=null,audioReady=false;
     const viceTrack=new Audio();viceTrack.preload='none';viceTrack.loop=true;viceTrack.volume=.23;
-    let viceTrackReady=false;
+    let viceTrackReady=false,viceTrackLoading=null,viceTrackURL=null,trackController=null;
     function stopViceTrack(){viceTrack.pause();try{viceTrack.currentTime=0}catch(_){}}
-    function playViceTrack(){if(!soundOn||closed||(!vice&&!portal))return;if(!viceTrackReady){viceTrack.src='./vice-noel.mp3';viceTrackReady=true}viceTrack.play().catch(()=>{if(!closed)syncEl.textContent='La música de la fase Miami no está disponible.'})}
+    // Preserve the original MP3 byte for byte; fetch its repository parts only when the game is started.
+    function prepareViceTrack(){
+      if(viceTrackReady)return Promise.resolve(true);
+      if(viceTrackLoading)return viceTrackLoading;
+      if(closed)return Promise.resolve(false);
+      trackController=new AbortController();
+      const signal=trackController.signal;
+      viceTrackLoading=(async()=>{
+        try{
+          const parts=new Array(21);
+          for(let i=0;i<21;i+=5){
+            await Promise.all(Array.from({length:Math.min(5,21-i)},(_,j)=>i+j).map(async n=>{
+              const response=await fetch('./assets/north-vice-city/track-'+String(n).padStart(2,'0')+'.bin',{signal});
+              if(!response.ok)throw Error('Audio part '+n);
+              const bytes=await response.arrayBuffer();
+              if(bytes.byteLength!==(n===20?115576:450000))throw Error('Audio part size '+n);
+              parts[n]=bytes;
+            }));
+          }
+          if(closed||signal.aborted)return false;
+          const mp3=new Blob(parts,{type:'audio/mpeg'});
+          if(mp3.size!==9115576)throw Error('Audio size mismatch');
+          viceTrackURL=URL.createObjectURL(mp3);viceTrack.src=viceTrackURL;viceTrackReady=true;return true;
+        }catch(e){if(!closed&&!signal.aborted)syncEl.textContent='No se ha podido cargar la música de North Vice City.';return false}
+        finally{viceTrackLoading=null}
+      })();return viceTrackLoading;
+    }
+    async function playViceTrack(){
+      if(!soundOn||closed||(!vice&&!portal))return;
+      if(!await prepareViceTrack()||!soundOn||closed||crashed||(!vice&&!portal))return;
+      if(!viceTrack.paused)return;
+      viceTrack.play().catch(()=>{if(!closed)syncEl.textContent='Toca el tablero para activar la música.'})
+    }
     function showSound(){soundButton.textContent=soundOn?'Sonido sí':'Sonido no';soundButton.setAttribute('aria-pressed',String(soundOn))}
     showSound();
     function unlockAudio(){
@@ -776,7 +808,7 @@
     });
     function layer(img,offset,top=0,h=160){if(!img)return;const w=img.width/2,x=((offset%w)+w)%w;ctx.drawImage(img,-x,top,w,h);if(w-x<320)ctx.drawImage(img,w-x,top,w,h)}
 
-    // Vice Noel: original tropical arcade world, not an imported commercial game.
+    // North Vice City: original tropical arcade world, not an imported commercial game.
     function viceSanta(x,y){
       ctx.save();ctx.translate(x,y);
       shape('M0 13 Q1 7 7 7 Q12 5 16 8 Q21 11 21 15 L18 19 L4 19Z','#49aaa6','#38324b',.65);
@@ -847,6 +879,15 @@
       for(let x=0;x<w;x+=24){tileRect(g,x,20,12,1.5,'#e9d6a4');tileRect(g,x,5,10,.5,'#76657e')}
     });
     function viceBackground(){ctx.drawImage(viceSky,0,0,320,160);layer(viceTown,distance*.07);layer(vicePalms,distance*.25);layer(viceRoad,distance,floor,30)}
+    function northViceLogo(cx,cy,scale=1){
+      ctx.save();ctx.translate(cx,cy);ctx.scale(scale,scale);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+      // Original tropical arcade wordmark, pink chrome lettering with teal shadow.
+      ctx.font='900 10px system-ui,sans-serif';ctx.strokeStyle='#25152f';ctx.lineWidth=2;ctx.strokeText('NORTH',0,-10);ctx.fillStyle='#f7dfbb';ctx.fillText('NORTH',0,-10);
+      ctx.font='italic 900 23px Georgia,serif';ctx.lineWidth=4;ctx.strokeStyle='#281e4a';ctx.strokeText('VICE CITY',1.3,4);ctx.fillStyle='#57c8c2';ctx.fillText('VICE CITY',1.3,4);
+      ctx.lineWidth=2.3;ctx.strokeStyle='#fff0c8';ctx.strokeText('VICE CITY',0,1);
+      const gradient=ctx.createLinearGradient(0,-12,0,14);gradient.addColorStop(0,'#ffb4c4');gradient.addColorStop(.52,'#ff719d');gradient.addColorStop(1,'#c84288');ctx.fillStyle=gradient;ctx.fillText('VICE CITY',0,1);
+      ctx.restore();
+    }
     function portalScene(){
       // The car stops, Santa storms away, shrinks toward the horizon and opens a neon portal.
       const t=portalTime,walk=Math.min(1,Math.max(0,(t-.6)/2)),p=1-walk*.72;
@@ -858,7 +899,7 @@
         ctx.save();ctx.globalAlpha=.7;oval(cx,cy,rx+4,ry+4,'#e762ba');ctx.globalAlpha=1;oval(cx,cy,rx,ry,'#59d7d4','#fcb2cb');ctx.save();ctx.beginPath();ctx.ellipse(cx,cy,rx*.8,ry*.87,0,0,Math.PI*2);ctx.clip();ctx.drawImage(viceSky,cx-35,cy-36,70,72);ctx.restore();ctx.restore();
         if(t>2.8){ctx.globalAlpha=Math.min(.95,(t-2.8)*1.5);ctx.drawImage(viceSky,0,0,320,160);ctx.globalAlpha=1}
       }
-      ctx.fillStyle='#fff0d7';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.fillText(t<1?'SE ACABÓ.':t<2.4?'PAPÁ NOEL ABANDONA EL SERVICIO.':'DESTINO: VICE NOEL',160,22);
+      ctx.fillStyle='#fff0d7';ctx.font='bold 8px monospace';ctx.textAlign='center';if(t<2.4)ctx.fillText(t<1?'SE ACABÓ.':'PAPÁ NOEL ABANDONA EL SERVICIO.',160,22);else northViceLogo(160,39,1.16);
     }
     function draw(){
       if(vice){viceBackground()}else{
@@ -871,7 +912,7 @@
       for(const o of obstacles)present(o);
       if(crashed){if(vice)viceCrashScene();else if(turbo)turboCrashScene();else crashScene()}else if(vice)drawViceDrive();else if(turbo)driveTurbo();else train();
       if(turbo&&!vice&&!crashed&&points>=30&&points<viceAt&&points%5===0){ctx.fillStyle='#ffe0a2';ctx.font='bold 7px monospace';ctx.textAlign='center';ctx.fillText(points>=40?'PAPÁ NOEL ESTÁ HARTO.':'SE ESTÁ ACABANDO LA PACIENCIA.',160,23)}
-      if(vice&&!crashed&&elapsed-viceSince<3.2){px(76,28,168,20,'#35224d');ctx.fillStyle='#ffc1cc';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.fillText('VICE NOEL',160,37);ctx.font='6px monospace';ctx.fillText('El Polo Norte no se hace responsable.',160,44)}
+      if(vice&&!crashed){const intro=elapsed-viceSince<3.2;northViceLogo(intro?160:270,intro?40:17,intro?1.05:.48);if(intro){ctx.fillStyle='#ffe4c7';ctx.font='6px monospace';ctx.textAlign='center';ctx.fillText('El Polo Norte no se hace responsable.',160,61)}}
       if(turbo&&!vice&&!crashed&&elapsed-turboSince<3.5){px(53,27,214,23,'#192d41');px(54,28,212,21,'#a62e40');ctx.fillStyle='#fff1c8';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('MODO TURBO DESBLOQUEADO',160,36);ctx.font='6.5px monospace';ctx.fillText('Los renos han pedido vacaciones.',160,45)}
       if(newRecord&&!crashed){px(96,9,128,14,'#f5d175');ctx.fillStyle='#3e3642';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('¡NUEVO RÉCORD!',160,19)}
       if(!reduced.matches)for(const p of dust)block(p.x,p.y,1.5,1.5,'#fbf4dc');
@@ -914,12 +955,12 @@
       if(turbo&&!vice&&!portal&&points>=viceAt&&y===0&&obstacles.every(o=>o.passed||o.x>trainRight+65)){portal=true;portalTime=0;obstacles=[];sound('portal');playViceTrack()}
       draw();frame=requestAnimationFrame(step);
     }
-    function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;turbo=false;turboSince=0;vice=false;portal=false;portalTime=0;viceSince=0;stopViceTrack();distance=0;worldSpeed=92;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
+    function begin(){if(Date.now()-lastFailure<950)return;clearTimeout(letterTimer);unlockAudio();if(soundOn)prepareViceTrack();sound('start');stop();overlay.classList.remove('te26-letter');d.classList.remove('is-crashed');letterMeta.hidden=true;letterMark.hidden=true;running=true;crashed=false;crashGift=null;crashPieces=[];prev=0;elapsed=0;points=0;turbo=false;turboSince=0;vice=false;portal=false;portalTime=0;viceSince=0;stopViceTrack();distance=0;worldSpeed=92;y=0;vel=0;obstacles=[];dust=[];newRecord=false;next=.85;overlay.hidden=true;hud();draw();canvas.focus({preventScroll:true});frame=requestAnimationFrame(step)}
     function leap(){if(running&&!portal&&y===0){unlockAudio();if(vice&&soundOn&&viceTrack.paused&&!viceTrack.error)playViceTrack();vel=245;sound('jump')}}
     start.addEventListener('click',begin);canvas.addEventListener('pointerdown',ev=>{ev.preventDefault();if(running)leap();else if(!crashed)begin()});
     d.addEventListener('keydown',ev=>{if((ev.code==='Space'||ev.key==='ArrowUp')&&!ev.target.matches('input,.te26-close,.te26-start,.te26-sound')&&!ev.repeat){ev.preventDefault();if(running)leap();else begin()}});
     d.querySelector('.te26-close').addEventListener('click',()=>d.close());
-    d.addEventListener('close',()=>{stop();clearTimeout(letterTimer);closed=true;stopViceTrack();viceTrack.removeAttribute('src');viceTrack.load();if(audio)audio.close().catch(()=>{});d.remove();game=null;lastActivity=Date.now();if(trigger?.isConnected)trigger.focus()},{once:true});
+    d.addEventListener('close',()=>{stop();clearTimeout(letterTimer);closed=true;stopViceTrack();if(trackController)trackController.abort();viceTrack.removeAttribute('src');viceTrack.load();if(viceTrackURL)URL.revokeObjectURL(viceTrackURL);if(audio)audio.close().catch(()=>{});d.remove();game=null;lastActivity=Date.now();if(trigger?.isConnected)trigger.focus()},{once:true});
     draw();d.showModal();start.focus();
   }
   function tick(){if(Date.now()>=expiry){restoreGreeting();dismiss();clearElf();if(game?.open)game.close();try{for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&(k.startsWith(recordPrefix)||k.startsWith(elfPrefix)||k.startsWith('tribeca-rodolfo-2026-msg:')||k.startsWith('tribeca-rodolfo-2026-audio:')))localStorage.removeItem(k)}}catch(_){}observer.disconnect();clearInterval(timer);return}greet();mountElf();if(!home()){dismiss();if(game?.open)game.close();return}if(Date.now()-lastActivity>=90000)visit()}
