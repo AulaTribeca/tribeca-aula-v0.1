@@ -1,5 +1,5 @@
 /* Tribeca Aula · v264 · accesibilidad y respuestas offline coherentes */
-const TRIBECA_CACHE = 'tribeca-aula-static-v264-3';
+const TRIBECA_CACHE = 'tribeca-aula-static-v264-4';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
