@@ -3839,6 +3839,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
     }
     return 0;
   }
+  const tribecaWorkbookUnit2Ids = new Set(["576db9ce-5bfb-4648-9892-2fb19d7de8cf","b4b837fa-e448-4108-afd5-41795b8f685f","bb232987-565e-4698-8daa-fdec88f4e28f"]);
   function renderNativeExam(container){
     if(!container || container.dataset.t103Rendered==='1') return;
     let exam=null;
@@ -3860,7 +3861,7 @@ function studentAssignedClasses(studentId=State.profile?.id){
       group.items.push({q,idx});
     });
     // Workbook layout is opt-in for the Unit 2 English exams; retain the existing grading contract.
-    const workbookUnit2=exam.questions.length>0 && exam.questions.every(q=>/^u2-[123]-\d+$/.test(q.id));
+    const workbookUnit2=tribecaWorkbookUnit2Ids.has(String(materialId)) || (exam.questions.length>0 && exam.questions.every(q=>/^u2-[123]-\d+$/.test(q.id)));
     const workbookInput=(q,idx,cls='')=>`<input type="text" name="q${idx}" class="wb-answer ${cls}" aria-label="${safe(q.prompt)}" autocomplete="off" autocapitalize="off" spellcheck="false">`;
     const workbookFeedback=idx=>`<div class="exam-question-feedback wb-feedback" data-exam-feedback="${idx}" hidden></div>`;
     const workbookPassage=p=>{const [heading,...lines]=String(p).split(/\r?\n/);return `<article class="wb-reading"><h6>${safe(heading)}</h6><p>${safe(lines.join(' ')||heading)}</p></article>`;};
@@ -3873,14 +3874,14 @@ function studentAssignedClasses(studentId=State.profile?.id){
       return `<div class="exam-question wb-row" data-exam-q="${idx}" data-type="short_text"><span class="wb-n" aria-hidden="true">${number}</span><div class="wb-task">${content}${workbookFeedback(idx)}</div></div>`;
     };
     const workbookSection=group=>{
-      const raw=group.name, number=raw.match(/^\d+/)?.[0]||'', rest=raw.replace(/^\d+\.\s*/,''), bank=rest.match(/^(.*?with):\s*(.+)\.$/i);
-      const heading=bank?bank[1]+' the words in the box.':rest, tableMode=group.items.every(({q})=>q.type==='short_text'&&q.prompt.includes('→'));
+      const raw=group.name, number=raw.match(/^\d+/)?.[0]||'', rest=raw.replace(/^\d+\.\s*/,''), bank=rest.match(/^(.*?):\s*([^:]+)\.$/i);
+      const heading=bank?(bank[1].toLowerCase().endsWith('with')?bank[1]+' the words in the box.':bank[1]+'. Use the words in the box.'):rest, tableMode=group.items.every(({q})=>q.type==='short_text'&&q.prompt.includes('→'));
       const passage=group.items.find(({q})=>q.passage)?.q.passage, category=Number(number)<=5?'VOCABULARY':Number(number)<=9?'GRAMMAR':'READING', pts=group.items.length*perQuestion;
-      return `<section class="exam-paper-section wb-section" data-wb-category="${category}"><header class="wb-section-head"><span class="wb-section-number">${safe(number)}</span><div><small>${category}</small><h5>${safe(heading)}</h5></div><span class="wb-points">${pts.toFixed(1)} points</span></header>${bank?`<div class="wb-bank" aria-label="Word bank">${safe(bank[2]).split(',').map(w=>`<span>${w.trim()}</span>`).join('')}</div>`:''}${passage?workbookPassage(passage):''}${tableMode?`<div class="wb-table" role="table" aria-label="Noun and adjective table"><div class="wb-table-head" role="row"><span role="columnheader">No.</span><span role="columnheader">Noun</span><span role="columnheader">Adjective</span></div>${group.items.map(({q,idx},i)=>workbookQuestion(q,idx,i,true)).join('')}</div>`:`<div class="wb-items">${group.items.map(({q,idx},i)=>workbookQuestion(q,idx,i,false)).join('')}</div>`}</section>`;
+      return `<section class="exam-paper-section wb-section" data-wb-category="${category}"><header class="wb-section-head"><span class="wb-section-number">${safe(number)}</span><div><small>${category}</small><h5>${safe(heading)}</h5></div><span class="wb-points">${pts.toFixed(1)} points</span></header>${bank?`<div class="wb-bank" aria-label="Word bank">${bank[2].split(',').map(w=>w.trim()).sort((a,b)=>a.localeCompare(b,'en')).map(w=>`<span>${safe(w)}</span>`).join('')}</div>`:''}${passage?workbookPassage(passage):''}${tableMode?`<div class="wb-table" role="table" aria-label="Noun and adjective table"><div class="wb-table-head" role="row"><span role="columnheader">No.</span><span role="columnheader">Noun</span><span role="columnheader">Adjective</span></div>${group.items.map(({q,idx},i)=>workbookQuestion(q,idx,i,true)).join('')}</div>`:`<div class="wb-items">${group.items.map(({q,idx},i)=>workbookQuestion(q,idx,i,false)).join('')}</div>`}</section>`;
     };
     const workbookStyle=`<style>
 .wb-exam{--wb-accent:#b34b24;--wb-border:#cbd5e1;--wb-muted:#52606d;--wb-surface:#fff;--wb-ink:#202b36;max-width:900px;margin-inline:auto;box-sizing:border-box}.wb-exam *{box-sizing:border-box}
-.wb-exam .wb-section{padding:16px 12px;margin:0 0 15px;border:1px solid var(--wb-border);border-radius:12px;background:var(--wb-surface);color:var(--wb-ink);min-width:0;box-shadow:none}
+.wb-exam .wb-section{padding:18px 0;margin:0 0 6px;border:0;border-radius:0;background:var(--wb-surface);color:var(--wb-ink);min-width:0;box-shadow:none}.wb-exam .exam-paper-body{padding:0 8px}.wb-exam .wb-section-head h5{font-family:inherit}.wb-exam .wb-answer::placeholder{color:transparent}.wb-exam .wb-section + .wb-section{border-top:1px solid var(--wb-border)}
 .wb-exam [data-wb-category=GRAMMAR]{--wb-accent:#23648a}.wb-exam [data-wb-category=READING]{--wb-accent:#972b5a}
 .wb-exam .wb-section>.wb-section-head{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:start;gap:9px;padding:0 0 10px;border:0;border-bottom:2px solid var(--wb-accent);margin:0 0 12px;background:none}
 .wb-exam .wb-section-head small{font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--wb-accent);display:block;margin-bottom:3px}.wb-exam .wb-section-head h5{font-size:15px;line-height:1.45;margin:0;color:var(--wb-ink);font-weight:700;overflow-wrap:anywhere}.wb-exam .wb-section-head .wb-section-number{display:grid;place-items:center;width:28px;height:28px;background:var(--wb-accent);color:white;border-radius:6px;font-size:15px;font-weight:800}.wb-exam .wb-section-head .wb-points{font-size:11px;color:var(--wb-muted);white-space:nowrap;padding-top:4px}
@@ -4030,7 +4031,15 @@ body.is-dark .wb-exam{--wb-border:#46566a;--wb-muted:#c1ccd7;--wb-surface:#17233
         renderNativeExam(container);
         container.scrollIntoView?.({behavior:'smooth', block:'start'});
       });
-      const savedAttempt=await saveExamAttempt(materialId, exam, result);
+      let savedAttempt;
+      if(workbookUnit2){
+        try{savedAttempt=await saveExamAttempt(materialId, exam, result);}catch(saveError){
+          const card=resultBox.querySelector('.exam-score-card');
+          const status=document.createElement('p');status.textContent='Nota calculada, pero no se ha guardado. Reintenta el envío.';
+          const retry=document.createElement('button');retry.type='button';retry.className='secondary-btn';retry.textContent='Reintentar guardar nota';
+          card?.append(status,retry);retry.addEventListener('click',async()=>{retry.disabled=true;try{const saved=await saveExamAttempt(materialId,exam,result);if(!saved)throw Error('No guardado');status.textContent='Nota guardada.';retry.remove();updateAttemptHistoryBox(container,materialId);}catch(_e){retry.disabled=false;}});
+        }
+      }else savedAttempt=await saveExamAttempt(materialId, exam, result);
       if(savedAttempt && typeof attemptPrintButton==='function'){
         const card=resultBox.querySelector('.exam-score-card');
         if(card) card.insertAdjacentHTML('beforeend', `<div class="attempt-pdf-actions-v148">${attemptPrintButton(savedAttempt,'Descargar este intento en PDF')}</div>`);
@@ -4084,7 +4093,12 @@ body.is-dark .wb-exam{--wb-border:#46566a;--wb-muted:#c1ccd7;--wb-surface:#17233
       teacher_comment: result.teacher_comment || null,
       completed_at:result.completed_at || new Date().toISOString()
     };
-    const inserted = await maybe(table('exam_attempts').insert(row).select('*').single(), null);
+    let inserted;
+    if(tribecaWorkbookUnit2Ids.has(String(materialId))){
+      const response=await table('exam_attempts').insert(row).select('*').single();
+      if(response.error || !response.data) throw new Error(response.error?.message || 'No se pudo guardar el intento.');
+      inserted=response.data;
+    }else inserted=await maybe(table('exam_attempts').insert(row).select('*').single(), null);
     await maybe(table('material_completions').upsert({user_id:State.profile.id, material_id:materialId, subject:row.subject||null, completed:true, completed_at:row.completed_at, updated_at:new Date().toISOString()},{onConflict:'user_id,material_id'}));
     await window.TribecaProgress?.markCompleted?.(materialId);
     const savedAttempt = inserted || row;
@@ -5319,7 +5333,9 @@ render();
   }
 
   async function openMaterialInNewWindow(materialId){
-    if(tribecaUseDirectTouchMaterialViewerV242()){
+    // The Unit 2 workbook uses the same authenticated native renderer on every device.
+    // The legacy standalone exam iframe does not share the native attempt persistence.
+    if(tribecaWorkbookUnit2Ids.has(String(materialId)) || tribecaUseDirectTouchMaterialViewerV242()){
       await openMaterialInAppleViewerV240(materialId);
       return;
     }
