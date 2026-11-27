@@ -1,5 +1,5 @@
 /* Tribeca Aula · v264 · accesibilidad y respuestas offline coherentes */
-const TRIBECA_CACHE = 'tribeca-aula-static-v264-4';
+const TRIBECA_CACHE = 'tribeca-aula-static-v264-5';
 const TRIBECA_STATIC_MATCH = /\.(?:html|css|js|webmanifest|png|webp|svg|ico|mp3|wav|ogg)$/i;
 const TRIBECA_INSTALL_ASSETS = [
   './',
@@ -18,7 +18,7 @@ const TRIBECA_INSTALL_ASSETS = [
   './resource-progress.js?v=264.1',
   './tribeca-publisher-v262.js?v=263.2',
   './tribeca-student-payments-v263.js?v=264',
-  './supabase-auth.js?v=264.3',
+  './supabase-auth.js?v=264.5',
   './profile-ui.js?v=229',
   './tribeca-ui-accessibility-v253.js?v=263.2',
   './tribeca-material-toggle-v254.js?v=254.1',
@@ -74,7 +74,7 @@ function timeout(ms) {
 async function networkFirst(request, fallbackUrl, maxWait = 3500) {
   const cache = await caches.open(TRIBECA_CACHE);
   try {
-    const fresh = await Promise.race([fetch(request), timeout(maxWait)]);
+    const fresh = await Promise.race([fetch(request, { cache: 'no-cache' }), timeout(maxWait)]);
     if (fresh && fresh.ok) await cache.put(request, fresh.clone()).catch(() => {});
     return fresh;
   } catch (_error) {
